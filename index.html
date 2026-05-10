@@ -1586,19 +1586,31 @@ async function fetchSheetData() {
 // Parse the rich JSON from the Apps Script (has maintenance + biomedical + formRaw)
 function parseAndMergeSheets(json) {
   ROWS = [];
-  const addRows = (sheetData, isBiomedical) => {
-    if (!sheetData || !sheetData.rows || !sheetData.rows.length) return;
-    // Build a column index map from the headers so we're not dependent on column order
-    const hdrs = sheetData.headers.map(h => h.toLowerCase().trim());
-    // Store header map on first call so getMonth() etc. can still use C[] index
-    // We'll normalise each row to match the C[] column order expected by the rest of the code
+
+  function addSheet(sheetData, isBiomedical) {
+    if (!sheetData || !sheetData.rows || !sheetData.rows.length) return 0;
+    const headers = sheetData.headers || [];
+    let added = 0;
     sheetData.rows.forEach(r => {
-      ROWS.push({row: r, bio: isBiomedical, headers: sheetData.headers, sheetSrc: isBiomedical?'biomedical':'maintenance'});
+      // Skip completely empty rows
+      if (!r || !r.some || !r.some(c => c && String(c).trim())) return;
+      // For formRaw (bio=null), detect from row content
+      let bioFlag = isBiomedical;
+      if (isBiomedical === null) {
+        const maintTypeIdx = headers.map(h=>h.toLowerCase().trim()).findIndex(h=>h.includes('type of maintenance')||h.includes('maintenance type'));
+        const typeVal = (maintTypeIdx >= 0 && r[maintTypeIdx]) ? String(r[maintTypeIdx]).toLowerCase() : '';
+        bioFlag = typeVal.includes('bio');
+      }
+      ROWS.push({ row: r.map(c => c===null||c===undefined?'':String(c)), bio: bioFlag, headers: headers, sheetSrc: isBiomedical===true?'biomedical':'maintenance' });
+      added++;
     });
-  };
-  addRows(json.maintenance, false);
-  addRows(json.biomedical,  true);
-  addRows(json.formRaw,     null); // null = detect from row content
+    return added;
+  }
+
+  const mCount = addSheet(json.maintenance, false);
+  const bCount = addSheet(json.biomedical,  true);
+  const fCount = addSheet(json.formRaw,     null);
+  console.log('Merged rows — Maintenance:', mCount, '| Biomedical:', bCount, '| Form raw:', fCount, '| Total:', ROWS.length);
 }
 
 function onSheetLoaded(method) {
@@ -1669,47 +1681,74 @@ function parseCSV(text) {
 function getCell(entry, key) {
   if (!entry || !entry.row) return '';
   const r = entry.row;
-  // Try numeric column index from C map
-  const idx = C[key];
-  if (typeof idx === 'number' && idx >= 0 && idx < r.length) {
-    const v = r[idx];
-    if (v !== undefined && v !== null) return String(v);
-  }
-  // Fallback: search by header name if headers are available
-  if (entry.headers) {
-    const aliases = {
-      timestamp:       ['timestamp'],
-      department:      ['department','dept'],
-      typeOfWork:      ['type of work','type of maintenance'],
-      typeOfMaint:     ['type of maintenance','type of maintenance'],
-      natureOfWork:    ['nature of work'],
-      workID:          ['work id','job id','work id'],
-      assignedTo:      ['assigned to'],
-      status:          ['status'],
-      completionHours: ['completion time (hours)','completion hours'],
-      responseTime:    ['response time (hours)','response time'],
-      slaTarget:       ['sla target (hours)','sla target'],
-      slaStatus:       ['sla status (met/breached)','sla status'],
-      dateReceived:    ['date/time received'],
-      dateAssigned:    ['date/time assigned'],
+
+  // === HEADER-BASED LOOKUP (preferred — works for any column order) ===
+  // Used when the entry has headers (from Apps Script JSON response)
+  if (entry.headers && entry.headers.length) {
+    const ALIASES = {
+      timestamp:       ['timestamp','date','submitted','date submitted','request date','submission date'],
+      requestedBy:     ['requested by','requester','requestor','name','requested by'],
+      department:      ['department','dept','location','area','unit','ward','section','floor'],
+      typeOfWork:      ['type of work','work type'],
+      typeOfMaint:     ['type of maintenance','maintenance type','type of maintenance'],
+      natureOfWork:    ['nature of work','nature','work nature'],
+      workDesc:        ['work description','description','details','work details'],
+      workID:          ['work id','job id','work id','work no','job no','ticket id','ticket no'],
+      receivedBy:      ['received by'],
+      dateReceived:    ['date/time received','date received','received date','date/time received'],
+      assignedTo:      ['assigned to','technician','tech','assigned tech','assigned to'],
+      dateAssigned:    ['date/time assigned','date assigned','assigned date'],
+      status:          ['status','job status','work status','current status'],
+      statusUpdated:   ['date/time status updated','status updated','status date'],
+      completionDate:  ['completion date/time','completion date','completed date','date completed'],
+      completionHours: ['completion time (hours)','completion hours','time to complete','time to close','closing time (hours)','hours to complete'],
+      responseTime:    ['response time (hours)','response time','response hours'],
+      totalCost:       ['total cost','cost','amount'],
+      remarks:         ['remarks','comments','notes','remark'],
+      assignedTech:    ['assigned to','technician','tech'],
+      timeToAssign:    ['time to assign (hours)','time to assign'],
+      timeToStart:     ['time to start (hours)','time to start'],
+      slaTarget:       ['sla target (hours)','sla target','sla hours'],
+      slaStatus:       ['sla status (met/breached)','sla status','sla'],
     };
-    const targets = aliases[key] || [key.toLowerCase()];
-    const hdrs = entry.headers.map(h => h.toLowerCase().trim());
+    const targets = ALIASES[key] || [key.toLowerCase().replace(/([A-Z])/g,' $1').trim().toLowerCase()];
+    const hdrs = entry.headers.map(h => String(h).toLowerCase().trim());
+    // Try exact match first, then partial
     for (const t of targets) {
-      const fi = hdrs.indexOf(t.toLowerCase());
-      if (fi !== -1 && fi < r.length) return String(r[fi] || '');
+      const exact = hdrs.indexOf(t);
+      if (exact !== -1 && exact < r.length) {
+        const v = r[exact];
+        return v === undefined || v === null ? '' : String(v);
+      }
     }
+    // Partial match fallback
+    for (const t of targets) {
+      const partial = hdrs.findIndex(h => h.includes(t) || t.includes(h));
+      if (partial !== -1 && partial < r.length) {
+        const v = r[partial];
+        return v === undefined || v === null ? '' : String(v);
+      }
+    }
+    return ''; // header-based only — don't fall through to index
+  }
+
+  // === INDEX-BASED LOOKUP (CSV fallback — column order matches C map) ===
+  const idx2 = C[key];
+  if (typeof idx2 === 'number' && idx2 >= 0 && idx2 < r.length) {
+    const v = r[idx2];
+    return v === undefined || v === null ? '' : String(v);
   }
   return '';
 }
 
 function isBio(entry) {
-  // If the Apps Script already tagged it, use that
+  // Definitive: Apps Script tagged it
   if (entry.bio === true)  return true;
   if (entry.bio === false) return false;
-  // Otherwise detect from content
-  const t = (getCell(entry,'typeOfWork') + ' ' + getCell(entry,'typeOfMaint') + ' ' + entry.sheetSrc).toLowerCase();
-  return t.includes('bio') || t.includes('biomedical');
+  // formRaw rows: detect from maintenance type column
+  const maintType = getCell(entry, 'typeOfMaint').toLowerCase();
+  const typeWork  = getCell(entry, 'typeOfWork').toLowerCase();
+  return maintType.includes('bio') || typeWork.includes('bio') || entry.sheetSrc === 'biomedical';
 }
 
 function isDone(entry) {
@@ -1726,26 +1765,41 @@ function getSLAStatus(entry) {
 }
 
 function getMonth(entry) {
-  // Try timestamp, dateReceived, dateAssigned in order
-  const raw = getCell(entry,'timestamp') || getCell(entry,'dateReceived') || getCell(entry,'dateAssigned');
+  // Apps Script converts Date → ISO string, so we get e.g. "2026-05-03T08:30:00.000Z"
+  const raw = getCell(entry,'timestamp') || getCell(entry,'dateReceived') || getCell(entry,'dateAssigned') || '';
   if (!raw || raw.length < 6) return null;
-  // ISO 8601 (from Apps Script Date.toISOString())
+
+  // Try ISO 8601 first (most common from Apps Script)
   let d = new Date(raw);
+  if (!isNaN(d.getTime()) && d.getFullYear() > 2000 && d.getFullYear() < 2100) {
+    return d.toLocaleDateString('en-US', {month:'short', year:'numeric'});
+  }
+
+  // DD/MM/YYYY or D/M/YYYY (common in Gulf region)
+  const dmy = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (dmy) {
+    // Try as DD/MM/YYYY
+    d = new Date(parseInt(dmy[3]), parseInt(dmy[2])-1, parseInt(dmy[1]));
+    if (!isNaN(d.getTime()) && d.getFullYear() > 2000) {
+      return d.toLocaleDateString('en-US', {month:'short', year:'numeric'});
+    }
+  }
+
+  // MM/DD/YYYY (less common but possible)
+  const mdy = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (mdy) {
+    d = new Date(parseInt(mdy[3]), parseInt(mdy[1])-1, parseInt(mdy[2]));
+    if (!isNaN(d.getTime()) && d.getFullYear() > 2000 && d.getFullYear() < 2100) {
+      return d.toLocaleDateString('en-US', {month:'short', year:'numeric'});
+    }
+  }
+
+  // Last resort: let JS parse it
+  d = new Date(raw);
   if (!isNaN(d.getTime()) && d.getFullYear() > 2000) {
     return d.toLocaleDateString('en-US', {month:'short', year:'numeric'});
   }
-  // DD/MM/YYYY or DD/MM/YYYY HH:MM
-  const dmy = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (dmy) {
-    d = new Date(dmy[3]+'-'+dmy[2].padStart(2,'0')+'-'+dmy[1].padStart(2,'0'));
-    if (!isNaN(d.getTime())) return d.toLocaleDateString('en-US', {month:'short', year:'numeric'});
-  }
-  // MM/DD/YYYY
-  const mdy = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (mdy) {
-    d = new Date(raw);
-    if (!isNaN(d.getTime()) && d.getFullYear() > 2000) return d.toLocaleDateString('en-US', {month:'short', year:'numeric'});
-  }
+
   return null;
 }
 
@@ -1792,10 +1846,10 @@ function setMMSView(view, btn) {
 
 function filteredRows() {
   if (!ROWS.length) return [];
+  // Normalise bare array entries (CSV fallback path)
   const rows = ROWS.map(e => {
-    // Normalise: if entry has no .row property (bare array from CSV fallback), wrap it
-    if (!e.row) return {row: e, bio: null, headers: null, sheetSrc: 'csv'};
-    return e;
+    if (e && e.row) return e; // already wrapped
+    return { row: Array.isArray(e)?e:[e], bio: null, headers: null, sheetSrc: 'csv' };
   });
   if (MMS_MONTH === 'all') return rows;
   return rows.filter(e => getMonth(e) === MMS_MONTH);
