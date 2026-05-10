@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#050c18;--sf:#0a1628;--s2:#0f2040;--s3:#162850;--bd:rgba(0,180,255,.12);--b2:rgba(0,180,255,.28);--tx:#d4e8ff;--mu:#5a7fa8;--ac:#00b4ff;--gn:#00ff88;--or:#ffaa00;--rd:#ef4444;--pu:#a855f7;--cy:#06b6d4;--sb:260px;}
@@ -173,6 +174,35 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 ::-webkit-scrollbar{width:5px;height:5px;}
 /* Canvas sizing */
 canvas{display:block;}
+
+/* ── INVENTORY UPLOAD & DISPLAY ── */
+.inv-drop{border:2px dashed var(--b2);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:.2s;background:rgba(0,180,255,.03);}
+.inv-drop:hover,.inv-drop.dragover{border-color:var(--ac);background:rgba(0,180,255,.08);}
+.inv-drop-icon{font-size:36px;margin-bottom:8px;}
+.inv-drop-text{font-size:13px;color:var(--mu);}
+.inv-drop-sub{font-size:10px;color:var(--mu);margin-top:4px;}
+.inv-progress{height:4px;background:rgba(255,255,255,.05);border-radius:2px;margin-top:10px;overflow:hidden;display:none;}
+.inv-progress-fill{height:100%;background:linear-gradient(90deg,var(--ac),var(--gn));border-radius:2px;transition:width .4s;}
+.col-map-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid rgba(0,180,255,.06);}
+.col-map-row:last-child{border-bottom:none;}
+.col-map-label{font-size:11px;color:var(--tx);font-weight:600;}
+.col-map-hint{font-size:9px;color:var(--mu);}
+.inv-stat-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px;}
+.inv-stat{background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:12px;text-align:center;}
+.inv-stat-val{font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;}
+.inv-stat-lbl{font-size:9px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;margin-top:2px;}
+.due-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:9px;font-weight:700;}
+.due-over{background:rgba(239,68,68,.15);color:var(--rd);border:1px solid rgba(239,68,68,.3);}
+.due-soon{background:rgba(255,170,0,.15);color:var(--or);border:1px solid rgba(255,170,0,.3);}
+.due-ok{background:rgba(0,255,136,.12);color:var(--gn);border:1px solid rgba(0,255,136,.25);}
+.due-na{background:rgba(90,127,168,.1);color:var(--mu);border:1px solid rgba(90,127,168,.2);}
+.filter-pill{display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:20px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid var(--bd);background:transparent;color:var(--mu);font-family:'Exo 2',sans-serif;transition:.15s;}
+.filter-pill.active,.filter-pill:hover{background:rgba(0,180,255,.12);color:var(--ac);border-color:var(--b2);}
+.inv-search{background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px 13px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;width:100%;}
+.inv-search:focus{border-color:var(--ac);}
+.sort-th{cursor:pointer;user-select:none;}
+.sort-th:hover{color:var(--ac);}
+
 ::-webkit-scrollbar-track{background:var(--sf);}
 ::-webkit-scrollbar-thumb{background:var(--s3);border-radius:3px;}
 
@@ -716,9 +746,124 @@ canvas{display:block;}
 
 <!-- ===== EQUIPMENT ===== -->
 <div class="pg" id="page-equip">
-  <div class="ph"><h1>⚕ Medical Equipment — FMS.1.1.7</h1><p>Manager: Bashar (Biomedical Engineer) · PIN: 3333</p></div>
-  <div class="tb"><button class="tbtn active" onclick="st('equip','ppm',this)">PPM Records</button><button class="tbtn" onclick="st('equip','inv',this)">Inventory</button><button class="tbtn" onclick="st('equip','kpi',this)">KPIs</button></div>
-  <div id="equip-ppm"><div class="g g2">
+  <div class="ph"><h1>⚕ Medical Equipment — FMS.1.1.7</h1><p>Manager: Bashar (Biomedical Engineer) · Upload Excel inventory · Log PPM records · Track due maintenance</p></div>
+  <div class="tb">
+    <button class="tbtn active" onclick="st('equip','upload',this)">📤 Upload Inventory</button>
+    <button class="tbtn" onclick="st('equip','inv',this)">📋 Inventory View</button>
+    <button class="tbtn" onclick="st('equip','ppm',this)">🔧 PPM Records</button>
+    <button class="tbtn" onclick="st('equip','kpi',this)">📊 KPIs</button>
+  </div>
+
+  <!-- ── UPLOAD TAB ── -->
+  <div id="equip-upload">
+    <div class="g g2">
+      <!-- Drop zone -->
+      <div class="card">
+        <div class="ch"><div class="ct">📤 Upload Equipment Inventory (Excel / CSV)</div></div>
+        <div class="cb">
+          <div class="inv-drop" id="inv-dropzone" onclick="document.getElementById('inv-file-input').click()" ondragover="invDragOver(event)" ondragleave="invDragLeave(event)" ondrop="invDrop(event)">
+            <div class="inv-drop-icon">📊</div>
+            <div class="inv-drop-text">Drop your Excel file here or click to browse</div>
+            <div class="inv-drop-sub">Supports .xlsx · .xls · .csv · Any column order</div>
+            <div class="inv-progress" id="inv-progress"><div class="inv-progress-fill" id="inv-progress-fill" style="width:0%"></div></div>
+          </div>
+          <input type="file" id="inv-file-input" accept=".xlsx,.xls,.csv" style="display:none;" onchange="invFileSelected(this)">
+          <div id="inv-upload-status" style="margin-top:10px;font-size:11px;color:var(--mu);min-height:18px;"></div>
+          <!-- Column mapper — shown after file is read -->
+          <div id="inv-col-mapper" style="display:none;margin-top:16px;">
+            <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:600;color:var(--or);margin-bottom:10px;">Map Your Column Headers</div>
+            <div style="font-size:10px;color:var(--mu);margin-bottom:10px;">We detected these columns from your file. Confirm or adjust the mapping — leave as "— skip —" for columns you don't have.</div>
+            <div id="inv-col-map-rows"></div>
+            <button class="btn bg" style="width:100%;margin-top:14px;" onclick="invImport()">✓ Import Inventory</button>
+          </div>
+        </div>
+      </div>
+      <!-- Instructions -->
+      <div class="card">
+        <div class="ch"><div class="ct">📋 What columns does the platform look for?</div></div>
+        <div class="cb" style="padding:14px;">
+          <div style="font-size:11px;color:var(--mu);line-height:1.9;">
+            The platform auto-detects these fields from your Excel headers.<br>
+            Column names can be in <b style="color:var(--tx)">any order</b> — exact match or close match.
+          </div>
+          <table class="tbl" style="margin-top:12px;">
+            <thead><tr><th>Field</th><th>Looks for (examples)</th><th>Required?</th></tr></thead>
+            <tbody>
+              <tr><td style="color:var(--ac);font-weight:600;">Equipment Name</td><td style="font-size:10px;color:var(--mu);">Name, Equipment, Description, Item</td><td><span class="due-over" style="font-size:9px;">Yes</span></td></tr>
+              <tr><td style="color:var(--ac);font-weight:600;">Asset / Serial No.</td><td style="font-size:10px;color:var(--mu);">Asset, Serial, Tag, ID, Code</td><td><span class="due-soon" style="font-size:9px;">Recommended</span></td></tr>
+              <tr><td style="color:var(--ac);font-weight:600;">Category</td><td style="font-size:10px;color:var(--mu);">Category, Type, Class, Group</td><td><span class="due-ok" style="font-size:9px;">Optional</span></td></tr>
+              <tr><td style="color:var(--ac);font-weight:600;">Manufacturer</td><td style="font-size:10px;color:var(--mu);">Manufacturer, Make, Brand, Vendor</td><td><span class="due-ok" style="font-size:9px;">Optional</span></td></tr>
+              <tr><td style="color:var(--ac);font-weight:600;">Model</td><td style="font-size:10px;color:var(--mu);">Model, Model No., Version</td><td><span class="due-ok" style="font-size:9px;">Optional</span></td></tr>
+              <tr><td style="color:var(--ac);font-weight:600;">Department / Location</td><td style="font-size:10px;color:var(--mu);">Department, Location, Area, Ward, Room</td><td><span class="due-ok" style="font-size:9px;">Optional</span></td></tr>
+              <tr><td style="color:var(--ac);font-weight:600;">Risk Class</td><td style="font-size:10px;color:var(--mu);">Risk, Class, Priority, Criticality</td><td><span class="due-ok" style="font-size:9px;">Optional</span></td></tr>
+              <tr><td style="color:var(--ac);font-weight:600;">PPM Frequency</td><td style="font-size:10px;color:var(--mu);">Frequency, PPM, Maintenance Freq</td><td><span class="due-ok" style="font-size:9px;">Optional</span></td></tr>
+              <tr><td style="color:var(--ac);font-weight:600;">Last Maintenance</td><td style="font-size:10px;color:var(--mu);">Last Service, Last PPM, Last Maintenance, Last Calibration</td><td><span class="due-ok" style="font-size:9px;">Optional</span></td></tr>
+              <tr><td style="color:var(--ac);font-weight:600;">Next Maintenance</td><td style="font-size:10px;color:var(--mu);">Next Service, Next PPM, Due Date, Next Due</td><td><span class="due-ok" style="font-size:9px;">Optional</span></td></tr>
+              <tr><td style="color:var(--ac);font-weight:600;">Purchase Date</td><td style="font-size:10px;color:var(--mu);">Purchase Date, Acquisition, Install Date</td><td><span class="due-ok" style="font-size:9px;">Optional</span></td></tr>
+              <tr><td style="color:var(--ac);font-weight:600;">Status</td><td style="font-size:10px;color:var(--mu);">Status, Condition, State</td><td><span class="due-ok" style="font-size:9px;">Optional</span></td></tr>
+              <tr><td style="color:var(--ac);font-weight:600;">Notes / Remarks</td><td style="font-size:10px;color:var(--mu);">Notes, Remarks, Comments</td><td><span class="due-ok" style="font-size:9px;">Optional</span></td></tr>
+            </tbody>
+          </table>
+          <div style="margin-top:12px;background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.2);border-radius:8px;padding:10px;font-size:10px;color:var(--mu);">
+            💡 <b style="color:var(--gn)">Tip:</b> Your headers don't need to match exactly. "Last Service Date", "Last PM", "Previous Maintenance" — all will be recognized as <b>Last Maintenance</b>.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── INVENTORY VIEW TAB ── -->
+  <div id="equip-inv" style="display:none;">
+    <!-- Stats bar -->
+    <div class="inv-stat-bar" id="inv-stat-bar">
+      <div class="inv-stat"><div class="inv-stat-val" id="inv-s-total" style="color:var(--ac)">0</div><div class="inv-stat-lbl">Total Devices</div></div>
+      <div class="inv-stat"><div class="inv-stat-val" id="inv-s-overdue" style="color:var(--rd)">0</div><div class="inv-stat-lbl">Overdue PPM</div></div>
+      <div class="inv-stat"><div class="inv-stat-val" id="inv-s-soon" style="color:var(--or)">0</div><div class="inv-stat-lbl">Due in 30 days</div></div>
+      <div class="inv-stat"><div class="inv-stat-val" id="inv-s-ok" style="color:var(--gn)">0</div><div class="inv-stat-lbl">Up to Date</div></div>
+      <div class="inv-stat"><div class="inv-stat-val" id="inv-s-high" style="color:var(--pu)">0</div><div class="inv-stat-lbl">High Risk</div></div>
+    </div>
+
+    <!-- Filters & search -->
+    <div class="card" style="margin-bottom:14px;">
+      <div class="cb" style="padding:12px 14px;">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <input type="text" class="inv-search" id="inv-search" placeholder="🔍 Search by name, asset, serial, location, manufacturer..." oninput="renderInvTable()" style="max-width:380px;">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;" id="inv-cat-filters"></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-left:auto;">
+            <button class="filter-pill active" onclick="setDueFilter('all',this)">All</button>
+            <button class="filter-pill" onclick="setDueFilter('overdue',this)">🔴 Overdue</button>
+            <button class="filter-pill" onclick="setDueFilter('soon',this)">🟡 Due Soon</button>
+            <button class="filter-pill" onclick="setDueFilter('ok',this)">🟢 Up to Date</button>
+          </div>
+          <button class="btn bo" style="padding:4px 12px;font-size:10px;margin-left:4px;" onclick="clearInventory()">🗑 Clear & Re-upload</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts row -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:13px;margin-bottom:14px;">
+      <div class="card"><div class="ch"><div class="ct">By Category</div></div><div class="cb" style="padding:12px;min-height:180px;"><canvas id="inv-cat-chart"></canvas></div></div>
+      <div class="card"><div class="ch"><div class="ct">By Department</div></div><div class="cb" style="padding:12px;min-height:180px;"><canvas id="inv-dept-chart"></canvas></div></div>
+      <div class="card"><div class="ch"><div class="ct">PPM Status</div></div><div class="cb" style="padding:12px;min-height:180px;"><canvas id="inv-due-chart"></canvas></div></div>
+    </div>
+
+    <!-- Table -->
+    <div class="card">
+      <div class="ch">
+        <div class="ct">Equipment Inventory — <span id="inv-count-label">0 devices</span></div>
+        <div style="font-size:9px;color:var(--mu);">Click column headers to sort</div>
+      </div>
+      <div class="cb" style="padding:0;overflow-x:auto;max-height:600px;overflow-y:auto;">
+        <table class="tbl" id="inv-table">
+          <thead id="inv-thead"></thead>
+          <tbody id="inv-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PPM RECORDS TAB ── -->
+  <div id="equip-ppm" style="display:none;"><div class="g g2">
     <div class="card"><div class="ch"><div class="ct">Log Equipment PPM</div></div><div class="cb">
       <div class="fg fg2">
         <div class="ff"><label>Date</label><input type="date" id="ppm-date"></div>
@@ -735,20 +880,8 @@ canvas{display:block;}
     </div></div>
     <div class="card"><div class="ch"><div class="ct">PPM Log</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Equipment</th><th>Asset</th><th>Type</th><th>Result</th><th>Tech</th><th>Doc</th></tr></thead><tbody id="ppm-tb"></tbody></table></div></div>
   </div></div>
-  <div id="equip-inv" style="display:none;"><div class="g g2">
-    <div class="card"><div class="ch"><div class="ct">Add to Inventory</div></div><div class="cb">
-      <div class="fg fg2">
-        <div class="ff"><label>Equipment</label><input type="text" id="inv-name" placeholder="Defibrillator Philips"></div>
-        <div class="ff"><label>Category</label><select id="inv-cat"><option>Life Support</option><option>Monitoring</option><option>Diagnostic</option><option>Surgical</option><option>Laboratory</option><option>Imaging</option></select></div>
-        <div class="ff"><label>Asset No.</label><input type="text" id="inv-asset" placeholder="BIO-001"></div>
-        <div class="ff"><label>Location</label><input type="text" id="inv-loc" placeholder="ICU"></div>
-        <div class="ff"><label>PPM Frequency</label><select id="inv-freq"><option>Monthly</option><option>Quarterly</option><option>6-Monthly</option><option>Annual</option></select></div>
-        <div class="ff"><label>Risk Class</label><select id="inv-risk"><option>High Risk</option><option>Medium Risk</option><option>Low Risk</option></select></div>
-      </div>
-      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('inventory')">✓ Add to Inventory</button>
-    </div></div>
-    <div class="card"><div class="ch"><div class="ct">Equipment Inventory</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Equipment</th><th>Category</th><th>Asset</th><th>Location</th><th>PPM Freq</th><th>Risk</th></tr></thead><tbody id="inventory-tb"></tbody></table></div></div>
-  </div></div>
+
+  <!-- ── KPI TAB ── -->
   <div id="equip-kpi" style="display:none;"><div id="equip-kpi-out"></div></div>
 </div>
 
@@ -2094,6 +2227,485 @@ function reinitAnalCharts() {
   mkChart('c-ppm',{type:'doughnut',data:{labels:['Done','Failed','Pending'],datasets:[{data:[pD||0,Math.max(0,pT-pD)||0,Math.max(0,50-pT)||50],backgroundColor:['#10b981','#ef4444','rgba(255,255,255,.07)'],borderWidth:0}]},options:DONUT});
   mkChart('c-cbahi',{type:'doughnut',data:{labels:['Met','Partial','Gap'],datasets:[{data:[met,par,gap],backgroundColor:['#10b981','#f59e0b','#ef4444'],borderWidth:0}]},options:DONUT});
 }
+
+
+// ════════════════════════════════════════════════════════════
+// EQUIPMENT INVENTORY — EXCEL UPLOAD & SMART COLUMN MAPPING
+// ════════════════════════════════════════════════════════════
+
+// Fields the platform understands + keywords to auto-detect them
+const INV_FIELD_DEFS = [
+  { key:'name',         label:'Equipment Name',    required:true,  keywords:['name','equipment','description','item','device','equipment name','description of equipment'] },
+  { key:'asset',        label:'Asset / Serial No.',required:false, keywords:['asset','serial','tag','id','code','asset no','asset number','serial no','serial number','asset tag','barcode','bio id'] },
+  { key:'category',     label:'Category / Type',   required:false, keywords:['category','type','class','group','classification','equip type','equipment type','device type'] },
+  { key:'manufacturer', label:'Manufacturer',      required:false, keywords:['manufacturer','make','brand','vendor','company','supplier','mfr','mfg'] },
+  { key:'model',        label:'Model',             required:false, keywords:['model','model no','model number','version','part number','part no'] },
+  { key:'department',   label:'Department / Location', required:false, keywords:['department','location','area','ward','room','dept','unit','section','floor','placed at','installed at'] },
+  { key:'risk',         label:'Risk Class',        required:false, keywords:['risk','class','priority','criticality','risk class','risk level','hazard'] },
+  { key:'frequency',    label:'PPM Frequency',     required:false, keywords:['frequency','ppm','maintenance freq','service freq','pm frequency','maintenance interval','service interval'] },
+  { key:'lastPPM',      label:'Last Maintenance Date', required:false, keywords:['last service','last ppm','last maintenance','last calibration','previous maintenance','last pm','last service date','date last serviced','last serviced','last done'] },
+  { key:'nextPPM',      label:'Next Maintenance / Due Date', required:false, keywords:['next service','next ppm','next maintenance','due date','next due','next calibration','scheduled date','next pm','maintenance due','service due','due'] },
+  { key:'purchaseDate', label:'Purchase / Install Date', required:false, keywords:['purchase','acquisition','install date','installation date','commissioning','bought','received'] },
+  { key:'status',       label:'Status / Condition', required:false, keywords:['status','condition','state','operational status','working','active'] },
+  { key:'notes',        label:'Notes / Remarks',   required:false, keywords:['notes','remarks','comments','note','observation','remark'] },
+];
+
+// Internal state
+let INV_RAW_HEADERS = [];  // headers from the file
+let INV_RAW_ROWS    = [];  // all data rows from the file
+let INV_COL_MAP     = {};  // { fieldKey: colIndex } after mapping
+let INV_RECORDS     = [];  // parsed, stored inventory items
+let INV_DUE_FILTER  = 'all';
+let INV_SORT        = { col: 'name', dir: 1 };
+
+// ── DRAG & DROP ──
+function invDragOver(e) { e.preventDefault(); document.getElementById('inv-dropzone').classList.add('dragover'); }
+function invDragLeave(e){ document.getElementById('inv-dropzone').classList.remove('dragover'); }
+function invDrop(e)      { e.preventDefault(); document.getElementById('inv-dropzone').classList.remove('dragover'); const f=e.dataTransfer.files[0]; if(f) readInvFile(f); }
+function invFileSelected(input){ if(input.files[0]) readInvFile(input.files[0]); }
+
+// ── FILE READER ──
+function readInvFile(file) {
+  const status = document.getElementById('inv-upload-status');
+  const progress = document.getElementById('inv-progress');
+  const fill = document.getElementById('inv-progress-fill');
+  status.textContent = '⟳ Reading file: ' + file.name + '...';
+  status.style.color = 'var(--or)';
+  progress.style.display = 'block';
+  fill.style.width = '20%';
+
+  const ext = file.name.split('.').pop().toLowerCase();
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+    fill.style.width = '60%';
+    try {
+      let headers = [], rows = [];
+      if (ext === 'csv') {
+        const text = e.target.result;
+        const lines = text.split('\n').map(l=>l.trim()).filter(l=>l);
+        if (!lines.length) throw new Error('Empty file');
+        headers = parseCSVLine(lines[0]);
+        rows = lines.slice(1).map(parseCSVLine).filter(r=>r.some(c=>c.trim()));
+      } else {
+        // XLSX / XLS via SheetJS
+        const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array', cellDates:true});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+        if (!data.length) throw new Error('Empty sheet');
+        // Find first non-empty row as header
+        let hdrIdx = 0;
+        for (let i=0;i<Math.min(5,data.length);i++) {
+          if (data[i].some(c=>c!==''&&c!==null)) { hdrIdx=i; break; }
+        }
+        headers = data[hdrIdx].map(h => h===null||h===undefined?'':String(h).trim());
+        rows = data.slice(hdrIdx+1)
+          .filter(r=>r.some(c=>c!==''&&c!==null))
+          .map(r=>r.map(c=>{
+            if (c instanceof Date) return formatDate(c);
+            return c===null||c===undefined?'':String(c).trim();
+          }));
+      }
+
+      fill.style.width = '80%';
+      INV_RAW_HEADERS = headers;
+      INV_RAW_ROWS    = rows;
+      status.textContent = '✅ Loaded ' + rows.length + ' rows, ' + headers.length + ' columns — confirm column mapping below';
+      status.style.color = 'var(--gn)';
+      fill.style.width = '100%';
+      buildColMapper(headers);
+    } catch(err) {
+      status.textContent = '❌ Error reading file: ' + err.message;
+      status.style.color = 'var(--rd)';
+      progress.style.display = 'none';
+    }
+  };
+
+  if (ext === 'csv') reader.readAsText(file);
+  else reader.readAsArrayBuffer(file);
+}
+
+function parseCSVLine(line) {
+  const cells=[]; let cell='', inQ=false;
+  for (let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(ch==='"'){inQ=!inQ;}
+    else if(ch===','&&!inQ){cells.push(cell.trim());cell='';}
+    else cell+=ch;
+  }
+  cells.push(cell.trim());
+  return cells;
+}
+
+function formatDate(d) {
+  if (!d||isNaN(d)) return '';
+  return d.toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'});
+}
+
+// ── AUTO-DETECT COLUMN MAPPING ──
+function detectColMap(headers) {
+  const map = {};
+  const normalized = headers.map(h=>h.toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim());
+  INV_FIELD_DEFS.forEach(def=>{
+    let bestIdx=-1, bestScore=0;
+    normalized.forEach((h,i)=>{
+      def.keywords.forEach(kw=>{
+        if (h===kw && bestScore < 100){ bestIdx=i; bestScore=100; }
+        else if (h.includes(kw) && bestScore < 80){ bestIdx=i; bestScore=80; }
+        else if (kw.includes(h) && h.length>3 && bestScore < 60){ bestIdx=i; bestScore=60; }
+      });
+    });
+    if (bestIdx !== -1) map[def.key] = bestIdx;
+  });
+  return map;
+}
+
+// ── BUILD MAPPER UI ──
+function buildColMapper(headers) {
+  const detected = detectColMap(headers);
+  INV_COL_MAP = detected;
+  const container = document.getElementById('inv-col-mapper');
+  const rowsEl    = document.getElementById('inv-col-map-rows');
+  container.style.display = 'block';
+
+  rowsEl.innerHTML = INV_FIELD_DEFS.map(def=>{
+    const detectedIdx = detected[def.key] !== undefined ? detected[def.key] : -1;
+    const options = ['<option value="-1">— skip —</option>',
+      ...headers.map((h,i)=>`<option value="${i}"${i===detectedIdx?' selected':''}>${h||'(col '+(i+1)+')'}</option>`)
+    ].join('');
+    const badge = def.required
+      ? '<span class="due-over" style="font-size:9px;margin-left:4px;">Required</span>'
+      : (detectedIdx>=0?'<span class="due-ok" style="font-size:9px;margin-left:4px;">✓ Detected</span>':'');
+    return `<div class="col-map-row">
+      <div><div class="col-map-label">${def.label} ${badge}</div><div class="col-map-hint">${def.keywords.slice(0,4).join(', ')}</div></div>
+      <select class="ff select" style="background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:6px 10px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;" id="colmap-${def.key}" onchange="INV_COL_MAP['${def.key}']=parseInt(this.value)">${options}</select>
+    </div>`;
+  }).join('');
+}
+
+// ── IMPORT ──
+function invImport() {
+  // Rebuild map from selects
+  INV_FIELD_DEFS.forEach(def=>{
+    const sel = document.getElementById('colmap-'+def.key);
+    if (sel) INV_COL_MAP[def.key] = parseInt(sel.value);
+  });
+
+  // Check required
+  if ((INV_COL_MAP['name']===undefined||INV_COL_MAP['name']<0)) {
+    toast('⚠️ Please map the Equipment Name column','#f59e0b'); return;
+  }
+
+  const records = INV_RAW_ROWS.map((row,i)=>{
+    const get = key => {
+      const idx = INV_COL_MAP[key];
+      return (idx>=0 && idx<row.length) ? String(row[idx]||'').trim() : '';
+    };
+    return {
+      _id:         Date.now()+i,
+      name:        get('name'),
+      asset:       get('asset'),
+      category:    get('category') || autoCategory(get('name')),
+      manufacturer:get('manufacturer'),
+      model:       get('model'),
+      department:  get('department'),
+      risk:        get('risk') || autoRisk(get('name'), get('category')),
+      frequency:   get('frequency'),
+      lastPPM:     get('lastPPM'),
+      nextPPM:     get('nextPPM'),
+      purchaseDate:get('purchaseDate'),
+      status:      get('status'),
+      notes:       get('notes'),
+    };
+  }).filter(r=>r.name); // skip blank rows
+
+  if (!records.length) { toast('No valid rows found — check column mapping','#f59e0b'); return; }
+
+  // Merge with existing (don't overwrite if asset matches)
+  const existing = ld('invRecords');
+  const existingAssets = new Set(existing.map(r=>r.asset).filter(Boolean));
+  const newRecs = records.filter(r=>!r.asset||!existingAssets.has(r.asset));
+  const merged  = [...existing, ...newRecs];
+  sv('invRecords', merged);
+  INV_RECORDS = merged;
+
+  // Hide mapper, show inventory tab
+  document.getElementById('inv-col-mapper').style.display='none';
+  document.getElementById('inv-upload-status').textContent =
+    '✅ Imported ' + records.length + ' devices (' + newRecs.length + ' new). Showing Inventory View.';
+
+  toast('✅ ' + records.length + ' devices imported, ' + newRecs.length + ' new');
+  st('equip','inv',null);
+  setTimeout(()=>{
+    const invBtn = document.querySelector('.tb .tbtn:nth-child(2)');
+    if(invBtn){document.querySelectorAll('#page-equip .tb .tbtn').forEach(b=>b.classList.remove('active'));invBtn.classList.add('active');}
+  },50);
+  renderInvFull();
+}
+
+// ── AUTO-CLASSIFY helpers ──
+function autoCategory(name) {
+  const n = name.toLowerCase();
+  if (/ventilat|respirat|cpap|bipap|oxygen|nebuliz|suction/.test(n)) return 'Life Support';
+  if (/monitor|ecg|ekg|pulse|spo2|oximeter|cardiac|defibril|aed/.test(n)) return 'Monitoring';
+  if (/x.?ray|ultrasound|ct|mri|echo|endoscop|colposcop|imaging/.test(n)) return 'Imaging';
+  if (/autoclave|steriliz|washer|disinfect/.test(n)) return 'Sterilization';
+  if (/infusion|pump|syringe|iv pump|feeding pump/.test(n)) return 'Infusion';
+  if (/incubator|warmer|phototherapy|neonatal/.test(n)) return 'Neonatal';
+  if (/lab|centrifug|analyzer|microscop|hematol|biochem|coagul/.test(n)) return 'Laboratory';
+  if (/electrosurg|cauteriz|laser|drill|saw|surgical/.test(n)) return 'Surgical';
+  if (/bed|stretcher|wheelchair|lift|mattress|trolley/.test(n)) return 'Furniture/Mobility';
+  if (/refrigerat|freezer|blood bank|pharmacy/.test(n)) return 'Storage';
+  return 'General';
+}
+
+function autoRisk(name, cat) {
+  const n=(name+' '+cat).toLowerCase();
+  if (/ventilat|defibril|aed|cardiac|life support|incubator|infusion pump/.test(n)) return 'High Risk';
+  if (/monitor|imaging|surgical|lab|steriliz/.test(n)) return 'Medium Risk';
+  return 'Low Risk';
+}
+
+// ── DUE DATE LOGIC ──
+function dueStatus(rec) {
+  if (!rec.nextPPM) {
+    // Try to compute from lastPPM + frequency
+    if (!rec.lastPPM || !rec.frequency) return 'na';
+    const last = new Date(rec.lastPPM);
+    if (isNaN(last)) return 'na';
+    const freq = rec.frequency.toLowerCase();
+    let months = 12;
+    if (/month|30/i.test(freq)) months=1;
+    else if (/quarter|3.?month|90/i.test(freq)) months=3;
+    else if (/6.?month|semi|bi.?annual|180/i.test(freq)) months=6;
+    else if (/annual|year|12.?month/i.test(freq)) months=12;
+    const next = new Date(last);
+    next.setMonth(next.getMonth()+months);
+    return classifyDue(next);
+  }
+  const d = new Date(rec.nextPPM);
+  if (isNaN(d)) return 'na';
+  return classifyDue(d);
+}
+
+function classifyDue(date) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diff  = Math.ceil((date-today)/(1000*60*60*24));
+  if (diff < 0)  return 'overdue';
+  if (diff <= 30) return 'soon';
+  return 'ok';
+}
+
+function dueBadge(status) {
+  const map = {overdue:'<span class="due-badge due-over">🔴 Overdue</span>',soon:'<span class="due-badge due-soon">🟡 Due Soon</span>',ok:'<span class="due-badge due-ok">✅ OK</span>',na:'<span class="due-badge due-na">— N/A</span>'};
+  return map[status]||map['na'];
+}
+
+function daysUntilDue(rec) {
+  let target;
+  if (rec.nextPPM) { target=new Date(rec.nextPPM); if(isNaN(target))return null; }
+  else if (rec.lastPPM && rec.frequency) {
+    const last=new Date(rec.lastPPM); if(isNaN(last))return null;
+    const freq=rec.frequency.toLowerCase();
+    let m=12;
+    if(/month|30/i.test(freq))m=1;else if(/quarter|3.?month|90/i.test(freq))m=3;
+    else if(/6.?month|semi|180/i.test(freq))m=6;
+    target=new Date(last); target.setMonth(target.getMonth()+m);
+  } else return null;
+  const today=new Date(); today.setHours(0,0,0,0);
+  return Math.ceil((target-today)/(1000*60*60*24));
+}
+
+// ── RENDER FULL INVENTORY ──
+function renderInvFull() {
+  INV_RECORDS = ld('invRecords');
+  if (!INV_RECORDS.length) {
+    document.getElementById('inv-tbody').innerHTML = '<tr><td colspan="12" class="em">No inventory loaded — use the Upload tab to import your Excel file</td></tr>';
+    document.getElementById('inv-count-label').textContent = '0 devices';
+    return;
+  }
+
+  // Stats
+  const total    = INV_RECORDS.length;
+  const overdue  = INV_RECORDS.filter(r=>dueStatus(r)==='overdue').length;
+  const soon     = INV_RECORDS.filter(r=>dueStatus(r)==='soon').length;
+  const ok       = INV_RECORDS.filter(r=>dueStatus(r)==='ok').length;
+  const highRisk = INV_RECORDS.filter(r=>/high/i.test(r.risk)).length;
+  const u=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  u('inv-s-total',total); u('inv-s-overdue',overdue); u('inv-s-soon',soon); u('inv-s-ok',ok); u('inv-s-high',highRisk);
+
+  // Category filter pills
+  const cats = [...new Set(INV_RECORDS.map(r=>r.category||'General').filter(Boolean))].sort();
+  const catEl = document.getElementById('inv-cat-filters');
+  if (catEl) {
+    catEl.innerHTML = cats.map(c=>
+      `<button class="filter-pill" onclick="setCatFilter('${c}',this)">${c}</button>`
+    ).join('');
+  }
+
+  // Charts
+  renderInvCharts();
+  renderInvTable();
+}
+
+let INV_CAT_FILTER = 'all';
+function setCatFilter(cat, btn) {
+  INV_CAT_FILTER = btn.classList.contains('active') ? 'all' : cat;
+  document.querySelectorAll('#inv-cat-filters .filter-pill').forEach(b=>b.classList.remove('active'));
+  if (INV_CAT_FILTER !== 'all') btn.classList.add('active');
+  renderInvTable();
+}
+function setDueFilter(f, btn) {
+  INV_DUE_FILTER = f;
+  document.querySelectorAll('[onclick^="setDueFilter"]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderInvTable();
+}
+
+function renderInvCharts() {
+  // By category
+  const catMap={};
+  INV_RECORDS.forEach(r=>{const c=r.category||'General';catMap[c]=(catMap[c]||0)+1;});
+  const catE=Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
+  const PAL=['#00b4ff','#818cf8','#34d399','#f59e0b','#ec4899','#3b82f6','#a855f7','#10b981','#f43f5e','#06b6d4','#00d4aa','#fbbf24'];
+  mkChart('inv-cat-chart',{type:'doughnut',data:{labels:catE.map(([k])=>k),datasets:[{data:catE.map(([,v])=>v),backgroundColor:PAL,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{display:true,position:'bottom',labels:{color:'#5a7fa8',font:{size:9},padding:6,boxWidth:9}}}}});
+
+  // By dept
+  const deptMap={};
+  INV_RECORDS.forEach(r=>{const d=r.department||'Unknown';deptMap[d]=(deptMap[d]||0)+1;});
+  const deptE=Object.entries(deptMap).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  mkChart('inv-dept-chart',{type:'bar',data:{labels:deptE.map(([k])=>k),datasets:[{data:deptE.map(([,v])=>v),backgroundColor:'rgba(0,180,255,.75)',borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(0,180,255,.04)'},ticks:{color:'#5a7fa8',font:{size:9}}},y:{grid:{color:'rgba(0,180,255,.04)'},ticks:{color:'#5a7fa8',font:{size:9}}}}}});
+
+  // PPM status
+  const over=INV_RECORDS.filter(r=>dueStatus(r)==='overdue').length;
+  const sn  =INV_RECORDS.filter(r=>dueStatus(r)==='soon').length;
+  const okC =INV_RECORDS.filter(r=>dueStatus(r)==='ok').length;
+  const naC =INV_RECORDS.filter(r=>dueStatus(r)==='na').length;
+  mkChart('inv-due-chart',{type:'doughnut',data:{labels:['Overdue','Due Soon','Up to Date','No Date'],datasets:[{data:[over,sn,okC,naC],backgroundColor:['#ef4444','#ffaa00','#00ff88','rgba(90,127,168,.4)'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{display:true,position:'bottom',labels:{color:'#5a7fa8',font:{size:9},padding:6,boxWidth:9}}}}});
+}
+
+// ── SORT ──
+function invSort(col) {
+  if (INV_SORT.col===col) INV_SORT.dir*=-1; else {INV_SORT.col=col;INV_SORT.dir=1;}
+  renderInvTable();
+}
+
+// ── TABLE RENDER ──
+function renderInvTable() {
+  const search = (document.getElementById('inv-search')?.value||'').toLowerCase();
+  let data = INV_RECORDS.filter(r=>{
+    if (INV_CAT_FILTER!=='all' && (r.category||'General')!==INV_CAT_FILTER) return false;
+    if (INV_DUE_FILTER!=='all' && dueStatus(r)!==INV_DUE_FILTER) return false;
+    if (search) {
+      const haystack=(r.name+' '+r.asset+' '+r.manufacturer+' '+r.model+' '+r.department+' '+r.notes).toLowerCase();
+      if (!haystack.includes(search)) return false;
+    }
+    return true;
+  });
+
+  // Sort
+  const sc = INV_SORT.col, sd = INV_SORT.dir;
+  data.sort((a,b)=>{
+    if (sc==='days') {
+      const da=daysUntilDue(a), db=daysUntilDue(b);
+      if (da===null&&db===null) return 0;
+      if (da===null) return 1; if (db===null) return -1;
+      return (da-db)*sd;
+    }
+    const av=String(a[sc]||'').toLowerCase(), bv=String(b[sc]||'').toLowerCase();
+    return av<bv?-sd:av>bv?sd:0;
+  });
+
+  document.getElementById('inv-count-label').textContent = data.length + ' of ' + INV_RECORDS.length + ' devices';
+
+  // Build dynamic headers (show column only if any row has data)
+  const cols = [
+    {key:'name',label:'Equipment Name'},
+    {key:'asset',label:'Asset / Serial'},
+    {key:'category',label:'Category'},
+    {key:'manufacturer',label:'Manufacturer'},
+    {key:'model',label:'Model'},
+    {key:'department',label:'Location'},
+    {key:'risk',label:'Risk'},
+    {key:'frequency',label:'PPM Freq.'},
+    {key:'lastPPM',label:'Last PPM'},
+    {key:'nextPPM',label:'Next Due'},
+    {key:'days',label:'Days Left',special:true},
+    {key:'status',label:'Status'},
+    {key:'notes',label:'Notes'},
+  ];
+  // Only show cols that have at least one value (keep name always)
+  const visibleCols = cols.filter(c=>c.key==='name'||c.special||INV_RECORDS.some(r=>r[c.key]));
+
+  const thDir=col=>(INV_SORT.col===col?(INV_SORT.dir>0?' ↑':' ↓'):'');
+  document.getElementById('inv-thead').innerHTML='<tr>'+visibleCols.map(c=>
+    `<th class="sort-th" onclick="invSort('${c.key}')">${c.label}${thDir(c.key)}</th>`
+  ).join('')+'<th>Actions</th></tr>';
+
+  if (!data.length) {
+    document.getElementById('inv-tbody').innerHTML='<tr><td colspan="'+(visibleCols.length+1)+'" class="em">No devices match current filters</td></tr>';
+    return;
+  }
+
+  const riskCol={High:'var(--pu)','High Risk':'var(--pu)',Medium:'var(--or)','Medium Risk':'var(--or)',Low:'var(--gn)','Low Risk':'var(--gn)'};
+  document.getElementById('inv-tbody').innerHTML = data.map(r=>{
+    const ds = dueStatus(r);
+    const days = daysUntilDue(r);
+    const daysCell = days===null ? '<span class="due-badge due-na">—</span>'
+      : days<0  ? `<span class="due-badge due-over">${Math.abs(days)}d overdue</span>`
+      : days<=30 ? `<span class="due-badge due-soon">${days}d</span>`
+      : `<span class="due-badge due-ok">${days}d</span>`;
+
+    return '<tr>' + visibleCols.map(c=>{
+      if (c.special && c.key==='days') return `<td>${daysCell}</td>`;
+      if (c.key==='risk') {
+        const rc=riskCol[r.risk]||'var(--mu)';
+        return `<td><span style="color:${rc};font-weight:600;font-size:10px;">${r.risk||'—'}</span></td>`;
+      }
+      if (c.key==='status') return `<td><span style="font-size:10px;color:var(--mu);">${r.status||'—'}</span></td>`;
+      if (c.key==='nextPPM') return `<td>${dueBadge(ds)} <span style="font-size:9px;color:var(--mu);">${r.nextPPM||''}</span></td>`;
+      if (c.key==='notes') return `<td style="max-width:150px;font-size:10px;color:var(--mu);">${(r.notes||'').slice(0,50)}</td>`;
+      return `<td style="font-size:11px;">${r[c.key]||'—'}</td>`;
+    }).join('')
+    + `<td><button class="btn br" style="padding:2px 7px;font-size:9px;" onclick="delInvRec(${r._id})">✕</button></td></tr>`;
+  }).join('');
+}
+
+function delInvRec(id) {
+  INV_RECORDS = INV_RECORDS.filter(r=>r._id!==id);
+  sv('invRecords', INV_RECORDS);
+  renderInvFull();
+  toast('Record removed');
+}
+
+function clearInventory() {
+  if (!confirm('Clear all imported inventory? This cannot be undone.')) return;
+  sv('invRecords',[]);
+  INV_RECORDS=[];
+  renderInvFull();
+  toast('Inventory cleared');
+}
+
+// ── HOOK INTO st() for equip-inv tab ──
+// Override equip-inv tab open to render inventory
+const _orig_st = st;
+window._st_hooked = false;
+(function(){
+  const origSt = window.st;
+  window.st = function(domain, sub, btn){
+    origSt(domain, sub, btn);
+    if (domain==='equip' && sub==='inv') {
+      INV_RECORDS = ld('invRecords');
+      setTimeout(renderInvFull, 80);
+    }
+    if (domain==='equip' && sub==='upload') {
+      // Reset file input so same file can be re-selected
+      const fi=document.getElementById('inv-file-input');
+      if(fi) fi.value='';
+    }
+  };
+})();
+
 </script>
 </body>
 </html>
