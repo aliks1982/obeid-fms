@@ -937,57 +937,429 @@ canvas{display:block;}
 
 <!-- ===== MEDGAS ===== -->
 <div class="pg" id="page-medgas">
-  <div class="ph"><h1>🫧 Medical Gas — FMS.32</h1><p>Manager: Bashar · Daily PMG checklist · Air purity tests · O₂ reserve</p></div>
-  <div class="tb"><button class="tbtn active" onclick="st('medgas','daily',this)">Daily Checklist</button><button class="tbtn" onclick="st('medgas','purity',this)">Air Purity</button><button class="tbtn" onclick="st('medgas','reserve',this)">O₂ Reserve</button><button class="tbtn" onclick="st('medgas','kpi',this)">KPIs</button></div>
-  <div id="medgas-daily"><div class="g g2">
-    <div class="card"><div class="ch"><div class="ct">Daily PMG Checklist</div></div><div class="cb">
-      <div class="fg fg2">
-        <div class="ff"><label>Date</label><input type="date" id="pmg-date"></div>
-        <div class="ff"><label>By</label><input type="text" id="pmg-by" placeholder="Engineer name"></div>
-        <div class="ff"><label>Time</label><input type="time" id="pmg-time"></div>
-        <div class="ff"><label>O₂ Manifold (bar)</label><input type="number" id="pmg-o2" placeholder="140"><div class="ht">≥100 bar</div></div>
-        <div class="ff"><label>Medical Air (bar)</label><input type="number" id="pmg-air" placeholder="4.5"><div class="ht">3.5–5.5</div></div>
-        <div class="ff"><label>Vacuum (mmHg)</label><input type="number" id="pmg-vac" placeholder="-400"><div class="ht">≤ -300</div></div>
-        <div class="ff"><label>N₂O (bar)</label><input type="number" id="pmg-n2o" placeholder="45"></div>
-        <div class="ff"><label>LOX Level (%)</label><input type="number" id="pmg-lox" placeholder="70"></div>
-        <div class="ff" style="grid-column:1/-1"><label>Alarms/Notes</label><textarea id="pmg-alarms" placeholder="None or details..."></textarea></div>
-      </div>
-      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('pmgCheck')">✓ Submit Checklist</button>
-    </div></div>
-    <div class="card"><div class="ch"><div class="ct">PMG Daily Log</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>O₂</th><th>Air</th><th>Vac</th><th>LOX%</th><th>Alarms</th><th>By</th></tr></thead><tbody id="pmgCheck-tb"></tbody></table></div></div>
-  </div></div>
-  <div id="medgas-purity" style="display:none;"><div class="g g2">
-    <div class="card"><div class="ch"><div class="ct">Air Purity Test (FMS.32.3)</div></div><div class="cb">
-      <div style="background:rgba(0,180,255,.06);border:1px solid var(--bd);border-radius:6px;padding:8px;margin-bottom:11px;font-size:9px;color:var(--mu)">Limits: Water ≤0.05mg/L · CO ≤5ppm · CO₂ ≤500ppm · SO₂ ≤1ppm · Dew ≤-46°C</div>
-      <div class="fg fg2">
-        <div class="ff"><label>Date</label><input type="date" id="ap-date"></div>
-        <div class="ff"><label>Lab / By</label><input type="text" id="ap-by" placeholder="Lab name"></div>
-        <div class="ff"><label>Water (mg/L)</label><input type="number" id="ap-water" step="0.001" placeholder="0.03"></div>
-        <div class="ff"><label>CO (ppm)</label><input type="number" id="ap-co" placeholder="2.0"></div>
-        <div class="ff"><label>CO₂ (ppm)</label><input type="number" id="ap-co2" placeholder="380"></div>
-        <div class="ff"><label>SO₂ (ppm)</label><input type="number" id="ap-so2" placeholder="0.4"></div>
-        <div class="ff"><label>Dewpoint (°C)</label><input type="number" id="ap-dew" placeholder="-48"></div>
-        <div class="ff"><label>Result</label><select id="ap-res"><option value="pass">✅ PASS</option><option value="fail">❌ FAIL</option></select></div>
-        <div class="ff" style="grid-column:1/-1"><label>Certificate</label><input type="file" id="ap-file"></div>
-      </div>
-      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('airPurity')">✓ Save Test</button>
-    </div></div>
-    <div class="card"><div class="ch"><div class="ct">Air Purity Log (2/year)</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Water</th><th>CO</th><th>CO₂</th><th>SO₂</th><th>Dew</th><th>Result</th><th>Doc</th></tr></thead><tbody id="airPurity-tb"></tbody></table></div></div>
-  </div></div>
-  <div id="medgas-reserve" style="display:none;"><div class="card" style="max-width:480px;"><div class="ch"><div class="ct">O₂ Reserve Calculator (FMS.32.8)</div></div><div class="cb">
-    <div class="fg fg2">
-      <div class="ff"><label>LOX Tank Size (L)</label><input type="number" id="lx-size" placeholder="10000" oninput="calcR()"></div>
-      <div class="ff"><label>Current Level (%)</label><input type="number" id="lx-lev" placeholder="70" oninput="calcR()"></div>
-      <div class="ff"><label>Standby Cylinders (K)</label><input type="number" id="lx-cyls" placeholder="5" oninput="calcR()"></div>
-      <div class="ff"><label>Daily Consumption (L)</label><input type="number" id="lx-cons" placeholder="120000" oninput="calcR()"></div>
+  <div class="ph">
+    <h1>🫧 Medical Gas — FMS.32</h1>
+    <p>Daily checklists per system · Based on official Obeid Hospital Medical Gas Checklist · Manager: Bashar</p>
+  </div>
+
+  <!-- Tab bar — one per checklist sheet -->
+  <div class="tb" style="flex-wrap:wrap;gap:2px;margin-bottom:16px;">
+    <button class="tbtn active" onclick="mgTab('lox',this)">🟦 Liquid O₂</button>
+    <button class="tbtn" onclick="mgTab('o2backup',this)">🔵 O₂ Backup</button>
+    <button class="tbtn" onclick="mgTab('n2o',this)">🟣 Nitrous Oxide</button>
+    <button class="tbtn" onclick="mgTab('vacuum',this)">⬛ Central Vacuum</button>
+    <button class="tbtn" onclick="mgTab('aircomp',this)">🟩 Air Compressor</button>
+    <button class="tbtn" onclick="mgTab('airbackup',this)">🟢 Air Backup</button>
+    <button class="tbtn" onclick="mgTab('ambulance',this)">🚑 Ambulance</button>
+    <button class="tbtn" onclick="mgTab('cylinder',this)">🔶 Cylinder Delivery</button>
+    <button class="tbtn" onclick="mgTab('o2refill',this)">🔄 O₂ Refill Log</button>
+    <button class="tbtn" onclick="mgTab('airrefill',this)">🔄 Air Refill Log</button>
+    <button class="tbtn" onclick="mgTab('o2calc',this)">🧮 O₂ Reserve Calc</button>
+    <button class="tbtn" onclick="mgTab('log',this)">📋 All Records</button>
+    <button class="tbtn" onclick="mgTab('kpi',this)">📊 KPIs</button>
+  </div>
+
+  <!-- ═══ 1. LIQUID OXYGEN ═══ -->
+  <div id="mg-lox">
+    <div style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25);border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:10px;color:var(--mu);">
+      <b style="color:#3b82f6;">DAILY CHECK LIST — LIQUID OXYGEN (LOX)</b> · Check twice daily: AM & PM
     </div>
-    <div style="margin-top:14px;background:var(--s2);border-radius:10px;padding:16px;text-align:center;">
-      <div style="font-size:9px;color:var(--mu)">ESTIMATED RESERVE</div>
-      <div id="res-h" style="font-family:'Rajdhani',sans-serif;font-size:46px;font-weight:700;color:var(--gn)">—</div>
-      <div style="font-size:10px;color:var(--mu)">hours · Min: 48h (FMS.32.8)</div>
+    <div class="g g2">
+      <div class="card"><div class="ch"><div class="ct">Submit LOX Daily Entry</div></div><div class="cb">
+        <div class="fg fg2">
+          <div class="ff"><label>Date</label><input type="date" id="lox-date"></div>
+          <div class="ff"><label>Shift</label>
+            <select id="lox-shift"><option value="AM">AM (Morning)</option><option value="PM">PM (Afternoon)</option></select>
+          </div>
+          <div class="ff"><label>Checked By</label><input type="text" id="lox-by" placeholder="Biomedical engineer name"></div>
+          <div class="ff"><label>Time</label><input type="time" id="lox-time"></div>
+          <!-- Oxygen Reading -->
+          <div class="ff" style="grid-column:1/-1"><div style="font-size:9px;color:var(--or);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--bd);">Oxygen Reading (%)</div></div>
+          <div class="ff"><label>O₂ Level AM (%)</label><input type="number" id="lox-o2am" placeholder="e.g. 70" min="0" max="100"><div class="ht">LOX tank level reading</div></div>
+          <div class="ff"><label>O₂ Level PM (%)</label><input type="number" id="lox-o2pm" placeholder="e.g. 65" min="0" max="100"></div>
+          <!-- O2 Pressure -->
+          <div class="ff" style="grid-column:1/-1"><div style="font-size:9px;color:var(--or);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--bd);">Oxygen Pressure (BAR)</div></div>
+          <div class="ff"><label>Pressure AM (BAR)</label><input type="number" id="lox-pam" placeholder="e.g. 140" step="0.1"></div>
+          <div class="ff"><label>Pressure PM (BAR)</label><input type="number" id="lox-ppm2" placeholder="e.g. 138" step="0.1"></div>
+          <!-- Valve checks -->
+          <div class="ff" style="grid-column:1/-1"><div style="font-size:9px;color:var(--or);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--bd);">Check Valves &amp; Gas Pipeline Status</div></div>
+          <div class="ff"><label>Free from Leak</label><select id="lox-leak"><option value="ok">✅ Yes</option><option value="no">❌ No — Action needed</option></select></div>
+          <div class="ff"><label>No Visible Damage</label><select id="lox-damage"><option value="ok">✅ Yes</option><option value="no">❌ No — Action needed</option></select></div>
+          <div class="ff"><label>No Ice Accumulation</label><select id="lox-ice"><option value="ok">✅ Yes</option><option value="no">❌ Yes — Action needed</option></select></div>
+          <div class="ff"><label>All Open Valves Fully Open</label><select id="lox-open"><option value="ok">✅ Yes</option><option value="no">❌ No — Action needed</option></select></div>
+          <div class="ff"><label>All Close Valves Fully Closed</label><select id="lox-closed"><option value="ok">✅ Yes</option><option value="no">❌ No — Action needed</option></select></div>
+          <div class="ff" style="grid-column:1/-1"><label>Notes / Abnormalities</label><textarea id="lox-notes" placeholder="None — or describe any issue found..."></textarea></div>
+        </div>
+        <button class="btn bg" style="margin-top:12px;width:100%;" onclick="mgSave('lox')">✓ Submit LOX Daily Entry</button>
+      </div></div>
+      <div class="card"><div class="ch"><div class="ct">LOX Log (Latest Entries)</div></div>
+        <div class="cb" style="padding:0;max-height:500px;overflow-y:auto;">
+          <table class="tbl"><thead><tr><th>Date</th><th>Shift</th><th>O₂%</th><th>Pressure</th><th>Leak</th><th>Damage</th><th>Ice</th><th>By</th></tr></thead>
+          <tbody id="lox-tb"></tbody></table>
+        </div>
+      </div>
     </div>
-  </div></div></div>
-  <div id="medgas-kpi" style="display:none;"><div id="medgas-kpi-out"></div></div>
+  </div>
+
+  <!-- ═══ 2. OXYGEN BACKUP MANIFOLD ═══ -->
+  <div id="mg-o2backup" style="display:none;">
+    <div style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25);border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:10px;color:var(--mu);">
+      <b style="color:#3b82f6;">DAILY CHECK LIST — OXYGEN BACKUP MANIFOLD</b> · Left Bank / Central Pipeline / Right Bank
+    </div>
+    <div class="g g2">
+      <div class="card"><div class="ch"><div class="ct">Submit O₂ Backup Daily Entry</div></div><div class="cb">
+        <div class="fg fg2">
+          <div class="ff"><label>Date</label><input type="date" id="o2b-date"></div>
+          <div class="ff"><label>Shift</label><select id="o2b-shift"><option value="AM">AM</option><option value="PM">PM</option></select></div>
+          <div class="ff"><label>Checked By</label><input type="text" id="o2b-by" placeholder="Name"></div>
+          <div class="ff"><label>Time</label><input type="time" id="o2b-time"></div>
+          <!-- Cylinder pressures -->
+          <div class="ff" style="grid-column:1/-1"><div style="font-size:9px;color:var(--or);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--bd);">Standby Central Line O₂ Cylinder Pressure (BAR)</div></div>
+          <div class="ff"><label>Left Bank (BAR)</label><input type="number" id="o2b-left" step="0.1" placeholder="BAR"></div>
+          <div class="ff"><label>Central Pipeline (BAR)</label><input type="number" id="o2b-central" step="0.1" placeholder="3.5–5.5 BAR"><div class="ht">Normal: 3.5–5.5 BAR</div></div>
+          <div class="ff"><label>Right Bank (BAR)</label><input type="number" id="o2b-right" step="0.1" placeholder="BAR"></div>
+          <div class="ff"><label>Regulator Pressure (BAR)</label><input type="number" id="o2b-reg" step="0.1" placeholder="3.5–5.5 BAR"><div class="ht">Normal: 3.5–5.5 BAR</div></div>
+          <!-- Valve status -->
+          <div class="ff" style="grid-column:1/-1"><div style="font-size:9px;color:var(--or);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--bd);">Check Valves &amp; Gas Pipeline Status</div></div>
+          <div class="ff"><label>All Valves Open</label><select id="o2b-valves"><option value="ok">✅ Yes</option><option value="no">❌ No</option></select></div>
+          <div class="ff"><label>Free from Leak</label><select id="o2b-leak"><option value="ok">✅ Yes</option><option value="no">❌ No</option></select></div>
+          <div class="ff"><label>No Visible Damage</label><select id="o2b-damage"><option value="ok">✅ Yes</option><option value="no">❌ No</option></select></div>
+          <div class="ff"><label>All Open Valves Fully Open</label><select id="o2b-open"><option value="ok">✅ Yes</option><option value="no">❌ No</option></select></div>
+          <div class="ff"><label>All Close Valves Fully Closed</label><select id="o2b-closed"><option value="ok">✅ Yes</option><option value="no">❌ No</option></select></div>
+          <div class="ff" style="grid-column:1/-1"><label>Notes</label><textarea id="o2b-notes" placeholder="None / details..."></textarea></div>
+        </div>
+        <button class="btn bg" style="margin-top:12px;width:100%;" onclick="mgSave('o2backup')">✓ Submit O₂ Backup Entry</button>
+      </div></div>
+      <div class="card"><div class="ch"><div class="ct">O₂ Backup Log</div></div>
+        <div class="cb" style="padding:0;max-height:500px;overflow-y:auto;">
+          <table class="tbl"><thead><tr><th>Date</th><th>Shift</th><th>Left</th><th>Central</th><th>Right</th><th>Regulator</th><th>Leak</th><th>By</th></tr></thead>
+          <tbody id="o2backup-tb"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 3. NITROUS OXIDE ═══ -->
+  <div id="mg-n2o" style="display:none;">
+    <div style="background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.25);border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:10px;color:var(--mu);">
+      <b style="color:#a855f7;">CHECK LIST — NITROUS OXIDE BACKUP MANIFOLD</b> · Left Bank / Central Pipeline / Right Bank
+    </div>
+    <div class="g g2">
+      <div class="card"><div class="ch"><div class="ct">Submit N₂O Daily Entry</div></div><div class="cb">
+        <div class="fg fg2">
+          <div class="ff"><label>Date</label><input type="date" id="n2o-date"></div>
+          <div class="ff"><label>Shift</label><select id="n2o-shift"><option value="AM">AM</option><option value="PM">PM</option></select></div>
+          <div class="ff"><label>Checked By</label><input type="text" id="n2o-by" placeholder="Name"></div>
+          <div class="ff"><label>Time</label><input type="time" id="n2o-time"></div>
+          <div class="ff" style="grid-column:1/-1"><div style="font-size:9px;color:var(--or);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--bd);">Central N₂O Cylinder Pressure (BAR)</div></div>
+          <div class="ff"><label>Left Bank (BAR)</label><input type="number" id="n2o-left" step="0.1" placeholder="BAR"></div>
+          <div class="ff"><label>Central Pipeline (BAR)</label><input type="number" id="n2o-central" step="0.1" placeholder="3.5–5.5 BAR"><div class="ht">Normal: 3.5–5.5 BAR</div></div>
+          <div class="ff"><label>Right Bank (BAR)</label><input type="number" id="n2o-right" step="0.1" placeholder="BAR"></div>
+          <div class="ff" style="grid-column:1/-1"><div style="font-size:9px;color:var(--or);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--bd);">Valve &amp; Pipeline Status</div></div>
+          <div class="ff"><label>Free from Leak</label><select id="n2o-leak"><option value="ok">✅ Yes</option><option value="no">❌ No</option></select></div>
+          <div class="ff"><label>No Visible Damage</label><select id="n2o-damage"><option value="ok">✅ Yes</option><option value="no">❌ No</option></select></div>
+          <div class="ff"><label>All Open Valves Fully Open</label><select id="n2o-open"><option value="ok">✅ Yes</option><option value="no">❌ No</option></select></div>
+          <div class="ff"><label>All Close Valves Fully Closed</label><select id="n2o-closed"><option value="ok">✅ Yes</option><option value="no">❌ No</option></select></div>
+          <div class="ff" style="grid-column:1/-1"><label>Notes</label><textarea id="n2o-notes" placeholder="None / details..."></textarea></div>
+        </div>
+        <button class="btn bg" style="margin-top:12px;width:100%;" onclick="mgSave('n2o')">✓ Submit N₂O Entry</button>
+      </div></div>
+      <div class="card"><div class="ch"><div class="ct">N₂O Log</div></div>
+        <div class="cb" style="padding:0;max-height:500px;overflow-y:auto;">
+          <table class="tbl"><thead><tr><th>Date</th><th>Shift</th><th>Left</th><th>Central</th><th>Right</th><th>Leak</th><th>Damage</th><th>By</th></tr></thead>
+          <tbody id="n2o-tb"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 4. CENTRAL VACUUM ═══ -->
+  <div id="mg-vacuum" style="display:none;">
+    <div style="background:rgba(30,30,30,.3);border:1px solid rgba(90,127,168,.3);border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:10px;color:var(--mu);">
+      <b style="color:var(--tx);">DAILY CHECK LIST — CENTRAL VACUUM</b> · 3 Pumps · Pressure (mmHg) + Running Hours
+    </div>
+    <div class="g g2">
+      <div class="card"><div class="ch"><div class="ct">Submit Central Vacuum Daily Entry</div></div><div class="cb">
+        <div class="fg fg2">
+          <div class="ff"><label>Date</label><input type="date" id="vac-date"></div>
+          <div class="ff"><label>Shift</label><select id="vac-shift"><option value="AM">AM</option><option value="PM">PM</option></select></div>
+          <div class="ff"><label>Checked By</label><input type="text" id="vac-by" placeholder="Name"></div>
+          <div class="ff"><label>Time</label><input type="time" id="vac-time"></div>
+          <!-- Pump 1 -->
+          <div class="ff" style="grid-column:1/-1"><div style="font-size:9px;color:var(--or);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--bd);">Vacuum Pump 1</div></div>
+          <div class="ff"><label>Pump 1 Pressure (mmHg)</label><input type="number" id="vac-p1" placeholder="e.g. -400"><div class="ht">Negative value, min ≤ -300</div></div>
+          <div class="ff"><label>Pump 1 Running Hours</label><input type="number" id="vac-h1" placeholder="Hours" min="0"></div>
+          <!-- Pump 2 -->
+          <div class="ff" style="grid-column:1/-1"><div style="font-size:9px;color:var(--or);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--bd);">Vacuum Pump 2</div></div>
+          <div class="ff"><label>Pump 2 Pressure (mmHg)</label><input type="number" id="vac-p2" placeholder="e.g. -400"></div>
+          <div class="ff"><label>Pump 2 Running Hours</label><input type="number" id="vac-h2" placeholder="Hours" min="0"></div>
+          <!-- Pump 3 -->
+          <div class="ff" style="grid-column:1/-1"><div style="font-size:9px;color:var(--or);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--bd);">Vacuum Pump 3</div></div>
+          <div class="ff"><label>Pump 3 Pressure (mmHg)</label><input type="number" id="vac-p3" placeholder="e.g. -400"></div>
+          <div class="ff"><label>Pump 3 Running Hours</label><input type="number" id="vac-h3" placeholder="Hours" min="0"></div>
+          <!-- Status -->
+          <div class="ff" style="grid-column:1/-1"><div style="font-size:9px;color:var(--or);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--bd);">Valves, Pipeline &amp; Control Panel Status</div></div>
+          <div class="ff"><label>Switches &amp; Buttons OK</label><select id="vac-sw"><option value="ok">✅ OK</option><option value="no">❌ Issue</option></select></div>
+          <div class="ff"><label>Free from Leak</label><select id="vac-leak"><option value="ok">✅ Yes</option><option value="no">❌ No</option></select></div>
+          <div class="ff"><label>No Visible Damage</label><select id="vac-damage"><option value="ok">✅ Yes</option><option value="no">❌ No</option></select></div>
+          <div class="ff"><label>All Open Valves Fully Open</label><select id="vac-open"><option value="ok">✅ Yes</option><option value="no">❌ No</option></select></div>
+          <div class="ff"><label>All Close Valves Fully Closed</label><select id="vac-closed"><option value="ok">✅ Yes</option><option value="no">❌ No</option></select></div>
+          <div class="ff" style="grid-column:1/-1"><label>Notes</label><textarea id="vac-notes" placeholder="None / details..."></textarea></div>
+        </div>
+        <button class="btn bg" style="margin-top:12px;width:100%;" onclick="mgSave('vacuum')">✓ Submit Vacuum Entry</button>
+      </div></div>
+      <div class="card"><div class="ch"><div class="ct">Vacuum Log</div></div>
+        <div class="cb" style="padding:0;max-height:500px;overflow-y:auto;">
+          <table class="tbl"><thead><tr><th>Date</th><th>Shift</th><th>P1 mmHg</th><th>P2 mmHg</th><th>P3 mmHg</th><th>Hrs 1</th><th>Leak</th><th>By</th></tr></thead>
+          <tbody id="vacuum-tb"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 5. AIR COMPRESSOR ═══ -->
+  <div id="mg-aircomp" style="display:none;">
+    <div style="background:rgba(0,255,136,.05);border:1px solid rgba(0,255,136,.2);border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:10px;color:var(--mu);">
+      <b style="color:var(--gn);">DAILY CHECK LIST — AIR COMPRESSOR UNIT</b> · Net Pressure · Running Hours · Dewpoint · Filter Status
+    </div>
+    <div class="g g2">
+      <div class="card"><div class="ch"><div class="ct">Submit Air Compressor Daily Entry</div></div><div class="cb">
+        <div class="fg fg2">
+          <div class="ff"><label>Date</label><input type="date" id="ac-date"></div>
+          <div class="ff"><label>Shift</label><select id="ac-shift"><option value="AM">AM</option><option value="PM">PM</option></select></div>
+          <div class="ff"><label>Checked By</label><input type="text" id="ac-by" placeholder="Name"></div>
+          <div class="ff"><label>Time</label><input type="time" id="ac-time"></div>
+          <div class="ff" style="grid-column:1/-1"><div style="font-size:9px;color:var(--or);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--bd);">Net Pressure (BAR) — Normal: 6–9.6</div></div>
+          <div class="ff"><label>Net Pressure AM (BAR)</label><input type="number" id="ac-pam" step="0.1" placeholder="6–9.6"><div class="ht">Normal: 6–9.6 BAR</div></div>
+          <div class="ff"><label>Net Pressure PM (BAR)</label><input type="number" id="ac-ppm" step="0.1" placeholder="6–9.6"></div>
+          <div class="ff" style="grid-column:1/-1"><div style="font-size:9px;color:var(--or);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--bd);">Running Hours</div></div>
+          <div class="ff"><label>Station 1 Running Hours</label><input type="number" id="ac-s1" placeholder="Hours" min="0"></div>
+          <div class="ff"><label>Station 2 Running Hours</label><input type="number" id="ac-s2" placeholder="Hours" min="0"></div>
+          <div class="ff" style="grid-column:1/-1"><div style="font-size:9px;color:var(--or);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--bd);">Dewpoint (°C)</div></div>
+          <div class="ff"><label>Dewpoint AM (°C)</label><input type="number" id="ac-dam" step="0.1" placeholder="e.g. -46"><div class="ht">CBAHI limit: ≤ -46°C</div></div>
+          <div class="ff"><label>Dewpoint PM (°C)</label><input type="number" id="ac-dpm" step="0.1" placeholder="e.g. -46"></div>
+          <div class="ff" style="grid-column:1/-1"><div style="font-size:9px;color:var(--or);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--bd);">Filters, Pipeline &amp; Control Panel Status</div></div>
+          <div class="ff"><label>Switches &amp; Buttons OK</label><select id="ac-sw"><option value="ok">✅ OK</option><option value="no">❌ Issue</option></select></div>
+          <div class="ff"><label>Pre-Filter Quality</label><select id="ac-pref"><option value="ok">✅ Good</option><option value="no">❌ Replace</option></select></div>
+          <div class="ff"><label>Post-Filter Quality</label><select id="ac-postf"><option value="ok">✅ Good</option><option value="no">❌ Replace</option></select></div>
+          <div class="ff"><label>Anti-Microbial Filter</label><select id="ac-amf"><option value="ok">✅ Good</option><option value="no">❌ Replace</option></select></div>
+          <div class="ff"><label>Free from Leak</label><select id="ac-leak"><option value="ok">✅ Yes</option><option value="no">❌ No</option></select></div>
+          <div class="ff"><label>All Open Valves Fully Open</label><select id="ac-open"><option value="ok">✅ Yes</option><option value="no">❌ No</option></select></div>
+          <div class="ff"><label>All Close Valves Fully Closed</label><select id="ac-closed"><option value="ok">✅ Yes</option><option value="no">❌ No</option></select></div>
+          <div class="ff" style="grid-column:1/-1"><label>Notes</label><textarea id="ac-notes" placeholder="None / details..."></textarea></div>
+        </div>
+        <button class="btn bg" style="margin-top:12px;width:100%;" onclick="mgSave('aircomp')">✓ Submit Air Compressor Entry</button>
+      </div></div>
+      <div class="card"><div class="ch"><div class="ct">Air Compressor Log</div></div>
+        <div class="cb" style="padding:0;max-height:500px;overflow-y:auto;">
+          <table class="tbl"><thead><tr><th>Date</th><th>Shift</th><th>Press AM</th><th>Press PM</th><th>Dew AM</th><th>Dew PM</th><th>Leak</th><th>By</th></tr></thead>
+          <tbody id="aircomp-tb"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 6. AIR BACKUP MANIFOLD ═══ -->
+  <div id="mg-airbackup" style="display:none;">
+    <div style="background:rgba(0,255,136,.05);border:1px solid rgba(0,255,136,.2);border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:10px;color:var(--mu);">
+      <b style="color:var(--gn);">DAILY CHECK LIST — MEDICAL AIR BACKUP MANIFOLD</b> · Left Bank / Central Pipeline / Right Bank
+    </div>
+    <div class="g g2">
+      <div class="card"><div class="ch"><div class="ct">Submit Air Backup Daily Entry</div></div><div class="cb">
+        <div class="fg fg2">
+          <div class="ff"><label>Date</label><input type="date" id="ab-date"></div>
+          <div class="ff"><label>Shift</label><select id="ab-shift"><option value="AM">AM</option><option value="PM">PM</option></select></div>
+          <div class="ff"><label>Checked By</label><input type="text" id="ab-by" placeholder="Name"></div>
+          <div class="ff"><label>Time</label><input type="time" id="ab-time"></div>
+          <div class="ff" style="grid-column:1/-1"><div style="font-size:9px;color:var(--or);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--bd);">Medical Air Backup Pressure (BAR)</div></div>
+          <div class="ff"><label>Left Bank (BAR)</label><input type="number" id="ab-left" step="0.1" placeholder="BAR"></div>
+          <div class="ff"><label>Central Pipeline (BAR)</label><input type="number" id="ab-central" step="0.1" placeholder="3.5–5.5"><div class="ht">Normal: 3.5–5.5 BAR</div></div>
+          <div class="ff"><label>Right Bank (BAR)</label><input type="number" id="ab-right" step="0.1" placeholder="BAR"></div>
+          <div class="ff" style="grid-column:1/-1"><div style="font-size:9px;color:var(--or);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--bd);">Valve, Pipeline &amp; Control Panel Status</div></div>
+          <div class="ff"><label>Switches &amp; Buttons OK</label><select id="ab-sw"><option value="ok">✅ OK</option><option value="no">❌ Issue</option></select></div>
+          <div class="ff"><label>Free from Leak</label><select id="ab-leak"><option value="ok">✅ Yes</option><option value="no">❌ No</option></select></div>
+          <div class="ff"><label>No Visible Damage</label><select id="ab-damage"><option value="ok">✅ Yes</option><option value="no">❌ No</option></select></div>
+          <div class="ff"><label>Alarm Status</label><select id="ab-alarm"><option value="ok">✅ Normal</option><option value="no">❌ Alarm Active</option></select></div>
+          <div class="ff"><label>All Open Valves Fully Open</label><select id="ab-open"><option value="ok">✅ Yes</option><option value="no">❌ No</option></select></div>
+          <div class="ff"><label>All Close Valves Fully Closed</label><select id="ab-closed"><option value="ok">✅ Yes</option><option value="no">❌ No</option></select></div>
+          <div class="ff" style="grid-column:1/-1"><label>Notes</label><textarea id="ab-notes" placeholder="None / details..."></textarea></div>
+        </div>
+        <button class="btn bg" style="margin-top:12px;width:100%;" onclick="mgSave('airbackup')">✓ Submit Air Backup Entry</button>
+      </div></div>
+      <div class="card"><div class="ch"><div class="ct">Air Backup Log</div></div>
+        <div class="cb" style="padding:0;max-height:500px;overflow-y:auto;">
+          <table class="tbl"><thead><tr><th>Date</th><th>Shift</th><th>Left</th><th>Central</th><th>Right</th><th>Alarm</th><th>Leak</th><th>By</th></tr></thead>
+          <tbody id="airbackup-tb"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 7. AMBULANCE ═══ -->
+  <div id="mg-ambulance" style="display:none;">
+    <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:10px;color:var(--mu);">
+      <b style="color:var(--rd);">DAILY AMBULANCE CHECK</b> · O₂ Cylinders (E &amp; M size) · Defibrillator · Suction Machine · BP Apparatus
+    </div>
+    <div class="g g2">
+      <div class="card"><div class="ch"><div class="ct">Submit Ambulance Daily Check</div></div><div class="cb">
+        <div class="fg fg2">
+          <div class="ff"><label>Date</label><input type="date" id="amb-date"></div>
+          <div class="ff"><label>Shift</label><select id="amb-shift"><option value="AM">AM</option><option value="PM">PM</option></select></div>
+          <div class="ff"><label>Checked By</label><input type="text" id="amb-by" placeholder="Name"></div>
+          <div class="ff"><label>Time</label><input type="time" id="amb-time"></div>
+          <div class="ff" style="grid-column:1/-1"><div style="font-size:9px;color:var(--or);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--bd);">O₂ Cylinders</div></div>
+          <div class="ff"><label>E-Size O₂ Cylinder (PSI)</label><input type="number" id="amb-esize" placeholder="PSI reading"></div>
+          <div class="ff"><label>M-Size O₂ Cylinder (PSI)</label><input type="number" id="amb-msize" placeholder="PSI reading"></div>
+          <div class="ff" style="grid-column:1/-1"><div style="font-size:9px;color:var(--or);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--bd);">Equipment Status</div></div>
+          <div class="ff"><label>Defibrillator</label><select id="amb-defib"><option value="ok">✅ Functional</option><option value="no">❌ Issue</option></select></div>
+          <div class="ff"><label>Suction Machine</label><select id="amb-suction"><option value="ok">✅ Functional</option><option value="no">❌ Issue</option></select></div>
+          <div class="ff"><label>BP Apparatus</label><select id="amb-bp"><option value="ok">✅ Functional</option><option value="no">❌ Issue</option></select></div>
+          <div class="ff" style="grid-column:1/-1"><label>Notes</label><textarea id="amb-notes" placeholder="None / details..."></textarea></div>
+        </div>
+        <button class="btn bg" style="margin-top:12px;width:100%;" onclick="mgSave('ambulance')">✓ Submit Ambulance Check</button>
+      </div></div>
+      <div class="card"><div class="ch"><div class="ct">Ambulance Check Log</div></div>
+        <div class="cb" style="padding:0;max-height:500px;overflow-y:auto;">
+          <table class="tbl"><thead><tr><th>Date</th><th>Shift</th><th>E-Size PSI</th><th>M-Size PSI</th><th>Defib</th><th>Suction</th><th>BP</th><th>By</th></tr></thead>
+          <tbody id="ambulance-tb"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 8. CYLINDER DELIVERY INSPECTION ═══ -->
+  <div id="mg-cylinder" style="display:none;">
+    <div style="background:rgba(255,170,0,.06);border:1px solid rgba(255,170,0,.2);border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:10px;color:var(--mu);">
+      <b style="color:var(--or);">CYLINDER DELIVERY INSPECTION CHECKLIST</b> · O₂ / Med. Air / N₂O / CO₂ / N₂
+    </div>
+    <div class="g g2">
+      <div class="card"><div class="ch"><div class="ct">Log Cylinder Delivery</div></div><div class="cb">
+        <div class="fg fg2">
+          <div class="ff"><label>Date</label><input type="date" id="cyl-date"></div>
+          <div class="ff"><label>Time</label><input type="time" id="cyl-time"></div>
+          <div class="ff"><label>Inspected By</label><input type="text" id="cyl-by" placeholder="Name"></div>
+          <div class="ff"><label>Gas Type</label>
+            <select id="cyl-gas"><option>O₂ — Oxygen</option><option>Med. Air — Medical Air</option><option>N₂O — Nitrous Oxide</option><option>CO₂ — Carbon Dioxide</option><option>N₂ — Nitrogen</option></select>
+          </div>
+          <div class="ff"><label>Cylinder Size</label>
+            <select id="cyl-size"><option>E-Size</option><option>M-Size</option><option>H-Size (K-Size)</option><option>Jumbo</option><option>Other</option></select>
+          </div>
+          <div class="ff"><label>Quantity Received</label><input type="number" id="cyl-qty" placeholder="Number of cylinders" min="1"></div>
+          <div class="ff"><label>Free from Leaks or Damage</label><select id="cyl-leak"><option value="ok">✅ Yes — Accepted</option><option value="no">❌ No — Rejected</option></select></div>
+          <div class="ff"><label>QC Stamp / Testing Card</label><select id="cyl-qc"><option value="ok">✅ Present &amp; Valid</option><option value="no">❌ Missing / Expired</option></select></div>
+          <div class="ff" style="grid-column:1/-1"><label>Notes / Remarks</label><textarea id="cyl-notes" placeholder="Supplier name, delivery note no., any issues..."></textarea></div>
+        </div>
+        <button class="btn bg" style="margin-top:12px;width:100%;" onclick="mgSave('cylinder')">✓ Log Cylinder Delivery</button>
+      </div></div>
+      <div class="card"><div class="ch"><div class="ct">Cylinder Delivery Log</div></div>
+        <div class="cb" style="padding:0;max-height:500px;overflow-y:auto;">
+          <table class="tbl"><thead><tr><th>Date</th><th>Gas Type</th><th>Size</th><th>Qty</th><th>Leak/Damage</th><th>QC Stamp</th><th>By</th></tr></thead>
+          <tbody id="cylinder-tb"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 9. O2 TANK REFILL LOG ═══ -->
+  <div id="mg-o2refill" style="display:none;">
+    <div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:10px;color:var(--mu);">
+      <b style="color:#3b82f6;">OXYGEN BACKUP REFILLING LOG</b> · Left Bank &amp; Right Bank
+    </div>
+    <div class="g g2">
+      <div class="card"><div class="ch"><div class="ct">Log O₂ Tank Refill</div></div><div class="cb">
+        <div class="fg fg2">
+          <div class="ff"><label>Date</label><input type="date" id="o2r-date"></div>
+          <div class="ff"><label>Refilled By</label><input type="text" id="o2r-by" placeholder="Name"></div>
+          <div class="ff"><label>Bank</label><select id="o2r-bank"><option value="Left">Left Bank</option><option value="Right">Right Bank</option><option value="Both">Both Banks</option></select></div>
+          <div class="ff"><label>Pressure Upon Refilling (BAR)</label><input type="number" id="o2r-pressure" step="0.1" placeholder="BAR reading before refill"></div>
+          <div class="ff"><label>Pressure After Refilling (BAR)</label><input type="number" id="o2r-after" step="0.1" placeholder="BAR reading after refill"></div>
+          <div class="ff"><label>Number of Cylinders Used</label><input type="number" id="o2r-qty" placeholder="No. of cylinders" min="0"></div>
+          <div class="ff" style="grid-column:1/-1"><label>Notes</label><textarea id="o2r-notes" placeholder="Supplier, any issues..."></textarea></div>
+        </div>
+        <button class="btn bg" style="margin-top:12px;width:100%;" onclick="mgSave('o2refill')">✓ Log O₂ Refill</button>
+      </div></div>
+      <div class="card"><div class="ch"><div class="ct">O₂ Refill Log</div></div>
+        <div class="cb" style="padding:0;max-height:500px;overflow-y:auto;">
+          <table class="tbl"><thead><tr><th>Date</th><th>Bank</th><th>Before (BAR)</th><th>After (BAR)</th><th>Cylinders</th><th>By</th></tr></thead>
+          <tbody id="o2refill-tb"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 10. AIR TANK REFILL LOG ═══ -->
+  <div id="mg-airrefill" style="display:none;">
+    <div style="background:rgba(0,255,136,.05);border:1px solid rgba(0,255,136,.2);border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:10px;color:var(--mu);">
+      <b style="color:var(--gn);">MEDICAL AIR BACKUP REFILLING LOG</b> · Left Bank &amp; Right Bank
+    </div>
+    <div class="g g2">
+      <div class="card"><div class="ch"><div class="ct">Log Medical Air Refill</div></div><div class="cb">
+        <div class="fg fg2">
+          <div class="ff"><label>Date</label><input type="date" id="air-date"></div>
+          <div class="ff"><label>Refilled By</label><input type="text" id="air-by" placeholder="Name"></div>
+          <div class="ff"><label>Bank</label><select id="air-bank"><option value="Left">Left Bank</option><option value="Right">Right Bank</option><option value="Both">Both Banks</option></select></div>
+          <div class="ff"><label>Pressure Upon Refilling (BAR)</label><input type="number" id="air-pressure" step="0.1" placeholder="BAR reading before refill"></div>
+          <div class="ff"><label>Pressure After Refilling (BAR)</label><input type="number" id="air-after" step="0.1" placeholder="BAR reading after refill"></div>
+          <div class="ff"><label>Number of Cylinders Used</label><input type="number" id="air-qty" placeholder="No. of cylinders" min="0"></div>
+          <div class="ff" style="grid-column:1/-1"><label>Notes</label><textarea id="air-notes" placeholder="Supplier, any issues..."></textarea></div>
+        </div>
+        <button class="btn bg" style="margin-top:12px;width:100%;" onclick="mgSave('airrefill')">✓ Log Air Refill</button>
+      </div></div>
+      <div class="card"><div class="ch"><div class="ct">Medical Air Refill Log</div></div>
+        <div class="cb" style="padding:0;max-height:500px;overflow-y:auto;">
+          <table class="tbl"><thead><tr><th>Date</th><th>Bank</th><th>Before (BAR)</th><th>After (BAR)</th><th>Cylinders</th><th>By</th></tr></thead>
+          <tbody id="airrefill-tb"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 11. O2 RESERVE CALCULATOR ═══ -->
+  <div id="mg-o2calc" style="display:none;">
+    <div class="g g2">
+      <div class="card"><div class="ch"><div class="ct">🧮 O₂ Reserve Calculator (FMS.32.8)</div></div><div class="cb">
+        <div style="font-size:10px;color:var(--mu);margin-bottom:14px;">CBAHI minimum: 48 hours reserve at all times. Formula: (LOX liters × level% × 855) + (backup cylinders × 6,800L) ÷ daily consumption × 24</div>
+        <div class="fg fg2">
+          <div class="ff"><label>LOX Tank Capacity (Liters)</label><input type="number" id="calc-size" placeholder="10000" oninput="calcO2Reserve()"></div>
+          <div class="ff"><label>Current LOX Level (%)</label><input type="number" id="calc-level" placeholder="70" min="0" max="100" oninput="calcO2Reserve()"></div>
+          <div class="ff"><label>O₂ Backup Cylinders (K/H size)</label><input type="number" id="calc-cyls" placeholder="5" min="0" oninput="calcO2Reserve()"></div>
+          <div class="ff"><label>Daily O₂ Consumption (Liters gas)</label><input type="number" id="calc-cons" placeholder="120000" oninput="calcO2Reserve()"></div>
+        </div>
+        <div style="margin-top:18px;background:var(--s2);border-radius:11px;padding:20px;text-align:center;">
+          <div style="font-size:9px;color:var(--mu);text-transform:uppercase;letter-spacing:2px;">Estimated Reserve</div>
+          <div id="calc-result" style="font-family:'Rajdhani',sans-serif;font-size:60px;font-weight:700;color:var(--gn);line-height:1.1;margin:8px 0;">—</div>
+          <div style="font-size:11px;color:var(--mu);">hours · Minimum required: <b style="color:var(--or);">48 hours</b> (FMS.32.8)</div>
+          <div id="calc-status" style="margin-top:8px;font-size:12px;font-weight:600;"></div>
+        </div>
+      </div></div>
+      <div class="card"><div class="ch"><div class="ct">📊 LOX Level Trend (from LOX Daily Log)</div></div>
+        <div class="cb" style="padding:12px;min-height:200px;"><canvas id="lox-trend-chart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 12. ALL RECORDS ═══ -->
+  <div id="mg-log" style="display:none;">
+    <div class="g g4" id="mg-log-stats"></div>
+    <div class="tb" style="margin-bottom:14px;">
+      <button class="tbtn active" onclick="mgLogFilter('all',this)">All Systems</button>
+      <button class="tbtn" onclick="mgLogFilter('lox',this)">LOX</button>
+      <button class="tbtn" onclick="mgLogFilter('vacuum',this)">Vacuum</button>
+      <button class="tbtn" onclick="mgLogFilter('aircomp',this)">Air Comp.</button>
+      <button class="tbtn" onclick="mgLogFilter('cylinder',this)">Cylinder</button>
+    </div>
+    <div class="card"><div class="ch"><div class="ct">All Medical Gas Records</div></div>
+      <div class="cb" style="padding:0;max-height:600px;overflow-y:auto;">
+        <table class="tbl"><thead><tr><th>Date</th><th>System</th><th>Shift</th><th>Key Reading</th><th>Issues Found</th><th>Submitted By</th></tr></thead>
+        <tbody id="mg-all-tb"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- ═══ 13. KPIs ═══ -->
+  <div id="mg-kpi" style="display:none;">
+    <div id="mg-kpi-content"></div>
+  </div>
 </div>
 
 <!-- ===== RADIATION ===== -->
@@ -2893,6 +3265,446 @@ window._st_hooked = false;
     }
   };
 })();
+
+
+// ════════════════════════════════════════════════════════════════
+// MEDICAL GAS MODULE — FMS.32
+// Covers all 11 sheets of the official Obeid Hospital checklist
+// ════════════════════════════════════════════════════════════════
+
+// Tab navigation
+function mgTab(tab, btn) {
+  document.querySelectorAll('[id^="mg-"]').forEach(e => e.style.display = 'none');
+  const el = document.getElementById('mg-' + tab);
+  if (el) el.style.display = 'block';
+  if (btn) {
+    btn.closest('.tb').querySelectorAll('.tbtn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  if (tab === 'log')    renderMGLog('all');
+  if (tab === 'kpi')    renderMGKPIs();
+  if (tab === 'o2calc') { calcO2Reserve(); renderLOXTrend(); }
+}
+
+// ── SAVE functions per system ──
+const MG_DEFS = {
+  lox: {
+    fields: ['date:lox-date','shift:lox-shift','by:lox-by','time:lox-time',
+             'o2am:lox-o2am','o2pm:lox-o2pm','pam:lox-pam','ppm:lox-ppm2',
+             'leak:lox-leak','damage:lox-damage','ice:lox-ice',
+             'openV:lox-open','closedV:lox-closed','notes:lox-notes'],
+    req: ['date','by'],
+    label: 'Liquid Oxygen',
+    icon: '🟦'
+  },
+  o2backup: {
+    fields: ['date:o2b-date','shift:o2b-shift','by:o2b-by','time:o2b-time',
+             'left:o2b-left','central:o2b-central','right:o2b-right','reg:o2b-reg',
+             'valves:o2b-valves','leak:o2b-leak','damage:o2b-damage',
+             'openV:o2b-open','closedV:o2b-closed','notes:o2b-notes'],
+    req: ['date','by'],
+    label: 'O₂ Backup Manifold',
+    icon: '🔵'
+  },
+  n2o: {
+    fields: ['date:n2o-date','shift:n2o-shift','by:n2o-by','time:n2o-time',
+             'left:n2o-left','central:n2o-central','right:n2o-right',
+             'leak:n2o-leak','damage:n2o-damage','openV:n2o-open','closedV:n2o-closed','notes:n2o-notes'],
+    req: ['date','by'],
+    label: 'Nitrous Oxide',
+    icon: '🟣'
+  },
+  vacuum: {
+    fields: ['date:vac-date','shift:vac-shift','by:vac-by','time:vac-time',
+             'p1:vac-p1','h1:vac-h1','p2:vac-p2','h2:vac-h2','p3:vac-p3','h3:vac-h3',
+             'sw:vac-sw','leak:vac-leak','damage:vac-damage',
+             'openV:vac-open','closedV:vac-closed','notes:vac-notes'],
+    req: ['date','by'],
+    label: 'Central Vacuum',
+    icon: '⬛'
+  },
+  aircomp: {
+    fields: ['date:ac-date','shift:ac-shift','by:ac-by','time:ac-time',
+             'pam:ac-pam','ppm:ac-ppm','s1:ac-s1','s2:ac-s2',
+             'dam:ac-dam','dpm:ac-dpm',
+             'sw:ac-sw','pref:ac-pref','postf:ac-postf','amf:ac-amf',
+             'leak:ac-leak','openV:ac-open','closedV:ac-closed','notes:ac-notes'],
+    req: ['date','by'],
+    label: 'Air Compressor',
+    icon: '🟩'
+  },
+  airbackup: {
+    fields: ['date:ab-date','shift:ab-shift','by:ab-by','time:ab-time',
+             'left:ab-left','central:ab-central','right:ab-right',
+             'sw:ab-sw','leak:ab-leak','damage:ab-damage','alarm:ab-alarm',
+             'openV:ab-open','closedV:ab-closed','notes:ab-notes'],
+    req: ['date','by'],
+    label: 'Air Backup Manifold',
+    icon: '🟢'
+  },
+  ambulance: {
+    fields: ['date:amb-date','shift:amb-shift','by:amb-by','time:amb-time',
+             'esize:amb-esize','msize:amb-msize',
+             'defib:amb-defib','suction:amb-suction','bp:amb-bp','notes:amb-notes'],
+    req: ['date','by'],
+    label: 'Ambulance',
+    icon: '🚑'
+  },
+  cylinder: {
+    fields: ['date:cyl-date','time:cyl-time','by:cyl-by','gas:cyl-gas',
+             'size:cyl-size','qty:cyl-qty','leak:cyl-leak','qc:cyl-qc','notes:cyl-notes'],
+    req: ['date','by','gas'],
+    label: 'Cylinder Delivery',
+    icon: '🔶'
+  },
+  o2refill: {
+    fields: ['date:o2r-date','by:o2r-by','bank:o2r-bank',
+             'pressure:o2r-pressure','after:o2r-after','qty:o2r-qty','notes:o2r-notes'],
+    req: ['date','by'],
+    label: 'O₂ Tank Refill',
+    icon: '🔄'
+  },
+  airrefill: {
+    fields: ['date:air-date','by:air-by','bank:air-bank',
+             'pressure:air-pressure','after:air-after','qty:air-qty','notes:air-notes'],
+    req: ['date','by'],
+    label: 'Air Tank Refill',
+    icon: '🔄'
+  },
+};
+
+function mgSave(type) {
+  const def = MG_DEFS[type]; if (!def) return;
+  const rec = { _id: Date.now(), _type: type, _label: def.label, _icon: def.icon,
+                _by: CU.name, _rl: CU.rl, _ts: new Date().toISOString() };
+  def.fields.forEach(f => {
+    const [key, id] = f.split(':');
+    const el = document.getElementById(id); if (!el) return;
+    rec[key] = el.type === 'file'
+      ? (el.files[0] ? { n: el.files[0].name } : null)
+      : el.value;
+  });
+  const miss = def.req.filter(r => !rec[r] || rec[r] === '');
+  if (miss.length) { toast('⚠️ Fill required: ' + miss.join(', '), '#f59e0b'); return; }
+
+  // Validate critical readings
+  if (type === 'vacuum') {
+    const p1 = parseFloat(rec.p1);
+    if (!isNaN(p1) && p1 > -300) toast('⚠️ Vacuum Pump 1 pressure > -300 mmHg — check system', '#f59e0b');
+  }
+  if (type === 'aircomp') {
+    const p = parseFloat(rec.pam);
+    if (!isNaN(p) && (p < 6 || p > 9.6)) toast('⚠️ Air compressor pressure outside 6–9.6 BAR range', '#f59e0b');
+  }
+  if (type === 'o2backup' || type === 'airbackup') {
+    const c = parseFloat(rec.central);
+    if (!isNaN(c) && (c < 3.5 || c > 5.5)) toast('⚠️ Central pipeline pressure outside 3.5–5.5 BAR', '#f59e0b');
+  }
+
+  const arr = ld('mg_' + type); arr.unshift(rec); sv('mg_' + type, arr);
+  // Also log to general activity
+  logA('mg_' + type);
+  renderMGTable(type);
+  renderAll();
+  toast('✓ ' + def.label + ' entry saved');
+}
+
+// ── TABLE RENDERERS per system ──
+const MG_ROWS = {
+  lox: r => `<td>${r.date||'—'}</td><td>${r.shift||'—'}</td>
+    <td>${r.o2am!==undefined&&r.o2am!==''?r.o2am+'%':'—'}</td>
+    <td style="color:${parseFloat(r.pam)>=100?'var(--gn)':'var(--rd)'};">${r.pam||'—'} BAR</td>
+    <td>${r.leak==='ok'?'<span class="bx bg2">✅</span>':'<span class="bx br2">❌</span>'}</td>
+    <td>${r.damage==='ok'?'<span class="bx bg2">✅</span>':'<span class="bx br2">❌</span>'}</td>
+    <td>${r.ice==='ok'?'<span class="bx bg2">✅</span>':'<span class="bx br2">❌</span>'}</td>
+    <td style="font-size:10px;">${r._by||r.by||'—'}</td>`,
+
+  o2backup: r => `<td>${r.date||'—'}</td><td>${r.shift||'—'}</td>
+    <td>${r.left||'—'}</td>
+    <td style="color:${parseFloat(r.central)>=3.5&&parseFloat(r.central)<=5.5?'var(--gn)':'var(--rd)'};">${r.central||'—'}</td>
+    <td>${r.right||'—'}</td><td>${r.reg||'—'}</td>
+    <td>${r.leak==='ok'?'<span class="bx bg2">✅</span>':'<span class="bx br2">❌</span>'}</td>
+    <td style="font-size:10px;">${r._by||r.by||'—'}</td>`,
+
+  n2o: r => `<td>${r.date||'—'}</td><td>${r.shift||'—'}</td>
+    <td>${r.left||'—'}</td>
+    <td style="color:${parseFloat(r.central)>=3.5&&parseFloat(r.central)<=5.5?'var(--gn)':'var(--rd)'};">${r.central||'—'}</td>
+    <td>${r.right||'—'}</td>
+    <td>${r.leak==='ok'?'<span class="bx bg2">✅</span>':'<span class="bx br2">❌</span>'}</td>
+    <td>${r.damage==='ok'?'<span class="bx bg2">✅</span>':'<span class="bx br2">❌</span>'}</td>
+    <td style="font-size:10px;">${r._by||r.by||'—'}</td>`,
+
+  vacuum: r => `<td>${r.date||'—'}</td><td>${r.shift||'—'}</td>
+    <td style="color:${parseFloat(r.p1)<=-300?'var(--gn)':'var(--rd)'};">${r.p1||'—'}</td>
+    <td style="color:${parseFloat(r.p2)<=-300?'var(--gn)':'var(--rd)'};">${r.p2||'—'}</td>
+    <td style="color:${parseFloat(r.p3)<=-300?'var(--gn)':'var(--rd)'};">${r.p3||'—'}</td>
+    <td>${r.h1||'—'}</td>
+    <td>${r.leak==='ok'?'<span class="bx bg2">✅</span>':'<span class="bx br2">❌</span>'}</td>
+    <td style="font-size:10px;">${r._by||r.by||'—'}</td>`,
+
+  aircomp: r => `<td>${r.date||'—'}</td><td>${r.shift||'—'}</td>
+    <td style="color:${parseFloat(r.pam)>=6&&parseFloat(r.pam)<=9.6?'var(--gn)':'var(--rd)'};">${r.pam||'—'}</td>
+    <td style="color:${parseFloat(r.ppm)>=6&&parseFloat(r.ppm)<=9.6?'var(--gn)':'var(--rd)'};">${r.ppm||'—'}</td>
+    <td style="color:${parseFloat(r.dam)<=-46?'var(--gn)':'var(--rd)'};">${r.dam||'—'}°C</td>
+    <td style="color:${parseFloat(r.dpm)<=-46?'var(--gn)':'var(--rd)'};">${r.dpm||'—'}°C</td>
+    <td>${r.leak==='ok'?'<span class="bx bg2">✅</span>':'<span class="bx br2">❌</span>'}</td>
+    <td style="font-size:10px;">${r._by||r.by||'—'}</td>`,
+
+  airbackup: r => `<td>${r.date||'—'}</td><td>${r.shift||'—'}</td>
+    <td>${r.left||'—'}</td>
+    <td style="color:${parseFloat(r.central)>=3.5&&parseFloat(r.central)<=5.5?'var(--gn)':'var(--rd)'};">${r.central||'—'}</td>
+    <td>${r.right||'—'}</td>
+    <td>${r.alarm==='ok'?'<span class="bx bg2">✅ Normal</span>':'<span class="bx br2">❌ Alarm!</span>'}</td>
+    <td>${r.leak==='ok'?'<span class="bx bg2">✅</span>':'<span class="bx br2">❌</span>'}</td>
+    <td style="font-size:10px;">${r._by||r.by||'—'}</td>`,
+
+  ambulance: r => `<td>${r.date||'—'}</td><td>${r.shift||'—'}</td>
+    <td>${r.esize||'—'} PSI</td><td>${r.msize||'—'} PSI</td>
+    <td>${r.defib==='ok'?'<span class="bx bg2">✅</span>':'<span class="bx br2">❌</span>'}</td>
+    <td>${r.suction==='ok'?'<span class="bx bg2">✅</span>':'<span class="bx br2">❌</span>'}</td>
+    <td>${r.bp==='ok'?'<span class="bx bg2">✅</span>':'<span class="bx br2">❌</span>'}</td>
+    <td style="font-size:10px;">${r._by||r.by||'—'}</td>`,
+
+  cylinder: r => `<td>${r.date||'—'}</td><td>${r.gas||'—'}</td><td>${r.size||'—'}</td>
+    <td style="font-weight:600;">${r.qty||'—'}</td>
+    <td>${r.leak==='ok'?'<span class="bx bg2">✅ Accepted</span>':'<span class="bx br2">❌ Rejected</span>'}</td>
+    <td>${r.qc==='ok'?'<span class="bx bg2">✅</span>':'<span class="bx br2">❌</span>'}</td>
+    <td style="font-size:10px;">${r._by||r.by||'—'}</td>`,
+
+  o2refill: r => `<td>${r.date||'—'}</td><td>${r.bank||'—'}</td>
+    <td>${r.pressure||'—'} BAR</td><td>${r.after||'—'} BAR</td>
+    <td>${r.qty||'—'}</td><td style="font-size:10px;">${r._by||r.by||'—'}</td>`,
+
+  airrefill: r => `<td>${r.date||'—'}</td><td>${r.bank||'—'}</td>
+    <td>${r.pressure||'—'} BAR</td><td>${r.after||'—'} BAR</td>
+    <td>${r.qty||'—'}</td><td style="font-size:10px;">${r._by||r.by||'—'}</td>`,
+};
+
+function renderMGTable(type) {
+  const tb = document.getElementById(type + '-tb'); if (!tb) return;
+  const data = ld('mg_' + type);
+  if (!data.length) { tb.innerHTML = '<tr><td colspan="10" class="em">No entries yet</td></tr>'; return; }
+  const fn = MG_ROWS[type]; if (!fn) return;
+  tb.innerHTML = data.slice(0, 60).map(r => `<tr>${fn(r)}</tr>`).join('');
+}
+
+// Render all MG tables on init
+function renderAllMGTables() {
+  Object.keys(MG_DEFS).forEach(type => renderMGTable(type));
+}
+
+// ── ALL RECORDS LOG ──
+let mgLogFilterVal = 'all';
+function mgLogFilter(f, btn) {
+  mgLogFilterVal = f;
+  if (btn) { btn.closest('.tb').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); }
+  renderMGLog(f);
+}
+
+function renderMGLog(filter) {
+  // Gather all records from all systems
+  let all = [];
+  Object.keys(MG_DEFS).forEach(type => {
+    ld('mg_' + type).forEach(r => {
+      const keyReading = getKeyReading(type, r);
+      const hasIssue   = detectIssue(type, r);
+      all.push({ ...r, _stype: type, _keyReading: keyReading, _hasIssue: hasIssue });
+    });
+  });
+  // Sort by date descending
+  all.sort((a, b) => (b.date || b._ts || '') > (a.date || a._ts || '') ? 1 : -1);
+  // Filter
+  if (filter !== 'all') all = all.filter(r => r._stype === filter);
+
+  // Stats
+  const statsEl = document.getElementById('mg-log-stats');
+  if (statsEl) {
+    const total   = Object.keys(MG_DEFS).reduce((s,t) => s + ld('mg_'+t).length, 0);
+    const today   = new Date().toISOString().split('T')[0];
+    const todayC  = Object.keys(MG_DEFS).reduce((s,t) => s + ld('mg_'+t).filter(r=>r.date===today).length, 0);
+    const issues  = all.filter(r => r._hasIssue).length;
+    const loxC    = ld('mg_lox').length;
+    statsEl.innerHTML = `
+      <div class="sc" style="--c:var(--ac)"><div class="ico">📋</div><div class="val">${total}</div><div class="lbl">Total MG Records</div></div>
+      <div class="sc" style="--c:var(--gn)"><div class="ico">📅</div><div class="val">${todayC}</div><div class="lbl">Submitted Today</div></div>
+      <div class="sc" style="--c:var(--rd)"><div class="ico">⚠️</div><div class="val">${issues}</div><div class="lbl">Issues Flagged</div></div>
+      <div class="sc" style="--c:#3b82f6"><div class="ico">🟦</div><div class="val">${loxC}</div><div class="lbl">LOX Entries</div></div>`;
+  }
+
+  const tb = document.getElementById('mg-all-tb'); if (!tb) return;
+  if (!all.length) { tb.innerHTML = '<tr><td colspan="6" class="em">No records yet — start submitting daily checklists</td></tr>'; return; }
+  const def = MG_DEFS;
+  tb.innerHTML = all.slice(0, 100).map(r => {
+    const issueCell = r._hasIssue
+      ? '<span class="bx br2">⚠️ Issue</span>'
+      : '<span class="bx bg2">✅ OK</span>';
+    return `<tr>
+      <td style="font-weight:600;">${r.date||r._ts?.slice(0,10)||'—'}</td>
+      <td>${(MG_DEFS[r._stype]?.icon||'') + ' ' + (MG_DEFS[r._stype]?.label||r._stype)}</td>
+      <td>${r.shift||'—'}</td>
+      <td style="font-size:11px;">${r._keyReading||'—'}</td>
+      <td>${issueCell}</td>
+      <td style="font-size:10px;">${r._by||r.by||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function getKeyReading(type, r) {
+  switch(type) {
+    case 'lox':       return `O₂ ${r.o2am||'—'}% · ${r.pam||'—'} BAR`;
+    case 'o2backup':  return `Central: ${r.central||'—'} BAR`;
+    case 'n2o':       return `Central: ${r.central||'—'} BAR`;
+    case 'vacuum':    return `P1: ${r.p1||'—'} mmHg · P2: ${r.p2||'—'} mmHg`;
+    case 'aircomp':   return `${r.pam||'—'} BAR · Dew: ${r.dam||'—'}°C`;
+    case 'airbackup': return `Central: ${r.central||'—'} BAR`;
+    case 'ambulance': return `E: ${r.esize||'—'} PSI · M: ${r.msize||'—'} PSI`;
+    case 'cylinder':  return `${r.qty||'—'} × ${r.gas||'—'} (${r.size||'—'})`;
+    case 'o2refill':  return `${r.bank||'—'} Bank · ${r.pressure||'—'}→${r.after||'—'} BAR`;
+    case 'airrefill': return `${r.bank||'—'} Bank · ${r.pressure||'—'}→${r.after||'—'} BAR`;
+    default:          return '—';
+  }
+}
+
+function detectIssue(type, r) {
+  if (r.leak === 'no' || r.damage === 'no' || r.alarm === 'no') return true;
+  if (type === 'vacuum' && (parseFloat(r.p1) > -300 || parseFloat(r.p2) > -300)) return true;
+  if (type === 'aircomp') {
+    const p = parseFloat(r.pam);
+    if (!isNaN(p) && (p < 6 || p > 9.6)) return true;
+    if (parseFloat(r.dam) > -46) return true;
+  }
+  if ((type === 'o2backup' || type === 'airbackup' || type === 'n2o') && r.central) {
+    const c = parseFloat(r.central);
+    if (!isNaN(c) && (c < 3.5 || c > 5.5)) return true;
+  }
+  if (type === 'cylinder' && (r.leak === 'no' || r.qc === 'no')) return true;
+  return false;
+}
+
+// ── O2 RESERVE CALCULATOR ──
+function calcO2Reserve() {
+  const size  = parseFloat(document.getElementById('calc-size')?.value  || 0);
+  const level = parseFloat(document.getElementById('calc-level')?.value || 0) / 100;
+  const cyls  = parseFloat(document.getElementById('calc-cyls')?.value  || 0);
+  const cons  = parseFloat(document.getElementById('calc-cons')?.value  || 0);
+  if (!cons || cons <= 0) return;
+  const totalL = (size * level * 855) + (cyls * 6800);
+  const hours  = Math.round(totalL / (cons / 24));
+  const resEl  = document.getElementById('calc-result');
+  const stEl   = document.getElementById('calc-status');
+  if (resEl) {
+    resEl.textContent = hours ? hours + 'h' : '—';
+    resEl.style.color = hours >= 48 ? 'var(--gn)' : hours >= 24 ? 'var(--or)' : 'var(--rd)';
+  }
+  if (stEl) {
+    if (!hours)          stEl.textContent = '';
+    else if (hours >= 48) stEl.innerHTML = '<span style="color:var(--gn);">✅ Compliant — reserve meets FMS.32.8 minimum</span>';
+    else if (hours >= 24) stEl.innerHTML = '<span style="color:var(--or);">⚠️ Warning — reserve below 48h, order LOX</span>';
+    else                  stEl.innerHTML = '<span style="color:var(--rd);">🔴 CRITICAL — reserve critically low, immediate action required</span>';
+  }
+}
+
+function renderLOXTrend() {
+  const data = ld('mg_lox').slice(0, 30).reverse();
+  if (!data.length) return;
+  mkChart('lox-trend-chart', {
+    type: 'line',
+    data: {
+      labels: data.map(r => r.date || '—'),
+      datasets: [
+        { label: 'LOX Level %', data: data.map(r => parseFloat(r.o2am) || null),
+          borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,.1)', tension: .4, fill: true, pointRadius: 3 },
+        { label: 'Pressure AM (BAR)', data: data.map(r => parseFloat(r.pam) || null),
+          borderColor: '#00d4aa', tension: .4, pointRadius: 3, yAxisID: 'y1' }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, position: 'bottom', labels: { color: '#5a7fa8', font: { size: 9 }, padding: 8 } },
+                 tooltip: { backgroundColor: '#0f2040', titleColor: '#d4e8ff', bodyColor: '#5a7fa8' } },
+      scales: {
+        x: { grid: { color: 'rgba(0,180,255,.04)' }, ticks: { color: '#5a7fa8', font: { size: 9 } } },
+        y: { grid: { color: 'rgba(0,180,255,.04)' }, position: 'left', min: 0, max: 100,
+             ticks: { color: '#5a7fa8', font: { size: 9 }, callback: v => v + '%' } },
+        y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false },
+              ticks: { color: '#5a7fa8', font: { size: 9 }, callback: v => v + 'B' } }
+      }
+    }
+  });
+}
+
+// ── KPIs ──
+function renderMGKPIs() {
+  const el = document.getElementById('mg-kpi-content'); if (!el) return;
+  const today = new Date().toISOString().split('T')[0];
+  const kpis = [
+    { name: 'LOX Daily Entries — Target: 2/day (AM+PM)', count: ld('mg_lox').length, target: 60, color: '#3b82f6' },
+    { name: 'O₂ Backup Manifold Checks', count: ld('mg_o2backup').length, target: 60, color: '#00b4ff' },
+    { name: 'Nitrous Oxide Checks', count: ld('mg_n2o').length, target: 60, color: '#a855f7' },
+    { name: 'Central Vacuum Checks', count: ld('mg_vacuum').length, target: 60, color: '#5a7fa8' },
+    { name: 'Air Compressor Checks', count: ld('mg_aircomp').length, target: 60, color: '#00d4aa' },
+    { name: 'Air Backup Manifold Checks', count: ld('mg_airbackup').length, target: 60, color: '#10b981' },
+    { name: 'Ambulance Daily Checks', count: ld('mg_ambulance').length, target: 60, color: '#ef4444' },
+    { name: 'Cylinder Delivery Inspections', count: ld('mg_cylinder').length, target: 12, color: '#f59e0b' },
+    { name: 'O₂ Tank Refill Logs', count: ld('mg_o2refill').length, target: 4, color: '#3b82f6' },
+    { name: 'Medical Air Refill Logs', count: ld('mg_airrefill').length, target: 4, color: '#10b981' },
+  ];
+
+  const todayCheck = ld('mg_lox').some(r => r.date === today);
+  const issueCount = Object.keys(MG_DEFS).reduce((s, type) =>
+    s + ld('mg_'+type).filter(r => detectIssue(type, r)).length, 0);
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;">
+      <div class="sc" style="--c:${todayCheck?'var(--gn)':'var(--rd)'}">
+        <div class="ico">${todayCheck?'✅':'🔴'}</div>
+        <div class="val" style="color:${todayCheck?'var(--gn)':'var(--rd)'};">${todayCheck?'Done':'Missing'}</div>
+        <div class="lbl">LOX Check Today</div>
+      </div>
+      <div class="sc" style="--c:var(--rd)">
+        <div class="ico">⚠️</div>
+        <div class="val" style="color:${issueCount?'var(--rd)':'var(--gn)'};">${issueCount}</div>
+        <div class="lbl">Issues in Records</div>
+      </div>
+      <div class="sc" style="--c:var(--ac)">
+        <div class="ico">📋</div>
+        <div class="val">${Object.keys(MG_DEFS).reduce((s,t)=>s+ld('mg_'+t).length,0)}</div>
+        <div class="lbl">Total MG Entries</div>
+      </div>
+    </div>
+    <div class="st">Medical Gas System Coverage — All Checklists</div>
+    ${kpis.map(k => {
+      const pct = Math.min(100, Math.round((k.count / k.target) * 100));
+      const c   = pct >= 80 ? 'var(--gn)' : pct >= 50 ? 'var(--or)' : 'var(--rd)';
+      const fl  = pct >= 80 ? 'linear-gradient(90deg,#10b981,var(--gn))' : pct >= 50 ? 'linear-gradient(90deg,var(--or),#f97316)' : 'linear-gradient(90deg,var(--rd),#dc2626)';
+      const bd  = pct >= 80 ? '<span class="bx bg2">Met</span>' : pct >= 50 ? '<span class="bx bo2">Partial</span>' : '<span class="bx br2">Gap</span>';
+      return `<div class="kc"><div class="kch">
+        <div class="kcn">${k.name}</div>
+        <div class="kcv">
+          <div class="kca" style="color:${c};">${k.count}</div>
+          <div class="kct">/ ${k.target} entries</div>
+          ${bd}
+        </div>
+      </div><div class="kbar"><div class="kfill" style="width:${pct}%;background:${fl};"></div></div></div>`;
+    }).join('')}`;
+}
+
+// Hook renderAllMGTables into the main renderAll
+const _origRenderAll = window.renderAll;
+window.renderAll = function() {
+  if (_origRenderAll) _origRenderAll();
+  renderAllMGTables();
+};
+
+// Also hook into gp() for the medgas page
+const _origGp = window.gp;
+window.gp = function(id) {
+  _origGp(id);
+  if (id === 'medgas') {
+    renderAllMGTables();
+    renderMGLog('all');
+  }
+};
 
 </script>
 </body>
