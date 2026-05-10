@@ -1,0 +1,2099 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>FMS Command — Obeid Specialized Hospital</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#050c18;--sf:#0a1628;--s2:#0f2040;--s3:#162850;--bd:rgba(0,180,255,.12);--b2:rgba(0,180,255,.28);--tx:#d4e8ff;--mu:#5a7fa8;--ac:#00b4ff;--gn:#00ff88;--or:#ffaa00;--rd:#ef4444;--pu:#a855f7;--cy:#06b6d4;--sb:260px;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,180,255,.022) 1px,transparent 1px),linear-gradient(90deg,rgba(0,180,255,.022) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0;}
+/* LOGIN */
+#loginScreen{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;}
+.lcard{background:var(--sf);border:1px solid var(--b2);border-radius:20px;padding:40px 36px;width:440px;max-width:94vw;position:relative;}
+.lcard::before{content:'';position:absolute;top:-1px;left:12%;right:12%;height:2px;background:linear-gradient(90deg,transparent,var(--ac),transparent);}
+.lb{font-family:'Rajdhani',sans-serif;font-size:27px;font-weight:700;color:var(--ac);letter-spacing:3px;text-align:center;}
+.lsb{font-size:10px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;text-align:center;margin-top:3px;}
+.lh{font-size:13px;color:var(--tx);text-align:center;margin:10px 0 22px;}
+.lf{margin-bottom:12px;}
+.lf label{display:block;font-size:9px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;}
+.lf select,.lf input{width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:10px 12px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:14px;outline:none;}
+.lf select:focus,.lf input:focus{border-color:var(--ac);}
+.lf select option{background:var(--s2);}
+.lbtn{width:100%;background:linear-gradient(135deg,var(--ac),#005fa3);border:none;border-radius:9px;padding:13px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:19px;font-weight:700;letter-spacing:2px;cursor:pointer;margin-top:4px;}
+.lerr{color:var(--rd);font-size:11px;text-align:center;margin-top:7px;min-height:15px;}
+.pin-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:14px;padding:12px;background:var(--s2);border-radius:9px;}
+.pr{font-size:10px;color:var(--mu);padding:3px 0;}
+.pr b{color:var(--ac);}
+/* APP */
+#app{display:none;min-height:100vh;}
+.layout{display:flex;min-height:100vh;position:relative;z-index:1;}
+/* SIDEBAR */
+.sidebar{width:var(--sb);background:var(--sf);border-right:1px solid var(--bd);position:fixed;top:0;left:0;height:100vh;z-index:200;display:flex;flex-direction:column;overflow-y:auto;}
+.sbh{padding:15px 15px 11px;border-bottom:1px solid var(--bd);}
+.sbbr{font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;color:var(--ac);letter-spacing:2px;}
+.sbsb{font-size:8px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;}
+.sbu{padding:10px 15px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:9px;}
+.sbav{width:31px;height:31px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--pu));display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:12px;flex-shrink:0;}
+.sbnm{font-size:12px;font-weight:600;}
+.sbrl{font-size:9px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;}
+.sbnav{padding:8px 0;flex:1;}
+.nsc{padding:6px 15px 2px;font-size:8px;color:var(--mu);letter-spacing:3px;text-transform:uppercase;font-weight:600;}
+.ni{display:flex;align-items:center;gap:8px;padding:8px 15px;cursor:pointer;transition:.15s;color:var(--mu);font-size:12px;font-weight:500;border-left:3px solid transparent;}
+.ni:hover{color:var(--tx);background:rgba(0,180,255,.05);}
+.ni.active{color:var(--ac);background:rgba(0,180,255,.08);border-left-color:var(--ac);}
+.ni-ic{font-size:13px;width:16px;text-align:center;}
+.nb{margin-left:auto;background:var(--rd);color:#fff;font-size:8px;font-weight:700;padding:1px 5px;border-radius:20px;}
+.sbft{padding:11px 15px;border-top:1px solid var(--bd);}
+.cdb{background:var(--s2);border:1px solid rgba(255,170,0,.25);border-radius:9px;padding:9px;text-align:center;}
+.cdl{font-size:8px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;}
+.cdd{font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;color:var(--or);line-height:1.1;}
+.cds{font-size:8px;color:var(--mu);}
+/* TOPBAR */
+.topbar{position:fixed;top:0;left:var(--sb);right:0;height:55px;background:rgba(10,22,40,.96);border-bottom:1px solid var(--bd);backdrop-filter:blur(20px);z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 22px;}
+.tbt{font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;letter-spacing:1px;}
+.tbr{display:flex;align-items:center;gap:11px;}
+.lpill{display:flex;align-items:center;gap:5px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);border-radius:20px;padding:3px 10px;font-size:10px;color:#10b981;font-weight:600;}
+.ldot{width:6px;height:6px;border-radius:50%;background:#10b981;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+.logbtn{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:6px;padding:4px 11px;color:var(--rd);font-size:11px;cursor:pointer;font-family:'Exo 2',sans-serif;}
+/* MAIN */
+.main{margin-left:var(--sb);padding-top:55px;min-height:100vh;}
+.pg{display:none;padding:22px;animation:fi .25s ease;}
+.pg.active{display:block;}
+@keyframes fi{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
+/* PAGE HEADER */
+.ph{margin-bottom:20px;}
+.ph h1{font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;letter-spacing:1px;}
+.ph p{font-size:11px;color:var(--mu);margin-top:2px;}
+/* GRIDS */
+.g{display:grid;gap:12px;margin-bottom:16px;}
+.g4{grid-template-columns:repeat(4,1fr);}
+.g3{grid-template-columns:repeat(3,1fr);}
+.g2{grid-template-columns:repeat(2,1fr);}
+/* STAT CARD */
+.sc{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:15px;position:relative;overflow:hidden;}
+.sc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:12px 12px 0 0;background:var(--c,var(--ac));}
+.sc .ico{font-size:22px;margin-bottom:7px;}
+.sc .val{font-family:'Rajdhani',sans-serif;font-size:30px;font-weight:700;line-height:1;}
+.sc .lbl{font-size:9px;color:var(--mu);margin-top:2px;text-transform:uppercase;letter-spacing:1px;}
+.sc .sub{font-size:9px;color:var(--mu);margin-top:3px;}
+/* CARD */
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:12px;overflow:hidden;margin-bottom:14px;}
+.ch{padding:11px 15px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;}
+.ct{font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;letter-spacing:.5px;}
+.cb{padding:15px;}
+/* FORMS */
+.fg{display:grid;gap:10px;}
+.fg2{grid-template-columns:repeat(2,1fr);}
+.fg3{grid-template-columns:repeat(3,1fr);}
+.ff{display:flex;flex-direction:column;gap:3px;}
+.ff label{font-size:9px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;}
+.ff input,.ff select,.ff textarea{background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:8px 10px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;width:100%;}
+.ff input:focus,.ff select:focus,.ff textarea:focus{border-color:var(--ac);}
+.ff textarea{resize:vertical;min-height:60px;}
+.ff select option{background:var(--s2);}
+.ff input[type=file]{padding:5px;}
+.ht{font-size:9px;color:var(--mu);margin-top:1px;}
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:6px;font-family:'Exo 2',sans-serif;font-size:11px;font-weight:600;cursor:pointer;transition:.2s;border:none;}
+.bp{background:linear-gradient(135deg,var(--ac),#005fa3);color:#fff;}
+.bg{background:linear-gradient(135deg,#10b981,#059669);color:#fff;}
+.br{background:linear-gradient(135deg,var(--rd),#b91c1c);color:#fff;}
+.bo{background:transparent;border:1px solid var(--b2);color:var(--ac);}
+/* TABS */
+.tb{display:flex;gap:2px;background:var(--s2);border-radius:8px;padding:3px;width:fit-content;flex-wrap:wrap;margin-bottom:14px;}
+.tbtn{padding:6px 13px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;transition:.15s;border:none;color:var(--mu);background:transparent;font-family:'Exo 2',sans-serif;}
+.tbtn.active{background:var(--s3);color:var(--ac);}
+/* PERIOD */
+.pb{display:flex;gap:2px;background:var(--s2);border-radius:8px;padding:3px;width:fit-content;}
+.pbtn{padding:5px 13px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:none;color:var(--mu);background:transparent;font-family:'Exo 2',sans-serif;}
+.pbtn.active{background:var(--s3);color:var(--ac);}
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;font-size:11px;}
+.tbl th{font-size:8px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;padding:7px 11px;text-align:left;border-bottom:1px solid var(--bd);}
+.tbl td{padding:8px 11px;border-bottom:1px solid rgba(0,180,255,.04);vertical-align:middle;}
+.tbl tr:hover td{background:rgba(0,180,255,.03);}
+/* BADGES */
+.bx{display:inline-flex;align-items:center;padding:1px 7px;border-radius:20px;font-size:9px;font-weight:700;}
+.bg2{background:rgba(0,255,136,.12);color:var(--gn);border:1px solid rgba(0,255,136,.25);}
+.bo2{background:rgba(255,170,0,.12);color:var(--or);border:1px solid rgba(255,170,0,.25);}
+.br2{background:rgba(239,68,68,.12);color:var(--rd);border:1px solid rgba(239,68,68,.25);}
+.bb2{background:rgba(0,180,255,.12);color:var(--ac);border:1px solid rgba(0,180,255,.25);}
+.bm2{background:rgba(90,127,168,.12);color:var(--mu);border:1px solid rgba(90,127,168,.25);}
+/* KPI BAR */
+.kc{background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:12px 15px;margin-bottom:8px;}
+.kch{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px;}
+.kcn{font-size:12px;color:var(--tx);flex:1;}
+.kcv{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.kca{font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;}
+.kct{font-size:9px;color:var(--mu);}
+.kbar{background:rgba(255,255,255,.05);border-radius:4px;height:7px;}
+.kfill{height:100%;border-radius:4px;transition:width 1s ease;}
+/* PROGRESS */
+.pw{background:rgba(255,255,255,.05);border-radius:4px;height:5px;flex:1;}
+.pf{height:100%;border-radius:4px;transition:width .8s ease;}
+/* ALERTS */
+.al{display:flex;align-items:flex-start;gap:8px;padding:8px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;border-left:3px solid;margin-bottom:5px;}
+.alc{border-left-color:var(--rd);}
+.alw{border-left-color:var(--or);}
+.ali{border-left-color:var(--ac);}
+/* CHART CARD */
+.cc{background:var(--sf);border:1px solid var(--bd);border-radius:11px;padding:14px;}
+.ccl{font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;margin-bottom:2px;}
+.ccs{font-size:10px;color:var(--mu);margin-bottom:11px;}
+/* MODAL */
+.mov{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:500;display:none;align-items:center;justify-content:center;backdrop-filter:blur(5px);}
+.mov.open{display:flex;}
+.mbox{background:var(--sf);border:1px solid var(--b2);border-radius:16px;width:580px;max-width:95vw;max-height:90vh;overflow-y:auto;}
+.mh{padding:15px 20px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--sf);z-index:1;}
+.mt{font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;}
+.mc{cursor:pointer;color:var(--mu);font-size:17px;background:none;border:none;}
+.mb{padding:18px;}
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;color:#fff;padding:10px 18px;border-radius:9px;font-weight:600;font-size:13px;z-index:999;transform:translateY(80px);opacity:0;transition:.35s;pointer-events:none;}
+.toast.show{transform:translateY(0);opacity:1;}
+/* SECTION TITLE */
+.st{font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;color:var(--or);margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid var(--bd);}
+.em{text-align:center;padding:30px;color:var(--mu);font-size:12px;}
+/* TECH ROW */
+.tr2{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid rgba(0,180,255,.05);}
+.tr2:last-child{border-bottom:none;}
+.tav{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0;}
+/* DEPT HEAT */
+.dg{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
+.dc{border-radius:9px;padding:11px;background:var(--s2);border:1px solid var(--bd);text-align:center;}
+.dv{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;}
+.dn{font-size:9px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;margin-top:2px;}
+/* CUSTOM KPI */
+.cki{background:var(--s2);border:1px solid var(--bd);border-radius:9px;padding:12px 14px;margin-bottom:7px;display:flex;align-items:center;gap:10px;}
+::-webkit-scrollbar{width:5px;height:5px;}
+/* Canvas sizing */
+canvas{display:block;}
+::-webkit-scrollbar-track{background:var(--sf);}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:3px;}
+
+/* First-visit banner */
+#first-visit-banner{position:fixed;bottom:0;left:0;right:0;z-index:9998;background:linear-gradient(135deg,#005fa3,var(--ac));padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,.4);}
+#first-visit-banner span{font-size:12px;color:#fff;}
+#first-visit-banner button{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:5px 14px;color:#fff;font-family:'Exo 2',sans-serif;font-size:11px;cursor:pointer;white-space:nowrap;}
+
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+<div class="lcard">
+  <div class="lb">FMS COMMAND</div>
+  <div class="lsb">Obeid Specialized Hospital · Riyadh · CBAHI 2026</div>
+  <div class="lh">🏥 Integrated FMS & Maintenance Intelligence Platform</div>
+  <div class="lf"><label>Select Role</label>
+    <select id="lr">
+      <option value="">— Choose your role —</option>
+      <option value="director">FMS Director</option>
+      <option value="maintenance">Maintenance Manager — Mostapha</option>
+      <option value="biomedical">Biomedical Engineer — Bashar</option>
+      <option value="safety">Safety Officer — Moe</option>
+      <option value="security">Security Manager — Bader</option>
+    </select></div>
+  <div class="lf"><label>Full Name</label><input id="lname" type="text" placeholder="Enter your full name"></div>
+  <div class="lf"><label>PIN</label><input id="lpin" type="password" placeholder="4-digit PIN" maxlength="4"></div>
+  <button class="lbtn" onclick="doLogin()">ACCESS PLATFORM →</button>
+  <div class="lerr" id="lerr"></div>
+  <div class="pin-grid">
+    <div class="pr">FMS Director: <b>1234</b></div>
+    <div class="pr">Mostapha (Maint.): <b>2222</b></div>
+    <div class="pr">Bashar (Biomed): <b>3333</b></div>
+    <div class="pr">Moe (Safety): <b>4444</b></div>
+    <div class="pr">Bader (Security): <b>5555</b></div>
+  </div>
+</div>
+</div>
+
+<!-- APP -->
+<div id="app">
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sbh"><div class="sbbr">FMS COMMAND</div><div class="sbsb">Obeid Hospital · Live Data</div></div>
+  <div class="sbu"><div class="sbav" id="sbAv">?</div><div><div class="sbnm" id="sbName">—</div><div class="sbrl" id="sbRole">—</div></div></div>
+  <nav class="sbnav">
+    <div class="nsc">Overview</div>
+    <div class="ni active" onclick="gp('dash')" id="n-dash"><span class="ni-ic">⬡</span>Command Center</div>
+    <div class="ni" onclick="gp('kpi')" id="n-kpi"><span class="ni-ic">📊</span>KPI Dashboard</div>
+    <div class="ni" onclick="gp('cbahi')" id="n-cbahi"><span class="ni-ic">✓</span>CBAHI Tracker</div>
+    <div class="nsc">Maintenance Intelligence</div>
+    <div class="ni" onclick="gp('mms')" id="n-mms"><span class="ni-ic">🔩</span>Maintenance Analytics</div>
+    <div class="ni" onclick="gp('reports')" id="n-reports"><span class="ni-ic">📈</span>Reports & Analysis</div>
+    <div class="nsc">Annual Plans</div>
+    <div class="ni" onclick="gp('safety')" id="n-safety"><span class="ni-ic">🛡</span>Safety (FMS.1.1.1)</div>
+    <div class="ni" onclick="gp('security')" id="n-security"><span class="ni-ic">🔒</span>Security (FMS.1.1.2)</div>
+    <div class="ni" onclick="gp('hazmat')" id="n-hazmat"><span class="ni-ic">☣</span>Hazmat (FMS.1.1.3)</div>
+    <div class="ni" onclick="gp('emergency')" id="n-emergency"><span class="ni-ic">🚨</span>Emergency (FMS.1.1.4/5)</div>
+    <div class="ni" onclick="gp('fire')" id="n-fire"><span class="ni-ic">🔥</span>Fire Safety (FMS.1.1.6)</div>
+    <div class="ni" onclick="gp('equip')" id="n-equip"><span class="ni-ic">⚕</span>Med. Equipment (FMS.1.1.7)</div>
+    <div class="ni" onclick="gp('utils')" id="n-utils"><span class="ni-ic">⚡</span>Utilities (FMS.1.1.8)</div>
+    <div class="nsc">FMS Standards</div>
+    <div class="ni" onclick="gp('medgas')" id="n-medgas"><span class="ni-ic">🫧</span>Medical Gas (FMS.32)</div>
+    <div class="ni" onclick="gp('radiation')" id="n-radiation"><span class="ni-ic">☢</span>Radiation (FMS.9)</div>
+    <div class="nsc">Operations</div>
+    <div class="ni" onclick="gp('wo')" id="n-wo"><span class="ni-ic">🔧</span>Work Orders<span class="nb" id="woBadge">0</span></div>
+    <div class="ni" onclick="gp('ckpi')" id="n-ckpi"><span class="ni-ic">⚙</span>Custom KPIs</div>
+    <div class="ni" onclick="gp('docs')" id="n-docs"><span class="ni-ic">📁</span>Documents</div>
+  </nav>
+  <div class="sbft"><div class="cdb"><div class="cdl">CBAHI Survey In</div><div class="cdd" id="cdDays">—</div><div class="cds">days · October 2026</div></div></div>
+</aside>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="tbt" id="tbTitle">⬡ Command Center</div>
+  <div class="tbr">
+    <div class="lpill"><div class="ldot"></div>LIVE DATA</div>
+    <span style="font-size:10px;color:var(--mu);" id="tbDate"></span>
+    <button class="logbtn" onclick="doLogout()">⏻ Logout</button>
+  </div>
+</div>
+
+<main class="main">
+
+<!-- ===== DASHBOARD ===== -->
+<div class="pg active" id="page-dash">
+  <div class="ph"><h1>FMS Command Center</h1><p>All data live · auto-calculated KPIs · CBAHI readiness · Maintenance analytics integrated</p></div>
+  <div class="g g4">
+    <div class="sc" style="--c:var(--ac)"><div class="ico">📋</div><div class="val" id="d-wo">—</div><div class="lbl">Open Work Orders</div></div>
+    <div class="sc" style="--c:var(--gn)"><div class="ico">✅</div><div class="val" id="d-ppm">—</div><div class="lbl">PPM Completion Rate</div></div>
+    <div class="sc" style="--c:var(--or)"><div class="ico">🏆</div><div class="val" id="d-cbahi">—</div><div class="lbl">CBAHI Readiness</div></div>
+    <div class="sc" style="--c:#00d4aa"><div class="ico">🔩</div><div class="val" id="d-maint">230</div><div class="lbl">Maint. Tickets (Live)</div><div class="sub" id="d-maint-rate">from Google Sheet</div></div>
+  </div>
+  <div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Domain Readiness — Live</div></div><div class="cb" id="domBars"></div></div>
+    <div class="card"><div class="ch"><div class="ct">🚨 Active Alerts</div></div><div class="cb" id="dashAlerts"></div></div>
+  </div>
+  <div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Maintenance Volume — Dec 25–Apr 26</div></div><div class="cb" style="padding:12px;"><canvas id="dash-chart" height="130"></canvas></div></div>
+    <div class="card"><div class="ch"><div class="ct">Recent Activity</div></div><div class="cb" style="padding:0;" id="dashAct"></div></div>
+  </div>
+</div>
+
+<!-- ===== KPI DASHBOARD ===== -->
+<div class="pg" id="page-kpi">
+  <div class="ph"><h1>📊 KPI Dashboard — All Annual Plans</h1><p>All values calculated from real records entered by managers · select period to filter</p></div>
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+    <div class="pb">
+      <button class="pbtn active" onclick="setKpiPd('ytd',this)">Year-to-Date</button>
+      <button class="pbtn" onclick="setKpiPd('q1',this)">Q1 Jan–Mar</button>
+      <button class="pbtn" onclick="setKpiPd('q2',this)">Q2 Apr–Jun</button>
+      <button class="pbtn" onclick="setKpiPd('q3',this)">Q3 Jul–Sep</button>
+      <button class="pbtn" onclick="setKpiPd('q4',this)">Q4 Oct–Dec</button>
+    </div>
+    <div class="tb" style="margin:0;">
+      <button class="tbtn active" onclick="showKT('all',this)">All KPIs</button>
+      <button class="tbtn" onclick="showKT('111',this)">FMS.1.1.1</button>
+      <button class="tbtn" onclick="showKT('112',this)">FMS.1.1.2</button>
+      <button class="tbtn" onclick="showKT('113',this)">FMS.1.1.3</button>
+      <button class="tbtn" onclick="showKT('1145',this)">FMS.1.1.4/5</button>
+      <button class="tbtn" onclick="showKT('116',this)">FMS.1.1.6</button>
+      <button class="tbtn" onclick="showKT('117',this)">FMS.1.1.7</button>
+      <button class="tbtn" onclick="showKT('118',this)">FMS.1.1.8</button>
+    </div>
+  </div>
+  <div id="kpiOut"></div>
+</div>
+
+<!-- ===== CBAHI ===== -->
+<div class="pg" id="page-cbahi">
+  <div class="ph"><h1>✓ CBAHI Standards Tracker</h1><p>Evidence-driven status · October 2026 target</p></div>
+  <div class="g g3">
+    <div class="sc" style="--c:var(--gn)"><div class="ico">✅</div><div class="val" id="cb-met">—</div><div class="lbl">Standards Met</div></div>
+    <div class="sc" style="--c:var(--or)"><div class="ico">⚠️</div><div class="val" id="cb-par">—</div><div class="lbl">Partial</div></div>
+    <div class="sc" style="--c:var(--rd)"><div class="ico">❌</div><div class="val" id="cb-gap">—</div><div class="lbl">Gaps</div></div>
+  </div>
+  <div class="card"><div class="cb" style="padding:0;"><div id="cbRows"></div></div></div>
+</div>
+
+<!-- ===== MMS ANALYTICS ===== -->
+<div class="pg" id="page-mms">
+  <div class="ph"><h1>🔩 Maintenance Analytics — Live</h1><p>Real-time from Google Sheets · General (Mostapha) &amp; Biomedical (Bashar)</p></div>
+
+  <!-- Connection Status Bar -->
+  <div style="display:flex;align-items:center;justify-content:space-between;background:var(--s2);border:1px solid var(--bd);border-radius:9px;padding:10px 16px;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div id="conn-dot" style="width:8px;height:8px;border-radius:50%;background:var(--or);flex-shrink:0;animation:pulse 2s infinite;"></div>
+      <span id="sheet-status" style="font-size:11px;color:var(--or);">Connecting to Google Sheets...</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span id="last-updated" style="font-size:9px;color:var(--mu);"></span>
+      <button class="btn bo" style="padding:4px 12px;font-size:10px;" onclick="fetchSheetData()">⟳ Refresh</button>
+    </div>
+  </div>
+
+  <!-- SETUP INSTRUCTIONS — shown only when sheet is not connected -->
+  <div id="sheet-setup-instructions" style="display:none;background:rgba(0,180,255,.05);border:1px solid rgba(0,180,255,.2);border-radius:11px;padding:20px;margin-bottom:16px;">
+    <div style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--ac);margin-bottom:12px;">📋 Two-step setup to connect your Google Sheet</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--or);margin-bottom:8px;">Step 1 — Make sheet public (if not done)</div>
+        <div style="font-size:11px;color:var(--mu);line-height:1.7;">
+          1. Open your Google Sheet<br>
+          2. Click <b style="color:var(--tx)">Share</b> (top right)<br>
+          3. Click <b style="color:var(--tx)">Change to anyone with the link</b><br>
+          4. Set permission to <b style="color:var(--gn)">Viewer</b><br>
+          5. Click <b style="color:var(--tx)">Done</b>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--or);margin-bottom:8px;">Step 2 — Deploy Apps Script (solves CORS)</div>
+        <div style="font-size:11px;color:var(--mu);line-height:1.7;">
+          1. In your Sheet: <b style="color:var(--tx)">Extensions → Apps Script</b><br>
+          2. Paste the script shown below → <b style="color:var(--tx)">Save</b><br>
+          3. Click <b style="color:var(--tx)">Deploy → New deployment → Web App</b><br>
+          4. Set <b style="color:var(--gn)">Execute as: Me · Anyone can access</b><br>
+          5. Copy the URL, paste below, click Connect
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:14px;background:var(--s2);border-radius:8px;padding:12px;font-size:10px;font-family:monospace;color:#34d399;overflow-x:auto;white-space:pre;">function doGet(e) {
+  var ss = SpreadsheetApp.openById('10qPGTtY0k9cBNAeYEwyKwpebsYMndvEFkhFB0RRO0q8');
+  var sheet = ss.getSheets().find(s => s.getSheetId() == 1530231215) || ss.getSheets()[0];
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var rows = data.slice(1)
+    .filter(function(r){ return r[0] || r[11]; })
+    .map(function(r){ return r.map(String); });
+  return ContentService
+    .createTextOutput(JSON.stringify({headers: headers.map(String), rows: rows}))
+    .setMimeType(ContentService.MimeType.JSON);
+}</div>
+    <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <input type="text" id="apps-script-url-input" placeholder="Paste your Apps Script Web App URL here..." style="flex:1;min-width:300px;background:var(--s3);border:1px solid var(--b2);border-radius:7px;padding:9px 13px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;">
+      <button class="btn bp" onclick="connectAppsScript()">🔗 Connect Sheet</button>
+    </div>
+  </div>
+
+  <!-- Month Selector -->
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+    <span style="font-size:10px;color:var(--mu);letter-spacing:1px;text-transform:uppercase;">View Period:</span>
+    <div class="tb" style="margin:0;" id="mms-month-bar">
+      <button class="tbtn active" onclick="setMMSMonth('all',this)">All Time</button>
+    </div>
+  </div>
+
+  <!-- KPI Cards - live -->
+  <div class="g g4" style="margin-bottom:16px;">
+    <div class="sc" style="--c:#00d4aa"><div class="ico">📋</div><div class="val" style="color:#00d4aa" id="mms-total">—</div><div class="lbl">Total Tickets</div><div class="sub" id="mms-period-sub">All time</div></div>
+    <div class="sc" style="--c:#818cf8"><div class="ico">⚕</div><div class="val" style="color:#818cf8" id="mms-bio">—</div><div class="lbl">Biomedical</div><div class="sub" id="mms-bio-pct">—</div></div>
+    <div class="sc" style="--c:#34d399"><div class="ico">🔧</div><div class="val" style="color:#34d399" id="mms-gen">—</div><div class="lbl">General Maint.</div><div class="sub" id="mms-gen-pct">—</div></div>
+    <div class="sc" style="--c:#10b981"><div class="ico">✅</div><div class="val" style="color:#10b981" id="mms-comp">—</div><div class="lbl">Completed</div><div class="sub" id="mms-comp-rate">—</div></div>
+    <div class="sc" style="--c:#f59e0b"><div class="ico">⏱</div><div class="val" style="color:#f59e0b" id="mms-avg">—</div><div class="lbl">Avg Close Time</div><div class="sub">hours · from real data</div></div>
+    <div class="sc" style="--c:var(--rd)"><div class="ico">📂</div><div class="val" style="color:var(--rd)" id="mms-open">—</div><div class="lbl">Open / Pending</div><div class="sub" id="mms-open-sub">—</div></div>
+    <div class="sc" style="--c:#3b82f6"><div class="ico">🚨</div><div class="val" style="color:#3b82f6" id="mms-emrg">—</div><div class="lbl">Emergency</div><div class="sub" id="mms-emrg-pct">—</div></div>
+    <div class="sc" style="--c:#f43f5e"><div class="ico">🚫</div><div class="val" style="color:#f43f5e" id="mms-sla">—</div><div class="lbl">SLA Breached</div><div class="sub" id="mms-sla-sub">—</div></div>
+  </div>
+
+  <!-- Tab Selector: View Mode -->
+  <div class="tb" style="margin-bottom:16px;">
+    <button class="tbtn active" onclick="setMMSView('overview',this)">📊 Overview</button>
+    <button class="tbtn" onclick="setMMSView('department',this)">🏢 By Department</button>
+    <button class="tbtn" onclick="setMMSView('staff',this)">👷 Staff Activity</button>
+    <button class="tbtn" onclick="setMMSView('sla',this)">⏱ SLA &amp; Performance</button>
+  </div>
+
+  <!-- OVERVIEW VIEW -->
+  <div id="mms-view-overview">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+      <div class="card"><div class="ch"><div class="ct">Monthly Volume — Biomedical vs General</div><div style="font-size:9px;color:var(--mu);" id="vol-sub">Live from sheet</div></div><div class="cb" style="padding:14px;min-height:220px;"><canvas id="c-vol"></canvas></div></div>
+      <div class="card"><div class="ch"><div class="ct">Monthly Closure Rate %</div></div><div class="cb" style="padding:14px;min-height:220px;"><canvas id="c-close"></canvas></div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;">
+      <div class="card"><div class="ch"><div class="ct">Ticket Status</div></div><div class="cb" style="padding:14px;min-height:200px;"><canvas id="c-status"></canvas></div></div>
+      <div class="card"><div class="ch"><div class="ct">Work Type</div></div><div class="cb" style="padding:14px;min-height:200px;"><canvas id="c-type"></canvas></div></div>
+      <div class="card"><div class="ch"><div class="ct">Avg Close Time (h)</div></div><div class="cb" style="padding:14px;min-height:200px;"><canvas id="c-time"></canvas></div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+      <div class="card"><div class="ch"><div class="ct">Completed vs Open — Monthly</div></div><div class="cb" style="padding:14px;min-height:200px;"><canvas id="c-compopen"></canvas></div></div>
+      <div class="card"><div class="ch"><div class="ct">Nature of Work Breakdown</div></div><div class="cb" style="padding:14px;min-height:200px;"><canvas id="c-nature"></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- DEPARTMENT VIEW -->
+  <div id="mms-view-department" style="display:none;">
+    <div class="card" style="margin-bottom:14px;"><div class="ch"><div class="ct">🏢 Tickets by Department</div><div id="dept-period-label" style="font-size:9px;color:var(--mu);">All time</div></div>
+      <div class="cb" style="padding:14px;min-height:280px;"><canvas id="c-dept-bar"></canvas></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+      <div class="card"><div class="ch"><div class="ct">Open Jobs by Department</div></div><div class="cb" style="padding:14px;min-height:220px;"><canvas id="c-dept-open"></canvas></div></div>
+      <div class="card"><div class="ch"><div class="ct">Closed Jobs by Department</div></div><div class="cb" style="padding:14px;min-height:220px;"><canvas id="c-dept-closed"></canvas></div></div>
+    </div>
+    <div class="card"><div class="ch"><div class="ct">Department Detail Table</div></div>
+      <div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Department</th><th>Total</th><th>Open</th><th>Completed</th><th>Close Rate</th><th>Avg Time (h)</th><th>Status Bar</th></tr></thead><tbody id="dept-table-body"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- STAFF ACTIVITY VIEW -->
+  <div id="mms-view-staff" style="display:none;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+      <div class="card"><div class="ch"><div class="ct">👷 General Maintenance — Workload</div><div style="font-size:9px;color:var(--mu);">Ranked by tickets assigned</div></div><div class="cb" style="padding:14px;min-height:240px;"><canvas id="c-tech-assigned"></canvas></div></div>
+      <div class="card"><div class="ch"><div class="ct">📈 General Maintenance — Close Rate</div><div style="font-size:9px;color:var(--mu);">% of assigned completed</div></div><div class="cb" style="padding:14px;min-height:240px;"><canvas id="c-tech-rate"></canvas></div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+      <div class="card"><div class="ch"><div class="ct">👷 General Team Scorecard</div></div><div class="cb" id="techGen" style="max-height:400px;overflow-y:auto;"></div></div>
+      <div class="card"><div class="ch"><div class="ct">⚕ Biomedical Team Scorecard — Bashar</div></div><div class="cb" id="techBio" style="max-height:400px;overflow-y:auto;"></div></div>
+    </div>
+    <div class="card" style="margin-bottom:14px;"><div class="ch"><div class="ct">🏆 Staff Activity Summary — Ranked</div><div style="font-size:9px;color:var(--mu);">Highest to lowest workload · all technicians</div></div>
+      <div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Rank</th><th>Technician</th><th>Team</th><th>Assigned</th><th>Completed</th><th>Close Rate</th><th>Avg Time (h)</th><th>Status</th></tr></thead><tbody id="staff-table-body"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- SLA & PERFORMANCE VIEW -->
+  <div id="mms-view-sla" style="display:none;">
+    <div class="g g4" style="margin-bottom:14px;">
+      <div class="sc" style="--c:var(--gn)"><div class="ico">✅</div><div class="val" id="sla-met-val">—</div><div class="lbl">SLA Met</div></div>
+      <div class="sc" style="--c:var(--rd)"><div class="ico">❌</div><div class="val" id="sla-br-val">—</div><div class="lbl">SLA Breached</div></div>
+      <div class="sc" style="--c:var(--ac)"><div class="ico">📊</div><div class="val" id="sla-rate-val">—</div><div class="lbl">SLA Compliance</div></div>
+      <div class="sc" style="--c:var(--or)"><div class="ico">⏱</div><div class="val" id="sla-avg-resp">—</div><div class="lbl">Avg Response</div><div class="sub">hours</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+      <div class="card"><div class="ch"><div class="ct">SLA Compliance by Month</div></div><div class="cb" style="padding:14px;min-height:220px;"><canvas id="c-sla-monthly"></canvas></div></div>
+      <div class="card"><div class="ch"><div class="ct">Response Time Distribution</div></div><div class="cb" style="padding:14px;min-height:220px;"><canvas id="c-resp-time"></canvas></div></div>
+    </div>
+    <div class="card"><div class="ch"><div class="ct">SLA Detail Table — All Records</div></div>
+      <div class="cb" style="padding:0;max-height:350px;overflow-y:auto;"><table class="tbl"><thead><tr><th>Work ID</th><th>Dept</th><th>Type</th><th>Assigned To</th><th>SLA Target</th><th>Actual Time</th><th>Status</th></tr></thead><tbody id="sla-table-body"></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== REPORTS & ANALYSIS ===== -->
+<div class="pg" id="page-reports">
+  <div class="ph"><h1>📈 Reports & Analysis</h1><p>Monthly & Quarterly views · All FMS domains · Period comparison · Trend analysis</p></div>
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;">
+    <div class="pb">
+      <button class="pbtn active" onclick="setAnPd('monthly',this)">Monthly</button>
+      <button class="pbtn" onclick="setAnPd('quarterly',this)">Quarterly</button>
+    </div>
+    <div class="tb" style="margin:0;">
+      <button class="tbtn active" onclick="setAnDom('all',this)">All Domains</button>
+      <button class="tbtn" onclick="setAnDom('maint',this)">Maintenance</button>
+      <button class="tbtn" onclick="setAnDom('safety',this)">Safety/Fire</button>
+      <button class="tbtn" onclick="setAnDom('equip',this)">Equipment</button>
+    </div>
+  </div>
+  <div class="g g4" id="anStats"></div>
+  <div class="g g2" style="margin-bottom:13px;">
+    <div class="cc"><div class="ccl">KPI Achievement Radar — All Domains</div><div class="ccs">Actual vs 100% target per domain</div><canvas id="c-radar" height="200"></canvas></div>
+    <div class="cc"><div class="ccl" id="trendLabel">Maintenance Trend — Monthly</div><div class="ccs">Close rate % · Bio tickets · General tickets</div><canvas id="c-trend" height="200"></canvas></div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin-bottom:13px;">
+    <div class="cc"><div class="ccl">WO Priority Breakdown</div><div class="ccs">Emergency · Urgent · Normal</div><canvas id="c-woprio" height="150"></canvas></div>
+    <div class="cc"><div class="ccl">PPM Completion</div><div class="ccs">Equipment maintenance rate</div><canvas id="c-ppm" height="150"></canvas></div>
+    <div class="cc"><div class="ccl">CBAHI Gap Analysis</div><div class="ccs">Standards by status</div><canvas id="c-cbahi" height="150"></canvas></div>
+  </div>
+  <div class="card"><div class="ch"><div class="ct">Maintenance Period Summary — <span id="pdLabel">Monthly View</span></div></div>
+  <div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Period</th><th>Total</th><th>Completed</th><th>Close Rate</th><th>Avg Time</th><th>Emergency</th><th>SLA Breach</th><th>Trend</th></tr></thead><tbody id="anTable"></tbody></table></div></div>
+</div>
+
+<!-- ===== SAFETY ===== -->
+<div class="pg" id="page-safety">
+  <div class="ph"><h1>🛡 Building Safety — FMS.1.1.1</h1><p>Manager: Moe (Safety Officer) · PIN: 4444</p></div>
+  <div class="tb"><button class="tbtn active" onclick="st('safety','eoc',this)">EOC Rounds</button><button class="tbtn" onclick="st('safety','tr',this)">Training</button><button class="tbtn" onclick="st('safety','inc',this)">Incidents</button><button class="tbtn" onclick="st('safety','kpi',this)">KPIs</button></div>
+  <div id="safety-eoc"><div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Log EOC Monthly Round</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Date</label><input type="date" id="eoc-date"></div>
+        <div class="ff"><label>Areas Inspected</label><input type="text" id="eoc-areas" placeholder="ER, ICU, OR..."></div>
+        <div class="ff"><label>Findings</label><input type="number" id="eoc-findings" min="0" placeholder="0"></div>
+        <div class="ff"><label>Closed Same Day</label><input type="number" id="eoc-closed" min="0" placeholder="0"></div>
+        <div class="ff" style="grid-column:1/-1"><label>Notes</label><textarea id="eoc-notes" placeholder="Observations..."></textarea></div>
+        <div class="ff"><label>Conducted By</label><input type="text" id="eoc-by" placeholder="Name"></div>
+        <div class="ff"><label>Evidence</label><input type="file" id="eoc-file"></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('eoc')">✓ Save EOC Round</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">EOC Log (Target: 12/year)</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Areas</th><th>Found</th><th>Closed</th><th>By</th><th>Doc</th></tr></thead><tbody id="eoc-tb"></tbody></table></div></div>
+  </div></div>
+  <div id="safety-tr" style="display:none;"><div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Log Training Session</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Date</label><input type="date" id="tr-date"></div>
+        <div class="ff"><label>Topic</label><input type="text" id="tr-topic" placeholder="e.g. Fire Safety"></div>
+        <div class="ff"><label>Department</label><input type="text" id="tr-dept" placeholder="Audience"></div>
+        <div class="ff"><label>Attendees</label><input type="number" id="tr-count" placeholder="25"></div>
+        <div class="ff" style="grid-column:1/-1"><label>Trainer</label><input type="text" id="tr-trainer" placeholder="Name"></div>
+        <div class="ff" style="grid-column:1/-1"><label>Attendance Sheet</label><input type="file" id="tr-file"></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('training')">✓ Save Training</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">Training Log (Target: 4/year)</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Topic</th><th>Dept</th><th>Attendees</th><th>Trainer</th><th>Doc</th></tr></thead><tbody id="training-tb"></tbody></table></div></div>
+  </div></div>
+  <div id="safety-inc" style="display:none;"><div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Log Safety Incident</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Date</label><input type="date" id="si-date"></div>
+        <div class="ff"><label>Type</label><select id="si-type"><option>Slip/Trip/Fall</option><option>Fire/Smoke</option><option>Electrical</option><option>Chemical</option><option>Near Miss</option><option>Other</option></select></div>
+        <div class="ff"><label>Location</label><input type="text" id="si-loc" placeholder="Area"></div>
+        <div class="ff"><label>Severity</label><select id="si-sev"><option>Near Miss</option><option>Minor</option><option>Moderate</option><option>Major</option><option>Sentinel</option></select></div>
+        <div class="ff" style="grid-column:1/-1"><label>Description & Action</label><textarea id="si-desc" placeholder="Details..."></textarea></div>
+        <div class="ff"><label>By</label><input type="text" id="si-by" placeholder="Name"></div>
+        <div class="ff"><label>Evidence</label><input type="file" id="si-file"></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('incident')">✓ Save Incident</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">Incident Log</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Type</th><th>Location</th><th>Severity</th><th>By</th><th>Doc</th></tr></thead><tbody id="incident-tb"></tbody></table></div></div>
+  </div></div>
+  <div id="safety-kpi" style="display:none;"><div id="safety-kpi-out"></div></div>
+</div>
+
+<!-- ===== SECURITY ===== -->
+<div class="pg" id="page-security">
+  <div class="ph"><h1>🔒 Security — FMS.1.1.2</h1><p>Manager: Bader (Security Manager) · PIN: 5555</p></div>
+  <div class="tb"><button class="tbtn active" onclick="st('security','inc',this)">Incidents</button><button class="tbtn" onclick="st('security','drills',this)">Drills</button><button class="tbtn" onclick="st('security','kpi',this)">KPIs</button></div>
+  <div id="security-inc"><div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Log Security Incident</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Date</label><input type="date" id="secI-date"></div>
+        <div class="ff"><label>Type</label><select id="secI-type"><option>Unauthorized Access</option><option>Aggressive Visitor</option><option>Theft</option><option>Infant Security</option><option>Other</option></select></div>
+        <div class="ff"><label>Location</label><input type="text" id="secI-loc" placeholder="Area"></div>
+        <div class="ff"><label>Severity</label><select id="secI-sev"><option>Low</option><option>Medium</option><option>High</option><option>Critical</option></select></div>
+        <div class="ff" style="grid-column:1/-1"><label>Description & Action</label><textarea id="secI-desc" placeholder="Details..."></textarea></div>
+        <div class="ff"><label>By</label><input type="text" id="secI-by" placeholder="Name"></div>
+        <div class="ff"><label>Report</label><input type="file" id="secI-file"></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('secInc')">✓ Save</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">Incident Log</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Type</th><th>Location</th><th>Sev.</th><th>By</th><th>Doc</th></tr></thead><tbody id="secInc-tb"></tbody></table></div></div>
+  </div></div>
+  <div id="security-drills" style="display:none;"><div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Log Security Drill</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Date</label><input type="date" id="secD-date"></div>
+        <div class="ff"><label>Type</label><select id="secD-type"><option>Infant Abduction</option><option>Active Threat</option><option>Access Control</option><option>CCTV Audit</option></select></div>
+        <div class="ff"><label>Participants</label><input type="number" id="secD-count" placeholder="15"></div>
+        <div class="ff"><label>Duration (min)</label><input type="number" id="secD-dur" placeholder="30"></div>
+        <div class="ff" style="grid-column:1/-1"><label>Findings & Actions</label><textarea id="secD-notes" placeholder="Details..."></textarea></div>
+        <div class="ff" style="grid-column:1/-1"><label>Report</label><input type="file" id="secD-file"></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('secDrill')">✓ Save Drill</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">Drill Log (Target: 2/year)</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Type</th><th>Participants</th><th>Duration</th><th>Doc</th></tr></thead><tbody id="secDrill-tb"></tbody></table></div></div>
+  </div></div>
+  <div id="security-kpi" style="display:none;"><div id="security-kpi-out"></div></div>
+</div>
+
+<!-- ===== HAZMAT ===== -->
+<div class="pg" id="page-hazmat">
+  <div class="ph"><h1>☣ Hazmat & Waste — FMS.1.1.3</h1><p>Manager: Moe (Safety Officer)</p></div>
+  <div class="tb"><button class="tbtn active" onclick="st('hazmat','chem',this)">Chemicals</button><button class="tbtn" onclick="st('hazmat','waste',this)">Waste Audits</button><button class="tbtn" onclick="st('hazmat','kpi',this)">KPIs</button></div>
+  <div id="hazmat-chem"><div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Register Chemical</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Chemical Name</label><input type="text" id="ch-name" placeholder="e.g. Formaldehyde"></div>
+        <div class="ff"><label>Location</label><input type="text" id="ch-loc" placeholder="Dept."></div>
+        <div class="ff"><label>Hazard Class</label><select id="ch-class"><option>Toxic</option><option>Flammable</option><option>Corrosive</option><option>Carcinogenic</option><option>Oxidizing</option><option>Infectious</option></select></div>
+        <div class="ff"><label>SDS?</label><select id="ch-sds"><option value="yes">Yes</option><option value="no">No</option></select></div>
+        <div class="ff"><label>Storage OK?</label><select id="ch-store"><option value="yes">Yes</option><option value="no">No</option></select></div>
+        <div class="ff"><label>SDS Review Date</label><input type="date" id="ch-sdsdate"></div>
+        <div class="ff" style="grid-column:1/-1"><label>SDS Upload</label><input type="file" id="ch-file"></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('chemical')">✓ Add to Register</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">Chemical Register</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Chemical</th><th>Location</th><th>Class</th><th>SDS</th><th>Storage</th><th>Doc</th></tr></thead><tbody id="chemical-tb"></tbody></table></div></div>
+  </div></div>
+  <div id="hazmat-waste" style="display:none;"><div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Log Waste Audit</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Date</label><input type="date" id="wa-date"></div>
+        <div class="ff"><label>Areas</label><input type="text" id="wa-areas" placeholder="ICU, Lab..."></div>
+        <div class="ff"><label>Compliance %</label><input type="number" id="wa-pct" min="0" max="100" placeholder="95"></div>
+        <div class="ff"><label>Non-Compliances</label><input type="number" id="wa-nc" min="0" placeholder="2"></div>
+        <div class="ff" style="grid-column:1/-1"><label>Findings & Actions</label><textarea id="wa-notes" placeholder="Details..."></textarea></div>
+        <div class="ff"><label>By</label><input type="text" id="wa-by" placeholder="Name"></div>
+        <div class="ff"><label>Report</label><input type="file" id="wa-file"></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('wasteAudit')">✓ Save Audit</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">Waste Audit Log (4/year)</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Areas</th><th>Compliance</th><th>Issues</th><th>By</th><th>Doc</th></tr></thead><tbody id="wasteAudit-tb"></tbody></table></div></div>
+  </div></div>
+  <div id="hazmat-kpi" style="display:none;"><div id="hazmat-kpi-out"></div></div>
+</div>
+
+<!-- ===== EMERGENCY ===== -->
+<div class="pg" id="page-emergency">
+  <div class="ph"><h1>🚨 Emergency — FMS.1.1.4/5</h1><p>Manager: Moe · Code Red/Blue/Black/MCI · Target 6 drills/year</p></div>
+  <div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Log Emergency Drill</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Date</label><input type="date" id="em-date"></div>
+        <div class="ff"><label>Type</label><select id="em-type"><option>Code Red — Fire</option><option>Code Blue — Cardiac</option><option>Code Black — Bomb</option><option>MCI — Mass Casualty</option><option>Pandemic</option><option>Infrastructure Failure</option><option>Full Evacuation</option></select></div>
+        <div class="ff"><label>Shift</label><select id="em-shift"><option>Day</option><option>Evening</option><option>Night</option></select></div>
+        <div class="ff"><label>Location</label><input type="text" id="em-loc" placeholder="Area"></div>
+        <div class="ff"><label>Duration (min)</label><input type="number" id="em-dur" placeholder="20"></div>
+        <div class="ff"><label>Participants</label><input type="number" id="em-count" placeholder="45"></div>
+        <div class="ff" style="grid-column:1/-1"><label>Deficiencies & Actions</label><textarea id="em-def" placeholder="Issues found..."></textarea></div>
+        <div class="ff"><label>By</label><input type="text" id="em-by" placeholder="Name"></div>
+        <div class="ff"><label>Report</label><input type="file" id="em-file"></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('emDrill')">✓ Save Drill</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">Emergency Drill Log (6/year)</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Type</th><th>Shift</th><th>Part.</th><th>Dur.</th><th>Issues</th><th>Doc</th></tr></thead><tbody id="emDrill-tb"></tbody></table></div></div>
+  </div>
+  <div id="emDrill-kpi-out" style="margin-top:4px;"></div>
+</div>
+
+<!-- ===== FIRE ===== -->
+<div class="pg" id="page-fire">
+  <div class="ph"><h1>🔥 Fire Safety — FMS.1.1.6</h1><p>FMS.21 Alarm · FMS.22 Suppression · FMS.23 Exits · Moe + Mostapha</p></div>
+  <div class="tb"><button class="tbtn active" onclick="st('fire','alarm',this)">Alarm (FMS.21)</button><button class="tbtn" onclick="st('fire','sup',this)">Suppression (FMS.22)</button><button class="tbtn" onclick="st('fire','exits',this)">Exits (FMS.23)</button><button class="tbtn" onclick="st('fire','drills',this)">Drills</button><button class="tbtn" onclick="st('fire','kpi',this)">KPIs</button></div>
+  <div id="fire-alarm"><div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Fire Alarm Record (FMS.21)</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Date</label><input type="date" id="fa-date"></div>
+        <div class="ff"><label>Activity</label><select id="fa-type"><option>Monthly Inspection (FMS.21.1)</option><option>Weekly Test (FMS.21.2)</option><option>Quarterly PPM — Civil Defense (FMS.21.3)</option><option>Elevator Test (FMS.21.4)</option></select></div>
+        <div class="ff"><label>Zone</label><input type="text" id="fa-zone" placeholder="Zone 1 — ER"></div>
+        <div class="ff"><label>Result</label><select id="fa-res"><option value="pass">✅ Pass</option><option value="partial">⚠️ Partial</option><option value="fail">❌ Fail</option></select></div>
+        <div class="ff"><label>Civil Defense Contractor</label><input type="text" id="fa-cont" placeholder="Company name"></div>
+        <div class="ff"><label>Technician</label><input type="text" id="fa-tech" placeholder="Name"></div>
+        <div class="ff" style="grid-column:1/-1"><label>Notes</label><textarea id="fa-notes" placeholder="Findings..."></textarea></div>
+        <div class="ff" style="grid-column:1/-1"><label>Certificate/Report</label><input type="file" id="fa-file"></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('fireAlarm')">✓ Save Record</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">Fire Alarm Log</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Type</th><th>Zone</th><th>Result</th><th>Contractor</th><th>Doc</th></tr></thead><tbody id="fireAlarm-tb"></tbody></table></div></div>
+  </div></div>
+  <div id="fire-sup" style="display:none;"><div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Suppression PPM (FMS.22)</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Date</label><input type="date" id="fs-date"></div>
+        <div class="ff"><label>System</label><select id="fs-sys"><option>Sprinkler (FMS.22.1)</option><option>FM200 Clean Agent (FMS.22.2)</option><option>Wet Chemical Kitchen (FMS.22.3)</option><option>Stand Pipes (FMS.22.4)</option></select></div>
+        <div class="ff"><label>Activity</label><select id="fs-act"><option>Monthly Inspection</option><option>Quarterly PPM</option><option>Annual Service</option></select></div>
+        <div class="ff"><label>Result</label><select id="fs-res"><option value="pass">✅ Pass</option><option value="partial">⚠️ Partial</option><option value="fail">❌ Fail</option></select></div>
+        <div class="ff"><label>Contractor</label><input type="text" id="fs-cont" placeholder="Company"></div>
+        <div class="ff"><label>Technician</label><input type="text" id="fs-tech" placeholder="Name"></div>
+        <div class="ff" style="grid-column:1/-1"><label>Notes</label><textarea id="fs-notes" placeholder="Details..."></textarea></div>
+        <div class="ff" style="grid-column:1/-1"><label>Certificate</label><input type="file" id="fs-file"></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('fireSup')">✓ Save Record</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">Suppression Log (8/year)</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>System</th><th>Activity</th><th>Result</th><th>Contractor</th><th>Doc</th></tr></thead><tbody id="fireSup-tb"></tbody></table></div></div>
+  </div></div>
+  <div id="fire-exits" style="display:none;"><div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Exit Inspection (FMS.23 — 5 criteria)</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Date</label><input type="date" id="ex-date"></div>
+        <div class="ff"><label>Exit Location</label><input type="text" id="ex-loc" placeholder="Ground Floor West"></div>
+        <div class="ff"><label>23.1 Available</label><select id="ex-1"><option value="pass">✅ Yes</option><option value="fail">❌ No</option></select></div>
+        <div class="ff"><label>23.2 Not Locked</label><select id="ex-2"><option value="pass">✅ OK</option><option value="fail">❌ Locked</option></select></div>
+        <div class="ff"><label>23.3 Clear</label><select id="ex-3"><option value="pass">✅ Clear</option><option value="fail">❌ Blocked</option></select></div>
+        <div class="ff"><label>23.4 Panic Hardware</label><select id="ex-4"><option value="pass">✅ Present</option><option value="fail">❌ Missing</option></select></div>
+        <div class="ff"><label>23.6 Exit Sign</label><select id="ex-6"><option value="pass">✅ Lit</option><option value="fail">❌ Out</option></select></div>
+        <div class="ff"><label>By</label><input type="text" id="ex-by" placeholder="Name"></div>
+        <div class="ff" style="grid-column:1/-1"><label>Photo</label><input type="file" id="ex-file"></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('fireExit')">✓ Save Inspection</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">Exit Inspection Log</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Location</th><th>23.1</th><th>23.2</th><th>23.3</th><th>23.4</th><th>23.6</th><th>Doc</th></tr></thead><tbody id="fireExit-tb"></tbody></table></div></div>
+  </div></div>
+  <div id="fire-drills" style="display:none;"><div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Log Fire Drill (4/year)</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Date</label><input type="date" id="fd-date"></div>
+        <div class="ff"><label>Shift</label><select id="fd-shift"><option>Day</option><option>Evening</option><option>Night</option></select></div>
+        <div class="ff"><label>Area</label><input type="text" id="fd-area" placeholder="Area"></div>
+        <div class="ff"><label>Duration (min)</label><input type="number" id="fd-dur" placeholder="18"></div>
+        <div class="ff"><label>Participants</label><input type="number" id="fd-count" placeholder="40"></div>
+        <div class="ff"><label>Deficiencies</label><input type="text" id="fd-def" placeholder="None / details"></div>
+        <div class="ff" style="grid-column:1/-1"><label>Report</label><input type="file" id="fd-file"></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('fireDrill')">✓ Save Drill</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">Fire Drill Log (4/year)</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>#</th><th>Date</th><th>Shift</th><th>Area</th><th>Dur.</th><th>Part.</th><th>Issues</th><th>Doc</th></tr></thead><tbody id="fireDrill-tb"></tbody></table></div></div>
+  </div></div>
+  <div id="fire-kpi" style="display:none;"><div id="fire-kpi-out"></div></div>
+</div>
+
+<!-- ===== EQUIPMENT ===== -->
+<div class="pg" id="page-equip">
+  <div class="ph"><h1>⚕ Medical Equipment — FMS.1.1.7</h1><p>Manager: Bashar (Biomedical Engineer) · PIN: 3333</p></div>
+  <div class="tb"><button class="tbtn active" onclick="st('equip','ppm',this)">PPM Records</button><button class="tbtn" onclick="st('equip','inv',this)">Inventory</button><button class="tbtn" onclick="st('equip','kpi',this)">KPIs</button></div>
+  <div id="equip-ppm"><div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Log Equipment PPM</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Date</label><input type="date" id="ppm-date"></div>
+        <div class="ff"><label>Equipment</label><input type="text" id="ppm-equip" placeholder="e.g. Ventilator GE"></div>
+        <div class="ff"><label>Asset No.</label><input type="text" id="ppm-asset" placeholder="BIO-001"></div>
+        <div class="ff"><label>Location</label><input type="text" id="ppm-loc" placeholder="ICU Bed 3"></div>
+        <div class="ff"><label>Type</label><select id="ppm-type"><option>Preventive (PPM)</option><option>Corrective</option><option>Calibration</option><option>Safety Check</option><option>Annual Service</option></select></div>
+        <div class="ff"><label>Result</label><select id="ppm-res"><option value="done">✅ Completed</option><option value="partial">⚠️ Partial</option><option value="fail">❌ Failed/OOS</option></select></div>
+        <div class="ff" style="grid-column:1/-1"><label>Notes</label><textarea id="ppm-notes" placeholder="Work done..."></textarea></div>
+        <div class="ff"><label>Technician</label><input type="text" id="ppm-tech" placeholder="Name"></div>
+        <div class="ff"><label>Report</label><input type="file" id="ppm-file"></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('ppm')">✓ Save PPM Record</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">PPM Log</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Equipment</th><th>Asset</th><th>Type</th><th>Result</th><th>Tech</th><th>Doc</th></tr></thead><tbody id="ppm-tb"></tbody></table></div></div>
+  </div></div>
+  <div id="equip-inv" style="display:none;"><div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Add to Inventory</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Equipment</label><input type="text" id="inv-name" placeholder="Defibrillator Philips"></div>
+        <div class="ff"><label>Category</label><select id="inv-cat"><option>Life Support</option><option>Monitoring</option><option>Diagnostic</option><option>Surgical</option><option>Laboratory</option><option>Imaging</option></select></div>
+        <div class="ff"><label>Asset No.</label><input type="text" id="inv-asset" placeholder="BIO-001"></div>
+        <div class="ff"><label>Location</label><input type="text" id="inv-loc" placeholder="ICU"></div>
+        <div class="ff"><label>PPM Frequency</label><select id="inv-freq"><option>Monthly</option><option>Quarterly</option><option>6-Monthly</option><option>Annual</option></select></div>
+        <div class="ff"><label>Risk Class</label><select id="inv-risk"><option>High Risk</option><option>Medium Risk</option><option>Low Risk</option></select></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('inventory')">✓ Add to Inventory</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">Equipment Inventory</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Equipment</th><th>Category</th><th>Asset</th><th>Location</th><th>PPM Freq</th><th>Risk</th></tr></thead><tbody id="inventory-tb"></tbody></table></div></div>
+  </div></div>
+  <div id="equip-kpi" style="display:none;"><div id="equip-kpi-out"></div></div>
+</div>
+
+<!-- ===== UTILITIES ===== -->
+<div class="pg" id="page-utils">
+  <div class="ph"><h1>⚡ Utility Systems — FMS.1.1.8</h1><p>Manager: Mostapha (Maintenance Manager) · PIN: 2222</p></div>
+  <div class="tb"><button class="tbtn active" onclick="st('utils','gen',this)">Generator Tests</button><button class="tbtn" onclick="st('utils','water',this)">Water Safety</button><button class="tbtn" onclick="st('utils','kpi',this)">KPIs</button></div>
+  <div id="utils-gen"><div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Log Generator Test</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Date</label><input type="date" id="gen-date"></div>
+        <div class="ff"><label>Generator</label><select id="gen-unit"><option>GEN-1 500kVA Main</option><option>GEN-2 500kVA Backup</option><option>GEN-3 250kVA CSSD</option><option>GEN-4 250kVA ICU</option></select></div>
+        <div class="ff"><label>Transfer Time (sec)</label><input type="number" id="gen-tr" placeholder="8"></div>
+        <div class="ff"><label>Load (%)</label><input type="number" id="gen-load" placeholder="70"></div>
+        <div class="ff"><label>Fuel Level (%)</label><input type="number" id="gen-fuel" placeholder="85"></div>
+        <div class="ff"><label>Result</label><select id="gen-res"><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option></select></div>
+        <div class="ff" style="grid-column:1/-1"><label>Notes</label><textarea id="gen-notes" placeholder="Issues..."></textarea></div>
+        <div class="ff"><label>By</label><input type="text" id="gen-by" placeholder="Engineer"></div>
+        <div class="ff"><label>Report</label><input type="file" id="gen-file"></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('genTest')">✓ Save Test</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">Generator Test Log (12/year)</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Unit</th><th>Transfer</th><th>Load</th><th>Fuel</th><th>Result</th><th>By</th><th>Doc</th></tr></thead><tbody id="genTest-tb"></tbody></table></div></div>
+  </div></div>
+  <div id="utils-water" style="display:none;"><div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Log Water Safety Test</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Date</label><input type="date" id="wt-date"></div>
+        <div class="ff"><label>Location</label><input type="text" id="wt-loc" placeholder="ICU water point"></div>
+        <div class="ff"><label>Hot Water (°C)</label><input type="number" id="wt-hot" placeholder="58"><div class="ht">Min 55°C</div></div>
+        <div class="ff"><label>Cold Water (°C)</label><input type="number" id="wt-cold" placeholder="17"><div class="ht">Max 20°C</div></div>
+        <div class="ff"><label>Legionella</label><select id="wt-leg"><option value="neg">Negative</option><option value="pos">Positive!</option><option value="na">Not tested</option></select></div>
+        <div class="ff"><label>By</label><input type="text" id="wt-by" placeholder="Name"></div>
+        <div class="ff" style="grid-column:1/-1"><label>Lab Report</label><input type="file" id="wt-file"></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('waterTest')">✓ Save Test</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">Water Safety Log (4/year)</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Location</th><th>Hot°C</th><th>Cold°C</th><th>Legionella</th><th>By</th><th>Doc</th></tr></thead><tbody id="waterTest-tb"></tbody></table></div></div>
+  </div></div>
+  <div id="utils-kpi" style="display:none;"><div id="utils-kpi-out"></div></div>
+</div>
+
+<!-- ===== MEDGAS ===== -->
+<div class="pg" id="page-medgas">
+  <div class="ph"><h1>🫧 Medical Gas — FMS.32</h1><p>Manager: Bashar · Daily PMG checklist · Air purity tests · O₂ reserve</p></div>
+  <div class="tb"><button class="tbtn active" onclick="st('medgas','daily',this)">Daily Checklist</button><button class="tbtn" onclick="st('medgas','purity',this)">Air Purity</button><button class="tbtn" onclick="st('medgas','reserve',this)">O₂ Reserve</button><button class="tbtn" onclick="st('medgas','kpi',this)">KPIs</button></div>
+  <div id="medgas-daily"><div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Daily PMG Checklist</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Date</label><input type="date" id="pmg-date"></div>
+        <div class="ff"><label>By</label><input type="text" id="pmg-by" placeholder="Engineer name"></div>
+        <div class="ff"><label>Time</label><input type="time" id="pmg-time"></div>
+        <div class="ff"><label>O₂ Manifold (bar)</label><input type="number" id="pmg-o2" placeholder="140"><div class="ht">≥100 bar</div></div>
+        <div class="ff"><label>Medical Air (bar)</label><input type="number" id="pmg-air" placeholder="4.5"><div class="ht">3.5–5.5</div></div>
+        <div class="ff"><label>Vacuum (mmHg)</label><input type="number" id="pmg-vac" placeholder="-400"><div class="ht">≤ -300</div></div>
+        <div class="ff"><label>N₂O (bar)</label><input type="number" id="pmg-n2o" placeholder="45"></div>
+        <div class="ff"><label>LOX Level (%)</label><input type="number" id="pmg-lox" placeholder="70"></div>
+        <div class="ff" style="grid-column:1/-1"><label>Alarms/Notes</label><textarea id="pmg-alarms" placeholder="None or details..."></textarea></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('pmgCheck')">✓ Submit Checklist</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">PMG Daily Log</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>O₂</th><th>Air</th><th>Vac</th><th>LOX%</th><th>Alarms</th><th>By</th></tr></thead><tbody id="pmgCheck-tb"></tbody></table></div></div>
+  </div></div>
+  <div id="medgas-purity" style="display:none;"><div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Air Purity Test (FMS.32.3)</div></div><div class="cb">
+      <div style="background:rgba(0,180,255,.06);border:1px solid var(--bd);border-radius:6px;padding:8px;margin-bottom:11px;font-size:9px;color:var(--mu)">Limits: Water ≤0.05mg/L · CO ≤5ppm · CO₂ ≤500ppm · SO₂ ≤1ppm · Dew ≤-46°C</div>
+      <div class="fg fg2">
+        <div class="ff"><label>Date</label><input type="date" id="ap-date"></div>
+        <div class="ff"><label>Lab / By</label><input type="text" id="ap-by" placeholder="Lab name"></div>
+        <div class="ff"><label>Water (mg/L)</label><input type="number" id="ap-water" step="0.001" placeholder="0.03"></div>
+        <div class="ff"><label>CO (ppm)</label><input type="number" id="ap-co" placeholder="2.0"></div>
+        <div class="ff"><label>CO₂ (ppm)</label><input type="number" id="ap-co2" placeholder="380"></div>
+        <div class="ff"><label>SO₂ (ppm)</label><input type="number" id="ap-so2" placeholder="0.4"></div>
+        <div class="ff"><label>Dewpoint (°C)</label><input type="number" id="ap-dew" placeholder="-48"></div>
+        <div class="ff"><label>Result</label><select id="ap-res"><option value="pass">✅ PASS</option><option value="fail">❌ FAIL</option></select></div>
+        <div class="ff" style="grid-column:1/-1"><label>Certificate</label><input type="file" id="ap-file"></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('airPurity')">✓ Save Test</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">Air Purity Log (2/year)</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Water</th><th>CO</th><th>CO₂</th><th>SO₂</th><th>Dew</th><th>Result</th><th>Doc</th></tr></thead><tbody id="airPurity-tb"></tbody></table></div></div>
+  </div></div>
+  <div id="medgas-reserve" style="display:none;"><div class="card" style="max-width:480px;"><div class="ch"><div class="ct">O₂ Reserve Calculator (FMS.32.8)</div></div><div class="cb">
+    <div class="fg fg2">
+      <div class="ff"><label>LOX Tank Size (L)</label><input type="number" id="lx-size" placeholder="10000" oninput="calcR()"></div>
+      <div class="ff"><label>Current Level (%)</label><input type="number" id="lx-lev" placeholder="70" oninput="calcR()"></div>
+      <div class="ff"><label>Standby Cylinders (K)</label><input type="number" id="lx-cyls" placeholder="5" oninput="calcR()"></div>
+      <div class="ff"><label>Daily Consumption (L)</label><input type="number" id="lx-cons" placeholder="120000" oninput="calcR()"></div>
+    </div>
+    <div style="margin-top:14px;background:var(--s2);border-radius:10px;padding:16px;text-align:center;">
+      <div style="font-size:9px;color:var(--mu)">ESTIMATED RESERVE</div>
+      <div id="res-h" style="font-family:'Rajdhani',sans-serif;font-size:46px;font-weight:700;color:var(--gn)">—</div>
+      <div style="font-size:10px;color:var(--mu)">hours · Min: 48h (FMS.32.8)</div>
+    </div>
+  </div></div></div>
+  <div id="medgas-kpi" style="display:none;"><div id="medgas-kpi-out"></div></div>
+</div>
+
+<!-- ===== RADIATION ===== -->
+<div class="pg" id="page-radiation">
+  <div class="ph"><h1>☢ Radiation Safety — FMS.9</h1><p>TLD reviews · Lead aprons · Shielding certs (KACST) · Manager: Bashar</p></div>
+  <div class="tb"><button class="tbtn active" onclick="st('radiation','tld',this)">TLD (FMS.9.7)</button><button class="tbtn" onclick="st('radiation','apron',this)">Lead Aprons (FMS.9.6)</button><button class="tbtn" onclick="st('radiation','shield',this)">Shielding (FMS.9.5)</button><button class="tbtn" onclick="st('radiation','kpi',this)">KPIs</button></div>
+  <div id="radiation-tld"><div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Log TLD Quarterly Review</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Quarter</label><select id="tld-q"><option>Q1 Jan–Mar</option><option>Q2 Apr–Jun</option><option>Q3 Jul–Sep</option><option>Q4 Oct–Dec</option></select></div>
+        <div class="ff"><label>Year</label><input type="number" id="tld-yr" placeholder="2025"></div>
+        <div class="ff"><label>Staff Covered</label><input type="number" id="tld-count" placeholder="24"></div>
+        <div class="ff"><label>Max Dose (mSv)</label><input type="number" id="tld-dose" step="0.01" placeholder="0.35"></div>
+        <div class="ff"><label>Overexposure?</label><select id="tld-over"><option value="no">No</option><option value="yes">Yes!</option></select></div>
+        <div class="ff"><label>RSO / Physicist</label><input type="text" id="tld-rso" placeholder="Name"></div>
+        <div class="ff" style="grid-column:1/-1"><label>TLD Report</label><input type="file" id="tld-file"></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('tldReview')">✓ Save</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">TLD Log (4/year)</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Quarter</th><th>Year</th><th>Staff</th><th>Max Dose</th><th>Overexp.</th><th>RSO</th><th>Doc</th></tr></thead><tbody id="tldReview-tb"></tbody></table></div></div>
+  </div></div>
+  <div id="radiation-apron" style="display:none;"><div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Log Lead Apron Test</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Date</label><input type="date" id="la-date"></div>
+        <div class="ff"><label>Department</label><input type="text" id="la-dept" placeholder="Radiology, OR..."></div>
+        <div class="ff"><label>Item</label><select id="la-type"><option>Lead Apron</option><option>Thyroid Shield</option><option>Lead Gloves</option><option>Gonad Shield</option><option>Eyewear</option></select></div>
+        <div class="ff"><label>Qty Tested</label><input type="number" id="la-qty" placeholder="4"></div>
+        <div class="ff"><label>Defective (removed)</label><input type="number" id="la-def" placeholder="0"></div>
+        <div class="ff"><label>Method</label><select id="la-method"><option>Fluoroscopic</option><option>X-Ray Imaging</option><option>Visual</option></select></div>
+        <div class="ff"><label>By</label><input type="text" id="la-by" placeholder="Name"></div>
+        <div class="ff"><label>Report</label><input type="file" id="la-file"></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('leadApron')">✓ Save</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">Lead Apron Log</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Dept</th><th>Item</th><th>Qty</th><th>Defective</th><th>Method</th><th>Doc</th></tr></thead><tbody id="leadApron-tb"></tbody></table></div></div>
+  </div></div>
+  <div id="radiation-shield" style="display:none;"><div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Add Shielding Certificate (KACST)</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Room</label><input type="text" id="sh-room" placeholder="X-Ray Room 1"></div>
+        <div class="ff"><label>Equipment</label><input type="text" id="sh-equip" placeholder="Conventional X-Ray"></div>
+        <div class="ff"><label>Cert Date</label><input type="date" id="sh-date"></div>
+        <div class="ff"><label>Expiry Date</label><input type="date" id="sh-expiry"></div>
+        <div class="ff" style="grid-column:1/-1"><label>KACST-Certified Company</label><input type="text" id="sh-co" placeholder="Company name"></div>
+        <div class="ff" style="grid-column:1/-1"><label>Certificate</label><input type="file" id="sh-file"></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('shieldCert')">✓ Save</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">Shielding Certificates</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Room</th><th>Equipment</th><th>Date</th><th>Expiry</th><th>Company</th><th>Status</th><th>Doc</th></tr></thead><tbody id="shieldCert-tb"></tbody></table></div></div>
+  </div></div>
+  <div id="radiation-kpi" style="display:none;"><div id="radiation-kpi-out"></div></div>
+</div>
+
+<!-- ===== WORK ORDERS ===== -->
+<div class="pg" id="page-wo">
+  <div class="ph"><h1>🔧 Work Orders</h1><p>All managers submit · Mostapha & Bashar route and close</p></div>
+  <div style="display:flex;gap:9px;margin-bottom:14px;flex-wrap:wrap;align-items:center;">
+    <button class="btn bp" onclick="openMod('newWO')">+ New Work Order</button>
+    <div class="tb" style="margin:0;"><button class="tbtn active" onclick="fWO('all',this)">All</button><button class="tbtn" onclick="fWO('gen',this)">General</button><button class="tbtn" onclick="fWO('bio',this)">Biomedical</button><button class="tbtn" onclick="fWO('open',this)">Open Only</button></div>
+  </div>
+  <div class="card"><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>WO#</th><th>Type</th><th>Dept</th><th>Description</th><th>Priority</th><th>By</th><th>Date</th><th>Assigned</th><th>Status</th><th></th></tr></thead><tbody id="wo-tb"></tbody></table></div></div>
+</div>
+
+<!-- ===== CUSTOM KPIs ===== -->
+<div class="pg" id="page-ckpi">
+  <div class="ph"><h1>⚙ Custom KPIs</h1><p>Each manager adds division KPIs manually · Director views all · Monthly & Quarterly</p></div>
+  <div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Add Custom KPI</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Division</label><select id="ck-div"><option value="safety">Safety — Moe</option><option value="security">Security — Bader</option><option value="biomedical">Biomedical — Bashar</option><option value="maintenance">Maintenance — Mostapha</option><option value="director">FMS Director</option></select></div>
+        <div class="ff"><label>KPI Name</label><input type="text" id="ck-name" placeholder="e.g. Staff Satisfaction Score"></div>
+        <div class="ff"><label>Current Value</label><input type="number" id="ck-val" step="0.1" placeholder="4.2"></div>
+        <div class="ff"><label>Target Value</label><input type="number" id="ck-tgt" step="0.1" placeholder="5.0"></div>
+        <div class="ff"><label>Unit</label><input type="text" id="ck-unit" placeholder="score, %, hrs, SAR"></div>
+        <div class="ff"><label>Period</label><select id="ck-period"><option>Monthly</option><option>Quarterly</option><option>Annual</option></select></div>
+        <div class="ff" style="grid-column:1/-1"><label>Notes / Formula</label><textarea id="ck-notes" placeholder="How measured..."></textarea></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="saveCKPI()">+ Add Custom KPI</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">Filter by Division</div></div><div class="cb">
+      <div class="tb" style="flex-wrap:wrap;"><button class="tbtn active" onclick="fCKPI('all',this)">All</button><button class="tbtn" onclick="fCKPI('safety',this)">Safety (Moe)</button><button class="tbtn" onclick="fCKPI('security',this)">Security (Bader)</button><button class="tbtn" onclick="fCKPI('biomedical',this)">Biomed (Bashar)</button><button class="tbtn" onclick="fCKPI('maintenance',this)">Maint. (Mostapha)</button></div>
+      <div id="ckpiList" style="margin-top:10px;"></div>
+    </div></div>
+  </div>
+</div>
+
+<!-- ===== DOCUMENTS ===== -->
+<div class="pg" id="page-docs">
+  <div class="ph"><h1>📁 Documents</h1><p>All uploaded evidence tagged by CBAHI standard</p></div>
+  <div class="card"><div class="ch"><div class="ct">Upload Document</div></div><div class="cb">
+    <div class="fg fg3">
+      <div class="ff"><label>Title</label><input type="text" id="doc-title" placeholder="e.g. Fire Alarm PPM Q1 2025"></div>
+      <div class="ff"><label>CBAHI Standard</label><select id="doc-std"><option>FMS.1.1.1</option><option>FMS.1.1.2</option><option>FMS.1.1.3</option><option>FMS.1.1.4/5</option><option>FMS.1.1.6</option><option>FMS.1.1.7</option><option>FMS.1.1.8</option><option>FMS.9</option><option>FMS.21</option><option>FMS.22</option><option>FMS.23</option><option>FMS.32</option><option>General</option></select></div>
+      <div class="ff"><label>File</label><input type="file" id="doc-file"></div>
+    </div>
+    <button class="btn bg" style="margin-top:10px;" onclick="sv2('doc')">📎 Upload</button>
+  </div></div>
+  <div class="card"><div class="ch"><div class="ct">All Documents</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Title</th><th>Standard</th><th>By</th><th>Role</th><th>File</th></tr></thead><tbody id="doc-tb"></tbody></table></div></div>
+</div>
+
+</main>
+</div>
+</div>
+
+<!-- MODALS -->
+<div class="mov" id="mod-newWO">
+  <div class="mbox"><div class="mh"><div class="mt">New Work Order</div><button class="mc" onclick="closeMod('newWO')">✕</button></div>
+  <div class="mb">
+    <div class="fg fg2">
+      <div class="ff"><label>Your Name</label><input type="text" id="wo-name" placeholder="Full name"></div>
+      <div class="ff"><label>Department</label><input type="text" id="wo-dept" placeholder="ICU, ER..."></div>
+      <div class="ff"><label>Type</label><select id="wo-type"><option value="gen">General Maintenance</option><option value="bio">Biomedical</option></select></div>
+      <div class="ff"><label>Priority</label><select id="wo-prio"><option value="high">🔴 Emergency</option><option value="med">🟡 Urgent</option><option value="low">🟢 Normal</option></select></div>
+      <div class="ff" style="grid-column:1/-1"><label>Description</label><textarea id="wo-desc" style="min-height:70px;" placeholder="Describe the issue..."></textarea></div>
+      <div class="ff"><label>Location/Room</label><input type="text" id="wo-loc" placeholder="Room/area"></div>
+      <div class="ff"><label>Photo</label><input type="file" id="wo-file"></div>
+    </div>
+    <button class="btn bp" style="width:100%;margin-top:12px;" onclick="submitWO()">Submit Work Order →</button>
+  </div></div>
+</div>
+<div class="mov" id="mod-updWO">
+  <div class="mbox"><div class="mh"><div class="mt">Update Work Order</div><button class="mc" onclick="closeMod('updWO')">✕</button></div>
+  <div class="mb">
+    <div class="fg fg2">
+      <div class="ff"><label>Assigned Technician</label><input type="text" id="upd-tech" placeholder="Name"></div>
+      <div class="ff"><label>New Status</label><select id="upd-status"><option>Open</option><option>In Progress</option><option>Pending Parts</option><option>Completed</option><option>Cancelled</option></select></div>
+      <div class="ff" style="grid-column:1/-1"><label>Action Notes</label><textarea id="upd-notes" placeholder="Work done..."></textarea></div>
+      <div class="ff"><label>Completion Date</label><input type="date" id="upd-date"></div>
+      <div class="ff"><label>Evidence</label><input type="file" id="upd-file"></div>
+    </div>
+    <input type="hidden" id="upd-id">
+    <button class="btn bg" style="width:100%;margin-top:12px;" onclick="applyUpd()">✓ Save Update</button>
+  </div></div>
+</div>
+
+<!-- First-visit connection banner -->
+<div id="first-visit-banner" style="display:none;">
+  <span>🔗 <b>FMS Director only:</b> Go to <b>Maintenance Analytics</b> to paste your Apps Script URL and connect the live Google Sheet. Managers can log in and enter data right away.</span>
+  <button onclick="document.getElementById('first-visit-banner').style.display='none';localStorage.setItem('obeid_bannerDismissed','1');">Got it ✕</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== STORAGE =====
+const PX='obeid3_';
+function ld(k){try{return JSON.parse(localStorage.getItem(PX+k)||'[]');}catch(e){return[];}}
+function sv(k,v){localStorage.setItem(PX+k,JSON.stringify(v));}
+
+// ===== AUTH =====
+const PINS={director:'1234',maintenance:'2222',biomedical:'3333',safety:'4444',security:'5555'};
+const RLBL={director:'FMS Director',maintenance:'Maintenance Mgr',biomedical:'Biomedical Eng.',safety:'Safety Officer',security:'Security Mgr'};
+let CU={};
+
+function doLogin(){
+  const role=document.getElementById('lr').value,name=document.getElementById('lname').value.trim(),pin=document.getElementById('lpin').value.trim(),err=document.getElementById('lerr');
+  err.textContent='';
+  if(!role||!name||!pin){err.textContent='Please fill all fields';return;}
+  if(PINS[role]!==pin){err.textContent='Incorrect PIN for this role';return;}
+  CU={name,role,rl:RLBL[role],ab:name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)};
+  document.getElementById('sbAv').textContent=CU.ab;
+  document.getElementById('sbName').textContent=CU.name;
+  document.getElementById('sbRole').textContent=CU.rl;
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('app').style.display='block';
+  init();
+}
+function doLogout(){document.getElementById('loginScreen').style.display='flex';document.getElementById('app').style.display='none';destroyCharts();}
+
+// ===== INIT =====
+let CH={};
+function destroyCharts(){Object.values(CH).forEach(c=>{try{c.destroy();}catch(e){}});CH={};}
+function init(){
+  countdown();setDate();setInterval(setDate,60000);
+  prefillDates();renderAll();
+  loadSavedAppsScriptURL();
+  setTimeout(fetchSheetData, 400);
+  // Show first-visit banner if sheet not yet connected
+  if(!localStorage.getItem('obeid_bannerDismissed')&&!localStorage.getItem('obeid_appsScriptURL')){
+    const b=document.getElementById('first-visit-banner');
+    if(b)b.style.display='flex';
+  }
+}
+function countdown(){const d=Math.ceil((new Date('2026-10-01')-new Date())/86400000);document.getElementById('cdDays').textContent=d>0?d:'0';}
+function setDate(){document.getElementById('tbDate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});}
+function prefillDates(){const t=new Date().toISOString().split('T')[0];document.querySelectorAll('input[type=date]').forEach(e=>{if(!e.value)e.value=t;});const tm=new Date().toTimeString().slice(0,5);document.querySelectorAll('input[type=time]').forEach(e=>{if(!e.value)e.value=tm;});}
+
+// ===== NAV =====
+const PTITLES={dash:'⬡ Command Center',kpi:'📊 KPI Dashboard',cbahi:'✓ CBAHI Tracker',mms:'🔩 Maintenance Analytics',reports:'📈 Reports & Analysis',safety:'🛡 Safety — FMS.1.1.1',security:'🔒 Security — FMS.1.1.2',hazmat:'☣ Hazmat — FMS.1.1.3',emergency:'🚨 Emergency — FMS.1.1.4/5',fire:'🔥 Fire Safety — FMS.1.1.6',equip:'⚕ Medical Equipment — FMS.1.1.7',utils:'⚡ Utilities — FMS.1.1.8',medgas:'🫧 Medical Gas — FMS.32',radiation:'☢ Radiation — FMS.9',wo:'🔧 Work Orders',ckpi:'⚙ Custom KPIs',docs:'📁 Documents'};
+function gp(id){
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id)?.classList.add('active');
+  document.getElementById('n-'+id)?.classList.add('active');
+  document.getElementById('tbTitle').textContent=PTITLES[id]||id;
+  if(id==='kpi')renderKPI();
+  if(id==='cbahi')renderCBAHI();
+  if(id==='dash')renderDash();
+  if(id==='ckpi')renderCKPI('all');
+  if(id==='reports'){renderAnalytics();setTimeout(reinitAnalCharts,150);}
+  if(id==='mms')setTimeout(initMMSCharts,150);
+  window.scrollTo(0,0);
+}
+function st(domain,sub,btn){
+  document.querySelectorAll('[id^="'+domain+'-"]').forEach(e=>e.style.display='none');
+  const e=document.getElementById(domain+'-'+sub);if(e)e.style.display='block';
+  if(btn){btn.closest('.tb').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
+  if(sub==='kpi')renderDomainKPI(domain);
+}
+
+// ===== RECORD DEFS =====
+const RD={
+  eoc:{f:['date:eoc-date','areas:eoc-areas','findings:eoc-findings','closed:eoc-closed','notes:eoc-notes','by:eoc-by','file:eoc-file'],r:['date','areas']},
+  training:{f:['date:tr-date','topic:tr-topic','dept:tr-dept','count:tr-count','trainer:tr-trainer','file:tr-file'],r:['date','topic']},
+  incident:{f:['date:si-date','type:si-type','loc:si-loc','sev:si-sev','desc:si-desc','by:si-by','file:si-file'],r:['date','type']},
+  secInc:{f:['date:secI-date','type:secI-type','loc:secI-loc','sev:secI-sev','desc:secI-desc','by:secI-by','file:secI-file'],r:['date','type']},
+  secDrill:{f:['date:secD-date','type:secD-type','count:secD-count','dur:secD-dur','notes:secD-notes','file:secD-file'],r:['date','type']},
+  chemical:{f:['name:ch-name','loc:ch-loc','class:ch-class','sds:ch-sds','store:ch-store','sdsdate:ch-sdsdate','file:ch-file'],r:['name','loc']},
+  wasteAudit:{f:['date:wa-date','areas:wa-areas','pct:wa-pct','nc:wa-nc','notes:wa-notes','by:wa-by','file:wa-file'],r:['date','areas']},
+  emDrill:{f:['date:em-date','type:em-type','shift:em-shift','loc:em-loc','dur:em-dur','count:em-count','def:em-def','by:em-by','file:em-file'],r:['date','type']},
+  fireAlarm:{f:['date:fa-date','type:fa-type','zone:fa-zone','res:fa-res','cont:fa-cont','tech:fa-tech','notes:fa-notes','file:fa-file'],r:['date','zone']},
+  fireSup:{f:['date:fs-date','sys:fs-sys','act:fs-act','res:fs-res','cont:fs-cont','tech:fs-tech','notes:fs-notes','file:fs-file'],r:['date','sys']},
+  fireExit:{f:['date:ex-date','loc:ex-loc','c1:ex-1','c2:ex-2','c3:ex-3','c4:ex-4','c6:ex-6','by:ex-by','file:ex-file'],r:['date','loc']},
+  fireDrill:{f:['date:fd-date','shift:fd-shift','area:fd-area','dur:fd-dur','count:fd-count','def:fd-def','file:fd-file'],r:['date','area']},
+  ppm:{f:['date:ppm-date','equip:ppm-equip','asset:ppm-asset','loc:ppm-loc','type:ppm-type','res:ppm-res','notes:ppm-notes','tech:ppm-tech','file:ppm-file'],r:['date','equip']},
+  inventory:{f:['name:inv-name','cat:inv-cat','asset:inv-asset','loc:inv-loc','freq:inv-freq','risk:inv-risk'],r:['name','loc']},
+  genTest:{f:['date:gen-date','unit:gen-unit','tr:gen-tr','load:gen-load','fuel:gen-fuel','res:gen-res','notes:gen-notes','by:gen-by','file:gen-file'],r:['date','unit']},
+  waterTest:{f:['date:wt-date','loc:wt-loc','hot:wt-hot','cold:wt-cold','leg:wt-leg','by:wt-by','file:wt-file'],r:['date','loc']},
+  pmgCheck:{f:['date:pmg-date','by:pmg-by','time:pmg-time','o2:pmg-o2','air:pmg-air','vac:pmg-vac','n2o:pmg-n2o','lox:pmg-lox','alarms:pmg-alarms'],r:['date','by']},
+  airPurity:{f:['date:ap-date','by:ap-by','water:ap-water','co:ap-co','co2:ap-co2','so2:ap-so2','dew:ap-dew','res:ap-res','file:ap-file'],r:['date','by']},
+  tldReview:{f:['q:tld-q','yr:tld-yr','count:tld-count','dose:tld-dose','over:tld-over','rso:tld-rso','file:tld-file'],r:['yr','rso']},
+  leadApron:{f:['date:la-date','dept:la-dept','type:la-type','qty:la-qty','def:la-def','method:la-method','by:la-by','file:la-file'],r:['date','dept']},
+  shieldCert:{f:['room:sh-room','equip:sh-equip','date:sh-date','expiry:sh-expiry','co:sh-co','file:sh-file'],r:['room','equip']},
+  doc:{f:['title:doc-title','std:doc-std','file:doc-file'],r:['title']},
+};
+
+function sv2(type){
+  const d=RD[type];if(!d)return;
+  const rec={_id:Date.now(),_by:CU.name,_rl:CU.rl,_ts:new Date().toISOString()};
+  d.f.forEach(f=>{const[k,id]=f.split(':');const e=document.getElementById(id);if(!e)return;e.type==='file'?(e.files[0]&&(rec[k]={n:e.files[0].name,s:Math.round(e.files[0].size/1024)+'KB'})):rec[k]=e.value;});
+  const miss=d.r.filter(r=>!rec[r]||rec[r]==='');
+  if(miss.length){toast('⚠️ Fill: '+miss.join(', '),'#f59e0b');return;}
+  const arr=ld(type);arr.unshift(rec);sv(type,arr);
+  logA(type);renderLog(type);renderAll();toast('✓ Saved');
+  d.f.filter(f=>f.includes('file')).forEach(f=>{const e=document.getElementById(f.split(':')[1]);if(e)e.value='';});
+}
+
+const ALT={eoc:'EOC Round logged',training:'Training logged',incident:'Safety incident logged',secInc:'Security incident logged',secDrill:'Security drill logged',chemical:'Chemical registered',wasteAudit:'Waste audit logged',emDrill:'Emergency drill logged',fireAlarm:'Fire alarm record',fireSup:'Suppression PPM',fireExit:'Exit inspection',fireDrill:'Fire drill logged',ppm:'Equipment PPM saved',inventory:'Equipment added',genTest:'Generator test',waterTest:'Water test',pmgCheck:'PMG checklist submitted',airPurity:'Air purity test',tldReview:'TLD review',leadApron:'Lead apron test',shieldCert:'Shielding cert',doc:'Document uploaded',wo:'Work order submitted'};
+function logA(type){const a=ld('act');a.unshift({l:ALT[type]||type,by:CU.name,rl:CU.rl,ts:new Date().toISOString()});if(a.length>80)a.pop();sv('act',a);}
+
+// ===== RENDER LOGS =====
+function fc(f){return f?.n?`<span style="font-size:9px;color:var(--ac);background:rgba(0,180,255,.1);border:1px solid rgba(0,180,255,.2);border-radius:4px;padding:1px 6px;">📎${f.n.slice(0,16)}</span>`:'<span style="color:var(--mu);font-size:9px;">—</span>';}
+function rb(v){const m={pass:'bg2',done:'bg2',partial:'bo2',fail:'br2'};const i={pass:'✅',done:'✅',partial:'⚠️',fail:'❌'};return`<span class="bx ${m[v]||'bm2'}">${i[v]||''}${v||'—'}</span>`;}
+function pb(v){return v==='pass'?'<span class="bx bg2">✅</span>':'<span class="bx br2">❌</span>';}
+function sbx(v){const m={Low:'bb2',Medium:'bo2',High:'br2',Critical:'br2','Near Miss':'bm2',Minor:'bb2',Moderate:'bo2',Major:'br2',Sentinel:'br2'};return`<span class="bx ${m[v]||'bm2'}">${v||'—'}</span>`;}
+
+const LRS={
+  eoc:r=>`<td>${r.date||'—'}</td><td>${r.areas||'—'}</td><td>${r.findings||0}</td><td>${r.closed||0}</td><td>${r.by||'—'}</td><td>${fc(r.file)}</td>`,
+  training:r=>`<td>${r.date||'—'}</td><td>${r.topic||'—'}</td><td>${r.dept||'—'}</td><td>${r.count||'—'}</td><td>${r.trainer||'—'}</td><td>${fc(r.file)}</td>`,
+  incident:r=>`<td>${r.date||'—'}</td><td>${r.type||'—'}</td><td>${r.loc||'—'}</td><td>${sbx(r.sev)}</td><td>${r.by||'—'}</td><td>${fc(r.file)}</td>`,
+  secInc:r=>`<td>${r.date||'—'}</td><td>${r.type||'—'}</td><td>${r.loc||'—'}</td><td>${sbx(r.sev)}</td><td>${r.by||'—'}</td><td>${fc(r.file)}</td>`,
+  secDrill:r=>`<td>${r.date||'—'}</td><td>${r.type||'—'}</td><td>${r.count||'—'}</td><td>${r.dur||'—'}m</td><td>${fc(r.file)}</td>`,
+  chemical:r=>`<td>${r.name||'—'}</td><td>${r.loc||'—'}</td><td>${r.class||'—'}</td><td>${r.sds==='yes'?'<span class="bx bg2">✅</span>':'<span class="bx br2">❌</span>'}</td><td>${r.store==='yes'?'<span class="bx bg2">✅</span>':'<span class="bx br2">❌</span>'}</td><td>${fc(r.file)}</td>`,
+  wasteAudit:r=>`<td>${r.date||'—'}</td><td>${r.areas||'—'}</td><td>${r.pct||'—'}%</td><td>${r.nc||0}</td><td>${r.by||'—'}</td><td>${fc(r.file)}</td>`,
+  emDrill:r=>`<td>${r.date||'—'}</td><td>${r.type||'—'}</td><td>${r.shift||'—'}</td><td>${r.count||'—'}</td><td>${r.dur||'—'}m</td><td style="font-size:10px;">${r.def||'None'}</td><td>${fc(r.file)}</td>`,
+  fireAlarm:r=>`<td>${r.date||'—'}</td><td style="font-size:10px;">${r.type||'—'}</td><td>${r.zone||'—'}</td><td>${rb(r.res)}</td><td style="font-size:10px;">${r.cont||'—'}</td><td>${fc(r.file)}</td>`,
+  fireSup:r=>`<td>${r.date||'—'}</td><td style="font-size:10px;">${r.sys||'—'}</td><td>${r.act||'—'}</td><td>${rb(r.res)}</td><td style="font-size:10px;">${r.cont||'—'}</td><td>${fc(r.file)}</td>`,
+  fireExit:r=>`<td>${r.date||'—'}</td><td>${r.loc||'—'}</td><td>${pb(r.c1)}</td><td>${pb(r.c2)}</td><td>${pb(r.c3)}</td><td>${pb(r.c4)}</td><td>${pb(r.c6)}</td><td>${fc(r.file)}</td>`,
+  fireDrill:r=>`<td>${ld('fireDrill').indexOf(r)+1}</td><td>${r.date||'—'}</td><td>${r.shift||'—'}</td><td>${r.area||'—'}</td><td>${r.dur||'—'}m</td><td>${r.count||'—'}</td><td style="font-size:10px;">${r.def||'None'}</td><td>${fc(r.file)}</td>`,
+  ppm:r=>`<td>${r.date||'—'}</td><td>${r.equip||'—'}</td><td>${r.asset||'—'}</td><td style="font-size:10px;">${r.type||'—'}</td><td>${rb(r.res)}</td><td>${r.tech||'—'}</td><td>${fc(r.file)}</td>`,
+  inventory:r=>`<td>${r.name||'—'}</td><td>${r.cat||'—'}</td><td>${r.asset||'—'}</td><td>${r.loc||'—'}</td><td>${r.freq||'—'}</td><td>${r.risk||'—'}</td>`,
+  genTest:r=>`<td>${r.date||'—'}</td><td>${r.unit||'—'}</td><td>${r.tr||'—'}s</td><td>${r.load||'—'}%</td><td>${r.fuel||'—'}%</td><td>${rb(r.res)}</td><td>${r.by||'—'}</td><td>${fc(r.file)}</td>`,
+  waterTest:r=>`<td>${r.date||'—'}</td><td>${r.loc||'—'}</td><td style="color:${Number(r.hot)>=55?'var(--gn)':'var(--rd)'};">${r.hot||'—'}°C</td><td style="color:${Number(r.cold)<=20?'var(--gn)':'var(--rd)'};">${r.cold||'—'}°C</td><td>${r.leg==='neg'?'<span class="bx bg2">Neg</span>':r.leg==='pos'?'<span class="bx br2">POS!</span>':'<span class="bx bm2">N/A</span>'}</td><td>${r.by||'—'}</td><td>${fc(r.file)}</td>`,
+  pmgCheck:r=>`<td>${r.date||'—'}</td><td style="color:${Number(r.o2)>=100?'var(--gn)':'var(--rd)'};">${r.o2||'—'}</td><td style="color:${Number(r.air)>=3.5&&Number(r.air)<=5.5?'var(--gn)':'var(--rd)'};">${r.air||'—'}</td><td style="color:${Number(r.vac)<=-300?'var(--gn)':'var(--rd)'};">${r.vac||'—'}</td><td>${r.lox||'—'}%</td><td style="font-size:10px;">${r.alarms||'None'}</td><td>${r.by||'—'}</td>`,
+  airPurity:r=>`<td>${r.date||'—'}</td><td>${r.water||'—'}</td><td>${r.co||'—'}</td><td>${r.co2||'—'}</td><td>${r.so2||'—'}</td><td>${r.dew||'—'}</td><td>${rb(r.res)}</td><td>${fc(r.file)}</td>`,
+  tldReview:r=>`<td>${r.q||'—'}</td><td>${r.yr||'—'}</td><td>${r.count||'—'}</td><td>${r.dose||'—'}mSv</td><td>${r.over==='no'?'<span class="bx bg2">No</span>':'<span class="bx br2">YES!</span>'}</td><td>${r.rso||'—'}</td><td>${fc(r.file)}</td>`,
+  leadApron:r=>`<td>${r.date||'—'}</td><td>${r.dept||'—'}</td><td>${r.type||'—'}</td><td>${r.qty||'—'}</td><td>${r.def||0}</td><td>${r.method||'—'}</td><td>${fc(r.file)}</td>`,
+  shieldCert:r=>{const ex=r.expiry&&new Date(r.expiry)<new Date()?'<span class="bx br2">EXPIRED</span>':'<span class="bx bg2">Valid</span>';return`<td>${r.room||'—'}</td><td>${r.equip||'—'}</td><td>${r.date||'—'}</td><td>${r.expiry||'—'}</td><td style="font-size:10px;">${r.co||'—'}</td><td>${ex}</td><td>${fc(r.file)}</td>`;},
+  doc:r=>`<td>${r._ts?.slice(0,10)||'—'}</td><td>${r.title||'—'}</td><td>${r.std||'—'}</td><td>${r._by||'—'}</td><td style="font-size:10px;">${r._rl||'—'}</td><td>${fc(r.file)}</td>`,
+};
+function renderLog(type){const e=document.getElementById(type+'-tb');if(!e)return;const d=ld(type);if(!d.length){e.innerHTML='<tr><td colspan="12" class="em">No records yet</td></tr>';return;}const fn=LRS[type];if(!fn)return;e.innerHTML=d.map(r=>`<tr>${fn(r)}</tr>`).join('');}
+function renderAll(){Object.keys(RD).forEach(t=>renderLog(t));renderWO();woBadge();renderDash();}
+
+// ===== WORK ORDERS =====
+let woF='all';
+function fWO(f,btn){woF=f;renderWO();if(btn){btn.closest('.tb').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}}
+function submitWO(){
+  const nm=document.getElementById('wo-name').value.trim(),dp=document.getElementById('wo-dept').value.trim(),tp=document.getElementById('wo-type').value,pr=document.getElementById('wo-prio').value,ds=document.getElementById('wo-desc').value.trim(),lc=document.getElementById('wo-loc').value.trim(),fl=document.getElementById('wo-file').files[0];
+  if(!nm||!dp||!ds){toast('Fill name, dept, description','#f59e0b');return;}
+  const wos=ld('workorders'),id='WO-'+String(wos.length+1).padStart(3,'0');
+  wos.unshift({id,type:tp,dept:dp,desc:ds+(lc?' ['+lc+']':''),name:nm,prio:pr,file:fl?{n:fl.name}:null,date:new Date().toISOString().split('T')[0],assigned:'',status:'Open',updates:[],_by:CU.name,_rl:CU.rl});
+  sv('workorders',wos);logA('wo');closeMod('newWO');renderWO();woBadge();toast('✓ '+id+' submitted');
+}
+function renderWO(){
+  const e=document.getElementById('wo-tb');if(!e)return;
+  let w=ld('workorders');
+  if(woF==='gen')w=w.filter(x=>x.type==='gen');
+  else if(woF==='bio')w=w.filter(x=>x.type==='bio');
+  else if(woF==='open')w=w.filter(x=>x.status!=='Completed'&&x.status!=='Cancelled');
+  if(!w.length){e.innerHTML='<tr><td colspan="10" class="em">No work orders</td></tr>';return;}
+  const pc={high:'var(--rd)',med:'var(--or)',low:'var(--gn)'};
+  const sc2={Open:'br2','In Progress':'bo2','Pending Parts':'bo2',Completed:'bg2',Cancelled:'bm2'};
+  e.innerHTML=w.map(x=>`<tr>
+    <td style="font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--ac);font-size:12px;">${x.id}</td>
+    <td style="font-size:10px;">${x.type==='bio'?'⚕Bio':'🔧Gen'}</td>
+    <td style="font-size:11px;">${x.dept}</td>
+    <td style="max-width:140px;font-size:10px;">${x.desc}</td>
+    <td><div style="width:8px;height:8px;border-radius:50%;background:${pc[x.prio]||'var(--mu)'};margin:auto;"></div></td>
+    <td style="font-size:10px;">${x.name||'—'}</td>
+    <td style="font-size:10px;">${x.date}</td>
+    <td style="font-size:10px;">${x.assigned||'—'}</td>
+    <td><span class="bx ${sc2[x.status]||'bm2'}">${x.status}</span></td>
+    <td><button class="btn bo" style="padding:3px 8px;font-size:10px;" onclick="openUpd('${x.id}')">Update</button></td>
+  </tr>`).join('');
+}
+function woBadge(){const c=ld('workorders').filter(w=>w.status==='Open'||w.status==='In Progress').length;const b=document.getElementById('woBadge');if(b)b.textContent=c;}
+function openUpd(id){document.getElementById('upd-id').value=id;openMod('updWO');}
+function applyUpd(){
+  const id=document.getElementById('upd-id').value,tc=document.getElementById('upd-tech').value,st2=document.getElementById('upd-status').value,nt=document.getElementById('upd-notes').value,dt=document.getElementById('upd-date').value,fl=document.getElementById('upd-file').files[0];
+  const wos=ld('workorders'),wo=wos.find(w=>w.id===id);
+  if(wo){wo.assigned=tc||wo.assigned;wo.status=st2;wo.updates.push({notes:nt,date:dt,by:CU.name,file:fl?{n:fl.name}:null});}
+  sv('workorders',wos);closeMod('updWO');renderWO();woBadge();toast('✓ Updated');
+}
+
+// ===== CUSTOM KPI =====
+function saveCKPI(){
+  const nm=document.getElementById('ck-name').value.trim(),vl=document.getElementById('ck-val').value,tg=document.getElementById('ck-tgt').value,un=document.getElementById('ck-unit').value.trim(),dv=document.getElementById('ck-div').value,pd=document.getElementById('ck-period').value,nt=document.getElementById('ck-notes').value.trim();
+  if(!nm||!vl||!tg){toast('Fill name, value, target','#f59e0b');return;}
+  const arr=ld('customKPI');arr.unshift({_id:Date.now(),name:nm,val:Number(vl),target:Number(tg),unit:un,div:dv,period:pd,notes:nt,_by:CU.name,_rl:CU.rl,_ts:new Date().toISOString()});sv('customKPI',arr);
+  ['ck-name','ck-val','ck-tgt','ck-unit','ck-notes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  renderCKPI('all');toast('✓ Custom KPI added');
+}
+function delCKPI(id){sv('customKPI',ld('customKPI').filter(k=>k._id!==id));renderCKPI(ckpiF);}
+let ckpiF='all';
+function fCKPI(f,btn){ckpiF=f;renderCKPI(f);if(btn){btn.closest('.tb').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}}
+const DC={safety:'var(--or)',security:'var(--rd)',biomedical:'var(--pu)',maintenance:'var(--ac)',director:'var(--gn)'};
+const DL={safety:'🛡 Safety — Moe',security:'🔒 Security — Bader',biomedical:'⚕ Biomed — Bashar',maintenance:'🔧 Maint. — Mostapha',director:'⬡ FMS Director'};
+function renderCKPI(f){
+  const e=document.getElementById('ckpiList');if(!e)return;
+  let data=ld('customKPI');if(f&&f!=='all')data=data.filter(k=>k.div===f);
+  if(!data.length){e.innerHTML='<div class="em">No custom KPIs yet — add above</div>';return;}
+  e.innerHTML=data.map(k=>{
+    const pct=Math.min(100,Math.round((k.val/k.target)*100));const c=pct>=90?'var(--gn)':pct>=60?'var(--or)':'var(--rd)';
+    return`<div class="cki">
+      <div style="width:9px;height:36px;border-radius:3px;background:${DC[k.div]||'var(--ac)'};flex-shrink:0;"></div>
+      <div style="flex:1;">
+        <div style="font-size:12px;font-weight:600;">${k.name}</div>
+        <div style="font-size:9px;color:var(--mu);">${DL[k.div]||k.div} · ${k.period} · ${k._by}</div>
+        <div style="margin-top:5px;display:flex;align-items:center;gap:7px;"><div class="pw"><div class="pf" style="width:${pct}%;background:${c};"></div></div><span style="font-size:9px;color:${c};">${pct}%</span></div>
+        ${k.notes?`<div style="font-size:9px;color:var(--mu);margin-top:2px;">${k.notes}</div>`:''}
+      </div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:${c};">${k.val}${k.unit}</div>
+      <div style="font-size:9px;color:var(--mu);text-align:right;">/&nbsp;${k.target}<br>${k.unit}</div>
+      <button class="btn br" style="padding:3px 8px;font-size:10px;" onclick="delCKPI(${k._id})">✕</button>
+    </div>`;
+  }).join('');
+}
+
+// ===== DASHBOARD =====
+function renderDash(){
+  const wos=ld('workorders'),open=wos.filter(w=>w.status==='Open'||w.status==='In Progress').length;
+  const pT=ld('ppm').length,pD=ld('ppm').filter(r=>r.res==='done').length;
+  const pR=pT?Math.round((pD/pT)*100):0;
+  const {met,par,gap}=cbStats();const tot=met+par+gap;const ready=tot?Math.round((met/tot)*100):0;
+  document.getElementById('d-wo').textContent=open;
+  document.getElementById('d-ppm').textContent=pR+'%';
+  document.getElementById('d-cbahi').textContent=ready+'%';
+  // domain bars
+  const doms=[{n:'🛡 Safety',p:dPct('safety'),s:'FMS.1.1.1'},{n:'🔒 Security',p:dPct('security'),s:'FMS.1.1.2'},{n:'☣ Hazmat',p:dPct('hazmat'),s:'FMS.1.1.3'},{n:'🚨 Emergency',p:dPct('emergency'),s:'FMS.1.1.4/5'},{n:'🔥 Fire',p:dPct('fire'),s:'FMS.1.1.6'},{n:'⚕ Equip.',p:dPct('equip'),s:'FMS.1.1.7'},{n:'⚡ Utilities',p:dPct('utils'),s:'FMS.1.1.8'}];
+  const dE=document.getElementById('domBars');
+  if(dE)dE.innerHTML=doms.map(d=>{const c=d.p>=80?'var(--gn)':d.p>=50?'var(--or)':'var(--rd)';return`<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="font-size:11px;">${d.n}</span><span style="font-family:'Rajdhani',sans-serif;font-weight:700;color:${c};font-size:14px;">${d.p}%</span></div><div class="pw" style="height:6px;"><div class="pf" style="width:${d.p}%;background:${c};"></div></div><div style="font-size:9px;color:var(--mu);">${d.s}</div></div>`;}).join('');
+  // alerts
+  const al=buildAlerts();
+  const alE=document.getElementById('dashAlerts');
+  if(alE)alE.innerHTML=al.length?al.map(a=>`<div class="al ${a.c}"><span>${a.i}</span><div><div style="font-size:11px;">${a.t}</div><div style="font-size:9px;color:var(--mu);">${a.s||''}</div></div></div>`).join(''):'<div class="em">✅ No critical alerts</div>';
+  // activity
+  const acts=ld('act').slice(0,7);
+  const aE=document.getElementById('dashAct');
+  if(aE)aE.innerHTML=acts.length?`<table class="tbl"><thead><tr><th>Action</th><th>By</th><th>Time</th></tr></thead><tbody>${acts.map(a=>`<tr><td style="font-size:11px;">${a.l}</td><td style="font-size:10px;">${a.by}</td><td style="font-size:9px;color:var(--mu);">${a.ts?.slice(0,16).replace('T',' ')||'—'}</td></tr>`).join('')}</tbody></table>`:'<div class="em">Enter data to see activity here</div>';
+}
+function buildAlerts(){
+  const a=[],now=new Date(),today=now.toISOString().split('T')[0];
+  if(!ld('pmgCheck').find(r=>r.date===today))a.push({c:'alc',i:'🔴',t:'PMG checklist not submitted today',s:'Bashar — Biomedical'});
+  const fd=ld('fireDrill').length;if(fd<4)a.push({c:'alw',i:'🟡',t:`Fire drills: ${fd}/4 this year`,s:'Moe — FMS.1.1.6'});
+  const ec=ld('eoc').length;if(ec<12)a.push({c:'alw',i:'🟡',t:`EOC rounds: ${ec}/12 this year`,s:'Moe — FMS.1.1.1'});
+  const td=ld('tldReview').length;if(td<4)a.push({c:'alw',i:'🟡',t:`TLD reviews: ${td}/4 this year`,s:'Bashar — FMS.9.7'});
+  const ex2=ld('shieldCert').filter(r=>r.expiry&&new Date(r.expiry)<now);if(ex2.length)a.push({c:'alc',i:'🔴',t:`${ex2.length} shielding cert(s) expired`,s:'Bashar — FMS.9.5'});
+  const hi=ld('workorders').filter(w=>w.prio==='high'&&w.status==='Open').length;if(hi)a.push({c:'alc',i:'🔴',t:`${hi} emergency WO(s) open`,s:'Mostapha — Maintenance'});
+  const em2=ld('emDrill').length;if(em2<6)a.push({c:'alw',i:'🟡',t:`Emergency drills: ${em2}/6 this year`,s:'Moe — FMS.1.1.4/5'});
+  const gt=ld('genTest').length;if(gt<12)a.push({c:'ali',i:'🔵',t:`Generator tests: ${gt}/12 this year`,s:'Mostapha — FMS.1.1.8'});
+  return a;
+}
+function dPct(d){const f={safety:()=>Math.min(100,Math.round((ld('eoc').length/12)*60+(ld('training').length/4)*40)),security:()=>Math.min(100,Math.round((ld('secDrill').length/2)*70+(ld('secInc').length>0?30:0))),hazmat:()=>Math.min(100,Math.round((ld('chemical').length>0?Math.min(50,ld('chemical').length*2):0)+(ld('wasteAudit').length/4)*50)),emergency:()=>Math.min(100,Math.round((ld('emDrill').length/6)*100)),fire:()=>Math.min(100,Math.round((ld('fireAlarm').length/12)*30+(ld('fireDrill').length/4)*30+(ld('fireSup').length/4)*20+(ld('fireExit').length/4)*20)),equip:()=>{const t=ld('ppm').length;return t?Math.min(100,Math.round((ld('ppm').filter(r=>r.res==='done').length/t)*100)):0;},utils:()=>Math.min(100,Math.round((ld('genTest').length/12)*40+(ld('waterTest').length/4)*30+(ld('pmgCheck').length/30)*30))};return(f[d]&&f[d]())||0;}
+
+// ===== CBAHI =====
+const CBD=[
+  {code:'FMS.1.1.1',title:'Building safety — EOC rounds (12/year)',k:'eoc',tgt:12,chk:d=>d.length>=12},
+  {code:'FMS.1.1.2',title:'Security drills (2/year)',k:'secDrill',tgt:2,chk:d=>d.length>=2},
+  {code:'FMS.1.1.3',title:'Hazmat — chemicals + waste audits',k:'chemical',tgt:10,chk:d=>d.length>=10&&ld('wasteAudit').length>=4},
+  {code:'FMS.1.1.4/5',title:'Emergency drills (6/year)',k:'emDrill',tgt:6,chk:d=>d.length>=6},
+  {code:'FMS.1.1.6',title:'Fire drills (4/year)',k:'fireDrill',tgt:4,chk:d=>d.length>=4},
+  {code:'FMS.1.1.7',title:'Medical equipment PPM records',k:'ppm',tgt:50,chk:d=>d.length>=50&&d.filter(r=>r.res==='done').length>=45},
+  {code:'FMS.1.1.8',title:'Generator monthly tests (12/year)',k:'genTest',tgt:12,chk:d=>d.length>=12},
+  {code:'FMS.9.5',title:'Shielding certs — valid (KACST)',k:'shieldCert',tgt:3,chk:d=>d.length>=3&&d.filter(r=>!r.expiry||new Date(r.expiry)>=new Date()).length>=3},
+  {code:'FMS.9.6',title:'Lead apron annual testing',k:'leadApron',tgt:1,chk:d=>d.length>=1},
+  {code:'FMS.9.7',title:'TLD quarterly reviews by RSO (4/year)',k:'tldReview',tgt:4,chk:d=>d.length>=4},
+  {code:'FMS.21.1',title:'Fire alarm monthly inspections (12/year)',k:'fireAlarm',tgt:12,chk:d=>d.filter(r=>r.type?.includes('Monthly')).length>=12},
+  {code:'FMS.21.3',title:'Fire alarm quarterly PPM — Civil Defense (4/year)',k:'fireAlarm',tgt:4,chk:d=>d.filter(r=>r.type?.includes('PPM')).length>=4},
+  {code:'FMS.22',title:'Suppression system PPM records (8/year)',k:'fireSup',tgt:8,chk:d=>d.length>=8},
+  {code:'FMS.23',title:'Fire exit inspections — all 5 criteria',k:'fireExit',tgt:4,chk:d=>d.length>=4&&d.filter(r=>r.c1==='pass'&&r.c2==='pass'&&r.c3==='pass'&&r.c4==='pass'&&r.c6==='pass').length>=2},
+  {code:'FMS.32.1',title:'PMG daily checklists (30+)',k:'pmgCheck',tgt:30,chk:d=>d.length>=30},
+  {code:'FMS.32.3',title:'Air purity tests (2/year)',k:'airPurity',tgt:2,chk:d=>d.length>=2&&d.some(r=>r.res==='pass')},
+  {code:'FMS.32.8',title:'O₂ reserve ≥48h documented',k:'pmgCheck',tgt:4,chk:d=>d.length>=4},
+];
+function cbStats(){let met=0,par=0,gap=0;CBD.forEach(def=>{const d=ld(def.k),p=Math.min(100,Math.round((d.length/def.tgt)*100));if(def.chk(d))met++;else if(p>=40)par++;else gap++;});return{met,par,gap};}
+function renderCBAHI(){
+  const{met,par,gap}=cbStats();
+  document.getElementById('cb-met').textContent=met;
+  document.getElementById('cb-par').textContent=par;
+  document.getElementById('cb-gap').textContent=gap;
+  const e=document.getElementById('cbRows');if(!e)return;
+  const hdr=`<div style="display:grid;grid-template-columns:100px 1fr 100px 90px 70px;gap:8px;padding:6px 13px;border-bottom:1px solid var(--bd);"><span style="font-size:8px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;">Standard</span><span style="font-size:8px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;">Description</span><span style="font-size:8px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;">Evidence</span><span style="font-size:8px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;">Progress</span><span style="font-size:8px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;">Status</span></div>`;
+  e.innerHTML=hdr+CBD.map(def=>{
+    const d=ld(def.k),cnt=d.length,pct=Math.min(100,Math.round((cnt/def.tgt)*100));
+    const ok=def.chk(d),fl=ok?'var(--gn)':pct>=40?'var(--or)':'var(--rd)';
+    const bd=ok?'<span class="bx bg2">✅Met</span>':pct>=40?'<span class="bx bo2">⚠️Part</span>':'<span class="bx br2">❌Gap</span>';
+    return`<div style="display:grid;grid-template-columns:100px 1fr 100px 90px 70px;gap:8px;padding:8px 13px;border-bottom:1px solid rgba(0,180,255,.04);">
+      <span style="font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--ac);font-size:11px;">${def.code}</span>
+      <span style="font-size:10px;">${def.title}</span>
+      <span style="font-size:10px;color:var(--mu);">${cnt}/${def.tgt}</span>
+      <div style="display:flex;align-items:center;gap:4px;"><div class="pw" style="height:5px;"><div class="pf" style="width:${pct}%;background:${fl};"></div></div><span style="font-size:9px;color:var(--mu);">${pct}%</span></div>
+      ${bd}
+    </div>`;
+  }).join('');
+}
+
+// ===== KPI =====
+const KGS={
+  '111':{lbl:'🛡 FMS.1.1.1 — Safety (Moe)',kpis:[{n:'EOC Rounds (12/yr)',k:'eoc',tgt:12,c:d=>d.length},{n:'EOC Closure Rate',k:'eoc',tgt:100,c:d=>{const t=d.reduce((s,r)=>s+Number(r.findings||0),0),cl=d.reduce((s,r)=>s+Number(r.closed||0),0);return t?Math.round((cl/t)*100):0;},unit:'%'},{n:'Training Sessions (4/yr)',k:'training',tgt:4,c:d=>d.length},{n:'Total Staff Trained',k:'training',tgt:100,c:d=>d.reduce((s,r)=>s+Number(r.count||0),0)},{n:'Incidents Logged',k:'incident',tgt:0,c:d=>d.length,lb:true}]},
+  '112':{lbl:'🔒 FMS.1.1.2 — Security (Bader)',kpis:[{n:'Security Incidents',k:'secInc',tgt:0,c:d=>d.length,lb:true},{n:'Security Drills (2/yr)',k:'secDrill',tgt:2,c:d=>d.length},{n:'Infant Abduction Drills (1/yr)',k:'secDrill',tgt:1,c:d=>d.filter(r=>r.type?.includes('Infant')).length}]},
+  '113':{lbl:'☣ FMS.1.1.3 — Hazmat (Moe)',kpis:[{n:'Chemicals Registered',k:'chemical',tgt:50,c:d=>d.length},{n:'SDS Coverage',k:'chemical',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.sds==='yes').length/t)*100):0;},unit:'%'},{n:'Waste Audits (4/yr)',k:'wasteAudit',tgt:4,c:d=>d.length},{n:'Avg Segregation Compliance',k:'wasteAudit',tgt:95,c:d=>{const v=d.map(r=>Number(r.pct||0)).filter(x=>x>0);return v.length?Math.round(v.reduce((a,b)=>a+b)/v.length):0;},unit:'%'}]},
+  '1145':{lbl:'🚨 FMS.1.1.4/5 — Emergency (Moe)',kpis:[{n:'Emergency Drills (6/yr)',k:'emDrill',tgt:6,c:d=>d.length},{n:'Code Red Drills',k:'emDrill',tgt:4,c:d=>d.filter(r=>r.type?.includes('Red')).length},{n:'MCI Drills',k:'emDrill',tgt:1,c:d=>d.filter(r=>r.type?.includes('MCI')||r.type?.includes('Mass')).length},{n:'Night Shift Drills',k:'emDrill',tgt:2,c:d=>d.filter(r=>r.shift==='Night').length}]},
+  '116':{lbl:'🔥 FMS.1.1.6 — Fire Safety (Moe+Mostapha)',kpis:[{n:'Fire Alarm Records (12+/yr)',k:'fireAlarm',tgt:12,c:d=>d.length},{n:'Quarterly PPM — Civil Defense (4/yr)',k:'fireAlarm',tgt:4,c:d=>d.filter(r=>r.type?.includes('PPM')).length},{n:'Suppression PPM Records (8/yr)',k:'fireSup',tgt:8,c:d=>d.length},{n:'Exit Inspections',k:'fireExit',tgt:4,c:d=>d.length},{n:'Exit Full-Pass Rate (5 criteria)',k:'fireExit',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.c1==='pass'&&r.c2==='pass'&&r.c3==='pass'&&r.c4==='pass'&&r.c6==='pass').length/t)*100):0;},unit:'%'},{n:'Fire Drills (4/yr)',k:'fireDrill',tgt:4,c:d=>d.length}]},
+  '117':{lbl:'⚕ FMS.1.1.7 — Equipment (Bashar)',kpis:[{n:'PPM Records Entered',k:'ppm',tgt:100,c:d=>d.length},{n:'PPM Completion Rate',k:'ppm',tgt:95,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.res==='done').length/t)*100):0;},unit:'%'},{n:'Equipment in Inventory',k:'inventory',tgt:200,c:d=>d.length},{n:'High-Risk Equipment',k:'inventory',tgt:50,c:d=>d.filter(r=>r.risk==='High Risk').length}]},
+  '118':{lbl:'⚡ FMS.1.1.8 — Utilities (Mostapha)',kpis:[{n:'Generator Tests (12/yr)',k:'genTest',tgt:12,c:d=>d.length},{n:'Generator Pass Rate',k:'genTest',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.res==='pass').length/t)*100):0;},unit:'%'},{n:'Water Safety Tests (4/yr)',k:'waterTest',tgt:4,c:d=>d.length},{n:'Hot Water Compliance ≥55°C',k:'waterTest',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>Number(r.hot)>=55).length/t)*100):0;},unit:'%'},{n:'PMG Daily Checklists (30/yr)',k:'pmgCheck',tgt:30,c:d=>d.length},{n:'Air Purity Tests (2/yr)',k:'airPurity',tgt:2,c:d=>d.length},{n:'Air Purity Pass Rate',k:'airPurity',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.res==='pass').length/t)*100):0;},unit:'%'},{n:'TLD Quarterly Reviews (4/yr)',k:'tldReview',tgt:4,c:d=>d.length}]},
+};
+let kpiPd='ytd';
+function setKpiPd(p,btn){kpiPd=p;renderKPI();if(btn){btn.closest('.pb').querySelectorAll('.pbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}}
+function showKT(tab,btn){renderKPI(tab);if(btn){btn.closest('.tb').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}}
+function fpd(data,pd){
+  if(pd==='ytd')return data;
+  const yr=new Date().getFullYear();
+  const qr={q1:[`${yr}-01-01`,`${yr}-03-31`],q2:[`${yr}-04-01`,`${yr}-06-30`],q3:[`${yr}-07-01`,`${yr}-09-30`],q4:[`${yr}-10-01`,`${yr}-12-31`]};
+  const[s,en]=qr[pd]||['',''];
+  return data.filter(r=>{const d=r.date||r._ts?.slice(0,10)||'';return d>=s&&d<=en;});
+}
+function renderKPI(tab){
+  const el=document.getElementById('kpiOut');if(!el)return;
+  const groups=(!tab||tab==='all')?Object.values(KGS):[KGS[tab]].filter(Boolean);
+  const pdl={ytd:'Year-to-Date',q1:'Q1 Jan–Mar',q2:'Q2 Apr–Jun',q3:'Q3 Jul–Sep',q4:'Q4 Oct–Dec'}[kpiPd]||kpiPd;
+  el.innerHTML=`<div style="font-size:10px;color:var(--or);margin-bottom:12px;">📅 Period: ${pdl}</div>`+groups.map(g=>`<div style="margin-bottom:20px;"><div class="st">${g.lbl}</div>${g.kpis.map(k=>{
+    const actual=k.c(fpd(ld(k.k),kpiPd));
+    const pct=k.lb?(actual===0?100:Math.max(0,100-actual*20)):Math.min(100,k.tgt>0?Math.round((actual/k.tgt)*100):0);
+    const fl=pct>=90?'linear-gradient(90deg,#10b981,var(--gn))':pct>=50?'linear-gradient(90deg,var(--or),#f97316)':'linear-gradient(90deg,var(--rd),#dc2626)';
+    const vc=pct>=90?'var(--gn)':pct>=50?'var(--or)':'var(--rd)';
+    const bd=pct>=90?'<span class="bx bg2">Met</span>':pct>=50?'<span class="bx bo2">Part.</span>':'<span class="bx br2">Gap</span>';
+    return`<div class="kc"><div class="kch"><div class="kcn">${k.n}</div><div class="kcv"><div class="kca" style="color:${vc};">${actual}${k.unit==='%'?'%':''}</div><div class="kct">/${k.tgt} ${k.unit||'recs'}</div>${bd}</div></div><div class="kbar"><div class="kfill" style="width:${pct}%;background:${fl};"></div></div></div>`;
+  }).join('')}</div>`).join('');
+}
+const DKM={safety:'111',security:'112',hazmat:'113',emergency:'1145',fire:'116',equip:'117',utils:'118',medgas:'118',radiation:'118'};
+function renderDomainKPI(domain){
+  const key=DKM[domain];const g=key&&KGS[key];const el=document.getElementById(domain+'-kpi-out');if(!el)return;
+  if(!g){el.innerHTML='<div class="em">KPIs auto-calculated from records entered above</div>';return;}
+  el.innerHTML=`<div class="st">${g.lbl}</div>`+g.kpis.map(k=>{
+    const actual=k.c(ld(k.k));
+    const pct=k.lb?(actual===0?100:Math.max(0,100-actual*20)):Math.min(100,k.tgt>0?Math.round((actual/k.tgt)*100):0);
+    const fl=pct>=90?'linear-gradient(90deg,#10b981,var(--gn))':pct>=50?'linear-gradient(90deg,var(--or),#f97316)':'linear-gradient(90deg,var(--rd),#dc2626)';
+    const vc=pct>=90?'var(--gn)':pct>=50?'var(--or)':'var(--rd)';
+    const bd=pct>=90?'<span class="bx bg2">✅Met</span>':pct>=50?'<span class="bx bo2">⚠️Part</span>':'<span class="bx br2">❌Gap</span>';
+    return`<div class="kc"><div class="kch"><div class="kcn">${k.n}</div><div class="kcv"><div class="kca" style="color:${vc};">${actual}${k.unit==='%'?'%':''}</div><div class="kct">/${k.tgt}</div>${bd}</div></div><div class="kbar"><div class="kfill" style="width:${pct}%;background:${fl};"></div></div></div>`;
+  }).join('');
+}
+
+// ===== O2 RESERVE =====
+function calcR(){
+  const sz=Number(document.getElementById('lx-size')?.value||0),lv=Number(document.getElementById('lx-lev')?.value||0)/100,cy=Number(document.getElementById('lx-cyls')?.value||0),cn=Number(document.getElementById('lx-cons')?.value||1);
+  const tot=(sz*lv*855)+(cy*6800),hrs=cn>0?Math.round(tot/(cn/24)):0;
+  const e=document.getElementById('res-h');if(!e)return;
+  e.textContent=hrs?hrs+'h':'—';e.style.color=hrs>=48?'var(--gn)':hrs>=24?'var(--or)':'var(--rd)';
+}
+
+// ===== MODALS =====
+function openMod(id){document.getElementById('mod-'+id)?.classList.add('open');}
+function closeMod(id){document.getElementById('mod-'+id)?.classList.remove('open');}
+
+// ===== TOAST =====
+function toast(msg,color){const t=document.getElementById('toast');t.textContent=msg;t.style.background=color||'linear-gradient(135deg,#10b981,#059669)';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+
+
+
+
+// ===== GOOGLE SHEETS LIVE INTEGRATION =====
+// IMPORTANT: To connect your sheet, paste your Apps Script Web App URL below.
+// See instructions shown in the platform when sheet is not connected.
+// Once deployed, it looks like: https://script.google.com/macros/s/XXXXX/exec
+let APPS_SCRIPT_URL = ''; // <-- paste your deployed URL here (or set via the UI)
+
+const SHEET_ID  = '10qPGTtY0k9cBNAeYEwyKwpebsYMndvEFkhFB0RRO0q8';
+const SHEET_GID = '1530231215';
+
+// Column map (0-based), matches the admin sheet header exactly
+const C = {
+  timestamp:0, requestedBy:1, designation:2, email:3, department:4,
+  natureOfWork:5, typeOfWork:6, workDesc:7, photo:8, typeOfMaint:9,
+  attachment:10, workID:11, dateReceived:12, receivedBy:13, assignedTo:14,
+  dateAssigned:15, status:16, statusUpdated:17, completionDate:18,
+  completionHours:19, responseTime:20, totalCost:21, remarks:22,
+  techPhoto:23, techNotes:24, timeToAssign:25, timeToStart:26,
+  slaTarget:27, slaStatus:28
+};
+
+let ROWS      = [];      // REAL rows from sheet — empty until loaded
+let MMS_MONTH = 'all';
+let MMS_VIEW  = 'overview';
+let SHEET_OK  = false;
+
+// ---- STATUS DISPLAY ----
+function connectAppsScript() {
+  const input = document.getElementById('apps-script-url-input');
+  if (!input || !input.value.trim()) { toast('Paste the Apps Script URL first','#f59e0b'); return; }
+  const url = input.value.trim();
+  if (!url.includes('script.google.com')) { toast('That does not look like an Apps Script URL','#f59e0b'); return; }
+  APPS_SCRIPT_URL = url;
+  localStorage.setItem('obeid_appsScriptURL', url);
+  toast('✓ URL saved — connecting...','#10b981');
+  fetchSheetData();
+}
+
+function loadSavedAppsScriptURL() {
+  const saved = localStorage.getItem('obeid_appsScriptURL');
+  if (saved) {
+    APPS_SCRIPT_URL = saved;
+    const input = document.getElementById('apps-script-url-input');
+    if (input) input.value = saved;
+  }
+}
+
+function setStatus(state, msg) {
+  const el  = document.getElementById('sheet-status');
+  const dot = document.getElementById('conn-dot');
+  if (el)  { el.textContent = msg; el.style.color = state==='ok'?'var(--gn)':state==='loading'?'var(--or)':'var(--rd)'; }
+  if (dot) dot.style.background = state==='ok'?'var(--gn)':state==='loading'?'var(--or)':'var(--rd)';
+}
+
+// ---- MAIN FETCH — tries 4 methods, no fake data fallback ----
+async function fetchSheetData() {
+  setStatus('loading','⟳ Connecting to Google Sheets...');
+  showNoData('Connecting to live sheet...');
+
+  // ── Method 1: Apps Script Web App (best — no CORS, returns JSON from ALL sheets) ──
+  if (APPS_SCRIPT_URL) {
+    try {
+      const r = await fetch(APPS_SCRIPT_URL, {signal: AbortSignal.timeout(12000)});
+      if (r.ok) {
+        const json = await r.json();
+        if (json.ok && (json.maintenance || json.biomedical || json.formRaw)) {
+          parseAndMergeSheets(json);
+          onSheetLoaded('Apps Script (' + ROWS.length + ' rows)');
+          return;
+        }
+        if (!json.ok) console.warn('Apps Script error:', json.error);
+      }
+    } catch(e) { console.warn('Apps Script failed:', e.message); }
+  }
+
+  // ── Method 2: Direct CSV from the admin sheet (works on GitHub Pages) ──
+  const csvURL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${SHEET_GID}`;
+  for (const [label, url] of [
+    ['Direct CSV', csvURL],
+    ['AllOrigins', 'https://api.allorigins.win/raw?url=' + encodeURIComponent(csvURL)],
+    ['CORSProxy',  'https://corsproxy.io/?' + encodeURIComponent(csvURL)]
+  ]) {
+    try {
+      const r = await fetch(url, {signal: AbortSignal.timeout(10000)});
+      if (!r.ok) continue;
+      const text = await r.text();
+      if (!text || text.length < 80 || text.trimStart().startsWith('<')) continue;
+      const parsed = parseCSV(text);
+      if (parsed.length < 2) continue;
+      // Treat as maintenance sheet rows (CSV has no bio tagging — mark all as general)
+      const dataRows = parsed.slice(1).filter(r => r.some(c=>c.trim()));
+      if (!dataRows.length) continue;
+      ROWS = dataRows.map(r => ({row: r, bio: false, sheetSrc: 'maintenance'}));
+      onSheetLoaded(label + ' (' + ROWS.length + ' rows)');
+      return;
+    } catch(e) { console.warn(label + ' failed:', e.message); }
+  }
+
+  // ── All methods failed ──
+  SHEET_OK = false;
+  ROWS = [];
+  setStatus('err','⚠️ Could not reach sheet. Follow the setup instructions below.');
+  showSetupInstructions();
+}
+
+// Parse the rich JSON from the Apps Script (has maintenance + biomedical + formRaw)
+function parseAndMergeSheets(json) {
+  ROWS = [];
+  const addRows = (sheetData, isBiomedical) => {
+    if (!sheetData || !sheetData.rows || !sheetData.rows.length) return;
+    // Build a column index map from the headers so we're not dependent on column order
+    const hdrs = sheetData.headers.map(h => h.toLowerCase().trim());
+    // Store header map on first call so getMonth() etc. can still use C[] index
+    // We'll normalise each row to match the C[] column order expected by the rest of the code
+    sheetData.rows.forEach(r => {
+      ROWS.push({row: r, bio: isBiomedical, headers: sheetData.headers, sheetSrc: isBiomedical?'biomedical':'maintenance'});
+    });
+  };
+  addRows(json.maintenance, false);
+  addRows(json.biomedical,  true);
+  addRows(json.formRaw,     null); // null = detect from row content
+}
+
+function onSheetLoaded(method) {
+  SHEET_OK = true;
+  setStatus('ok', '✅ Live — ' + ROWS.length + ' records · ' + method);
+  const lu = document.getElementById('last-updated');
+  if (lu) lu.textContent = 'Updated: ' + new Date().toLocaleTimeString('en-GB');
+  buildMonthSelector();
+  refreshMMSAll();
+  initDashChart();
+  renderAnalytics();
+  renderDash();
+}
+
+function showNoData(msg) {
+  // Show placeholder in all chart containers while loading
+  document.querySelectorAll('[id^="mms-view-"]').forEach(el => {
+    const existing = el.querySelector('.sheet-placeholder');
+    if (!existing) {
+      const p = document.createElement('div');
+      p.className = 'sheet-placeholder';
+      p.style.cssText = 'text-align:center;padding:40px;color:var(--mu);font-size:13px;';
+      p.textContent = msg;
+      el.prepend(p);
+    } else {
+      existing.textContent = msg;
+    }
+  });
+}
+
+function showSetupInstructions() {
+  const instrEl = document.getElementById('sheet-setup-instructions');
+  if (instrEl) instrEl.style.display = 'block';
+  showNoData('Sheet not connected — follow the setup steps below to connect your live data.');
+}
+
+// ---- CSV PARSER (robust — handles quotes, commas, multiline) ----
+function parseCSV(text) {
+  const out = [];
+  let row = [], cell = '', inQ = false;
+  // Normalize line endings
+  text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '"') {
+      if (inQ && text[i+1] === '"') { cell += '"'; i++; }
+      else inQ = !inQ;
+    } else if (ch === ',' && !inQ) {
+      row.push(cell.trim());
+      cell = '';
+    } else if (ch === '\n' && !inQ) {
+      row.push(cell.trim());
+      if (row.some(c => c !== '')) out.push(row);
+      row = []; cell = '';
+    } else {
+      cell += ch;
+    }
+  }
+  if (cell || row.length) { row.push(cell.trim()); if (row.some(c=>c!=='')) out.push(row); }
+  return out;
+}
+
+// ---- ROW HELPERS ----
+// ROWS is now an array of objects: {row:string[], bio:bool|null, headers:string[], sheetSrc:string}
+// These helpers always receive a ROWS entry (the full object), not a bare array.
+
+// Get a cell value from a row object — tries by known C[] index first, then by header name
+function getCell(entry, key) {
+  if (!entry || !entry.row) return '';
+  const r = entry.row;
+  // Try numeric column index from C map
+  const idx = C[key];
+  if (typeof idx === 'number' && idx >= 0 && idx < r.length) {
+    const v = r[idx];
+    if (v !== undefined && v !== null) return String(v);
+  }
+  // Fallback: search by header name if headers are available
+  if (entry.headers) {
+    const aliases = {
+      timestamp:       ['timestamp'],
+      department:      ['department','dept'],
+      typeOfWork:      ['type of work','type of maintenance'],
+      typeOfMaint:     ['type of maintenance','type of maintenance'],
+      natureOfWork:    ['nature of work'],
+      workID:          ['work id','job id','work id'],
+      assignedTo:      ['assigned to'],
+      status:          ['status'],
+      completionHours: ['completion time (hours)','completion hours'],
+      responseTime:    ['response time (hours)','response time'],
+      slaTarget:       ['sla target (hours)','sla target'],
+      slaStatus:       ['sla status (met/breached)','sla status'],
+      dateReceived:    ['date/time received'],
+      dateAssigned:    ['date/time assigned'],
+    };
+    const targets = aliases[key] || [key.toLowerCase()];
+    const hdrs = entry.headers.map(h => h.toLowerCase().trim());
+    for (const t of targets) {
+      const fi = hdrs.indexOf(t.toLowerCase());
+      if (fi !== -1 && fi < r.length) return String(r[fi] || '');
+    }
+  }
+  return '';
+}
+
+function isBio(entry) {
+  // If the Apps Script already tagged it, use that
+  if (entry.bio === true)  return true;
+  if (entry.bio === false) return false;
+  // Otherwise detect from content
+  const t = (getCell(entry,'typeOfWork') + ' ' + getCell(entry,'typeOfMaint') + ' ' + entry.sheetSrc).toLowerCase();
+  return t.includes('bio') || t.includes('biomedical');
+}
+
+function isDone(entry) {
+  const s = getCell(entry,'status').toLowerCase();
+  return s.includes('complet') || s === 'done' || s === 'closed';
+}
+
+function isCancelled(entry) {
+  return getCell(entry,'status').toLowerCase().includes('cancel');
+}
+
+function getSLAStatus(entry) {
+  return getCell(entry,'slaStatus').toLowerCase();
+}
+
+function getMonth(entry) {
+  // Try timestamp, dateReceived, dateAssigned in order
+  const raw = getCell(entry,'timestamp') || getCell(entry,'dateReceived') || getCell(entry,'dateAssigned');
+  if (!raw || raw.length < 6) return null;
+  // ISO 8601 (from Apps Script Date.toISOString())
+  let d = new Date(raw);
+  if (!isNaN(d.getTime()) && d.getFullYear() > 2000) {
+    return d.toLocaleDateString('en-US', {month:'short', year:'numeric'});
+  }
+  // DD/MM/YYYY or DD/MM/YYYY HH:MM
+  const dmy = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (dmy) {
+    d = new Date(dmy[3]+'-'+dmy[2].padStart(2,'0')+'-'+dmy[1].padStart(2,'0'));
+    if (!isNaN(d.getTime())) return d.toLocaleDateString('en-US', {month:'short', year:'numeric'});
+  }
+  // MM/DD/YYYY
+  const mdy = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (mdy) {
+    d = new Date(raw);
+    if (!isNaN(d.getTime()) && d.getFullYear() > 2000) return d.toLocaleDateString('en-US', {month:'short', year:'numeric'});
+  }
+  return null;
+}
+
+// Dept, assignedTo, workID etc — use getCell()
+function getDept(entry) { return (getCell(entry,'department') || 'Unknown').trim(); }
+function getTech(entry) { return (getCell(entry,'assignedTo') || '').trim(); }
+function getCompHours(entry) { return parseFloat(getCell(entry,'completionHours')); }
+function getRespTime(entry)  { return parseFloat(getCell(entry,'responseTime')); }
+function getSLATarget(entry) { return getCell(entry,'slaTarget'); }
+function getWorkID(entry)    { return getCell(entry,'workID'); }
+function getNature(entry)    { return getCell(entry,'natureOfWork') || getCell(entry,'typeOfWork') || 'Other'; }
+
+// ---- MONTH SELECTOR ----
+function buildMonthSelector() {
+  const bar = document.getElementById('mms-month-bar');
+  if (!bar) return;
+  const months = [...new Set(ROWS.map(getMonth).filter(Boolean))];
+  // Sort chronologically
+  months.sort((a,b) => new Date('01 '+a) - new Date('01 '+b));
+  bar.innerHTML = '<button class="tbtn active" onclick="setMMSMonth(\'all\',this)">All Time</button>' +
+    months.map(m=>`<button class="tbtn" onclick="setMMSMonth('${m}',this)">${m}</button>`).join('');
+}
+
+function setMMSMonth(m, btn) {
+  MMS_MONTH = m;
+  if (btn) {
+    btn.closest('#mms-month-bar').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  refreshMMSAll();
+}
+
+function setMMSView(view, btn) {
+  MMS_VIEW = view;
+  document.querySelectorAll('[id^="mms-view-"]').forEach(e=>e.style.display='none');
+  const el = document.getElementById('mms-view-'+view);
+  if (el) el.style.display = 'block';
+  if (btn) {
+    btn.closest('.tb').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  setTimeout(renderMMSCharts, 80);
+}
+
+function filteredRows() {
+  if (!ROWS.length) return [];
+  const rows = ROWS.map(e => {
+    // Normalise: if entry has no .row property (bare array from CSV fallback), wrap it
+    if (!e.row) return {row: e, bio: null, headers: null, sheetSrc: 'csv'};
+    return e;
+  });
+  if (MMS_MONTH === 'all') return rows;
+  return rows.filter(e => getMonth(e) === MMS_MONTH);
+}
+
+// ---- MAIN REFRESH ----
+function refreshMMSAll() {
+  document.querySelectorAll('.sheet-placeholder').forEach(e=>e.remove());
+  updateMMSKPICards();
+  setTimeout(renderMMSCharts, 100);
+}
+
+function updateMMSKPICards() {
+  const rows  = filteredRows();
+  const total = rows.length;
+  const bioR  = rows.filter(e=>isBio(e));
+  const genR  = rows.filter(e=>!isBio(e));
+  const compR = rows.filter(e=>isDone(e));
+  const openR = rows.filter(e=>!isDone(e)&&!isCancelled(e));
+  const emrgR = rows.filter(e=>getNature(e).toLowerCase().includes('emerg'));
+  const slaBr = rows.filter(e=>getSLAStatus(e).includes('breach'));
+  const slaMt = rows.filter(e=>getSLAStatus(e).includes('met'));
+  const times = compR.map(e=>getCompHours(e)).filter(v=>v>0&&!isNaN(v));
+  const avgT  = times.length ? (times.reduce((a,b)=>a+b)/times.length).toFixed(1) : '—';
+  const rate  = total ? Math.round((compR.length/total)*100) : 0;
+  const slaR  = (slaBr.length+slaMt.length) ? Math.round((slaMt.length/(slaBr.length+slaMt.length))*100) : 0;
+
+  const u = (id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
+  u('mms-total', total);
+  u('mms-bio',   bioR.length);
+  u('mms-gen',   genR.length);
+  u('mms-comp',  compR.length);
+  u('mms-avg',   avgT==='—'?'—':avgT+'h');
+  u('mms-open',  openR.length);
+  u('mms-emrg',  emrgR.length);
+  u('mms-sla',   slaBr.length);
+  u('mms-bio-pct',   total?Math.round((bioR.length/total)*100)+'% of total':'—');
+  u('mms-gen-pct',   total?Math.round((genR.length/total)*100)+'% of total':'—');
+  u('mms-comp-rate', rate+'% close rate');
+  u('mms-open-sub',  openR.length+' awaiting action');
+  u('mms-emrg-pct',  total?Math.round((emrgR.length/total)*100)+'% of total':'—');
+  u('mms-sla-sub',   slaR+'% SLA compliance');
+  u('mms-period-sub',MMS_MONTH==='all'?'All time':'Month: '+MMS_MONTH);
+  u('sla-met-val',   slaMt.length);
+  u('sla-br-val',    slaBr.length);
+  u('sla-rate-val',  slaR+'%');
+  const respT = rows.map(e=>getRespTime(e)).filter(v=>v>0&&!isNaN(v));
+  u('sla-avg-resp', respT.length?(respT.reduce((a,b)=>a+b)/respT.length).toFixed(1)+'h':'—');
+  u('d-maint', total);
+  u('d-maint-rate', rate+'% close rate');
+  buildDeptTable(rows);
+  buildStaffTable(rows);
+  buildSLATable(rows);
+}
+
+// ---- MONTHLY BREAKDOWN ----
+function getMonthlyData(rows) {
+  const map = {};
+  for (const e of rows) {
+    const m = getMonth(e); if (!m) continue;
+    if (!map[m]) map[m]={bio:0,gen:0,comp:0,open:0,total:0,times:[],slaMet:0,slaBr:0,resp:[]};
+    map[m].total++;
+    if (isBio(e)) map[m].bio++; else map[m].gen++;
+    if (isDone(e)) map[m].comp++; else if (!isCancelled(e)) map[m].open++;
+    const t=getCompHours(e); if(t>0&&!isNaN(t)) map[m].times.push(t);
+    if(getSLAStatus(e).includes('met')) map[m].slaMet++;
+    if(getSLAStatus(e).includes('breach')) map[m].slaBr++;
+    const rt=getRespTime(e); if(rt>0&&!isNaN(rt)) map[m].resp.push(rt);
+  }
+  const sorted = Object.entries(map).sort((a,b)=>new Date('01 '+a[0])-new Date('01 '+b[0]));
+  return {
+    labels:  sorted.map(([k])=>k),
+    bio:     sorted.map(([,v])=>v.bio),
+    gen:     sorted.map(([,v])=>v.gen),
+    total:   sorted.map(([,v])=>v.total),
+    comp:    sorted.map(([,v])=>v.comp),
+    open:    sorted.map(([,v])=>v.open),
+    rate:    sorted.map(([,v])=>v.total?Math.round((v.comp/v.total)*100):0),
+    avgTime: sorted.map(([,v])=>v.times.length?+(v.times.reduce((a,b)=>a+b)/v.times.length).toFixed(1):0),
+    slaRate: sorted.map(([,v])=>{const tot=v.slaMet+v.slaBr;return tot?Math.round((v.slaMet/tot)*100):0;}),
+  };
+}
+
+// ---- DEPT DATA ----
+function getDeptData(rows) {
+  const map = {};
+  for (const e of rows) {
+    const r=e; const d=getDept(e);
+    if(!map[d]) map[d]={total:0,comp:0,open:0,times:[]};
+    map[d].total++;
+    if(isDone(e)) map[d].comp++; else if(!isCancelled(e)) map[d].open++;
+    const t=getCompHours(e); if(t>0&&!isNaN(t)) map[d].times.push(t);
+  }
+  return Object.entries(map).sort((a,b)=>b[1].total-a[1].total).map(([n,v])=>({
+    name:n, total:v.total, comp:v.comp, open:v.open,
+    rate:v.total?Math.round((v.comp/v.total)*100):0,
+    avgT:v.times.length?+(v.times.reduce((a,b)=>a+b)/v.times.length).toFixed(1):0
+  }));
+}
+
+// ---- TECH DATA ----
+function getTechData(rows) {
+  const gen={}, bio={};
+  for (const e of rows) {
+    const tech=getTech(e)||'Unassigned';
+    const map = isBio(e) ? bio : gen;
+    if(!map[tech]) map[tech]={a:0,c:0,times:[]};
+    map[tech].a++;
+    if(isDone(e)) map[tech].c++;
+    const t=getCompHours(e); if(t>0&&!isNaN(t)) map[tech].times.push(t);
+  }
+  const fmt = m => Object.entries(m).filter(([n])=>n!=='Unassigned'||Object.keys(m).length===1)
+    .sort((a,b)=>b[1].a-a[1].a).map(([n,v])=>({
+      n, a:v.a, c:v.c, rate:v.a?Math.round((v.c/v.a)*100):0,
+      avg:v.times.length?+(v.times.reduce((a,b)=>a+b)/v.times.length).toFixed(1):0
+    }));
+  return {gen:fmt(gen), bio:fmt(bio)};
+}
+
+// ---- DEPT TABLE ----
+function buildDeptTable(rows) {
+  const tb  = document.getElementById('dept-table-body');
+  const lbl = document.getElementById('dept-period-label');
+  if (lbl) lbl.textContent = MMS_MONTH==='all'?'All time':'Month: '+MMS_MONTH;
+  if (!tb) return;
+  const data = getDeptData(rows).slice(0,20);
+  if (!data.length) { tb.innerHTML='<tr><td colspan="7" class="em">No data loaded yet</td></tr>'; return; }
+  tb.innerHTML = data.map(d => {
+    const c = d.rate>=80?'var(--gn)':d.rate>=60?'var(--or)':'var(--rd)';
+    return `<tr>
+      <td style="font-weight:600;">${d.name}</td>
+      <td style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;">${d.total}</td>
+      <td style="color:var(--rd);">${d.open}</td>
+      <td style="color:var(--gn);">${d.comp}</td>
+      <td style="color:${c};font-weight:600;">${d.rate}%</td>
+      <td>${d.avgT?d.avgT+'h':'—'}</td>
+      <td><div style="display:flex;align-items:center;gap:6px;"><div class="pw" style="height:5px;min-width:60px;"><div class="pf" style="width:${d.rate}%;background:${c};"></div></div><span style="font-size:9px;color:${c};">${d.rate}%</span></div></td>
+    </tr>`;
+  }).join('');
+}
+
+// ---- STAFF TABLE ----
+function buildStaffTable(rows) {
+  const tb = document.getElementById('staff-table-body');
+  if (!tb) return;
+  const tech = getTechData(rows);
+  const all = [...tech.gen.map(t=>({...t,team:'General'})),...tech.bio.map(t=>({...t,team:'Biomedical'}))].sort((a,b)=>b.a-a.a);
+  if (!all.length) { tb.innerHTML='<tr><td colspan="8" class="em">No data</td></tr>'; return; }
+  const COLS=['#00d4aa','#3b82f6','#ef4444','#f59e0b','#10b981','#8b5cf6','#ec4899','#34d399','#818cf8'];
+  tb.innerHTML = all.map((t,i)=>{
+    const c=t.rate>=80?'var(--gn)':t.rate>=60?'var(--or)':'var(--rd)';
+    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+    return `<tr>
+      <td style="font-weight:700;color:var(--ac);">${medal} #${i+1}</td>
+      <td style="font-weight:600;">${t.n}</td>
+      <td><span class="bx ${t.team==='Biomedical'?'bb2':'bg2'}">${t.team}</span></td>
+      <td style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;">${t.a}</td>
+      <td style="color:var(--gn);">${t.c}</td>
+      <td style="color:${c};font-weight:600;">${t.rate}%</td>
+      <td>${t.avg?t.avg+'h':'—'}</td>
+      <td><div class="pw" style="height:5px;min-width:60px;"><div class="pf" style="width:${t.rate}%;background:${COLS[i%COLS.length]};"></div></div></td>
+    </tr>`;
+  }).join('');
+  // Scorecard cards
+  const renderCard = (list, elId, cols) => {
+    const el=document.getElementById(elId); if(!el) return;
+    el.innerHTML = list.slice(0,10).map((t,i)=>{
+      const col=cols[i%cols.length];
+      return `<div class="tr2">
+        <div class="tav" style="background:${col}22;color:${col};">${t.n.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
+        <div style="flex:1;">
+          <div style="font-size:11px;font-weight:600;">${t.n}</div>
+          <div style="font-size:9px;color:var(--mu);">${t.c}/${t.a} done${t.avg?' · '+t.avg+'h avg':''}</div>
+          <div style="margin-top:4px;display:flex;align-items:center;gap:5px;">
+            <div class="pw" style="height:4px;"><div class="pf" style="width:${t.rate}%;background:${col};"></div></div>
+            <span style="font-size:9px;color:var(--mu);">${t.rate}%</span>
+          </div>
+        </div>
+        <span style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:${col};">${t.a}</span>
+      </div>`;
+    }).join('') || '<div class="em">No assignments yet</div>';
+  };
+  renderCard(tech.gen,'techGen',['#00d4aa','#3b82f6','#ef4444','#f59e0b','#10b981','#8b5cf6','#ec4899','#34d399']);
+  renderCard(tech.bio,'techBio',['#818cf8','#3b82f6','#10b981','#f59e0b','#ec4899']);
+}
+
+// ---- SLA TABLE ----
+function buildSLATable(rows) {
+  const tb = document.getElementById('sla-table-body');
+  if (!tb) return;
+  const rel = rows.filter(e=>getSLAStatus(e)||getSLATarget(e)).slice(0,150);
+  if (!rel.length) { tb.innerHTML='<tr><td colspan="7" class="em">No SLA data in sheet yet</td></tr>'; return; }
+  tb.innerHTML = rel.map(e=>{
+    const ok=getSLAStatus(e).includes('met');
+    const badge=ok?'<span class="bx bg2">✅ Met</span>':'<span class="bx br2">❌ Breached</span>';
+    const actual=getCompHours(e);
+    const dept=getDept(e); const tech=getTech(e); const nat=getNature(e); const wid=getWorkID(e); const slat=getSLATarget(e);
+    return `<tr>
+      <td style="font-family:'Rajdhani',sans-serif;color:var(--ac);">${wid||'—'}</td>
+      <td>${dept||'—'}</td>
+      <td style="font-size:10px;">${nat.slice(0,20)}</td>
+      <td>${tech||'—'}</td>
+      <td>${slat?slat+'h':'—'}</td>
+      <td style="color:${!isNaN(actual)&&actual>0?(ok?'var(--gn)':'var(--rd)'):'var(--mu)'};">${!isNaN(actual)&&actual>0?actual+'h':'—'}</td>
+      <td>${badge}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ---- CHART HELPERS ----
+const COPTS = {
+  responsive:true, maintainAspectRatio:false,
+  plugins:{legend:{display:false},tooltip:{backgroundColor:'#0f2040',titleColor:'#d4e8ff',bodyColor:'#5a7fa8',borderColor:'rgba(0,180,255,.2)',borderWidth:1}},
+  scales:{x:{grid:{color:'rgba(0,180,255,.04)'},ticks:{color:'#5a7fa8',font:{size:9}}},y:{grid:{color:'rgba(0,180,255,.04)'},ticks:{color:'#5a7fa8',font:{size:9}}}}
+};
+const DONUT = {
+  responsive:true, maintainAspectRatio:false, cutout:'60%',
+  plugins:{legend:{display:true,position:'bottom',labels:{color:'#5a7fa8',font:{size:9},padding:8,boxWidth:10}},tooltip:{backgroundColor:'#0f2040',titleColor:'#d4e8ff',bodyColor:'#5a7fa8'}}
+};
+
+function mkChart(id, cfg) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  if (CH[id]) { try { CH[id].destroy(); } catch(e){} delete CH[id]; }
+  try { CH[id] = new Chart(canvas, cfg); } catch(e) { console.warn('Chart err:', id, e.message); }
+}
+
+// ---- MMS CHARTS ----
+function renderMMSCharts() {
+  if (!ROWS.length) return; // Don't render empty charts
+  const rows    = filteredRows();
+  if (!rows.length) {
+    document.querySelectorAll('#mms-view-'+MMS_VIEW+' canvas').forEach(c=>{
+      const ctx=c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height);
+      ctx.fillStyle='#5a7fa8'; ctx.font='12px Exo 2'; ctx.textAlign='center';
+      ctx.fillText('No data for '+MMS_MONTH,c.width/2,c.height/2);
+    });
+    return;
+  }
+  const monthly = getMonthlyData(rows);
+  const LBLS    = monthly.labels;
+  const BIO_C   = 'rgba(129,140,248,.8)';
+  const GEN_C   = 'rgba(0,180,255,.8)';
+  const CMP_C   = 'rgba(16,185,129,.8)';
+  const OPN_C   = 'rgba(239,68,68,.8)';
+
+  if (MMS_VIEW === 'overview') {
+    const vsub = document.getElementById('vol-sub');
+    if (vsub) vsub.textContent = LBLS.length ? LBLS[0]+' – '+LBLS[LBLS.length-1] : 'Live data';
+
+    // Volume bar
+    mkChart('c-vol',{type:'bar',data:{labels:LBLS,datasets:[
+      {label:'Biomedical',data:monthly.bio,backgroundColor:BIO_C,borderRadius:5,borderSkipped:false},
+      {label:'General',data:monthly.gen,backgroundColor:GEN_C,borderRadius:5,borderSkipped:false}
+    ]},options:{...COPTS,plugins:{...COPTS.plugins,legend:{display:true,position:'bottom',labels:{color:'#5a7fa8',font:{size:10},padding:10}}}}});
+
+    // Closure rate line
+    mkChart('c-close',{type:'line',data:{labels:LBLS,datasets:[{label:'Close Rate %',data:monthly.rate,borderColor:'#00d4aa',backgroundColor:'rgba(0,212,170,.1)',fill:true,tension:.4,pointBackgroundColor:'#00d4aa',pointBorderColor:'#fff',pointRadius:5,borderWidth:2}]},
+      options:{...COPTS,scales:{...COPTS.scales,y:{...COPTS.scales.y,min:0,max:100,ticks:{...COPTS.scales.y.ticks,callback:v=>v+'%'}}}}});
+
+    // Status donut
+    const comp=rows.filter(e=>isDone(e)).length, openC=rows.filter(e=>!isDone(e)&&!isCancelled(e)).length, canc=rows.filter(e=>isCancelled(e)).length;
+    mkChart('c-status',{type:'doughnut',data:{labels:['Completed','Open/Pending','Cancelled'],datasets:[{data:[comp,openC,canc],backgroundColor:['#10b981','#f59e0b','#ef4444'],borderWidth:0}]},options:DONUT});
+
+    // Nature of work donut
+    const nMap={};
+    rows.forEach(e=>{const n=getNature(e).trim()||'Other'; nMap[n]=(nMap[n]||0)+1;});
+    const nE=Object.entries(nMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    mkChart('c-type',{type:'doughnut',data:{labels:nE.map(([k])=>k.slice(0,18)),datasets:[{data:nE.map(([,v])=>v),backgroundColor:['#3b82f6','#8b5cf6','#ec4899','#00d4aa','#f59e0b','#ef4444'],borderWidth:0}]},options:DONUT});
+
+    // Avg time
+    mkChart('c-time',{type:'bar',data:{labels:LBLS,datasets:[{data:monthly.avgTime,backgroundColor:monthly.avgTime.map(v=>v>50?OPN_C:v>30?'rgba(245,158,11,.8)':CMP_C),borderRadius:5,borderSkipped:false}]},
+      options:{...COPTS,scales:{...COPTS.scales,y:{...COPTS.scales.y,ticks:{...COPTS.scales.y.ticks,callback:v=>v+'h'}}}}});
+
+    // Completed vs open
+    mkChart('c-compopen',{type:'bar',data:{labels:LBLS,datasets:[
+      {label:'Completed',data:monthly.comp,backgroundColor:CMP_C,borderRadius:4,borderSkipped:false},
+      {label:'Open',data:monthly.open,backgroundColor:OPN_C,borderRadius:4,borderSkipped:false}
+    ]},options:{...COPTS,plugins:{...COPTS.plugins,legend:{display:true,position:'bottom',labels:{color:'#5a7fa8',font:{size:10},padding:10}}}}});
+
+    // Bio vs Gen donut
+    mkChart('c-nature',{type:'doughnut',data:{labels:['Biomedical','General'],datasets:[{data:[rows.filter(e=>isBio(e)).length,rows.filter(e=>!isBio(e)).length],backgroundColor:[BIO_C,GEN_C],borderWidth:0}]},options:DONUT});
+  }
+
+  if (MMS_VIEW === 'department') {
+    const depts = getDeptData(rows).slice(0,15);
+    const dL    = depts.map(d=>d.name);
+    const PAL   = ['#00b4ff','#818cf8','#34d399','#f59e0b','#ec4899','#3b82f6','#a855f7','#10b981','#f43f5e','#06b6d4','#00d4aa','#fbbf24','#34d399','#a3e635','#f87171'];
+    mkChart('c-dept-bar',{type:'bar',data:{labels:dL,datasets:[
+      {label:'Completed',data:depts.map(d=>d.comp),backgroundColor:CMP_C,borderRadius:4,borderSkipped:false},
+      {label:'Open',data:depts.map(d=>d.open),backgroundColor:OPN_C,borderRadius:4,borderSkipped:false}
+    ]},options:{...COPTS,indexAxis:'y',plugins:{...COPTS.plugins,legend:{display:true,position:'top',labels:{color:'#5a7fa8',font:{size:10},padding:10}}}}});
+    mkChart('c-dept-open',{type:'doughnut',data:{labels:depts.slice(0,8).map(d=>d.name),datasets:[{data:depts.slice(0,8).map(d=>d.open),backgroundColor:PAL,borderWidth:0}]},options:DONUT});
+    mkChart('c-dept-closed',{type:'doughnut',data:{labels:depts.slice(0,8).map(d=>d.name),datasets:[{data:depts.slice(0,8).map(d=>d.comp),backgroundColor:PAL,borderWidth:0}]},options:DONUT});
+  }
+
+  if (MMS_VIEW === 'staff') {
+    const tech=getTechData(rows), allGen=tech.gen.slice(0,10);
+    const GCOL=['#00d4aa','#3b82f6','#ef4444','#f59e0b','#10b981','#8b5cf6','#ec4899','#34d399','#818cf8','#f43f5e'];
+    mkChart('c-tech-assigned',{type:'bar',data:{labels:allGen.map(t=>t.n.split(' ')[0]),datasets:[
+      {label:'Assigned',data:allGen.map(t=>t.a),backgroundColor:allGen.map((_,i)=>GCOL[i%GCOL.length]+'99'),borderRadius:4,borderSkipped:false},
+      {label:'Completed',data:allGen.map(t=>t.c),backgroundColor:allGen.map((_,i)=>GCOL[i%GCOL.length]),borderRadius:4,borderSkipped:false}
+    ]},options:{...COPTS,plugins:{...COPTS.plugins,legend:{display:true,position:'top',labels:{color:'#5a7fa8',font:{size:10},padding:10}}}}});
+    mkChart('c-tech-rate',{type:'bar',data:{labels:allGen.map(t=>t.n.split(' ')[0]),datasets:[{label:'Close Rate %',data:allGen.map(t=>t.rate),backgroundColor:allGen.map(t=>t.rate>=80?CMP_C:t.rate>=60?'rgba(245,158,11,.8)':OPN_C),borderRadius:4,borderSkipped:false}]},
+      options:{...COPTS,scales:{...COPTS.scales,y:{...COPTS.scales.y,max:100,ticks:{...COPTS.scales.y.ticks,callback:v=>v+'%'}}}}});
+  }
+
+  if (MMS_VIEW === 'sla') {
+    mkChart('c-sla-monthly',{type:'bar',data:{labels:LBLS,datasets:[{label:'SLA %',data:monthly.slaRate,backgroundColor:monthly.slaRate.map(v=>v>=90?CMP_C:v>=70?'rgba(245,158,11,.8)':OPN_C),borderRadius:4,borderSkipped:false}]},
+      options:{...COPTS,scales:{...COPTS.scales,y:{...COPTS.scales.y,max:100,ticks:{...COPTS.scales.y.ticks,callback:v=>v+'%'}}}}});
+    const rT=rows.map(e=>getRespTime(e)).filter(v=>v>0&&!isNaN(v)&&v<200);
+    const bins=['0–2h','2–6h','6–12h','12–24h','24–48h','48h+'];
+    mkChart('c-resp-time',{type:'bar',data:{labels:bins,datasets:[{label:'Tickets',data:[rT.filter(v=>v<=2).length,rT.filter(v=>v>2&&v<=6).length,rT.filter(v=>v>6&&v<=12).length,rT.filter(v=>v>12&&v<=24).length,rT.filter(v=>v>24&&v<=48).length,rT.filter(v=>v>48).length],backgroundColor:['#10b981','#34d399','#00b4ff','#f59e0b','#ef4444','#7c3aed'],borderRadius:4,borderSkipped:false}]},options:COPTS});
+  }
+}
+
+// ---- DASHBOARD CHART ----
+function initDashChart() {
+  if (!ROWS.length) return;
+  const monthly = getMonthlyData(ROWS);
+  mkChart('dash-chart',{type:'bar',data:{labels:monthly.labels,datasets:[
+    {label:'Biomedical',data:monthly.bio,backgroundColor:'rgba(129,140,248,.8)',borderRadius:4,borderSkipped:false},
+    {label:'General',data:monthly.gen,backgroundColor:'rgba(0,180,255,.8)',borderRadius:4,borderSkipped:false}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'bottom',labels:{color:'#5a7fa8',font:{size:9},padding:8}}},scales:{x:{grid:{color:'rgba(0,180,255,.04)'},ticks:{color:'#5a7fa8',font:{size:9}}},y:{grid:{color:'rgba(0,180,255,.04)'},ticks:{color:'#5a7fa8',font:{size:9}}}}}});
+}
+
+// ---- ANALYTICS PAGE ----
+let anPd='monthly', anDom='all';
+function setAnPd(p,btn){anPd=p;renderAnalytics();if(btn){btn.closest('.pb').querySelectorAll('.pbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}}
+function setAnDom(d,btn){anDom=d;renderAnalytics();if(btn){btn.closest('.tb').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}}
+
+function renderAnalytics() {
+  const rows   = ROWS.length ? ROWS : [];
+  const total  = rows.length;
+  const comp   = rows.filter(e=>isDone(e)).length;
+  const openC  = rows.filter(e=>!isDone(e)&&!isCancelled(e)).length;
+  const times  = rows.filter(e=>isDone(e)).map(e=>getCompHours(e)).filter(v=>v>0&&!isNaN(v));
+  const avgT   = times.length ? (times.reduce((a,b)=>a+b)/times.length).toFixed(1) : '—';
+  const slaBr  = rows.filter(e=>getSLAStatus(e).includes('breach')).length;
+  const slaMt  = rows.filter(e=>getSLAStatus(e).includes('met')).length;
+  const slaR   = (slaBr+slaMt) ? Math.round((slaMt/(slaBr+slaMt))*100) : 0;
+  const rate   = total ? Math.round((comp/total)*100) : 0;
+  const monthly = getMonthlyData(rows);
+
+  const sE=document.getElementById('anStats');
+  if(sE) sE.innerHTML=`
+    <div class="sc" style="--c:var(--ac)"><div class="ico">📋</div><div class="val">${total+ld('workorders').length}</div><div class="lbl">Total WO</div><div class="sub">Sheet: ${total} · Local: ${ld('workorders').length}</div></div>
+    <div class="sc" style="--c:var(--gn)"><div class="ico">✅</div><div class="val">${rate}%</div><div class="lbl">Close Rate</div><div class="sub">${comp}/${total} completed</div></div>
+    <div class="sc" style="--c:var(--or)"><div class="ico">⏱</div><div class="val">${avgT==='—'?'—':avgT+'h'}</div><div class="lbl">Avg Close Time</div><div class="sub">from live sheet</div></div>
+    <div class="sc" style="--c:var(--rd)"><div class="ico">🚫</div><div class="val">${slaBr}</div><div class="lbl">SLA Breached</div><div class="sub">${slaR}% compliance</div></div>`;
+
+  const lE=document.getElementById('trendLabel');
+  if(lE) lE.textContent=anPd==='monthly'?'Maintenance Trend — Monthly':'Maintenance Trend — Quarterly';
+  const pdE=document.getElementById('pdLabel');
+  if(pdE) pdE.textContent=anPd==='monthly'?'Monthly View':'Quarterly View';
+
+  const tb=document.getElementById('anTable');
+  if(tb){
+    if(!rows.length){tb.innerHTML='<tr><td colspan="8" class="em">Connect sheet to see live period data</td></tr>';}
+    else if(anPd==='monthly'){
+      tb.innerHTML=monthly.labels.map((lbl,i)=>{
+        const trend=i>0?(monthly.rate[i]>monthly.rate[i-1]?'<span style="color:var(--gn);">↑</span>':'<span style="color:var(--rd);">↓</span>'):'—';
+        const rc=monthly.rate[i]>=80?'var(--gn)':monthly.rate[i]>=70?'var(--or)':'var(--rd)';
+        return `<tr><td style="font-weight:600;">${lbl}</td><td>${monthly.total[i]}</td><td>${monthly.comp[i]}</td><td style="color:${rc};">${monthly.rate[i]}%</td><td>${monthly.avgTime[i]?monthly.avgTime[i]+'h':'—'}</td><td style="color:var(--rd);">${monthly.open[i]}</td><td>${monthly.slaRate[i]}%</td><td>${trend}</td></tr>`;
+      }).join('');
+    } else {
+      const qMap={};
+      monthly.labels.forEach((lbl,i)=>{
+        const d=new Date('01 '+lbl),q=`Q${Math.ceil((d.getMonth()+1)/3)} ${d.getFullYear()}`;
+        if(!qMap[q])qMap[q]={tot:0,comp:0,open:0};
+        qMap[q].tot+=monthly.total[i]; qMap[q].comp+=monthly.comp[i]; qMap[q].open+=monthly.open[i];
+      });
+      tb.innerHTML=Object.entries(qMap).map(([q,v],i,arr)=>{
+        const r=v.tot?Math.round((v.comp/v.tot)*100):0;
+        const trend=i>0?(r>Math.round((arr[i-1][1].comp/Math.max(1,arr[i-1][1].tot))*100)?'<span style="color:var(--gn);">↑</span>':'<span style="color:var(--rd);">↓</span>'):'—';
+        const rc=r>=80?'var(--gn)':r>=70?'var(--or)':'var(--rd)';
+        return `<tr><td style="font-weight:600;">${q}</td><td>${v.tot}</td><td>${v.comp}</td><td style="color:${rc};">${r}%</td><td>—</td><td style="color:var(--rd);">${v.open}</td><td>—</td><td>${trend}</td></tr>`;
+      }).join('');
+    }
+  }
+  setTimeout(reinitAnalCharts, 80);
+}
+
+function reinitAnalCharts() {
+  const rows   = ROWS.length ? ROWS : [];
+  const monthly = getMonthlyData(rows);
+  const pT=ld('ppm').length, pD=ld('ppm').filter(r=>r.res==='done').length;
+  const {met,par,gap}=cbStats();
+  const total=rows.length, comp=rows.filter(e=>isDone(e)).length, openC=rows.filter(e=>!isDone(e)&&!isCancelled(e)).length;
+  const emrg=rows.filter(e=>getNature(e).toLowerCase().includes('emerg')).length;
+
+  // RADAR
+  const domScores=[dPct('safety'),dPct('security'),dPct('hazmat'),dPct('emergency'),dPct('fire'),dPct('equip'),dPct('utils')];
+  const radarEl=document.getElementById('c-radar');
+  if(radarEl){
+    if(CH['c-radar']){try{CH['c-radar'].destroy();}catch(e){}delete CH['c-radar'];}
+    CH['c-radar']=new Chart(radarEl,{
+      type:'radar',
+      data:{labels:['Safety','Security','Hazmat','Emergency','Fire Safety','Equipment','Utilities'],datasets:[
+        {label:'Current %',data:domScores,borderColor:'#00b4ff',backgroundColor:'rgba(0,180,255,.15)',pointBackgroundColor:'#00b4ff',pointBorderColor:'#fff',pointRadius:5,borderWidth:2},
+        {label:'Target 100%',data:[100,100,100,100,100,100,100],borderColor:'rgba(0,255,136,.35)',backgroundColor:'rgba(0,255,136,.04)',borderDash:[5,5],pointRadius:2,borderWidth:1}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:true,position:'bottom',labels:{color:'#5a7fa8',font:{size:10},padding:12}},tooltip:{backgroundColor:'#0f2040',titleColor:'#d4e8ff',bodyColor:'#5a7fa8'}},
+        scales:{r:{min:0,max:100,beginAtZero:true,grid:{color:'rgba(0,180,255,.1)'},angleLines:{color:'rgba(0,180,255,.1)'},ticks:{color:'#5a7fa8',font:{size:9},backdropColor:'transparent',stepSize:25,callback:v=>v+'%'},pointLabels:{color:'#d4e8ff',font:{size:10},padding:8}}}}
+    });
+  }
+
+  // Trend
+  const qMap2={};
+  monthly.labels.forEach((lbl,i)=>{
+    const d=new Date('01 '+lbl),q=`Q${Math.ceil((d.getMonth()+1)/3)} ${d.getFullYear()}`;
+    if(!qMap2[q])qMap2[q]={tot:0,comp:0,bio:0,gen:0};
+    qMap2[q].tot+=monthly.total[i]; qMap2[q].comp+=monthly.comp[i];
+    qMap2[q].bio+=monthly.bio[i]; qMap2[q].gen+=monthly.gen[i];
+  });
+  const tLabels = anPd==='monthly'?monthly.labels:Object.keys(qMap2);
+  const tClose  = anPd==='monthly'?monthly.rate:Object.values(qMap2).map(v=>v.tot?Math.round((v.comp/v.tot)*100):0);
+  const tBio    = anPd==='monthly'?monthly.bio:Object.values(qMap2).map(v=>v.bio);
+  const tGen    = anPd==='monthly'?monthly.gen:Object.values(qMap2).map(v=>v.gen);
+
+  mkChart('c-trend',{type:'line',data:{labels:tLabels,datasets:[
+    {label:'Close Rate %',data:tClose,borderColor:'#00d4aa',tension:.4,pointRadius:4,yAxisID:'y',borderWidth:2},
+    {label:'Biomedical',data:tBio,borderColor:'#818cf8',tension:.4,pointRadius:3,yAxisID:'y1'},
+    {label:'General',data:tGen,borderColor:'#34d399',tension:.4,pointRadius:3,yAxisID:'y1'}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'bottom',labels:{color:'#5a7fa8',font:{size:9},padding:8}},tooltip:{backgroundColor:'#0f2040',titleColor:'#d4e8ff',bodyColor:'#5a7fa8'}},scales:{x:{grid:{color:'rgba(0,180,255,.04)'},ticks:{color:'#5a7fa8',font:{size:9}}},y:{grid:{color:'rgba(0,180,255,.04)'},position:'left',min:0,max:100,ticks:{color:'#5a7fa8',font:{size:9},callback:v=>v+'%'}},y1:{type:'linear',position:'right',grid:{drawOnChartArea:false},ticks:{color:'#5a7fa8',font:{size:9}}}}}});
+
+  mkChart('c-woprio',{type:'doughnut',data:{labels:['Emergency','Open','Completed'],datasets:[{data:[emrg,openC,comp],backgroundColor:['#ef4444','#f59e0b','#10b981'],borderWidth:0}]},options:DONUT});
+  mkChart('c-ppm',{type:'doughnut',data:{labels:['Done','Failed','Pending'],datasets:[{data:[pD||0,Math.max(0,pT-pD)||0,Math.max(0,50-pT)||50],backgroundColor:['#10b981','#ef4444','rgba(255,255,255,.07)'],borderWidth:0}]},options:DONUT});
+  mkChart('c-cbahi',{type:'doughnut',data:{labels:['Met','Partial','Gap'],datasets:[{data:[met,par,gap],backgroundColor:['#10b981','#f59e0b','#ef4444'],borderWidth:0}]},options:DONUT});
+}
+</script>
+</body>
+</html>
