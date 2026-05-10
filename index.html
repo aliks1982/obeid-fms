@@ -351,14 +351,22 @@ canvas{display:block;}
   <div class="ph"><h1>🔩 Maintenance Analytics — Live</h1><p>Real-time from Google Sheets · General (Mostapha) &amp; Biomedical (Bashar)</p></div>
 
   <!-- Connection Status Bar -->
-  <div style="display:flex;align-items:center;justify-content:space-between;background:var(--s2);border:1px solid var(--bd);border-radius:9px;padding:10px 16px;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
-    <div style="display:flex;align-items:center;gap:8px;">
-      <div id="conn-dot" style="width:8px;height:8px;border-radius:50%;background:var(--or);flex-shrink:0;animation:pulse 2s infinite;"></div>
-      <span id="sheet-status" style="font-size:11px;color:var(--or);">Connecting to Google Sheets...</span>
+  <div style="background:var(--s2);border:1px solid var(--bd);border-radius:9px;padding:12px 16px;margin-bottom:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div id="conn-dot" style="width:8px;height:8px;border-radius:50%;background:var(--or);flex-shrink:0;animation:pulse 2s infinite;"></div>
+        <span id="sheet-status" style="font-size:11px;color:var(--or);">Connecting to Google Sheets...</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span id="last-updated" style="font-size:9px;color:var(--mu);"></span>
+        <button class="btn bo" style="padding:4px 12px;font-size:10px;" onclick="fetchSheetData()">⟳ Refresh</button>
+      </div>
     </div>
-    <div style="display:flex;align-items:center;gap:10px;">
-      <span id="last-updated" style="font-size:9px;color:var(--mu);"></span>
-      <button class="btn bo" style="padding:4px 12px;font-size:10px;" onclick="fetchSheetData()">⟳ Refresh</button>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <span style="font-size:9px;color:var(--mu);white-space:nowrap;">Apps Script URL:</span>
+      <input type="text" id="apps-script-url-input" placeholder="Apps Script URL auto-loaded"
+        style="flex:1;min-width:200px;background:var(--s3);border:1px solid var(--bd);border-radius:6px;padding:5px 10px;color:var(--mu);font-family:'Exo 2',sans-serif;font-size:10px;outline:none;">
+      <button class="btn bp" style="padding:4px 12px;font-size:10px;white-space:nowrap;" onclick="connectAppsScript()">🔗 Update URL</button>
     </div>
   </div>
 
@@ -404,6 +412,9 @@ canvas{display:block;}
       <button class="btn bp" onclick="connectAppsScript()">🔗 Connect Sheet</button>
     </div>
   </div>
+
+  <!-- Debug Panel — hidden until data loads -->
+  <div id="mms-debug-panel" style="display:none;background:var(--s2);border:1px solid rgba(255,170,0,.25);border-radius:11px;padding:16px;margin-bottom:14px;"></div>
 
   <!-- Month Selector -->
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
@@ -1483,7 +1494,7 @@ function toast(msg,color){const t=document.getElementById('toast');t.textContent
 // IMPORTANT: To connect your sheet, paste your Apps Script Web App URL below.
 // See instructions shown in the platform when sheet is not connected.
 // Once deployed, it looks like: https://script.google.com/macros/s/XXXXX/exec
-let APPS_SCRIPT_URL = ''; // <-- paste your deployed URL here (or set via the UI)
+let APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxACM4Ii0ocOsXVHilFYycNmrpyuy1KAfy6iXcIwqpnuaE2pTTs7G5qmS7TU1uphmrx/exec';
 
 const SHEET_ID  = '10qPGTtY0k9cBNAeYEwyKwpebsYMndvEFkhFB0RRO0q8';
 const SHEET_GID = '1530231215';
@@ -1517,12 +1528,66 @@ function connectAppsScript() {
 }
 
 function loadSavedAppsScriptURL() {
-  const saved = localStorage.getItem('obeid_appsScriptURL');
-  if (saved) {
-    APPS_SCRIPT_URL = saved;
-    const input = document.getElementById('apps-script-url-input');
-    if (input) input.value = saved;
+  // Hardcoded URL takes priority — it's the correct deployment
+  // If a saved URL exists and differs, override it with the hardcoded one
+  const hardcoded = 'https://script.google.com/macros/s/AKfycbxACM4Ii0ocOsXVHilFYycNmrpyuy1KAfy6iXcIwqpnuaE2pTTs7G5qmS7TU1uphmrx/exec';
+  if (hardcoded) {
+    APPS_SCRIPT_URL = hardcoded;
+    localStorage.setItem('obeid_appsScriptURL', hardcoded);
+  } else {
+    const saved = localStorage.getItem('obeid_appsScriptURL');
+    if (saved) APPS_SCRIPT_URL = saved;
   }
+  const input = document.getElementById('apps-script-url-input');
+  if (input) input.value = APPS_SCRIPT_URL;
+}
+
+function updateDebugPanel(dbg, json) {
+  const el = document.getElementById('mms-debug-panel');
+  if (!el) return;
+
+  const bioRows  = json.biomedical  ? json.biomedical.rows.length  : 0;
+  const mainRows = json.maintenance ? json.maintenance.rows.length : 0;
+  const formRows = json.formRaw     ? json.formRaw.rows.length     : 0;
+
+  // Sample first biomedical row to check structure
+  const bioSample = (json.biomedical && json.biomedical.rows && json.biomedical.rows[0])
+    ? json.biomedical.rows[0].slice(0,6).join(' | ')
+    : 'No rows';
+  const bioHdrs = (json.biomedical && json.biomedical.headers)
+    ? json.biomedical.headers.slice(0,6).join(' | ')
+    : 'No headers';
+
+  el.innerHTML = `
+    <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--or);margin-bottom:8px;">🔍 Live Debug — Apps Script Response</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">
+      <div style="background:var(--bg);border-radius:7px;padding:10px;text-align:center;">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:var(--ac);">${mainRows}</div>
+        <div style="font-size:9px;color:var(--mu);">Maintenance rows received</div>
+      </div>
+      <div style="background:var(--bg);border-radius:7px;padding:10px;text-align:center;">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:${bioRows>0?'var(--gn)':'var(--rd)'};">${bioRows}</div>
+        <div style="font-size:9px;color:var(--mu);">Biomedical rows received</div>
+      </div>
+      <div style="background:var(--bg);border-radius:7px;padding:10px;text-align:center;">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:var(--mu);">${formRows}</div>
+        <div style="font-size:9px;color:var(--mu);">Form raw rows received</div>
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--mu);margin-bottom:4px;"><b style="color:var(--tx);">Biomedical sheet headers (first 6):</b> ${bioHdrs||'—'}</div>
+    <div style="font-size:10px;color:var(--mu);margin-bottom:10px;"><b style="color:var(--tx);">Biomedical first row sample:</b> ${bioSample||'—'}</div>
+    ${bioRows === 0 ? `
+    <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:12px;font-size:11px;">
+      <b style="color:var(--rd);">⚠️ Biomedical sheet returned 0 rows.</b><br><br>
+      Possible causes:<br>
+      • Sheet name mismatch — your Apps Script uses <code style="color:var(--ac);">BIOMED_SHEET = "Biomedical admin sheet"</code> — check exact name in your spreadsheet<br>
+      • Sheet is empty or all rows filtered as blank<br>
+      • Apps Script permission issue on that specific sheet<br><br>
+      <b>Quick fix:</b> In Apps Script editor, run <code style="color:var(--ac);">doGet()</code> manually and check the Execution log for errors.
+    </div>` : `<div style="background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.2);border-radius:8px;padding:8px;font-size:11px;color:var(--gn);">✅ Biomedical data received — ${bioRows} rows</div>`}
+    <button class="btn bo" style="margin-top:10px;padding:4px 12px;font-size:10px;" onclick="document.getElementById('mms-debug-panel').style.display='none'">Hide Debug Panel</button>
+  `;
+  el.style.display = 'block';
 }
 
 function setStatus(state, msg) {
@@ -1534,52 +1599,94 @@ function setStatus(state, msg) {
 
 // ---- MAIN FETCH — tries 4 methods, no fake data fallback ----
 async function fetchSheetData() {
-  setStatus('loading','⟳ Connecting to Google Sheets...');
+  setStatus('loading', '⟳ Connecting to Google Sheets...');
   showNoData('Connecting to live sheet...');
 
-  // ── Method 1: Apps Script Web App (best — no CORS, returns JSON from ALL sheets) ──
-  if (APPS_SCRIPT_URL) {
+  // Always use the hardcoded URL — it's the most reliable
+  // Also check localStorage for any saved URL (from the connect box)
+  const savedURL = localStorage.getItem('obeid_appsScriptURL');
+  const urlToTry = APPS_SCRIPT_URL || savedURL || '';
+
+  // ── Method 1: Apps Script Web App ──
+  if (urlToTry) {
     try {
-      const r = await fetch(APPS_SCRIPT_URL, {signal: AbortSignal.timeout(12000)});
-      if (r.ok) {
-        const json = await r.json();
-        if (json.ok && (json.maintenance || json.biomedical || json.formRaw)) {
-          parseAndMergeSheets(json);
-          onSheetLoaded('Apps Script (' + ROWS.length + ' rows)');
-          return;
+      console.log('Trying Apps Script:', urlToTry);
+      const resp = await fetch(urlToTry, {
+        method: 'GET',
+        signal: AbortSignal.timeout(15000)
+      });
+      if (resp.ok) {
+        const text = await resp.text();
+        let json;
+        try { json = JSON.parse(text); } catch(pe) {
+          console.warn('Apps Script returned non-JSON:', text.slice(0,200));
+          json = null;
         }
-        if (!json.ok) console.warn('Apps Script error:', json.error);
+        if (json && json.ok) {
+          console.log('Apps Script success. Bio rows:', json.biomedical?.rows?.length, 'Maint rows:', json.maintenance?.rows?.length);
+          parseAndMergeSheets(json);
+          if (ROWS.length > 0) {
+            onSheetLoaded('Apps Script ✅ (' + ROWS.length + ' rows — ' +
+              ROWS.filter(e=>e.bio===true).length + ' bio + ' +
+              ROWS.filter(e=>e.bio===false).length + ' general)');
+            return;
+          }
+        } else if (json && !json.ok) {
+          console.warn('Apps Script error response:', json.error);
+        }
+      } else {
+        console.warn('Apps Script HTTP error:', resp.status);
       }
-    } catch(e) { console.warn('Apps Script failed:', e.message); }
+    } catch(err) {
+      console.warn('Apps Script fetch failed:', err.message);
+    }
   }
 
-  // ── Method 2: Direct CSV from the admin sheet (works on GitHub Pages) ──
-  const csvURL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${SHEET_GID}`;
+  // ── Method 2: Direct CSV (maintenance sheet only — all rows tagged as general) ──
+  // NOTE: CSV only gets one sheet. Biomedical will show as 0 via this method.
+  // This is a fallback for when Apps Script is unavailable.
+  const csvURL = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/export?format=csv&gid=' + SHEET_GID;
+
   for (const [label, url] of [
     ['Direct CSV', csvURL],
     ['AllOrigins', 'https://api.allorigins.win/raw?url=' + encodeURIComponent(csvURL)],
     ['CORSProxy',  'https://corsproxy.io/?' + encodeURIComponent(csvURL)]
   ]) {
     try {
-      const r = await fetch(url, {signal: AbortSignal.timeout(10000)});
-      if (!r.ok) continue;
-      const text = await r.text();
+      const resp = await fetch(url, {signal: AbortSignal.timeout(10000)});
+      if (!resp.ok) continue;
+      const text = await resp.text();
       if (!text || text.length < 80 || text.trimStart().startsWith('<')) continue;
       const parsed = parseCSV(text);
       if (parsed.length < 2) continue;
-      // Treat as maintenance sheet rows (CSV has no bio tagging — mark all as general)
-      const dataRows = parsed.slice(1).filter(r => r.some(c=>c.trim()));
+      const headers  = parsed[0];
+      const dataRows = parsed.slice(1).filter(r => r.some(c => c.trim()));
       if (!dataRows.length) continue;
-      ROWS = dataRows.map(r => ({row: r, bio: false, sheetSrc: 'maintenance'}));
-      onSheetLoaded(label + ' (' + ROWS.length + ' rows)');
+
+      // Detect bio from the typeOfMaint column even in CSV
+      const hdrsLower = headers.map(h => h.toLowerCase().trim());
+      const maintTypeIdx = hdrsLower.findIndex(h =>
+        h.includes('type of maintenance') || h.includes('maintenance type'));
+
+      ROWS = dataRows.map(r => {
+        const maintVal = (maintTypeIdx >= 0 && r[maintTypeIdx])
+          ? r[maintTypeIdx].toLowerCase() : '';
+        const isBioRow = maintVal.includes('bio');
+        return { row: r, bio: isBioRow, headers: headers, sheetSrc: isBioRow ? 'biomedical' : 'maintenance' };
+      });
+
+      const bioCount = ROWS.filter(e => e.bio).length;
+      onSheetLoaded(label + ' (' + ROWS.length + ' rows — ' + bioCount + ' bio detected from content)');
       return;
-    } catch(e) { console.warn(label + ' failed:', e.message); }
+    } catch(err) {
+      console.warn(label + ' failed:', err.message);
+    }
   }
 
-  // ── All methods failed ──
-  SHEET_OK = false;
+  // ── All failed ──
   ROWS = [];
-  setStatus('err','⚠️ Could not reach sheet. Follow the setup instructions below.');
+  SHEET_OK = false;
+  setStatus('err', '⚠️ Could not reach sheet. Check your Apps Script deployment.');
   showSetupInstructions();
 }
 
@@ -1587,21 +1694,46 @@ async function fetchSheetData() {
 function parseAndMergeSheets(json) {
   ROWS = [];
 
+  // ── DEBUG: Show what the Apps Script returned ──
+  const dbg = {
+    maintenance_rows:  json.maintenance ? json.maintenance.rows.length  : 'MISSING',
+    maintenance_hdrs:  json.maintenance ? json.maintenance.headers       : 'MISSING',
+    biomedical_rows:   json.biomedical  ? json.biomedical.rows.length   : 'MISSING',
+    biomedical_hdrs:   json.biomedical  ? json.biomedical.headers        : 'MISSING',
+    formRaw_rows:      json.formRaw     ? json.formRaw.rows.length      : 'MISSING',
+  };
+  console.log('=== APPS SCRIPT RESPONSE ===', JSON.stringify(dbg, null, 2));
+  updateDebugPanel(dbg, json);
+
   function addSheet(sheetData, isBiomedical) {
-    if (!sheetData || !sheetData.rows || !sheetData.rows.length) return 0;
+    if (!sheetData) { console.warn('Sheet data is null/undefined for bio=' + isBiomedical); return 0; }
+    if (!sheetData.rows) { console.warn('No .rows for bio=' + isBiomedical, sheetData); return 0; }
+    if (!sheetData.rows.length) { console.warn('Empty rows for bio=' + isBiomedical, 'headers:', sheetData.headers); return 0; }
+
     const headers = sheetData.headers || [];
+    console.log('Adding sheet bio=' + isBiomedical + ', rows=' + sheetData.rows.length + ', headers=' + JSON.stringify(headers));
     let added = 0;
-    sheetData.rows.forEach(r => {
-      // Skip completely empty rows
+
+    sheetData.rows.forEach((r, ri) => {
       if (!r || !r.some || !r.some(c => c && String(c).trim())) return;
-      // For formRaw (bio=null), detect from row content
+
       let bioFlag = isBiomedical;
       if (isBiomedical === null) {
-        const maintTypeIdx = headers.map(h=>h.toLowerCase().trim()).findIndex(h=>h.includes('type of maintenance')||h.includes('maintenance type'));
-        const typeVal = (maintTypeIdx >= 0 && r[maintTypeIdx]) ? String(r[maintTypeIdx]).toLowerCase() : '';
+        // formRaw: detect from Type of maintenance column
+        const hdrsLower = headers.map(h => h.toLowerCase().trim());
+        const maintTypeIdx = hdrsLower.findIndex(h =>
+          h.includes('type of maintenance') || h.includes('maintenance type'));
+        const typeVal = (maintTypeIdx >= 0 && r[maintTypeIdx])
+          ? String(r[maintTypeIdx]).toLowerCase() : '';
         bioFlag = typeVal.includes('bio');
       }
-      ROWS.push({ row: r.map(c => c===null||c===undefined?'':String(c)), bio: bioFlag, headers: headers, sheetSrc: isBiomedical===true?'biomedical':'maintenance' });
+
+      ROWS.push({
+        row:      r.map(c => c === null || c === undefined ? '' : String(c)),
+        bio:      bioFlag,
+        headers:  headers,
+        sheetSrc: isBiomedical === true ? 'biomedical' : 'maintenance'
+      });
       added++;
     });
     return added;
@@ -1610,7 +1742,9 @@ function parseAndMergeSheets(json) {
   const mCount = addSheet(json.maintenance, false);
   const bCount = addSheet(json.biomedical,  true);
   const fCount = addSheet(json.formRaw,     null);
-  console.log('Merged rows — Maintenance:', mCount, '| Biomedical:', bCount, '| Form raw:', fCount, '| Total:', ROWS.length);
+
+  console.log('MERGED: Maintenance=' + mCount + ' Biomedical=' + bCount + ' FormRaw=' + fCount + ' TOTAL=' + ROWS.length);
+  console.log('isBio counts: bio=' + ROWS.filter(e=>e.bio===true).length + ' gen=' + ROWS.filter(e=>e.bio===false).length);
 }
 
 function onSheetLoaded(method) {
