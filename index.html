@@ -1711,6 +1711,11 @@ canvas{display:block;}
         <div class="ff" style="grid-column:1/-1"><label>Scope of Work</label>
           <textarea id="nc-scope" placeholder="Describe the contracted service scope..."></textarea>
         </div>
+        <div class="ff" style="grid-column:1/-1">
+          <label>Upload Contract Document — Proof for CBAHI Surveyor</label>
+          <input type="file" id="nc-file" accept=".pdf,.doc,.docx,.jpg,.png,.jpeg">
+          <div class="ht">Upload the signed contract as proof a formal agreement exists · PDF, Word or image</div>
+        </div>
       </div>
       <button class="btn bg" style="width:100%;margin-top:12px;" onclick="saveContract()">✓ Save Contract</button>
     </div></div>
@@ -1897,9 +1902,14 @@ canvas{display:block;}
   <div class="mbox"><div class="mh"><div class="mt">🔄 Equipment Relocation</div><button class="mc" onclick="closeMod('relocate')">✕</button></div>
   <div class="mb">
     <div class="fg fg2">
-      <div class="ff"><label>Asset No.</label><input type="text" id="rel-asset" placeholder="Asset number"></div>
-      <div class="ff"><label>Equipment Name</label><input type="text" id="rel-name" placeholder="Equipment description"></div>
-      <div class="ff"><label>Current Department (From)</label><input type="text" id="rel-from" placeholder="Current location"></div>
+      <div class="ff" style="grid-column:1/-1"><label>Asset No. — Type to search and auto-fill</label>
+        <input type="text" id="rel-asset" placeholder="Type asset number or equipment name..." 
+          oninput="relocAutoFill(this.value)" list="rel-asset-list" autocomplete="off"
+          style="background:var(--s2);border:1px solid var(--b2);border-radius:7px;padding:9px 12px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:13px;outline:none;width:100%;">
+        <datalist id="rel-asset-list"></datalist>
+      </div>
+      <div class="ff"><label>Equipment Name</label><input type="text" id="rel-name" placeholder="Auto-filled from asset no." readonly style="background:var(--s3);"></div>
+      <div class="ff"><label>Current Department (From)</label><input type="text" id="rel-from" placeholder="Auto-filled from inventory" readonly style="background:var(--s3);"></div>
       <div class="ff"><label>New Department (To)</label><input type="text" id="rel-to" placeholder="Destination department" autofocus></div>
       <div class="ff"><label>Relocation Date</label><input type="date" id="rel-date"></div>
       <div class="ff"><label>Relocated By</label><input type="text" id="rel-by" placeholder="Name"></div>
@@ -4188,13 +4198,7 @@ window.renderAll = function() {
 
 // Also hook into gp() for the medgas page
 const _origGp = window.gp;
-window.gp = function(id) {
-  _origGp(id);
-  if (id === 'medgas') {
-    renderAllMGTables();
-    renderMGLog('all');
-  }
-};
+// medgas gp hook consolidated into main gp override below;
 
 
 // ════════════════════════════════════════════════════════════════
@@ -4496,24 +4500,7 @@ function eqDelAdded(ts) {
 }
 
 // Hook into gp() for equip page
-// gp() override already set elsewhere – this hook is now handled inside eqTab()
-// No-op placeholder to avoid double override
-(function(){
-  const _prevGp = window.gp;
-  window.gp = function(id) {
-    _prevGp(id);
-    if (id === 'equip') {
-      // eqTab('inv') is called by the active tab button
-      // But if landing directly via sidebar, init manually
-      setTimeout(() => {
-        eqAll();
-        eqInitFilters();
-        eqRender();
-        setTimeout(eqCharts, 120);
-      }, 50);
-    }
-  };
-})();
+// equip gp hook consolidated into main gp override below
 
 
 
@@ -4670,7 +4657,33 @@ function logAccessEvent(action) {
 // EQUIPMENT RELOCATION
 // ════════════════════════════════════════════════════════════════
 
+function buildRelocDatalist() {
+  const dl = document.getElementById('rel-asset-list');
+  if (!dl || dl.options.length > 5) return; // already built
+  const all = eqAll();
+  dl.innerHTML = all.slice(0, 800).map(r =>
+    `<option value="${r.asset}">${r.asset} — ${r.desc} (${r.dept})</option>`
+  ).join('');
+}
+
+function relocAutoFill(val) {
+  if (!val || val.length < 2) return;
+  const all = eqAll();
+  // Exact match on asset number
+  let rec = all.find(r => r.asset.toLowerCase() === val.toLowerCase());
+  // Partial match
+  if (!rec) rec = all.find(r => r.asset.toLowerCase().startsWith(val.toLowerCase()));
+  // Match by description
+  if (!rec) rec = all.find(r => r.desc.toLowerCase().includes(val.toLowerCase()));
+  if (!rec) return;
+  const nameEl = document.getElementById('rel-name');
+  const fromEl = document.getElementById('rel-from');
+  if (nameEl) nameEl.value = rec.desc || '';
+  if (fromEl) fromEl.value = rec.dept || '';
+}
+
 function openRelocation(asset, currentDept, equipName) {
+  buildRelocDatalist();
   document.getElementById('rel-asset').value  = asset || '';
   document.getElementById('rel-name').value   = equipName || '';
   document.getElementById('rel-from').value   = currentDept || '';
@@ -4678,6 +4691,7 @@ function openRelocation(asset, currentDept, equipName) {
   document.getElementById('rel-reason').value = '';
   document.getElementById('rel-by').value     = CU.name || '';
   document.getElementById('rel-date').value   = new Date().toISOString().split('T')[0];
+  if (!asset) { setTimeout(()=>document.getElementById('rel-asset')?.focus(), 100); }
   openMod('relocate');
 }
 
@@ -4764,7 +4778,11 @@ function getAllRisks() {
 }
 
 function riskTab(tab, btn) {
-  document.querySelectorAll('[id^="risk-"]').forEach(e => e.style.display='none');
+  // Only hide the three top-level tab panels — NOT inner elements
+  ['risk-heatmap','risk-register','risk-add'].forEach(id => {
+    const e = document.getElementById(id);
+    if (e) e.style.display = 'none';
+  });
   const el = document.getElementById('risk-' + tab);
   if (el) el.style.display = 'block';
   if (btn) {
@@ -4933,7 +4951,11 @@ function getContracts() {
 }
 
 function ctrTab(tab, btn) {
-  document.querySelectorAll('[id^="ctr-"]').forEach(e => e.style.display='none');
+  // Only hide top-level tab panels
+  ['ctr-list','ctr-add-contract','ctr-eval','ctr-history'].forEach(id => {
+    const e = document.getElementById(id);
+    if (e) e.style.display = 'none';
+  });
   const el = document.getElementById('ctr-' + tab);
   if (el) el.style.display = 'block';
   if (btn) {
@@ -4967,7 +4989,8 @@ function renderContractCards() {
           <div style="font-size:9px;color:var(--mu);">Last eval</div>
         </div>`:'<div style="font-size:10px;color:var(--mu);">No evaluations</div>'}
       </div>
-      <div style="font-size:10px;color:var(--mu);margin-bottom:10px;">${c.scope}</div>
+      <div style="font-size:10px;color:var(--mu);margin-bottom:6px;">${c.scope}</div>
+      ${c.proof?`<div style="margin-bottom:8px;"><span class="bx bb2">📎 ${c.proof.n?.slice(0,25)||'Contract uploaded'}</span></div>`:'<div style="margin-bottom:8px;"><span class="bx bm2">No contract uploaded</span></div>'}
       <div style="display:flex;gap:8px;">
         <button class="btn bp" style="flex:1;font-size:10px;padding:5px;" onclick="startEval('${c._id}')">📝 Evaluate Now</button>
         <button class="btn bo" style="font-size:10px;padding:5px 10px;" onclick="viewHistory('${c._id}')">📊 History</button>
@@ -4993,7 +5016,8 @@ function saveContract() {
     end:     document.getElementById('nc-end')?.value,
     value:   document.getElementById('nc-value')?.value,
     scope:   document.getElementById('nc-scope')?.value.trim(),
-    status:  'active', _by:CU.name, _ts:new Date().toISOString()
+    status:  'active', _by:CU.name, _ts:new Date().toISOString(),
+    proof:   (() => { const f=document.getElementById('nc-file')?.files[0]; return f?{n:f.name,s:Math.round(f.size/1024)+'KB'}:null; })()
   };
   const arr = ld('contracts');
   if (!arr.length) { DEFAULT_CONTRACTS.forEach(d=>arr.push(d)); }
@@ -5147,6 +5171,7 @@ function doLogin() {
 }
 
 // Override gp() to enforce page access
+// ── SINGLE consolidated gp() override ──
 (function(){
   const _baseGp = window.gp;
   window.gp = function(id) {
@@ -5155,19 +5180,18 @@ function doLogin() {
       return;
     }
     _baseGp(id);
-    // Special page inits
-    if (id === 'risk')      { setTimeout(()=>riskTab('heatmap',null), 100); }
-    if (id === 'contracts') { setTimeout(()=>ctrTab('list',null), 100); }
-    if (id === 'settings')  {
-      if (CU.role !== 'director') { toast('⛔ Settings: Director only','#ef4444'); return; }
-      settingsRenderUsers();
-      settingsRenderAccessLog();
-    }
     if (id === 'equip') {
-      setTimeout(() => { eqAll(); eqInitFilters(); eqRender(); setTimeout(eqCharts,120); }, 50);
+      setTimeout(() => { eqAll(); eqInitFilters(); eqRender(); setTimeout(eqCharts,120); }, 60);
+    }
+    if (id === 'medgas') { renderAllMGTables(); renderMGLog('all'); }
+    if (id === 'risk')      { setTimeout(() => riskTab('heatmap', null), 80); }
+    if (id === 'contracts') { setTimeout(() => ctrTab('list', null), 80); }
+    if (id === 'settings') {
+      if (CU.role !== 'director') { toast('⛔ Settings: Director only','#ef4444'); return; }
+      settingsRenderUsers(); settingsRenderAccessLog();
     }
   };
-})();
+})();;
 
 </script>
 </body>
