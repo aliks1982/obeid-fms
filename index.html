@@ -4250,16 +4250,21 @@ function eqSort(col) {
 
 // ── Tab navigation ──
 function eqTab(tab, btn) {
-  document.querySelectorAll('#page-equip [id^="eq-"]').forEach(e => e.style.display='none');
+  // IMPORTANT: Only hide the 5 top-level tab panel divs — NOT inner elements.
+  // Using [id^="eq-"] would also hide eq-search, eq-dept-filter, eq-stats, etc.
+  // which are CHILDREN of eq-inv and would remain hidden even when eq-inv is shown.
+  ['eq-inv','eq-ppm','eq-add','eq-relocate','eq-kpi'].forEach(id => {
+    const e = document.getElementById(id);
+    if (e) e.style.display = 'none';
+  });
   const el = document.getElementById('eq-' + tab);
   if (el) el.style.display = 'block';
   if (btn) {
     btn.closest('.tb').querySelectorAll('.tbtn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
   }
-  // Always re-init filters when opening inventory — fixes disappearing dropdowns
   if (tab === 'inv') {
-    eqAll(); // warm cache
+    eqAll();
     eqInitFilters();
     eqRender();
     setTimeout(eqCharts, 120);
@@ -5181,7 +5186,8 @@ function doLogin() {
     }
     _baseGp(id);
     if (id === 'equip') {
-      setTimeout(() => { eqAll(); eqInitFilters(); eqRender(); setTimeout(eqCharts,120); }, 60);
+      // eqTab shows eq-inv and inits filters
+      setTimeout(() => eqTab('inv', document.querySelector('#page-equip .tbtn')), 60);
     }
     if (id === 'medgas') { renderAllMGTables(); renderMGLog('all'); }
     if (id === 'risk')      { setTimeout(() => riskTab('heatmap', null), 80); }
