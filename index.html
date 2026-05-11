@@ -275,6 +275,10 @@ canvas{display:block;}
     <div class="ni" onclick="gp('wo')" id="n-wo"><span class="ni-ic">🔧</span>Work Orders<span class="nb" id="woBadge">0</span></div>
     <div class="ni" onclick="gp('ckpi')" id="n-ckpi"><span class="ni-ic">⚙</span>Custom KPIs</div>
     <div class="ni" onclick="gp('docs')" id="n-docs"><span class="ni-ic">📁</span>Documents</div>
+    <div class="nsc">Compliance</div>
+    <div class="ni" onclick="gp('risk')" id="n-risk"><span class="ni-ic">⚠️</span>Risk Assessment</div>
+    <div class="ni" onclick="gp('contracts')" id="n-contracts"><span class="ni-ic">📃</span>Contract Review</div>
+    <div class="ni director-only" onclick="gp('settings')" id="n-settings"><span class="ni-ic">⚙</span>Settings</div>
   </nav>
   <div class="sbft"><div class="cdb"><div class="cdl">CBAHI Survey In</div><div class="cdd" id="cdDays">—</div><div class="cds">days · October 2026</div></div></div>
 </aside>
@@ -525,13 +529,13 @@ canvas{display:block;}
   </div>
   <div class="g g4" id="anStats"></div>
   <div class="g g2" style="margin-bottom:13px;">
-    <div class="cc"><div class="ccl">KPI Achievement Radar — All Domains</div><div class="ccs">Actual vs 100% target per domain</div><canvas id="c-radar" height="200"></canvas></div>
-    <div class="cc"><div class="ccl" id="trendLabel">Maintenance Trend — Monthly</div><div class="ccs">Close rate % · Bio tickets · General tickets</div><canvas id="c-trend" height="200"></canvas></div>
+    <div class="cc" style="min-height:280px;"><div class="ccl">KPI Achievement Radar — All Domains</div><div class="ccs">Actual vs 100% target per domain</div><div style="position:relative;height:230px;"><canvas id="c-radar"></canvas></div></div>
+    <div class="cc" style="min-height:280px;"><div class="ccl" id="trendLabel">Maintenance Trend — Monthly</div><div class="ccs">Close rate % · Bio tickets · General tickets</div><div style="position:relative;height:230px;"><canvas id="c-trend"></canvas></div></div>
   </div>
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin-bottom:13px;">
-    <div class="cc"><div class="ccl">WO Priority Breakdown</div><div class="ccs">Emergency · Urgent · Normal</div><canvas id="c-woprio" height="150"></canvas></div>
-    <div class="cc"><div class="ccl">PPM Completion</div><div class="ccs">Equipment maintenance rate</div><canvas id="c-ppm" height="150"></canvas></div>
-    <div class="cc"><div class="ccl">CBAHI Gap Analysis</div><div class="ccs">Standards by status</div><canvas id="c-cbahi" height="150"></canvas></div>
+    <div class="cc" style="min-height:220px;"><div class="ccl">WO Priority Breakdown</div><div class="ccs">Emergency · Urgent · Normal</div><div style="position:relative;height:170px;"><canvas id="c-woprio"></canvas></div></div>
+    <div class="cc" style="min-height:220px;"><div class="ccl">PPM Completion</div><div class="ccs">Equipment maintenance rate</div><div style="position:relative;height:170px;"><canvas id="c-ppm"></canvas></div></div>
+    <div class="cc" style="min-height:220px;"><div class="ccl">CBAHI Gap Analysis</div><div class="ccs">Standards by status</div><div style="position:relative;height:170px;"><canvas id="c-cbahi"></canvas></div></div>
   </div>
   <div class="card"><div class="ch"><div class="ct">Maintenance Period Summary — <span id="pdLabel">Monthly View</span></div></div>
   <div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Period</th><th>Total</th><th>Completed</th><th>Close Rate</th><th>Avg Time</th><th>Emergency</th><th>SLA Breach</th><th>Trend</th></tr></thead><tbody id="anTable"></tbody></table></div></div>
@@ -765,6 +769,7 @@ canvas{display:block;}
     <button class="tbtn active" onclick="eqTab('inv',this)">📋 Inventory (1,848)</button>
     <button class="tbtn" onclick="eqTab('ppm',this)">🔧 Log PPM</button>
     <button class="tbtn" onclick="eqTab('add',this)">➕ Add Equipment</button>
+    <button class="tbtn" onclick="eqTab('relocate',this)">🔄 Relocations</button>
     <button class="tbtn" onclick="eqTab('kpi',this)">📊 KPIs</button>
   </div>
 
@@ -860,6 +865,7 @@ canvas{display:block;}
                 <th>Semi PPM</th>
                 <th>Status</th>
                 <th>Remarks</th>
+                <th>Move</th>
               </tr>
             </thead>
             <tbody id="eq-tbody"></tbody>
@@ -978,6 +984,20 @@ canvas{display:block;}
         </table></div>
       </div>
     </div>
+  </div>
+
+  <!-- ══ RELOCATION LOG ══ -->
+  <div id="eq-relocate" style="display:none;">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+      <button class="btn bp" onclick="openRelocation('','','')">+ Log New Relocation</button>
+    </div>
+    <div class="card"><div class="ch"><div class="ct">🔄 Equipment Relocation Log</div>
+      <div style="font-size:10px;color:var(--mu);">All movements from one department to another · Tracked by date</div>
+    </div>
+    <div class="cb" style="padding:0;overflow-x:auto;"><table class="tbl">
+      <thead><tr><th>Asset No.</th><th>Equipment</th><th>Date</th><th>From</th><th>To</th><th>Reason</th><th>Relocated By</th></tr></thead>
+      <tbody id="eq-reloc-tb"></tbody>
+    </table></div></div>
   </div>
 
   <!-- ══ KPIs ══ -->
@@ -1549,6 +1569,289 @@ canvas{display:block;}
   <div class="card"><div class="ch"><div class="ct">All Documents</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Title</th><th>Standard</th><th>By</th><th>Role</th><th>File</th></tr></thead><tbody id="doc-tb"></tbody></table></div></div>
 </div>
 
+
+<!-- ===== RISK ASSESSMENT ===== -->
+<div class="pg" id="page-risk">
+  <div class="ph"><h1>⚠️ Risk Assessment — FMS</h1><p>Departmental risk heat map · Security measures · Editable · CBAHI compliant · FMS Director + Department Heads</p></div>
+  <div class="tb" style="flex-wrap:wrap;">
+    <button class="tbtn active" onclick="riskTab('heatmap',this)">🔥 Risk Heat Map</button>
+    <button class="tbtn" onclick="riskTab('register',this)">📋 Risk Register</button>
+    <button class="tbtn" onclick="riskTab('add',this)">➕ Add / Edit Risk</button>
+  </div>
+
+  <!-- HEAT MAP -->
+  <div id="risk-heatmap">
+    <div style="margin-bottom:14px;font-size:11px;color:var(--mu);">Likelihood (1–5) × Consequence (1–5) = Risk Score. 
+      <span style="color:var(--rd);font-weight:600;">■ Critical 20–25</span> &nbsp;
+      <span style="color:var(--or);font-weight:600;">■ High 10–19</span> &nbsp;
+      <span style="color:#eab308;font-weight:600;">■ Medium 5–9</span> &nbsp;
+      <span style="color:var(--gn);font-weight:600;">■ Low 1–4</span>
+    </div>
+    <div id="risk-heatmap-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;"></div>
+  </div>
+
+  <!-- RISK REGISTER TABLE -->
+  <div id="risk-register" style="display:none;">
+    <div class="card"><div class="ch"><div class="ct">Risk Register — All Departments</div>
+      <button class="btn bo" style="padding:4px 12px;font-size:10px;" onclick="exportRiskRegister()">📥 Export</button>
+    </div>
+    <div class="cb" style="padding:0;overflow-x:auto;"><table class="tbl">
+      <thead><tr><th>Dept</th><th>Hazard</th><th>Category</th><th>Likelihood</th><th>Consequence</th><th>Score</th><th>Level</th><th>Controls</th><th>Owner</th><th>Review Date</th><th></th></tr></thead>
+      <tbody id="risk-reg-tb"></tbody>
+    </table></div></div>
+  </div>
+
+  <!-- ADD/EDIT RISK -->
+  <div id="risk-add" style="display:none;">
+    <div class="g g2">
+      <div class="card"><div class="ch"><div class="ct">Add / Edit Risk Entry</div></div><div class="cb">
+        <input type="hidden" id="risk-edit-id">
+        <div class="fg fg2">
+          <div class="ff"><label>Department</label>
+            <select id="risk-dept">
+              <option>NICU / PICU</option><option>ICU</option><option>Server Room</option>
+              <option>Delivery Room</option><option>Inpatient Pharmacy (Narcotic)</option>
+              <option>RO Room</option><option>Emergency Room</option><option>Operating Room</option>
+              <option>Blood Bank</option><option>Laboratory</option><option>Medical Gas Room</option>
+              <option>CSSD</option><option>Kitchen</option><option>Boiler Room</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="ff"><label>Hazard / Risk Description</label>
+            <input type="text" id="risk-hazard" placeholder="e.g. Unauthorized access to narcotic storage">
+          </div>
+          <div class="ff"><label>Category</label>
+            <select id="risk-cat">
+              <option>Security</option><option>Fire Safety</option><option>Infection Control</option>
+              <option>Equipment Failure</option><option>Utility Failure</option><option>Chemical / Hazmat</option>
+              <option>Radiation</option><option>Patient Safety</option><option>Data / IT</option><option>Other</option>
+            </select>
+          </div>
+          <div class="ff"><label>Likelihood (1–5)</label>
+            <select id="risk-likelihood">
+              <option value="1">1 — Rare</option><option value="2">2 — Unlikely</option>
+              <option value="3">3 — Possible</option><option value="4">4 — Likely</option>
+              <option value="5">5 — Almost Certain</option>
+            </select>
+          </div>
+          <div class="ff"><label>Consequence (1–5)</label>
+            <select id="risk-consequence">
+              <option value="1">1 — Negligible</option><option value="2">2 — Minor</option>
+              <option value="3">3 — Moderate</option><option value="4">4 — Major</option>
+              <option value="5">5 — Catastrophic</option>
+            </select>
+          </div>
+          <div class="ff"><label>Risk Owner</label>
+            <input type="text" id="risk-owner" placeholder="Name / Department Head">
+          </div>
+          <div class="ff"><label>Review Date</label>
+            <input type="date" id="risk-review">
+          </div>
+          <div class="ff" style="grid-column:1/-1"><label>Existing Controls / Security Measures</label>
+            <textarea id="risk-controls" style="min-height:80px;" placeholder="List all current controls, security measures, monitoring systems..."></textarea>
+          </div>
+          <div class="ff" style="grid-column:1/-1"><label>Additional Actions Required</label>
+            <textarea id="risk-actions" placeholder="Any additional mitigating actions needed..."></textarea>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button class="btn bg" style="flex:1;" onclick="saveRisk()">✓ Save Risk Entry</button>
+          <button class="btn bo" onclick="clearRiskForm()">✕ Clear</button>
+        </div>
+      </div></div>
+      <div class="card"><div class="ch"><div class="ct">Pre-loaded Critical Departments</div></div><div class="cb" style="font-size:11px;color:var(--mu);line-height:2;">
+        The following high-risk departments are pre-loaded with standard hazards.<br>Click any to edit and customize for Obeid Hospital.
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px;" id="risk-preloaded-list"></div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CONTRACT REVIEW ===== -->
+<div class="pg" id="page-contracts">
+  <div class="ph"><h1>📃 Contract Review — CBAHI FMS</h1><p>Quarterly evaluation of contracted services · FMS Director + Concerned Head of Department · Renewal / Change decision</p></div>
+  <div class="tb" style="flex-wrap:wrap;">
+    <button class="tbtn active" onclick="ctrTab('list',this)">📋 Contracts</button>
+    <button class="tbtn" onclick="ctrTab('eval',this)">📝 New Evaluation</button>
+    <button class="tbtn" onclick="ctrTab('history',this)">📊 Evaluation History</button>
+  </div>
+
+  <!-- CONTRACT LIST -->
+  <div id="ctr-list">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <div style="font-size:11px;color:var(--mu);">All active contracted services · Click to evaluate</div>
+      <button class="btn bp" onclick="ctrTab('add-contract',null)">+ Add Contract</button>
+    </div>
+    <div id="ctr-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:13px;"></div>
+  </div>
+
+  <!-- ADD CONTRACT (sub-view inside list) -->
+  <div id="ctr-add-contract" style="display:none;">
+    <div class="card"><div class="ch"><div class="ct">Add New Contract</div>
+      <button class="btn bo" style="font-size:10px;padding:4px 10px;" onclick="ctrTab('list',null)">← Back</button>
+    </div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Contract / Service Name</label><input type="text" id="nc-name" placeholder="e.g. Pest Control Service"></div>
+        <div class="ff"><label>Contractor Company</label><input type="text" id="nc-company" placeholder="Company name"></div>
+        <div class="ff"><label>Service Category</label>
+          <select id="nc-cat">
+            <option>Pest Control</option><option>Duct Cleaning</option><option>Elevator Maintenance</option>
+            <option>Fire Alarm & Suppression</option><option>Generator Maintenance</option>
+            <option>Medical Gas</option><option>HVAC Maintenance</option><option>Security Services</option>
+            <option>Waste Management</option><option>Laundry Services</option><option>Cleaning Services</option>
+            <option>Catering / Kitchen</option><option>Civil Defense</option><option>Other</option>
+          </select>
+        </div>
+        <div class="ff"><label>Evaluating FMS Person</label><input type="text" id="nc-fms" placeholder="FMS Director name"></div>
+        <div class="ff"><label>Joint Evaluator (Head of Dept)</label><input type="text" id="nc-dept-head" placeholder="e.g. Head of Infection Control"></div>
+        <div class="ff"><label>Evaluation Department</label><input type="text" id="nc-dept" placeholder="e.g. Infection Control"></div>
+        <div class="ff"><label>Contract Start Date</label><input type="date" id="nc-start"></div>
+        <div class="ff"><label>Contract End Date</label><input type="date" id="nc-end"></div>
+        <div class="ff"><label>Contract Value (SAR)</label><input type="number" id="nc-value" placeholder="0"></div>
+        <div class="ff" style="grid-column:1/-1"><label>Scope of Work</label>
+          <textarea id="nc-scope" placeholder="Describe the contracted service scope..."></textarea>
+        </div>
+      </div>
+      <button class="btn bg" style="width:100%;margin-top:12px;" onclick="saveContract()">✓ Save Contract</button>
+    </div></div>
+  </div>
+
+  <!-- NEW EVALUATION FORM -->
+  <div id="ctr-eval" style="display:none;">
+    <div class="card"><div class="ch"><div class="ct">📝 Quarterly Contract Evaluation</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Contract / Service</label>
+          <select id="ev-contract" onchange="evAutoFill()">
+            <option value="">— Select contract —</option>
+          </select>
+        </div>
+        <div class="ff"><label>Evaluation Quarter</label>
+          <select id="ev-quarter">
+            <option>Q1 — January to March</option><option>Q2 — April to June</option>
+            <option>Q3 — July to September</option><option>Q4 — October to December</option>
+          </select>
+        </div>
+        <div class="ff"><label>Year</label><input type="number" id="ev-year" placeholder="2026"></div>
+        <div class="ff"><label>Evaluation Date</label><input type="date" id="ev-date"></div>
+        <div class="ff"><label>FMS Evaluator</label><input type="text" id="ev-fms" placeholder="FMS Director"></div>
+        <div class="ff"><label>Joint Evaluator (Dept. Head)</label><input type="text" id="ev-joint" placeholder="Head of Department"></div>
+        <div class="ff" style="grid-column:1/-1">
+          <div style="background:rgba(0,180,255,.06);border:1px solid var(--bd);border-radius:9px;padding:14px;margin-bottom:4px;">
+            <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:var(--or);margin-bottom:12px;">Evaluation Criteria — Score 1 to 5</div>
+            <div style="font-size:10px;color:var(--mu);margin-bottom:12px;">1=Very Poor · 2=Poor · 3=Satisfactory · 4=Good · 5=Excellent</div>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;">
+              <div style="font-size:12px;">1. Quality of Service Provided</div>
+              <select id="ev-q1" class="ev-score" style="background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:5px 10px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;" onchange="evCalcScore()">
+                <option value="5">5 — Excellent</option><option value="4">4 — Good</option><option value="3" selected>3 — Satisfactory</option><option value="2">2 — Poor</option><option value="1">1 — Very Poor</option>
+              </select>
+              <div style="font-size:12px;">2. Timeliness / Response Time</div>
+              <select id="ev-q2" class="ev-score" style="background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:5px 10px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;" onchange="evCalcScore()">
+                <option value="5">5 — Excellent</option><option value="4">4 — Good</option><option value="3" selected>3 — Satisfactory</option><option value="2">2 — Poor</option><option value="1">1 — Very Poor</option>
+              </select>
+              <div style="font-size:12px;">3. Staff Competency &amp; Professionalism</div>
+              <select id="ev-q3" class="ev-score" style="background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:5px 10px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;" onchange="evCalcScore()">
+                <option value="5">5 — Excellent</option><option value="4">4 — Good</option><option value="3" selected>3 — Satisfactory</option><option value="2">2 — Poor</option><option value="1">1 — Very Poor</option>
+              </select>
+              <div style="font-size:12px;">4. Compliance with Contract Terms</div>
+              <select id="ev-q4" class="ev-score" style="background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:5px 10px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;" onchange="evCalcScore()">
+                <option value="5">5 — Excellent</option><option value="4">4 — Good</option><option value="3" selected>3 — Satisfactory</option><option value="2">2 — Poor</option><option value="1">1 — Very Poor</option>
+              </select>
+              <div style="font-size:12px;">5. Safety &amp; Compliance with Hospital Standards</div>
+              <select id="ev-q5" class="ev-score" style="background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:5px 10px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;" onchange="evCalcScore()">
+                <option value="5">5 — Excellent</option><option value="4">4 — Good</option><option value="3" selected>3 — Satisfactory</option><option value="2">2 — Poor</option><option value="1">1 — Very Poor</option>
+              </select>
+            </div>
+            <div style="margin-top:14px;display:flex;align-items:center;gap:16px;">
+              <div style="font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;" id="ev-total-score">75%</div>
+              <div id="ev-score-badge"></div>
+              <div style="font-size:10px;color:var(--mu);">Total: <span id="ev-raw-score">15</span>/25 points</div>
+            </div>
+          </div>
+        </div>
+        <div class="ff" style="grid-column:1/-1"><label>Strengths / Positive Observations</label>
+          <textarea id="ev-strengths" placeholder="What is working well..."></textarea>
+        </div>
+        <div class="ff" style="grid-column:1/-1"><label>Issues / Deficiencies Noted</label>
+          <textarea id="ev-issues" placeholder="Any issues, complaints, non-compliances..."></textarea>
+        </div>
+        <div class="ff" style="grid-column:1/-1"><label>Corrective Actions Required from Contractor</label>
+          <textarea id="ev-actions" placeholder="Actions the contractor must take before next evaluation..."></textarea>
+        </div>
+        <div class="ff"><label>Joint Decision</label>
+          <select id="ev-decision">
+            <option value="renew">✅ Renew Contract</option>
+            <option value="conditional">⚠️ Conditional Renewal — with corrective action plan</option>
+            <option value="change">❌ Change Contractor — initiate tender</option>
+            <option value="review">🔄 Under Review — defer decision</option>
+          </select>
+        </div>
+        <div class="ff"><label>Upload Signed Evaluation Form</label>
+          <input type="file" id="ev-file" accept=".pdf,.jpg,.png,.docx">
+        </div>
+      </div>
+      <button class="btn bg" style="width:100%;margin-top:14px;" onclick="saveEvaluation()">✓ Save Quarterly Evaluation</button>
+    </div></div>
+  </div>
+
+  <!-- EVALUATION HISTORY -->
+  <div id="ctr-history" style="display:none;">
+    <div class="g g4" id="ctr-kpi-stats"></div>
+    <div class="card"><div class="ch"><div class="ct">All Quarterly Evaluations</div></div>
+      <div class="cb" style="padding:0;overflow-x:auto;"><table class="tbl">
+        <thead><tr><th>Quarter</th><th>Contract</th><th>Score</th><th>Level</th><th>FMS Evaluator</th><th>Joint Evaluator</th><th>Decision</th><th>Date</th><th>Proof</th></tr></thead>
+        <tbody id="ctr-hist-tb"></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SETTINGS (Director only) ===== -->
+<div class="pg" id="page-settings">
+  <div class="ph"><h1>⚙ Settings — FMS Director Only</h1><p>Manage user accounts · Modify PINs · View access log · Role-based access configuration</p></div>
+  <div class="g g2">
+    <!-- User Management -->
+    <div class="card"><div class="ch"><div class="ct">👤 User Accounts</div></div><div class="cb">
+      <table class="tbl" id="users-table">
+        <thead><tr><th>Role</th><th>Display Name</th><th>PIN</th><th>Access Level</th><th></th></tr></thead>
+        <tbody id="users-tb"></tbody>
+      </table>
+    </div></div>
+
+    <!-- Edit User -->
+    <div class="card"><div class="ch"><div class="ct">✏️ Edit User / Change PIN</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Select User</label>
+          <select id="set-role" onchange="settingsLoadUser()">
+            <option value="director">FMS Director</option>
+            <option value="maintenance">Maintenance Manager — Mostapha</option>
+            <option value="biomedical">Biomedical Engineer — Bashar</option>
+            <option value="safety">Safety Officer — Moe</option>
+            <option value="security">Security Manager — Bader</option>
+          </select>
+        </div>
+        <div class="ff"><label>Display Name</label>
+          <input type="text" id="set-name" placeholder="Full name">
+        </div>
+        <div class="ff"><label>New PIN (4 digits)</label>
+          <input type="password" id="set-pin" maxlength="4" placeholder="Leave blank to keep current">
+        </div>
+        <div class="ff"><label>Confirm PIN</label>
+          <input type="password" id="set-pin2" maxlength="4" placeholder="Repeat new PIN">
+        </div>
+      </div>
+      <button class="btn bg" style="width:100%;margin-top:12px;" onclick="settingsSaveUser()">✓ Save Changes</button>
+    </div></div>
+  </div>
+
+  <!-- Access Log -->
+  <div class="card" style="margin-top:4px;"><div class="ch"><div class="ct">🔐 Recent Login Activity</div></div>
+    <div class="cb" style="padding:0;"><table class="tbl">
+      <thead><tr><th>Time</th><th>User</th><th>Role</th><th>Action</th></tr></thead>
+      <tbody id="access-log-tb"></tbody>
+    </table></div>
+  </div>
+</div>
+
 </main>
 </div>
 </div>
@@ -1588,6 +1891,24 @@ canvas{display:block;}
 <div id="first-visit-banner" style="display:none;">
   <span>🔗 <b>FMS Director only:</b> Go to <b>Maintenance Analytics</b> to paste your Apps Script URL and connect the live Google Sheet. Managers can log in and enter data right away.</span>
   <button onclick="document.getElementById('first-visit-banner').style.display='none';localStorage.setItem('obeid_bannerDismissed','1');">Got it ✕</button>
+</div>
+
+<div class="mov" id="mod-relocate">
+  <div class="mbox"><div class="mh"><div class="mt">🔄 Equipment Relocation</div><button class="mc" onclick="closeMod('relocate')">✕</button></div>
+  <div class="mb">
+    <div class="fg fg2">
+      <div class="ff"><label>Asset No.</label><input type="text" id="rel-asset" placeholder="Asset number"></div>
+      <div class="ff"><label>Equipment Name</label><input type="text" id="rel-name" placeholder="Equipment description"></div>
+      <div class="ff"><label>Current Department (From)</label><input type="text" id="rel-from" placeholder="Current location"></div>
+      <div class="ff"><label>New Department (To)</label><input type="text" id="rel-to" placeholder="Destination department" autofocus></div>
+      <div class="ff"><label>Relocation Date</label><input type="date" id="rel-date"></div>
+      <div class="ff"><label>Relocated By</label><input type="text" id="rel-by" placeholder="Name"></div>
+      <div class="ff" style="grid-column:1/-1"><label>Reason for Relocation</label>
+        <textarea id="rel-reason" placeholder="Clinical need, maintenance, new department setup..."></textarea>
+      </div>
+    </div>
+    <button class="btn bg" style="width:100%;margin-top:12px;" onclick="saveRelocation()">✓ Log Relocation</button>
+  </div></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -2828,52 +3149,133 @@ function renderAnalytics() {
 }
 
 function reinitAnalCharts() {
-  const rows   = ROWS.length ? ROWS : [];
+  const rows    = ROWS.length ? ROWS : [];
   const monthly = getMonthlyData(rows);
-  const pT=ld('ppm').length, pD=ld('ppm').filter(r=>r.res==='done').length;
-  const {met,par,gap}=cbStats();
-  const total=rows.length, comp=rows.filter(e=>isDone(e)).length, openC=rows.filter(e=>!isDone(e)&&!isCancelled(e)).length;
-  const emrg=rows.filter(e=>getNature(e).toLowerCase().includes('emerg')).length;
+  const pT = ld('ppm').length;
+  const pD = ld('ppm').filter(r=>r.res==='done').length;
+  const {met,par,gap} = cbStats();
+  const total = rows.length;
+  const comp  = rows.filter(e=>isDone(e)).length;
+  const openC = rows.filter(e=>!isDone(e)&&!isCancelled(e)).length;
+  const emrg  = rows.filter(e=>getNature(e).toLowerCase().includes('emerg')).length;
 
-  // RADAR
-  const domScores=[dPct('safety'),dPct('security'),dPct('hazmat'),dPct('emergency'),dPct('fire'),dPct('equip'),dPct('utils')];
-  const radarEl=document.getElementById('c-radar');
-  if(radarEl){
-    if(CH['c-radar']){try{CH['c-radar'].destroy();}catch(e){}delete CH['c-radar'];}
-    CH['c-radar']=new Chart(radarEl,{
-      type:'radar',
-      data:{labels:['Safety','Security','Hazmat','Emergency','Fire Safety','Equipment','Utilities'],datasets:[
-        {label:'Current %',data:domScores,borderColor:'#00b4ff',backgroundColor:'rgba(0,180,255,.15)',pointBackgroundColor:'#00b4ff',pointBorderColor:'#fff',pointRadius:5,borderWidth:2},
-        {label:'Target 100%',data:[100,100,100,100,100,100,100],borderColor:'rgba(0,255,136,.35)',backgroundColor:'rgba(0,255,136,.04)',borderDash:[5,5],pointRadius:2,borderWidth:1}
-      ]},
-      options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:true,position:'bottom',labels:{color:'#5a7fa8',font:{size:10},padding:12}},tooltip:{backgroundColor:'#0f2040',titleColor:'#d4e8ff',bodyColor:'#5a7fa8'}},
-        scales:{r:{min:0,max:100,beginAtZero:true,grid:{color:'rgba(0,180,255,.1)'},angleLines:{color:'rgba(0,180,255,.1)'},ticks:{color:'#5a7fa8',font:{size:9},backdropColor:'transparent',stepSize:25,callback:v=>v+'%'},pointLabels:{color:'#d4e8ff',font:{size:10},padding:8}}}}
+  // Safe chart maker: destroys old, waits one frame, then creates new
+  function safeChart(id, cfg) {
+    if (CH[id]) { try { CH[id].destroy(); } catch(e){} delete CH[id]; }
+    const canvas = document.getElementById(id);
+    if (!canvas) return;
+    // Use requestAnimationFrame to ensure canvas has been laid out
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        try { CH[id] = new Chart(canvas, cfg); }
+        catch(e) { console.warn('Chart error', id, e.message); }
+      });
     });
   }
 
-  // Trend
-  const qMap2={};
-  monthly.labels.forEach((lbl,i)=>{
-    const d=new Date('01 '+lbl),q=`Q${Math.ceil((d.getMonth()+1)/3)} ${d.getFullYear()}`;
-    if(!qMap2[q])qMap2[q]={tot:0,comp:0,bio:0,gen:0};
-    qMap2[q].tot+=monthly.total[i]; qMap2[q].comp+=monthly.comp[i];
-    qMap2[q].bio+=monthly.bio[i]; qMap2[q].gen+=monthly.gen[i];
+  // ── RADAR ──
+  const domScores = [
+    dPct('safety'), dPct('security'), dPct('hazmat'),
+    dPct('emergency'), dPct('fire'), dPct('equip'), dPct('utils')
+  ];
+  safeChart('c-radar', {
+    type: 'radar',
+    data: {
+      labels: ['Safety','Security','Hazmat','Emergency','Fire Safety','Equipment','Utilities'],
+      datasets: [
+        { label:'Current %', data:domScores,
+          borderColor:'#00b4ff', backgroundColor:'rgba(0,180,255,.15)',
+          pointBackgroundColor:'#00b4ff', pointBorderColor:'#fff',
+          pointRadius:5, borderWidth:2 },
+        { label:'Target 100%', data:[100,100,100,100,100,100,100],
+          borderColor:'rgba(0,255,136,.4)', backgroundColor:'rgba(0,255,136,.05)',
+          borderDash:[5,5], pointRadius:2, borderWidth:1, pointBackgroundColor:'rgba(0,255,136,.4)' }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display:true, position:'bottom', labels:{ color:'#5a7fa8', font:{size:10}, padding:12 } },
+        tooltip: { backgroundColor:'#0f2040', titleColor:'#d4e8ff', bodyColor:'#5a7fa8' }
+      },
+      scales: {
+        r: {
+          min:0, max:100, beginAtZero:true,
+          grid:        { color:'rgba(0,180,255,.12)' },
+          angleLines:  { color:'rgba(0,180,255,.12)' },
+          ticks:       { color:'#5a7fa8', font:{size:9}, backdropColor:'transparent',
+                         stepSize:25, callback: v => v+'%' },
+          pointLabels: { color:'#d4e8ff', font:{size:10}, padding:10 }
+        }
+      }
+    }
   });
-  const tLabels = anPd==='monthly'?monthly.labels:Object.keys(qMap2);
-  const tClose  = anPd==='monthly'?monthly.rate:Object.values(qMap2).map(v=>v.tot?Math.round((v.comp/v.tot)*100):0);
-  const tBio    = anPd==='monthly'?monthly.bio:Object.values(qMap2).map(v=>v.bio);
-  const tGen    = anPd==='monthly'?monthly.gen:Object.values(qMap2).map(v=>v.gen);
 
-  mkChart('c-trend',{type:'line',data:{labels:tLabels,datasets:[
-    {label:'Close Rate %',data:tClose,borderColor:'#00d4aa',tension:.4,pointRadius:4,yAxisID:'y',borderWidth:2},
-    {label:'Biomedical',data:tBio,borderColor:'#818cf8',tension:.4,pointRadius:3,yAxisID:'y1'},
-    {label:'General',data:tGen,borderColor:'#34d399',tension:.4,pointRadius:3,yAxisID:'y1'}
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'bottom',labels:{color:'#5a7fa8',font:{size:9},padding:8}},tooltip:{backgroundColor:'#0f2040',titleColor:'#d4e8ff',bodyColor:'#5a7fa8'}},scales:{x:{grid:{color:'rgba(0,180,255,.04)'},ticks:{color:'#5a7fa8',font:{size:9}}},y:{grid:{color:'rgba(0,180,255,.04)'},position:'left',min:0,max:100,ticks:{color:'#5a7fa8',font:{size:9},callback:v=>v+'%'}},y1:{type:'linear',position:'right',grid:{drawOnChartArea:false},ticks:{color:'#5a7fa8',font:{size:9}}}}}});
+  // ── TREND LINE ──
+  // Build quarterly aggregation
+  const qMap = {};
+  monthly.labels.forEach((lbl, i) => {
+    const d = new Date('01 ' + lbl);
+    const q = `Q${Math.ceil((d.getMonth()+1)/3)} ${d.getFullYear()}`;
+    if (!qMap[q]) qMap[q] = {tot:0, comp:0, bio:0, gen:0};
+    qMap[q].tot  += (monthly.total[i] || 0);
+    qMap[q].comp += (monthly.comp[i]  || 0);
+    qMap[q].bio  += (monthly.bio[i]   || 0);
+    qMap[q].gen  += (monthly.gen[i]   || 0);
+  });
+  const qLabels = Object.keys(qMap);
+  const qClose  = Object.values(qMap).map(v => v.tot ? Math.round((v.comp/v.tot)*100) : 0);
+  const qBio    = Object.values(qMap).map(v => v.bio);
+  const qGen    = Object.values(qMap).map(v => v.gen);
 
-  mkChart('c-woprio',{type:'doughnut',data:{labels:['Emergency','Open','Completed'],datasets:[{data:[emrg,openC,comp],backgroundColor:['#ef4444','#f59e0b','#10b981'],borderWidth:0}]},options:DONUT});
-  mkChart('c-ppm',{type:'doughnut',data:{labels:['Done','Failed','Pending'],datasets:[{data:[pD||0,Math.max(0,pT-pD)||0,Math.max(0,50-pT)||50],backgroundColor:['#10b981','#ef4444','rgba(255,255,255,.07)'],borderWidth:0}]},options:DONUT});
-  mkChart('c-cbahi',{type:'doughnut',data:{labels:['Met','Partial','Gap'],datasets:[{data:[met,par,gap],backgroundColor:['#10b981','#f59e0b','#ef4444'],borderWidth:0}]},options:DONUT});
+  const tLabels = anPd==='monthly' ? monthly.labels : qLabels;
+  const tClose  = anPd==='monthly' ? monthly.rate   : qClose;
+  const tBio    = anPd==='monthly' ? monthly.bio     : qBio;
+  const tGen    = anPd==='monthly' ? monthly.gen     : qGen;
+
+  safeChart('c-trend', {
+    type: 'line',
+    data: {
+      labels: tLabels,
+      datasets: [
+        { label:'Close Rate %', data:tClose, borderColor:'#00d4aa', backgroundColor:'rgba(0,212,170,.1)',
+          fill:true, tension:.4, pointRadius:4, borderWidth:2, yAxisID:'y' },
+        { label:'Biomedical',   data:tBio,   borderColor:'#818cf8', tension:.4, pointRadius:3, yAxisID:'y1' },
+        { label:'General',      data:tGen,   borderColor:'#34d399', tension:.4, pointRadius:3, yAxisID:'y1' }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins: {
+        legend: { display:true, position:'bottom', labels:{ color:'#5a7fa8', font:{size:9}, padding:8 } },
+        tooltip: { backgroundColor:'#0f2040', titleColor:'#d4e8ff', bodyColor:'#5a7fa8' }
+      },
+      scales: {
+        x:  { grid:{color:'rgba(0,180,255,.04)'}, ticks:{color:'#5a7fa8', font:{size:9}} },
+        y:  { position:'left',  min:0, max:100,
+              grid:{color:'rgba(0,180,255,.04)'}, ticks:{color:'#5a7fa8', font:{size:9}, callback:v=>v+'%'},
+              title:{display:true, text:'Close Rate %', color:'#5a7fa8', font:{size:9}} },
+        y1: { type:'linear', position:'right', grid:{drawOnChartArea:false},
+              ticks:{color:'#5a7fa8', font:{size:9}},
+              title:{display:true, text:'Tickets', color:'#5a7fa8', font:{size:9}} }
+      }
+    }
+  });
+
+  // ── DONUTS ──
+  safeChart('c-woprio', { type:'doughnut',
+    data:{ labels:['Emergency','Open','Completed'],
+           datasets:[{data:[emrg,openC,comp], backgroundColor:['#ef4444','#f59e0b','#10b981'], borderWidth:0}] },
+    options: DONUT });
+  safeChart('c-ppm', { type:'doughnut',
+    data:{ labels:['Done','Failed','Pending'],
+           datasets:[{data:[pD||0, Math.max(0,pT-pD)||0, Math.max(0,50-pT)||50],
+                      backgroundColor:['#10b981','#ef4444','rgba(255,255,255,.07)'], borderWidth:0}] },
+    options: DONUT });
+  safeChart('c-cbahi', { type:'doughnut',
+    data:{ labels:['Met','Partial','Gap'],
+           datasets:[{data:[met,par,gap], backgroundColor:['#10b981','#f59e0b','#ef4444'], borderWidth:0}] },
+    options: DONUT });
 }
 
 
@@ -3285,7 +3687,7 @@ function renderInvTable() {
   // Only show cols that have at least one value (keep name always)
   const visibleCols = cols.filter(c=>c.key==='name'||c.special||INV_RECORDS.some(r=>r[c.key]));
 
-  const thDir=col=>(INV_SORT.col===col?(INV_SORT.dir>0?' ↑':' ↓'):'');
+  // sort indicators now in eqRender
   document.getElementById('inv-thead').innerHTML='<tr>'+visibleCols.map(c=>
     `<th class="sort-th" onclick="invSort('${c.key}')">${c.label}${thDir(c.key)}</th>`
   ).join('')+'<th>Actions</th></tr>';
@@ -3837,41 +4239,60 @@ function eqSort(col) {
   EQ_SORT = EQ_SORT.col === col
     ? { col, dir: EQ_SORT.dir * -1 }
     : { col, dir: 1 };
+  // Update header indicators
+  document.querySelectorAll('#eq-tbody').forEach(()=>{});
   eqRender();
 }
 
 // ── Tab navigation ──
 function eqTab(tab, btn) {
-  document.querySelectorAll('#page-equip [id^="eq-"], #page-equip #equip-kpi-out').forEach(e => e.style.display = 'none');
+  document.querySelectorAll('#page-equip [id^="eq-"]').forEach(e => e.style.display='none');
   const el = document.getElementById('eq-' + tab);
   if (el) el.style.display = 'block';
   if (btn) {
     btn.closest('.tb').querySelectorAll('.tbtn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
   }
-  if (tab === 'inv') { eqInitFilters(); eqRender(); eqCharts(); }
-  if (tab === 'ppm') { eqBuildAssetDatalist(); renderLog('ppm'); }
-  if (tab === 'add') { renderEqAdded(); }
-  if (tab === 'kpi') { renderDomainKPI('equip'); }
+  // Always re-init filters when opening inventory — fixes disappearing dropdowns
+  if (tab === 'inv') {
+    eqAll(); // warm cache
+    eqInitFilters();
+    eqRender();
+    setTimeout(eqCharts, 120);
+  }
+  if (tab === 'ppm')      { eqBuildAssetDatalist(); renderLog('ppm'); }
+  if (tab === 'add')      { renderEqAdded(); }
+  if (tab === 'relocate') { renderRelocationLog(); }
+  if (tab === 'kpi')      { renderDomainKPI('equip'); }
 }
 
 // ── Initialise filter dropdowns ──
 function eqInitFilters() {
-  const all = eqAll();
-  const depts  = [...new Set(all.map(r => r.dept).filter(Boolean))].sort();
-  const types  = [...new Set(all.map(r => r.desc).filter(Boolean))].sort();
-  const dEl = document.getElementById('eq-dept-filter');
-  const tEl = document.getElementById('eq-type-filter');
-  if (dEl && dEl.options.length <= 1) {
-    depts.forEach(d => { const o = document.createElement('option'); o.value=d; o.textContent=d; dEl.appendChild(o); });
+  const all   = eqAll();
+  const depts = [...new Set(all.map(r => r.dept).filter(Boolean))].sort();
+  const types = [...new Set(all.map(r => r.desc).filter(Boolean))].sort();
+  const mfrs  = [...new Set(all.map(r => r.mfr).filter(Boolean))].sort();
+
+  function rebuild(elId, opts, placeholder) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const prev = el.value; // remember current selection
+    el.innerHTML = `<option value="">${placeholder}</option>` +
+      opts.map(v => `<option value="${v}"${v===prev?' selected':''}>${v}</option>`).join('');
   }
-  if (tEl && tEl.options.length <= 1) {
-    types.forEach(t => { const o = document.createElement('option'); o.value=t; o.textContent=t; tEl.appendChild(o); });
-  }
+  rebuild('eq-dept-filter',    depts, 'All Departments');
+  rebuild('eq-type-filter',    types, 'All Equipment Types');
 }
 
 // ── Main filter + render ──
 function eqRender() {
+  // Update sort indicators in static thead
+  document.querySelectorAll('.sort-th').forEach(th => {
+    const col = th.getAttribute('onclick')?.match(/eqSort\('(\w+)'\)/)?.[1];
+    if (!col) return;
+    const base = th.textContent.replace(/ [↑↓↕]$/,'').trim();
+    th.textContent = base + (EQ_SORT.col===col ? (EQ_SORT.dir>0?' ↑':' ↓') : ' ↕');
+  });
   const search    = (document.getElementById('eq-search')?.value || '').toLowerCase();
   const dept      = document.getElementById('eq-dept-filter')?.value || '';
   const type      = document.getElementById('eq-type-filter')?.value || '';
@@ -3960,6 +4381,7 @@ function eqRender() {
     <td>${ppmBadge(r.semiPPM)}</td>
     <td>${statusBadge(r.status)}</td>
     <td style="font-size:9px;color:var(--mu);max-width:180px;" title="${r.remarks||''}">${(r.remarks||'').slice(0,40)}${r.remarks&&r.remarks.length>40?'…':''}</td>
+    <td><button class="btn bo" style="font-size:9px;padding:2px 7px;white-space:nowrap;" onclick="openRelocation('${r.asset}','${r.dept}','${r.desc}')">🔄</button></td>
   </tr>`).join('');
 }
 
@@ -4074,15 +4496,678 @@ function eqDelAdded(ts) {
 }
 
 // Hook into gp() for equip page
-const _eqOrigGp = window.gp;
-window.gp = function(id) {
-  _eqOrigGp(id);
-  if (id === 'equip') {
-    eqInitFilters();
-    eqRender();
-    setTimeout(eqCharts, 100);
-  }
+// gp() override already set elsewhere – this hook is now handled inside eqTab()
+// No-op placeholder to avoid double override
+(function(){
+  const _prevGp = window.gp;
+  window.gp = function(id) {
+    _prevGp(id);
+    if (id === 'equip') {
+      // eqTab('inv') is called by the active tab button
+      // But if landing directly via sidebar, init manually
+      setTimeout(() => {
+        eqAll();
+        eqInitFilters();
+        eqRender();
+        setTimeout(eqCharts, 120);
+      }, 50);
+    }
+  };
+})();
+
+
+
+// ════════════════════════════════════════════════════════════════
+// ROLE-BASED ACCESS CONTROL (RBAC)
+// ════════════════════════════════════════════════════════════════
+
+// Define which nav items each role can see
+const ROLE_ACCESS = {
+  director:    ['ALL'], // sees everything
+  maintenance: ['n-dash','n-kpi','n-mms','n-reports','n-wo','n-utils','n-fire','n-ckpi'],
+  biomedical:  ['n-dash','n-kpi','n-equip','n-medgas','n-radiation','n-wo','n-ckpi'],
+  safety:      ['n-dash','n-kpi','n-cbahi','n-safety','n-hazmat','n-emergency','n-fire','n-wo','n-ckpi','n-docs'],
+  security:    ['n-dash','n-kpi','n-security','n-wo','n-ckpi'],
 };
+
+// Page access — which page IDs each role can visit
+const PAGE_ACCESS = {
+  director:    ['ALL'],
+  maintenance: ['dash','kpi','mms','reports','wo','utils','fire','ckpi'],
+  biomedical:  ['dash','kpi','equip','medgas','radiation','wo','ckpi'],
+  safety:      ['dash','kpi','cbahi','safety','hazmat','emergency','fire','wo','ckpi','docs'],
+  security:    ['dash','kpi','security','wo','ckpi'],
+};
+
+function applyRBAC() {
+  if (!CU.role || CU.role === 'director') {
+    // Director sees all — show everything
+    document.querySelectorAll('.ni, .nsc').forEach(el => el.style.display = '');
+    return;
+  }
+  const allowed = ROLE_ACCESS[CU.role] || [];
+  // Hide nav items not in allowed list
+  document.querySelectorAll('.ni[id]').forEach(el => {
+    el.style.display = allowed.includes(el.id) ? '' : 'none';
+  });
+  // Hide section headers if all items in them are hidden
+  document.querySelectorAll('.nsc').forEach(sec => {
+    let next = sec.nextElementSibling;
+    let hasVisible = false;
+    while (next && !next.classList.contains('nsc')) {
+      if (next.style.display !== 'none') hasVisible = true;
+      next = next.nextElementSibling;
+    }
+    sec.style.display = hasVisible ? '' : 'none';
+  });
+}
+
+function canAccessPage(pageId) {
+  if (!CU.role || CU.role === 'director') return true;
+  const allowed = PAGE_ACCESS[CU.role] || [];
+  return allowed.includes(pageId);
+}
+
+// ════════════════════════════════════════════════════════════════
+// SETTINGS — User Management (Director only)
+// ════════════════════════════════════════════════════════════════
+
+// Dynamic PINs stored in localStorage (fallback to defaults)
+function getDynPINs() {
+  try {
+    return JSON.parse(localStorage.getItem('obeid_pins') || 'null') || {
+      director:'1234', maintenance:'2222', biomedical:'3333', safety:'4444', security:'5555'
+    };
+  } catch(e) { return {director:'1234',maintenance:'2222',biomedical:'3333',safety:'4444',security:'5555'}; }
+}
+function saveDynPINs(pins) { localStorage.setItem('obeid_pins', JSON.stringify(pins)); }
+
+const USER_NAMES_KEY = 'obeid_user_names';
+function getDynNames() {
+  try {
+    return JSON.parse(localStorage.getItem(USER_NAMES_KEY) || 'null') || {
+      director:'FMS Director', maintenance:'Mostapha', biomedical:'Bashar', safety:'Moe', security:'Bader'
+    };
+  } catch(e) { return {director:'FMS Director',maintenance:'Mostapha',biomedical:'Bashar',safety:'Moe',security:'Bader'}; }
+}
+function saveDynNames(names) { localStorage.setItem(USER_NAMES_KEY, JSON.stringify(names)); }
+
+function settingsRenderUsers() {
+  const tb = document.getElementById('users-tb'); if (!tb) return;
+  const pins  = getDynPINs();
+  const names = getDynNames();
+  const roles = [
+    { key:'director',    label:'FMS Director',              access:'Full Access' },
+    { key:'maintenance', label:'Maintenance Manager',        access:'Maint. · Utilities · Fire · MMS' },
+    { key:'biomedical',  label:'Biomedical Engineer',        access:'Equipment · Medical Gas · Radiation' },
+    { key:'safety',      label:'Safety Officer',             access:'Safety · Hazmat · Emergency · Fire' },
+    { key:'security',    label:'Security Manager',           access:'Security only' },
+  ];
+  tb.innerHTML = roles.map(r => `<tr>
+    <td style="font-weight:600;">${r.label}</td>
+    <td>${names[r.key] || '—'}</td>
+    <td style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--ac);">${pins[r.key]||'—'}</td>
+    <td style="font-size:10px;color:var(--mu);">${r.access}</td>
+    <td><button class="btn bo" style="font-size:9px;padding:3px 8px;" onclick="settingsEditUser('${r.key}')">Edit</button></td>
+  </tr>`).join('');
+}
+
+function settingsEditUser(role) {
+  document.getElementById('set-role').value = role;
+  settingsLoadUser();
+}
+
+function settingsLoadUser() {
+  const role  = document.getElementById('set-role').value;
+  const names = getDynNames();
+  const nameEl = document.getElementById('set-name');
+  if (nameEl) nameEl.value = names[role] || '';
+  const pinEl = document.getElementById('set-pin');
+  if (pinEl) pinEl.value = '';
+  const pin2El = document.getElementById('set-pin2');
+  if (pin2El) pin2El.value = '';
+}
+
+function settingsSaveUser() {
+  const role  = document.getElementById('set-role')?.value;
+  const name  = document.getElementById('set-name')?.value.trim();
+  const pin   = document.getElementById('set-pin')?.value.trim();
+  const pin2  = document.getElementById('set-pin2')?.value.trim();
+  if (!role) { toast('Select a user','#f59e0b'); return; }
+  if (pin) {
+    if (pin.length !== 4 || !/^\d{4}$/.test(pin)) { toast('PIN must be exactly 4 digits','#f59e0b'); return; }
+    if (pin !== pin2) { toast('PINs do not match','#f59e0b'); return; }
+    const pins = getDynPINs(); pins[role] = pin; saveDynPINs(pins);
+  }
+  if (name) {
+    const names = getDynNames(); names[role] = name; saveDynNames(names);
+  }
+  settingsRenderUsers();
+  logAccessEvent('PIN/name updated for role: ' + role);
+  toast('✓ User updated');
+}
+
+function settingsRenderAccessLog() {
+  const tb = document.getElementById('access-log-tb'); if (!tb) return;
+  const log = ld('access_log') || [];
+  if (!log.length) { tb.innerHTML = '<tr><td colspan="4" class="em">No logins recorded yet</td></tr>'; return; }
+  tb.innerHTML = log.slice(0,30).map(e => `<tr>
+    <td style="font-size:10px;color:var(--mu);">${e.ts?.replace('T',' ').slice(0,16)||'—'}</td>
+    <td style="font-weight:600;">${e.name||'—'}</td>
+    <td style="font-size:10px;">${e.role||'—'}</td>
+    <td style="font-size:10px;color:var(--mu);">${e.action||'Login'}</td>
+  </tr>`).join('');
+}
+
+function logAccessEvent(action) {
+  const log = ld('access_log');
+  log.unshift({ ts: new Date().toISOString(), name: CU.name, role: CU.rl, action });
+  if (log.length > 100) log.pop();
+  sv('access_log', log);
+}
+
+// ════════════════════════════════════════════════════════════════
+// EQUIPMENT RELOCATION
+// ════════════════════════════════════════════════════════════════
+
+function openRelocation(asset, currentDept, equipName) {
+  document.getElementById('rel-asset').value  = asset || '';
+  document.getElementById('rel-name').value   = equipName || '';
+  document.getElementById('rel-from').value   = currentDept || '';
+  document.getElementById('rel-to').value     = '';
+  document.getElementById('rel-reason').value = '';
+  document.getElementById('rel-by').value     = CU.name || '';
+  document.getElementById('rel-date').value   = new Date().toISOString().split('T')[0];
+  openMod('relocate');
+}
+
+function saveRelocation() {
+  const asset  = document.getElementById('rel-asset')?.value;
+  const name   = document.getElementById('rel-name')?.value;
+  const from   = document.getElementById('rel-from')?.value;
+  const to     = document.getElementById('rel-to')?.value.trim();
+  const reason = document.getElementById('rel-reason')?.value.trim();
+  const by     = document.getElementById('rel-by')?.value.trim();
+  const date   = document.getElementById('rel-date')?.value;
+  if (!to)   { toast('Enter destination department','#f59e0b'); return; }
+  if (!date) { toast('Select relocation date','#f59e0b'); return; }
+
+  const log = ld('eq_relocations');
+  log.unshift({ _id:Date.now(), asset, name, from, to, reason, by, date,
+                _by:CU.name, _ts:new Date().toISOString() });
+  sv('eq_relocations', log);
+
+  // Also update the manually-added record if it exists
+  const added = ld('eq_added');
+  const rec = added.find(r => r.asset === asset);
+  if (rec) { rec.dept = to; rec.location = to; sv('eq_added', added); EQ_ALL = null; }
+
+  closeMod('relocate');
+  renderRelocationLog();
+  toast('✓ Relocation logged — ' + asset + ' moved to ' + to);
+}
+
+function renderRelocationLog() {
+  const tb = document.getElementById('eq-reloc-tb'); if (!tb) return;
+  const log = ld('eq_relocations');
+  if (!log.length) { tb.innerHTML='<tr><td colspan="7" class="em">No relocations logged yet</td></tr>'; return; }
+  tb.innerHTML = log.map(r => `<tr>
+    <td style="color:var(--ac);font-family:'Rajdhani',sans-serif;">${r.asset||'—'}</td>
+    <td style="font-size:11px;">${r.name||'—'}</td>
+    <td style="font-size:11px;">${r.date||'—'}</td>
+    <td style="color:var(--rd);">${r.from||'—'}</td>
+    <td style="color:var(--gn);">→ ${r.to||'—'}</td>
+    <td style="font-size:10px;color:var(--mu);">${r.reason||'—'}</td>
+    <td style="font-size:10px;">${r.by||r._by||'—'}</td>
+  </tr>`).join('');
+}
+
+// ════════════════════════════════════════════════════════════════
+// RISK ASSESSMENT
+// ════════════════════════════════════════════════════════════════
+
+// Pre-loaded standard risks for critical departments
+const PRESET_RISKS = [
+  { dept:'NICU / PICU', hazard:'Unauthorized access to vulnerable patients', cat:'Security', likelihood:3, consequence:5, controls:'Restricted entry, badge access, staff ID verification, CCTV monitoring, visitor log', owner:'Head of NICU', actions:'Annual access audit' },
+  { dept:'NICU / PICU', hazard:'Medical gas supply failure', cat:'Utility Failure', likelihood:2, consequence:5, controls:'Redundant O₂ supply, daily PMG checks, alarm system, backup cylinders', owner:'Biomedical Engineer', actions:'Monthly generator test' },
+  { dept:'NICU / PICU', hazard:'Infection outbreak (nosocomial)', cat:'Infection Control', likelihood:3, consequence:5, controls:'Hand hygiene protocol, isolation protocols, routine environmental cultures', owner:'Infection Control', actions:'Quarterly surveillance' },
+  { dept:'Server Room', hazard:'Unauthorized physical access to IT infrastructure', cat:'Security', likelihood:3, consequence:5, controls:'Biometric/badge access, CCTV, visitor log, no remote access without IT approval', owner:'IT Manager', actions:'Monthly access review' },
+  { dept:'Server Room', hazard:'Fire / electrical fault', cat:'Fire Safety', likelihood:2, consequence:5, controls:'FM200 suppression, no-smoke policy, UPS, temperature monitoring, raised flooring', owner:'FMS Director', actions:'Semi-annual FM200 inspection' },
+  { dept:'Server Room', hazard:'Power failure causing data loss', cat:'Utility Failure', likelihood:2, consequence:4, controls:'UPS system, generator backup, daily backup tapes, redundant RAID', owner:'IT Manager', actions:'Monthly UPS test' },
+  { dept:'Delivery Room', hazard:'Infant abduction', cat:'Security', likelihood:2, consequence:5, controls:'Infant security tag system, restricted access, CCTV, staff training, escort policy', owner:'Head of Obs/Gyn', actions:'Bi-annual drill' },
+  { dept:'Delivery Room', hazard:'O₂ pipeline failure during delivery', cat:'Utility Failure', likelihood:2, consequence:5, controls:'Backup O₂ cylinders in delivery rooms, daily gas checks, alarm panels', owner:'Biomedical Engineer', actions:'Daily PMG checklist' },
+  { dept:'Inpatient Pharmacy (Narcotic)', hazard:'Narcotic diversion / theft', cat:'Security', likelihood:2, consequence:5, controls:'Dual-lock narcotic cabinet, pharmacist + nurse dual sign-out, CCTV, count reconciliation, access log', owner:'Head Pharmacist', actions:'Daily narcotic count, monthly audit' },
+  { dept:'Inpatient Pharmacy (Narcotic)', hazard:'Unauthorized access to drug storage', cat:'Security', likelihood:2, consequence:4, controls:'Badge-access door, only licensed staff, visitor restriction, alarm system', owner:'Head Pharmacist', actions:'Quarterly access review' },
+  { dept:'RO Room', hazard:'Water quality failure affecting dialysis patients', cat:'Patient Safety', likelihood:2, consequence:5, controls:'Regular water quality testing, endotoxin testing, automatic alarms, bacterial cultures', owner:'Biomedical Engineer', actions:'Monthly water quality testing' },
+  { dept:'RO Room', hazard:'RO system failure / backflow contamination', cat:'Equipment Failure', likelihood:2, consequence:5, controls:'Preventive maintenance schedule, backup RO system, trained operators, emergency protocol', owner:'Biomedical Engineer', actions:'Quarterly PPM' },
+  { dept:'Emergency Room', hazard:'Aggressive visitors / security threat', cat:'Security', likelihood:4, consequence:4, controls:'Security guard 24/7, panic buttons, CCTV, badge access for staff, metal detector at entry', owner:'Security Manager', actions:'Monthly security drill' },
+  { dept:'Operating Room', hazard:'Surgical fire', cat:'Fire Safety', likelihood:1, consequence:5, controls:'Fire-resistant drapes, O₂ monitoring, no open flames near O₂, staff training, fire extinguisher in OR', owner:'Head of OR', actions:'Annual surgical fire drill' },
+  { dept:'Medical Gas Room', hazard:'Gas leak / explosion', cat:'Chemical / Hazmat', likelihood:2, consequence:5, controls:'Gas detectors, no-smoking policy, restricted access, grounding, leak detection system, emergency shutoff', owner:'Biomedical Engineer', actions:'Daily check, semi-annual inspection' },
+];
+
+function riskScore(r) { return (r.likelihood||1) * (r.consequence||1); }
+function riskLevel(score) {
+  if (score >= 20) return { label:'Critical', color:'var(--rd)',   bg:'rgba(239,68,68,.12)',   border:'rgba(239,68,68,.3)' };
+  if (score >= 10) return { label:'High',     color:'var(--or)',   bg:'rgba(255,170,0,.1)',    border:'rgba(255,170,0,.3)' };
+  if (score >= 5)  return { label:'Medium',   color:'#eab308',     bg:'rgba(234,179,8,.1)',    border:'rgba(234,179,8,.3)' };
+  return              { label:'Low',      color:'var(--gn)',   bg:'rgba(0,255,136,.08)',  border:'rgba(0,255,136,.25)' };
+}
+
+function getAllRisks() {
+  const saved   = ld('risk_register') || [];
+  const savedDepts = new Set(saved.map(r => r.dept + '|' + r.hazard));
+  // Merge presets with saved (saved takes priority, presets fill gaps)
+  const presets = PRESET_RISKS
+    .filter(r => !savedDepts.has(r.dept + '|' + r.hazard))
+    .map(r => ({ ...r, _id: 'preset_' + Math.random().toString(36).slice(2), _preset:true }));
+  return [...saved, ...presets];
+}
+
+function riskTab(tab, btn) {
+  document.querySelectorAll('[id^="risk-"]').forEach(e => e.style.display='none');
+  const el = document.getElementById('risk-' + tab);
+  if (el) el.style.display = 'block';
+  if (btn) {
+    btn.closest('.tb').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  if (tab === 'heatmap')  renderRiskHeatmap();
+  if (tab === 'register') renderRiskRegister();
+  if (tab === 'add')      renderPreloadedList();
+}
+
+function renderRiskHeatmap() {
+  const el = document.getElementById('risk-heatmap-grid'); if (!el) return;
+  const all = getAllRisks();
+  // Group by department
+  const deptMap = {};
+  all.forEach(r => {
+    if (!deptMap[r.dept]) deptMap[r.dept] = [];
+    deptMap[r.dept].push(r);
+  });
+  // Sort depts by max risk score descending
+  const sortedDepts = Object.entries(deptMap)
+    .sort((a,b) => Math.max(...b[1].map(riskScore)) - Math.max(...a[1].map(riskScore)));
+
+  el.innerHTML = sortedDepts.map(([dept, risks]) => {
+    const maxScore = Math.max(...risks.map(riskScore));
+    const lvl = riskLevel(maxScore);
+    const risksHtml = risks.sort((a,b) => riskScore(b)-riskScore(a)).map(r => {
+      const s = riskScore(r); const l = riskLevel(s);
+      return `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid rgba(0,180,255,.05);">
+        <div style="min-width:28px;height:28px;border-radius:6px;background:${l.bg};border:1px solid ${l.border};display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:12px;color:${l.color};">${s}</div>
+        <div style="flex:1;">
+          <div style="font-size:11px;font-weight:600;color:var(--tx);">${r.hazard}</div>
+          <div style="font-size:9px;color:var(--mu);margin-top:2px;">${r.cat} · L${r.likelihood} × C${r.consequence} · ${l.label}</div>
+          <div style="font-size:9px;color:var(--mu);margin-top:3px;">Controls: ${(r.controls||'').slice(0,80)}${(r.controls||'').length>80?'…':''}</div>
+        </div>
+        <button class="btn bo" style="font-size:9px;padding:2px 7px;flex-shrink:0;" onclick="riskEditPreset('${r._id}')">Edit</button>
+      </div>`;
+    }).join('');
+    return `<div style="background:var(--sf);border:1px solid ${lvl.border};border-top:3px solid ${lvl.color};border-radius:12px;padding:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div>
+          <div style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--tx);">${dept}</div>
+          <div style="font-size:9px;color:var(--mu);">${risks.length} risk${risks.length!==1?'s':''} · Highest: <span style="color:${lvl.color};font-weight:700;">${lvl.label} (${maxScore})</span></div>
+        </div>
+        <div style="width:40px;height:40px;border-radius:50%;background:${lvl.bg};border:2px solid ${lvl.border};display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:18px;color:${lvl.color};">${maxScore}</div>
+      </div>
+      ${risksHtml}
+    </div>`;
+  }).join('');
+}
+
+function riskEditPreset(id) {
+  const all = getAllRisks();
+  const r   = all.find(x => x._id === id); if (!r) return;
+  document.getElementById('risk-edit-id').value       = id;
+  document.getElementById('risk-dept').value          = r.dept;
+  document.getElementById('risk-hazard').value        = r.hazard;
+  document.getElementById('risk-cat').value           = r.cat;
+  document.getElementById('risk-likelihood').value    = r.likelihood;
+  document.getElementById('risk-consequence').value   = r.consequence;
+  document.getElementById('risk-controls').value      = r.controls || '';
+  document.getElementById('risk-actions').value       = r.actions || '';
+  document.getElementById('risk-owner').value         = r.owner || '';
+  document.getElementById('risk-review').value        = r.review || '';
+  riskTab('add', document.querySelector('[onclick="riskTab(\'add\',this)"]'));
+}
+
+function renderPreloadedList() {
+  const el = document.getElementById('risk-preloaded-list'); if (!el) return;
+  const depts = [...new Set(PRESET_RISKS.map(r => r.dept))];
+  el.innerHTML = depts.map(d => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--s2);border-radius:7px;">
+      <span style="font-size:11px;font-weight:600;">${d}</span>
+      <button class="btn bo" style="font-size:9px;padding:3px 8px;" onclick="riskFilterDept('${d}')">View Risks</button>
+    </div>`).join('');
+}
+
+function riskFilterDept(dept) {
+  document.getElementById('risk-dept').value = dept;
+  riskTab('register', null);
+}
+
+function renderRiskRegister() {
+  const tb = document.getElementById('risk-reg-tb'); if (!tb) return;
+  const all = getAllRisks().sort((a,b) => riskScore(b)-riskScore(a));
+  if (!all.length) { tb.innerHTML='<tr><td colspan="11" class="em">No risks yet</td></tr>'; return; }
+  tb.innerHTML = all.map(r => {
+    const s = riskScore(r); const l = riskLevel(s);
+    return `<tr>
+      <td style="font-size:11px;font-weight:600;">${r.dept}</td>
+      <td style="font-size:11px;">${r.hazard}</td>
+      <td style="font-size:10px;">${r.cat}</td>
+      <td style="text-align:center;">${r.likelihood}</td>
+      <td style="text-align:center;">${r.consequence}</td>
+      <td style="text-align:center;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:${l.color};">${s}</td>
+      <td><span style="padding:2px 8px;border-radius:20px;font-size:9px;font-weight:700;background:${l.bg};color:${l.color};border:1px solid ${l.border};">${l.label}</span></td>
+      <td style="font-size:10px;color:var(--mu);max-width:200px;">${(r.controls||'').slice(0,80)}…</td>
+      <td style="font-size:10px;">${r.owner||'—'}</td>
+      <td style="font-size:10px;">${r.review||'—'}</td>
+      <td><button class="btn bo" style="font-size:9px;padding:2px 6px;" onclick="riskEditPreset('${r._id}')">✏</button>
+          ${!r._preset?`<button class="btn br" style="font-size:9px;padding:2px 6px;margin-left:3px;" onclick="riskDelete('${r._id}')">✕</button>`:''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function saveRisk() {
+  const id    = document.getElementById('risk-edit-id')?.value;
+  const dept  = document.getElementById('risk-dept')?.value;
+  const hazard= document.getElementById('risk-hazard')?.value.trim();
+  const cat   = document.getElementById('risk-cat')?.value;
+  const L     = parseInt(document.getElementById('risk-likelihood')?.value||3);
+  const C     = parseInt(document.getElementById('risk-consequence')?.value||3);
+  const ctrls = document.getElementById('risk-controls')?.value.trim();
+  const acts  = document.getElementById('risk-actions')?.value.trim();
+  const owner = document.getElementById('risk-owner')?.value.trim();
+  const rev   = document.getElementById('risk-review')?.value;
+  if (!hazard) { toast('Enter a hazard description','#f59e0b'); return; }
+
+  const arr = ld('risk_register');
+  const existing = arr.findIndex(r => r._id === id);
+  const rec = { _id: id || ('r'+Date.now()), dept, hazard, cat,
+    likelihood:L, consequence:C, controls:ctrls, actions:acts,
+    owner, review:rev, _by:CU.name, _ts:new Date().toISOString() };
+  if (existing >= 0) arr[existing] = rec; else arr.unshift(rec);
+  sv('risk_register', arr);
+  clearRiskForm();
+  toast('✓ Risk entry saved');
+  riskTab('heatmap', document.querySelector('[onclick="riskTab(\'heatmap\',this)"]'));
+}
+
+function clearRiskForm() {
+  ['risk-edit-id','risk-hazard','risk-controls','risk-actions','risk-owner','risk-review'].forEach(id=>{
+    const e=document.getElementById(id); if(e) e.value='';
+  });
+}
+
+function riskDelete(id) {
+  if (!confirm('Delete this risk entry?')) return;
+  sv('risk_register', ld('risk_register').filter(r=>r._id!==id));
+  renderRiskRegister();
+  toast('Deleted');
+}
+
+// ════════════════════════════════════════════════════════════════
+// CONTRACT REVIEW
+// ════════════════════════════════════════════════════════════════
+
+// Default contracts preloaded
+const DEFAULT_CONTRACTS = [
+  { _id:'c1', name:'Pest Control Service', company:'TBD', cat:'Pest Control', fms:'FMS Director', deptHead:'Head of Infection Control', dept:'Infection Control', scope:'Monthly pest control treatment for all hospital areas', status:'active' },
+  { _id:'c2', name:'Kitchen Duct Cleaning', company:'TBD', cat:'Duct Cleaning', fms:'FMS Director', deptHead:'Head of Kitchen / Catering', dept:'Kitchen', scope:'Quarterly duct cleaning and grease trap service for hospital kitchen', status:'active' },
+  { _id:'c3', name:'Fire Alarm & Suppression PPM', company:'Civil Defense Certified Co.', cat:'Fire Alarm & Suppression', fms:'FMS Director', deptHead:'Safety Officer', dept:'FMS / Safety', scope:'Quarterly PPM and annual certification of fire alarm and suppression systems', status:'active' },
+  { _id:'c4', name:'Elevator Maintenance', company:'TBD', cat:'Elevator Maintenance', fms:'FMS Director', deptHead:'Head of Engineering', dept:'Engineering', scope:'Monthly elevator inspection and annual certification', status:'active' },
+  { _id:'c5', name:'Medical Waste Management', company:'TBD', cat:'Waste Management', fms:'FMS Director', deptHead:'Head of Infection Control', dept:'Infection Control', scope:'Daily collection and disposal of medical waste per MOH standards', status:'active' },
+  { _id:'c6', name:'Generator Annual Service', company:'TBD', cat:'Generator Maintenance', fms:'FMS Director', deptHead:'Head of Maintenance', dept:'Maintenance', scope:'Annual generator overhaul and load testing', status:'active' },
+  { _id:'c7', name:'Security Services', company:'TBD', cat:'Security Services', fms:'FMS Director', deptHead:'Security Manager', dept:'Security', scope:'24/7 security guard service, access control monitoring', status:'active' },
+  { _id:'c8', name:'Cleaning & Housekeeping', company:'TBD', cat:'Cleaning Services', fms:'FMS Director', deptHead:'Head of Infection Control', dept:'Infection Control', scope:'Daily cleaning and terminal cleaning of all hospital areas', status:'active' },
+];
+
+function getContracts() {
+  const saved = ld('contracts');
+  if (!saved || !saved.length) return DEFAULT_CONTRACTS;
+  return saved;
+}
+
+function ctrTab(tab, btn) {
+  document.querySelectorAll('[id^="ctr-"]').forEach(e => e.style.display='none');
+  const el = document.getElementById('ctr-' + tab);
+  if (el) el.style.display = 'block';
+  if (btn) {
+    const tb = btn.closest('.tb');
+    if (tb) { tb.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); }
+  }
+  if (tab === 'list')    renderContractCards();
+  if (tab === 'eval')    evPopulateContracts();
+  if (tab === 'history') renderEvalHistory();
+}
+
+function renderContractCards() {
+  const el = document.getElementById('ctr-cards'); if (!el) return;
+  const contracts = getContracts();
+  const evals = ld('evaluations') || [];
+  el.innerHTML = contracts.map(c => {
+    const cEvals = evals.filter(e=>e.contractId===c._id).sort((a,b)=>b._ts>a._ts?1:-1);
+    const last   = cEvals[0];
+    const score  = last ? last.score : null;
+    const scorePct = score ? Math.round((score/25)*100) : null;
+    const sc = scorePct>=80?'var(--gn)':scorePct>=60?'var(--or)':'var(--rd)';
+    return `<div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:16px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
+        <div>
+          <div style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--tx);">${c.name}</div>
+          <div style="font-size:10px;color:var(--mu);margin-top:2px;">${c.company} · ${c.cat}</div>
+          <div style="font-size:10px;color:var(--mu);">Joint eval: <b style="color:var(--tx);">${c.deptHead}</b></div>
+        </div>
+        ${scorePct!==null?`<div style="text-align:center;">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;color:${sc};">${scorePct}%</div>
+          <div style="font-size:9px;color:var(--mu);">Last eval</div>
+        </div>`:'<div style="font-size:10px;color:var(--mu);">No evaluations</div>'}
+      </div>
+      <div style="font-size:10px;color:var(--mu);margin-bottom:10px;">${c.scope}</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn bp" style="flex:1;font-size:10px;padding:5px;" onclick="startEval('${c._id}')">📝 Evaluate Now</button>
+        <button class="btn bo" style="font-size:10px;padding:5px 10px;" onclick="viewHistory('${c._id}')">📊 History</button>
+      </div>
+      ${cEvals.length?`<div style="margin-top:8px;font-size:9px;color:var(--mu);">
+        ${cEvals.length} evaluation${cEvals.length!==1?'s':''} · Last: ${last?._ts?.slice(0,10)||'—'} · Decision: <b style="color:${sc};">${last?.decision||'—'}</b>
+      </div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function saveContract() {
+  const name = document.getElementById('nc-name')?.value.trim();
+  const company = document.getElementById('nc-company')?.value.trim();
+  if (!name) { toast('Enter contract name','#f59e0b'); return; }
+  const c = {
+    _id: 'c'+Date.now(), name, company,
+    cat:     document.getElementById('nc-cat')?.value,
+    fms:     document.getElementById('nc-fms')?.value.trim(),
+    deptHead:document.getElementById('nc-dept-head')?.value.trim(),
+    dept:    document.getElementById('nc-dept')?.value.trim(),
+    start:   document.getElementById('nc-start')?.value,
+    end:     document.getElementById('nc-end')?.value,
+    value:   document.getElementById('nc-value')?.value,
+    scope:   document.getElementById('nc-scope')?.value.trim(),
+    status:  'active', _by:CU.name, _ts:new Date().toISOString()
+  };
+  const arr = ld('contracts');
+  if (!arr.length) { DEFAULT_CONTRACTS.forEach(d=>arr.push(d)); }
+  arr.unshift(c);
+  sv('contracts', arr);
+  toast('✓ Contract saved');
+  ctrTab('list', null);
+}
+
+function evPopulateContracts() {
+  const sel = document.getElementById('ev-contract'); if (!sel) return;
+  const contracts = getContracts();
+  sel.innerHTML = '<option value="">— Select contract —</option>' +
+    contracts.map(c => `<option value="${c._id}">${c.name}</option>`).join('');
+  // Set year
+  const yrEl = document.getElementById('ev-year');
+  if (yrEl && !yrEl.value) yrEl.value = new Date().getFullYear();
+  // Set date
+  const dtEl = document.getElementById('ev-date');
+  if (dtEl && !dtEl.value) dtEl.value = new Date().toISOString().split('T')[0];
+  evCalcScore();
+}
+
+function evAutoFill() {
+  const id = document.getElementById('ev-contract')?.value;
+  const c  = getContracts().find(x => x._id === id);
+  if (!c) return;
+  const fmsEl   = document.getElementById('ev-fms');   if(fmsEl&&!fmsEl.value) fmsEl.value=c.fms||CU.name;
+  const jointEl = document.getElementById('ev-joint'); if(jointEl&&!jointEl.value) jointEl.value=c.deptHead||'';
+}
+
+function startEval(contractId) {
+  ctrTab('eval', document.querySelector('[onclick="ctrTab(\'eval\',this)"]'));
+  setTimeout(() => {
+    evPopulateContracts();
+    const sel = document.getElementById('ev-contract');
+    if (sel) { sel.value = contractId; evAutoFill(); }
+  }, 80);
+}
+
+function viewHistory(contractId) {
+  ctrTab('history', document.querySelector('[onclick="ctrTab(\'history\',this)"]'));
+}
+
+function evCalcScore() {
+  const ids = ['ev-q1','ev-q2','ev-q3','ev-q4','ev-q5'];
+  const total = ids.reduce((s,id)=>s+parseInt(document.getElementById(id)?.value||3),0);
+  const pct   = Math.round((total/25)*100);
+  const raw   = document.getElementById('ev-raw-score');   if(raw)  raw.textContent  = total;
+  const totEl = document.getElementById('ev-total-score'); if(totEl) totEl.textContent = pct+'%';
+  const c     = pct>=80?'var(--gn)':pct>=60?'var(--or)':'var(--rd)';
+  if(totEl) totEl.style.color = c;
+  const badge = document.getElementById('ev-score-badge');
+  if(badge) badge.innerHTML = pct>=80?'<span class="bx bg2">✅ Good</span>':pct>=60?'<span class="bx bo2">⚠️ Acceptable</span>':'<span class="bx br2">❌ Poor</span>';
+}
+
+function saveEvaluation() {
+  const contractId = document.getElementById('ev-contract')?.value;
+  if (!contractId) { toast('Select a contract','#f59e0b'); return; }
+  const ids   = ['ev-q1','ev-q2','ev-q3','ev-q4','ev-q5'];
+  const score = ids.reduce((s,id)=>s+parseInt(document.getElementById(id)?.value||3),0);
+  const file  = document.getElementById('ev-file')?.files[0];
+  const ev = {
+    _id:        'ev'+Date.now(),
+    contractId,
+    contractName: getContracts().find(c=>c._id===contractId)?.name || contractId,
+    quarter:    document.getElementById('ev-quarter')?.value,
+    year:       document.getElementById('ev-year')?.value,
+    date:       document.getElementById('ev-date')?.value,
+    fms:        document.getElementById('ev-fms')?.value.trim(),
+    joint:      document.getElementById('ev-joint')?.value.trim(),
+    scores:     { q1:ids[0], q2:ids[1], q3:ids[2], q4:ids[3], q5:ids[4] },
+    score,
+    pct:        Math.round((score/25)*100),
+    strengths:  document.getElementById('ev-strengths')?.value.trim(),
+    issues:     document.getElementById('ev-issues')?.value.trim(),
+    actions:    document.getElementById('ev-actions')?.value.trim(),
+    decision:   document.getElementById('ev-decision')?.value,
+    proof:      file ? {n:file.name,s:Math.round(file.size/1024)+'KB'} : null,
+    _by:        CU.name, _ts: new Date().toISOString()
+  };
+  const arr = ld('evaluations'); arr.unshift(ev); sv('evaluations', arr);
+  toast('✓ Evaluation saved — ' + ev.contractName + ' Q' + ev.quarter + ' ' + ev.year);
+  ctrTab('history', document.querySelector('[onclick="ctrTab(\'history\',this)"]'));
+}
+
+function renderEvalHistory() {
+  const tb  = document.getElementById('ctr-hist-tb'); if (!tb) return;
+  const evals = ld('evaluations') || [];
+  const kpiEl = document.getElementById('ctr-kpi-stats');
+
+  if (kpiEl) {
+    const total     = evals.length;
+    const renewals  = evals.filter(e=>e.decision==='renew').length;
+    const changes   = evals.filter(e=>e.decision==='change').length;
+    const withProof = evals.filter(e=>e.proof).length;
+    kpiEl.innerHTML = `
+      <div class="sc" style="--c:var(--ac)"><div class="ico">📝</div><div class="val">${total}</div><div class="lbl">Total Evaluations</div></div>
+      <div class="sc" style="--c:var(--gn)"><div class="ico">✅</div><div class="val">${renewals}</div><div class="lbl">Renewals Decided</div></div>
+      <div class="sc" style="--c:var(--rd)"><div class="ico">🔄</div><div class="val">${changes}</div><div class="lbl">Contractor Changes</div></div>
+      <div class="sc" style="--c:var(--or)"><div class="ico">📎</div><div class="val">${withProof}</div><div class="lbl">With Proof Uploaded</div></div>`;
+  }
+
+  if (!evals.length) { tb.innerHTML='<tr><td colspan="9" class="em">No evaluations yet</td></tr>'; return; }
+  const decColor = { renew:'var(--gn)', conditional:'var(--or)', change:'var(--rd)', review:'var(--mu)' };
+  const decLabel = { renew:'✅ Renew', conditional:'⚠️ Conditional', change:'❌ Change', review:'🔄 Review' };
+  tb.innerHTML = evals.map(e => {
+    const c = e.pct>=80?'var(--gn)':e.pct>=60?'var(--or)':'var(--rd)';
+    return `<tr>
+      <td style="font-weight:600;">${e.quarter} ${e.year}</td>
+      <td style="font-size:11px;">${e.contractName||'—'}</td>
+      <td style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:${c};">${e.pct}%</td>
+      <td><span style="font-size:10px;color:${c};">${e.pct>=80?'Good':e.pct>=60?'Acceptable':'Poor'}</span></td>
+      <td style="font-size:10px;">${e.fms||'—'}</td>
+      <td style="font-size:10px;">${e.joint||'—'}</td>
+      <td style="color:${decColor[e.decision]||'var(--mu)'};font-weight:600;font-size:11px;">${decLabel[e.decision]||e.decision||'—'}</td>
+      <td style="font-size:10px;color:var(--mu);">${e.date||'—'}</td>
+      <td>${e.proof?`<span class="bx bb2">📎 ${e.proof.n?.slice(0,15)||'Uploaded'}</span>`:'<span class="bx bm2">—</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════════════
+// OVERRIDE doLogin() to include RBAC + dynamic PINs
+// ════════════════════════════════════════════════════════════════
+function doLogin() {
+  const role = document.getElementById('lr').value;
+  const name = document.getElementById('lname').value.trim();
+  const pin  = document.getElementById('lpin').value.trim();
+  const err  = document.getElementById('lerr');
+  err.textContent = '';
+  if (!role||!name||!pin) { err.textContent='Please fill all fields'; return; }
+
+  // Use dynamic PINs (allows PIN changes from Settings)
+  const pins = getDynPINs();
+  if (pins[role] !== pin) { err.textContent='Incorrect PIN for this role'; return; }
+
+  const dynNames = getDynNames();
+  CU = { name, role, rl:RLBL[role], ab:name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2) };
+  document.getElementById('sbAv').textContent  = CU.ab;
+  document.getElementById('sbName').textContent = CU.name;
+  document.getElementById('sbRole').textContent = CU.rl;
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+
+  // Apply role-based access
+  applyRBAC();
+  // Log access event
+  logAccessEvent('Login');
+  init();
+}
+
+// Override gp() to enforce page access
+(function(){
+  const _baseGp = window.gp;
+  window.gp = function(id) {
+    if (!canAccessPage(id)) {
+      toast('⛔ Access restricted for your role','#ef4444');
+      return;
+    }
+    _baseGp(id);
+    // Special page inits
+    if (id === 'risk')      { setTimeout(()=>riskTab('heatmap',null), 100); }
+    if (id === 'contracts') { setTimeout(()=>ctrTab('list',null), 100); }
+    if (id === 'settings')  {
+      if (CU.role !== 'director') { toast('⛔ Settings: Director only','#ef4444'); return; }
+      settingsRenderUsers();
+      settingsRenderAccessLog();
+    }
+    if (id === 'equip') {
+      setTimeout(() => { eqAll(); eqInitFilters(); eqRender(); setTimeout(eqCharts,120); }, 50);
+    }
+  };
+})();
 
 </script>
 </body>
