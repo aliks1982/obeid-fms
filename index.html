@@ -216,6 +216,17 @@ canvas{display:block;}
 #first-visit-banner button{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:5px 14px;color:#fff;font-family:'Exo 2',sans-serif;font-size:11px;cursor:pointer;white-space:nowrap;}
 
 </style>
+<script>
+// Unregister any old service workers and clear caches on every load
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(reg => reg.unregister());
+  });
+}
+if ('caches' in window) {
+  caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+}
+</script>
 </head>
 <body>
 
@@ -282,7 +293,7 @@ canvas{display:block;}
     <div class="nsc">Compliance</div>
     <div class="ni" onclick="gp('risk')" id="n-risk"><span class="ni-ic">⚠️</span>Risk Assessment</div>
     <div class="ni" onclick="gp('contracts')" id="n-contracts"><span class="ni-ic">📃</span>Contract Review</div>
-    <div class="ni director-only" onclick="gp('settings')" id="n-settings"><span class="ni-ic">⚙</span>Settings</div>
+    <div class="ni" onclick="gp('settings')" id="n-settings"><span class="ni-ic">⚙</span>Settings / DB</div>
   </nav>
   <div class="sbft"><div class="cdb"><div class="cdl">CBAHI Survey In</div><div class="cdd" id="cdDays">—</div><div class="cds">days · October 2026</div></div></div>
 </aside>
@@ -299,7 +310,7 @@ canvas{display:block;}
 </div>
 
 <main class="main">
-  <div id="db-status-bar" style="display:none;align-items:center;gap:8px;padding:6px 16px;background:var(--s2);border-bottom:1px solid var(--bd);margin-bottom:0;font-size:10px;">
+  <div id="db-status-bar" style="display:flex;align-items:center;gap:8px;padding:6px 16px;background:var(--s2);border-bottom:1px solid var(--bd);margin-bottom:0;font-size:10px;">
     <div id="db-dot" style="width:7px;height:7px;border-radius:50%;background:var(--or);flex-shrink:0;"></div>
     <span id="db-txt" style="color:var(--or);flex:1;">Connecting to database...</span>
     <button onclick="dbLoadAll()" style="background:transparent;border:1px solid var(--bd);border-radius:5px;padding:2px 8px;color:var(--mu);font-size:9px;cursor:pointer;">⟳ Sync</button>
@@ -1997,8 +2008,18 @@ canvas{display:block;}
 
 <!-- ===== SETTINGS (Director only) ===== -->
 <div class="pg" id="page-settings">
-  <div class="ph"><h1>⚙ Settings — FMS Director Only</h1><p>Manage user accounts · Modify PINs · View access log · Platform version: <b style="color:var(--ac);">20260512-0818</b></p></div>
+  <div class="ph"><h1>⚙ Settings</h1>
+    <p id="settings-role-desc">Database connection · Platform configuration</p><p>Manage user accounts · Modify PINs · View access log · Platform version: <b style="color:var(--ac);">20260512-0818</b></p></div>
   <div class="g g2">
+    <!-- Non-director DB connection notice -->
+    <div id="settings-non-director-notice" style="display:none;background:rgba(0,180,255,.06);border:1px solid rgba(0,180,255,.2);border-radius:10px;padding:14px;margin-bottom:14px;">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--ac);margin-bottom:6px;">☁ Connect to Shared Database</div>
+      <div style="font-size:11px;color:var(--mu);line-height:1.8;">
+        To see data entered by other team members and have your data visible to others, connect this device to the shared database.<br>
+        <b style="color:var(--tx);">Ask the FMS Director for the Database URL</b>, paste it below and click Connect. You only need to do this once per device.
+      </div>
+    </div>
+
     <!-- DB Connection -->
     <div class="card" style="margin-bottom:0;"><div class="ch"><div class="ct">☁ Database Connection — Cloud Sync</div></div><div class="cb">
       <div style="font-size:11px;color:var(--mu);margin-bottom:12px;">Connect the FMS platform to Google Sheets so all managers see the same data on any device.</div>
@@ -2008,23 +2029,37 @@ canvas{display:block;}
         <button class="btn bp" onclick="connectDB()">🔗 Connect</button>
         <button class="btn bo" onclick="dbLoadAll()">⟳ Sync Now</button>
         <button class="btn bg" onclick="dbPushAll()">📤 Push All Local Data</button>
+        <button class="btn bo" onclick="dbClearAndResync()" style="white-space:nowrap;">🔄 Clear Cache &amp; Resync</button>
       </div>
-      <div style="font-size:9px;color:var(--mu);line-height:1.8;">
-        After connecting: data entered on any device is visible on all other devices · Works for all managers simultaneously<br>
+      <div style="font-size:9px;color:var(--mu);line-height:1.9;margin-top:6px;">
+        After connecting: data is shared across all devices in real-time<br>
         <b style="color:var(--or);">Queue:</b> <span id="db-queue-count">0</span> records waiting to sync
+      </div>
+      <div style="margin-top:10px;background:rgba(0,180,255,.06);border:1px solid rgba(0,180,255,.2);border-radius:8px;padding:10px;">
+        <div style="font-size:11px;font-weight:600;color:var(--ac);margin-bottom:6px;">📋 How to connect other managers' devices</div>
+        <div style="font-size:10px;color:var(--mu);line-height:1.8;">
+          1. Connect DB here (Director only, one time)<br>
+          2. Click <b style="color:var(--tx);">📤 Push All Local Data</b> to upload existing records<br>
+          3. Share the DB URL below with each manager — they paste it in their own Settings<br>
+          4. Or: simply tell each manager to open Settings → paste the same URL → Connect
+        </div>
+        <div style="margin-top:8px;display:flex;gap:6px;align-items:center;">
+          <div id="db-url-display" style="flex:1;font-size:9px;color:var(--ac);font-family:monospace;background:var(--s3);padding:5px 8px;border-radius:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Not connected</div>
+          <button class="btn bo" style="font-size:9px;padding:4px 10px;white-space:nowrap;" onclick="copyDBUrl()">📋 Copy URL</button>
+        </div>
       </div>
     </div></div>
 
-    <!-- User Management -->
-    <div class="card"><div class="ch"><div class="ct">👤 User Accounts</div></div><div class="cb">
+    <!-- User Management (Director only) -->
+    <div class="card director-settings-only"><div class="ch"><div class="ct">👤 User Accounts</div></div><div class="cb">
       <table class="tbl" id="users-table">
         <thead><tr><th>Role</th><th>Display Name</th><th>PIN</th><th>Access Level</th><th></th></tr></thead>
         <tbody id="users-tb"></tbody>
       </table>
     </div></div>
 
-    <!-- Edit User -->
-    <div class="card"><div class="ch"><div class="ct">✏️ Edit User / Change PIN</div></div><div class="cb">
+    <!-- Edit User (Director only) -->
+    <div class="card director-settings-only"><div class="ch"><div class="ct">✏️ Edit User / Change PIN</div></div><div class="cb">
       <div class="fg fg2">
         <div class="ff"><label>Select User</label>
           <select id="set-role" onchange="settingsLoadUser()">
@@ -2049,8 +2084,8 @@ canvas{display:block;}
     </div></div>
   </div>
 
-  <!-- Access Log -->
-  <div class="card" style="margin-top:4px;"><div class="ch"><div class="ct">🔐 Recent Login Activity</div></div>
+  <!-- Access Log (Director only) -->
+  <div class="card director-settings-only" style="margin-top:4px;"><div class="ch"><div class="ct">🔐 Recent Login Activity</div></div>
     <div class="cb" style="padding:0;"><table class="tbl">
       <thead><tr><th>Time</th><th>User</th><th>Role</th><th>Action</th></tr></thead>
       <tbody id="access-log-tb"></tbody>
@@ -2240,24 +2275,47 @@ async function dbLoadAll() {
     if (!j.ok) throw new Error(j.error||'Load failed');
     DB_ONLINE = true;
 
-    // Merge DB data into localStorage (DB wins for any _id that exists in DB)
+    // DB is the single source of truth — replace local data with DB data
+    // Local records that aren't in DB yet (queued offline) are preserved
     let totalRecords = 0;
+    const queuedIds = new Set(
+      JSON.parse(localStorage.getItem('obeid_sync_queue')||'[]')
+        .map(q => String(q.record?._id||''))
+        .filter(Boolean)
+    );
+
     Object.entries(j.data).forEach(([key, dbRows]) => {
-      if (!dbRows || !dbRows.length) return;
+      if (!dbRows) return;
       totalRecords += dbRows.length;
-      // Convert DB rows (objects with string values) back to arrays where needed
-      const existing = ld(key);
-      const existingIds = new Set(existing.map(r=>String(r._id||'')));
-      const dbIds = new Set(dbRows.map(r=>String(r._id||'')));
-      // DB records replace local ones with same _id; local-only stay
-      const localOnly = existing.filter(r=>!dbIds.has(String(r._id||'')));
-      const merged = [...dbRows, ...localOnly];
-      sv(key, merged);
+      if (dbRows.length === 0) {
+        // DB has no records for this key — keep local queued ones only
+        const local = ld(key).filter(r => queuedIds.has(String(r._id||'')));
+        sv(key, local);
+        return;
+      }
+      // DB has records — use DB as authoritative source
+      // Only keep local records whose _id is in the sync queue (not yet pushed to DB)
+      const dbIdSet = new Set(dbRows.map(r => String(r._id||'')));
+      const queuedLocal = ld(key).filter(r =>
+        queuedIds.has(String(r._id||'')) && !dbIdSet.has(String(r._id||''))
+      );
+      // DB records first (newest from DB), then any locally-queued records not yet in DB
+      sv(key, [...dbRows, ...queuedLocal]);
     });
     dbShowStatus('online', totalRecords);
-    // Re-render everything with fresh data
+    // Full re-render with fresh DB data — updates KPIs, dashboard, all pages
     renderAll();
-    renderDash();
+    if (typeof renderDash === 'function') renderDash();
+    if (typeof renderAnalytics === 'function') renderAnalytics();
+    // Update current visible page
+    const activePage = document.querySelector('.pg[style*="block"]');
+    if (activePage) {
+      const pageId = activePage.id?.replace('page-','');
+      if (pageId && pageId !== 'dash') {
+        if (typeof renderLog === 'function') renderLog(pageId);
+      }
+    }
+    console.log('✅ DB sync complete —', totalRecords, 'records loaded');
     return true;
   } catch(e) {
     console.warn('dbLoadAll failed:', e.message);
@@ -2481,21 +2539,34 @@ function doLogout(){document.getElementById('loginScreen').style.display='flex';
 let CH={};
 function destroyCharts(){Object.values(CH).forEach(c=>{try{c.destroy();}catch(e){}});CH={};}
 function init(){
-  checkForUpdates();countdown();setDate();setInterval(setDate,60000);
-  prefillDates();renderAll();
+  checkForUpdates();
+  countdown(); setDate(); setInterval(setDate, 60000);
+  prefillDates(); renderAll();
   loadSavedAppsScriptURL();
+
+  // Show first-visit banner if maintenance sheet not yet connected
+  if (!localStorage.getItem('obeid_bannerDismissed') && !localStorage.getItem('obeid_appsScriptURL')) {
+    const b = document.getElementById('first-visit-banner');
+    if (b) b.style.display = 'flex';
+  }
+
+  // Fetch live maintenance sheet data (MMS)
   setTimeout(fetchSheetData, 400);
-  // Show first-visit banner if sheet not yet connected
-  if(!localStorage.getItem('obeid_bannerDismissed')&&!localStorage.getItem('obeid_appsScriptURL')){
-    const b=document.getElementById('first-visit-banner');
-    if(b)b.style.display='flex';
-  
-  // Connect to cloud DB
+
+  // Connect to FMS DB and load all platform data
+  // DB URL must be set — either from localStorage or we show offline
   const dbUrl = getDBUrl();
   if (dbUrl) {
-    setTimeout(() => { dbFlushQueue(); dbLoadAll(); }, 800);
-  } else { dbShowStatus('offline'); }
-}
+    setTimeout(() => {
+      dbFlushQueue(); // push any queued offline records first
+      dbLoadAll();    // then pull everything from DB
+    }, 900);
+  } else {
+    dbShowStatus('offline');
+    // Show DB setup prompt in status bar
+    const txt = document.getElementById('db-txt');
+    if (txt) txt.textContent = '⚠ Database not connected — go to Settings → Database Connection to connect';
+  }
 }
 function countdown(){const d=Math.ceil((new Date('2026-10-01')-new Date())/86400000);document.getElementById('cdDays').textContent=d>0?d:'0';}
 function setDate(){document.getElementById('tbDate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});}
@@ -5053,21 +5124,25 @@ function eqDelAdded(ts) {
 
 // Define which nav items each role can see
 const ROLE_ACCESS = {
-  director:    ['ALL'], // sees everything
-  maintenance: ['n-dash','n-kpi','n-mms','n-reports','n-wo','n-utils','n-fire','n-ckpi'],
-  biomedical:  ['n-dash','n-kpi','n-equip','n-medgas','n-radiation','n-wo','n-ckpi'],
-  safety:      ['n-dash','n-kpi','n-cbahi','n-safety','n-hazmat','n-emergency','n-fire','n-wo','n-ckpi','n-docs'],
-  security:    ['n-dash','n-kpi','n-security','n-wo','n-ckpi'],
+  director:    ['ALL'],
+  // All roles include n-settings so every manager can connect to the DB
+  maintenance: ['n-dash','n-kpi','n-mms','n-reports','n-wo','n-utils','n-fire','n-ckpi','n-settings'],
+  biomedical:  ['n-dash','n-kpi','n-equip','n-medgas','n-radiation','n-wo','n-ckpi','n-settings'],
+  safety:      ['n-dash','n-kpi','n-cbahi','n-safety','n-hazmat','n-emergency','n-fire','n-wo','n-ckpi','n-docs','n-settings'],
+  security:    ['n-dash','n-kpi','n-security','n-wo','n-ckpi','n-settings'],
+};
+
+// Page access — which pages each role can open
+const PAGE_ACCESS = {
+  director:    ['ALL'],
+  maintenance: ['dash','kpi','mms','reports','wo','utils','fire','ckpi','settings'],
+  biomedical:  ['dash','kpi','equip','medgas','radiation','wo','ckpi','settings'],
+  safety:      ['dash','kpi','cbahi','safety','hazmat','emergency','fire','wo','ckpi','docs','settings'],
+  security:    ['dash','kpi','security','wo','ckpi','settings'],
 };
 
 // Page access — which page IDs each role can visit
-const PAGE_ACCESS = {
-  director:    ['ALL'],
-  maintenance: ['dash','kpi','mms','reports','wo','utils','fire','ckpi'],
-  biomedical:  ['dash','kpi','equip','medgas','radiation','wo','ckpi'],
-  safety:      ['dash','kpi','cbahi','safety','hazmat','emergency','fire','wo','ckpi','docs'],
-  security:    ['dash','kpi','security','wo','ckpi'],
-};
+;
 
 function applyRBAC() {
   if (!CU.role || CU.role === 'director') {
@@ -5094,6 +5169,7 @@ function applyRBAC() {
 
 function canAccessPage(pageId) {
   if (!CU.role || CU.role === 'director') return true;
+  if (pageId === 'settings') return true; // all roles can access settings for DB connection
   const allowed = PAGE_ACCESS[CU.role] || [];
   return allowed.includes(pageId);
 }
@@ -5128,9 +5204,9 @@ function connectDB() {
   const url = input.value.trim();
   if (!url.includes('script.google.com')) { toast('That does not look like an Apps Script URL','#f59e0b'); return; }
   setDBUrl(url);
+  DB_URL = url;
   toast('✓ DB URL saved — syncing now...');
-  dbFlushQueue();
-  dbLoadAll();
+  dbFlushQueue().then(() => dbLoadAll());
 }
 
 // Push ALL local data to DB (one-time migration)
@@ -5159,11 +5235,49 @@ async function dbPushAll() {
   settingsUpdateQueueCount();
 }
 
+function dbClearAndResync() {
+  if (!confirm('This will delete all locally cached data on this device and reload everything from the cloud database. Your data in the database is safe. Continue?')) return;
+  // Clear all record keys from localStorage (keep settings/pins/URLs)
+  const keepKeys = ['obeid_pins','obeid_user_names','obeid_db_url','obeid_appsScriptURL',
+                    'obeid_bannerDismissed','obeid_doc_standards','obeid_sync_queue',
+                    'fms_version', FILE_STORE_KEY];
+  const toDelete = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (!keepKeys.some(kk => k === kk) && k.startsWith('obeid3_')) {
+      toDelete.push(k);
+    }
+  }
+  toDelete.forEach(k => localStorage.removeItem(k));
+  toast('🔄 Local cache cleared — resyncing from DB...');
+  setTimeout(() => dbLoadAll().then(() => {
+    renderAll();
+    if (typeof renderDash === 'function') renderDash();
+    toast('✅ Resync complete');
+  }), 500);
+}
+
+function copyDBUrl() {
+  const url = getDBUrl();
+  if (!url) { toast('No DB URL connected yet','#f59e0b'); return; }
+  navigator.clipboard.writeText(url).then(() => {
+    toast('✓ DB URL copied to clipboard — share with other managers');
+  }).catch(() => {
+    // Fallback for browsers without clipboard API
+    const el = document.createElement('textarea');
+    el.value = url; document.body.appendChild(el); el.select();
+    document.execCommand('copy'); document.body.removeChild(el);
+    toast('✓ DB URL copied');
+  });
+}
+
 function settingsUpdateQueueCount() {
   const el = document.getElementById('db-queue-count');
   if (el) el.textContent = JSON.parse(localStorage.getItem('obeid_sync_queue')||'[]').length;
   const input = document.getElementById('db-url-input');
   if (input) input.value = getDBUrl() || '';
+  const display = document.getElementById('db-url-display');
+  if (display) display.textContent = getDBUrl() || 'Not connected — paste URL above and click Connect';
 }
 
 function settingsRenderUsers() {
@@ -5759,6 +5873,15 @@ function doLogin() {
   // Log access event
   logAccessEvent('Login');
   init();
+
+  // Show DB connection reminder if not connected
+  setTimeout(() => {
+    if (!getDBUrl()) {
+      const bar = document.getElementById('db-status-bar');
+      if (bar) bar.style.background = 'rgba(239,68,68,.15)';
+      toast('⚠ Database not connected — data only saved locally. Go to Settings to connect.', '#ef4444');
+    }
+  }, 2000);
 }
 
 // Override gp() to enforce page access
@@ -5778,8 +5901,24 @@ function doLogin() {
     if (id === 'risk')      { setTimeout(() => riskTab('heatmap', null), 80); }
     if (id === 'contracts') { setTimeout(() => ctrTab('list', null), 80); }
     if (id === 'settings') {
-      if (CU.role !== 'director') { toast('⛔ Settings: Director only','#ef4444'); return; }
-      settingsRenderUsers(); settingsRenderAccessLog(); settingsUpdateQueueCount();
+      settingsUpdateQueueCount();
+      const isDirector = CU.role === 'director';
+      // Show/hide director-only sections
+      document.querySelectorAll('.director-settings-only').forEach(el => {
+        el.style.display = isDirector ? '' : 'none';
+      });
+      // Show non-director notice if not director
+      const notice = document.getElementById('settings-non-director-notice');
+      if (notice) notice.style.display = isDirector ? 'none' : 'block';
+      // Update page description
+      const desc = document.getElementById('settings-role-desc');
+      if (desc) desc.textContent = isDirector
+        ? 'User management · PINs · Database connection · Access log'
+        : 'Connect this device to the shared database to sync data with all team members';
+      if (isDirector) {
+        settingsRenderUsers();
+        settingsRenderAccessLog();
+      }
     }
     if (id === 'safety') {
       updateTargetProgress();
