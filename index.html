@@ -294,6 +294,12 @@ canvas{display:block;}
 </div>
 
 <main class="main">
+  <div id="db-status-bar" style="display:none;align-items:center;gap:8px;padding:6px 16px;background:var(--s2);border-bottom:1px solid var(--bd);margin-bottom:0;font-size:10px;">
+    <div id="db-dot" style="width:7px;height:7px;border-radius:50%;background:var(--or);flex-shrink:0;"></div>
+    <span id="db-txt" style="color:var(--or);flex:1;">Connecting to database...</span>
+    <button onclick="dbLoadAll()" style="background:transparent;border:1px solid var(--bd);border-radius:5px;padding:2px 8px;color:var(--mu);font-size:9px;cursor:pointer;">⟳ Sync</button>
+    <button onclick="dbFlushQueue()" style="background:transparent;border:1px solid var(--bd);border-radius:5px;padding:2px 8px;color:var(--mu);font-size:9px;cursor:pointer;">📤 Flush</button>
+  </div>
 
 <!-- ===== DASHBOARD ===== -->
 <div class="pg active" id="page-dash">
@@ -1988,6 +1994,22 @@ canvas{display:block;}
 <div class="pg" id="page-settings">
   <div class="ph"><h1>⚙ Settings — FMS Director Only</h1><p>Manage user accounts · Modify PINs · View access log · Role-based access configuration</p></div>
   <div class="g g2">
+    <!-- DB Connection -->
+    <div class="card" style="margin-bottom:0;"><div class="ch"><div class="ct">☁ Database Connection — Cloud Sync</div></div><div class="cb">
+      <div style="font-size:11px;color:var(--mu);margin-bottom:12px;">Connect the FMS platform to Google Sheets so all managers see the same data on any device.</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+        <input type="text" id="db-url-input" placeholder="Paste your FMS DB Apps Script URL here..."
+          style="flex:1;min-width:300px;background:var(--s3);border:1px solid var(--bd);border-radius:7px;padding:8px 12px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;">
+        <button class="btn bp" onclick="connectDB()">🔗 Connect</button>
+        <button class="btn bo" onclick="dbLoadAll()">⟳ Sync Now</button>
+        <button class="btn bg" onclick="dbPushAll()">📤 Push All Local Data</button>
+      </div>
+      <div style="font-size:9px;color:var(--mu);line-height:1.8;">
+        After connecting: data entered on any device is visible on all other devices · Works for all managers simultaneously<br>
+        <b style="color:var(--or);">Queue:</b> <span id="db-queue-count">0</span> records waiting to sync
+      </div>
+    </div></div>
+
     <!-- User Management -->
     <div class="card"><div class="ch"><div class="ct">👤 User Accounts</div></div><div class="cb">
       <table class="tbl" id="users-table">
@@ -2108,8 +2130,177 @@ canvas{display:block;}
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-function ld(k){try{return JSON.parse(localStorage.getItem(PX+k)||'[]');}catch(e){return[];}}
-function sv(k,v){localStorage.setItem(PX+k,JSON.stringify(v));}
+// ════════════════════════════════════════════════════════════════
+// DATABASE LAYER — Google Sheets as real-time DB
+// All records sync to FMS Command — Platform Data spreadsheet
+// localStorage used as offline cache only
+// ════════════════════════════════════════════════════════════════
+
+const DB_SHEET_ID = '13zPJDPlYhbqqZ2rXq8Ev7fm0Oj4FHI54dP0kSaR8rnw';
+let   DB_URL      = '';  // set from settings or localStorage
+let   DB_ONLINE   = false;
+let   DB_SYNC_QUEUE = []; // offline queue
+
+// ── Local cache (localStorage) ──
+function ld(k){
+  try{ return JSON.parse(localStorage.getItem(PX+k)||'[]'); }
+  catch(e){ return []; }
+}
+function sv(k,v){
+  localStorage.setItem(PX+k, JSON.stringify(v));
+}
+
+// ── DB URL management ──
+function getDBUrl() {
+  if (DB_URL) return DB_URL;
+  const saved = localStorage.getItem('obeid_db_url');
+  if (saved) { DB_URL = saved; return DB_URL; }
+  return '';
+}
+function setDBUrl(url) {
+  DB_URL = url;
+  localStorage.setItem('obeid_db_url', url);
+}
+
+// ── Write to DB (upsert) ──
+async function dbWrite(type, record) {
+  const url = getDBUrl();
+  if (!url) { dbQueue(type, record, 'upsert'); return false; }
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type':'text/plain'},
+      body: JSON.stringify({ action:'upsert', type, record }),
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error||'DB write failed');
+    DB_ONLINE = true;
+    return true;
+  } catch(e) {
+    console.warn('dbWrite failed:', e.message);
+    DB_ONLINE = false;
+    dbQueue(type, record, 'upsert');
+    return false;
+  }
+}
+
+// ── Delete from DB ──
+async function dbDelete(type, id) {
+  const url = getDBUrl();
+  if (!url) return;
+  try {
+    await fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type':'text/plain'},
+      body: JSON.stringify({ action:'delete', type, id }),
+      signal: AbortSignal.timeout(6000)
+    });
+  } catch(e) { console.warn('dbDelete failed:', e.message); }
+}
+
+// ── Read all from DB on load ──
+async function dbLoadAll() {
+  const url = getDBUrl();
+  if (!url) { dbShowStatus('offline'); return; }
+  dbShowStatus('loading');
+  try {
+    const r = await fetch(url + '?action=getAll', { signal: AbortSignal.timeout(15000) });
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error||'Load failed');
+    DB_ONLINE = true;
+
+    // Merge DB data into localStorage (DB wins for any _id that exists in DB)
+    let totalRecords = 0;
+    Object.entries(j.data).forEach(([key, dbRows]) => {
+      if (!dbRows || !dbRows.length) return;
+      totalRecords += dbRows.length;
+      // Convert DB rows (objects with string values) back to arrays where needed
+      const existing = ld(key);
+      const existingIds = new Set(existing.map(r=>String(r._id||'')));
+      const dbIds = new Set(dbRows.map(r=>String(r._id||'')));
+      // DB records replace local ones with same _id; local-only stay
+      const localOnly = existing.filter(r=>!dbIds.has(String(r._id||'')));
+      const merged = [...dbRows, ...localOnly];
+      sv(key, merged);
+    });
+    dbShowStatus('online', totalRecords);
+    // Re-render everything with fresh data
+    renderAll();
+    renderDash();
+    return true;
+  } catch(e) {
+    console.warn('dbLoadAll failed:', e.message);
+    DB_ONLINE = false;
+    dbShowStatus('offline');
+    return false;
+  }
+}
+
+// ── Offline queue ──
+function dbQueue(type, record, action) {
+  const q = JSON.parse(localStorage.getItem('obeid_sync_queue')||'[]');
+  q.push({ type, record, action, queuedAt: new Date().toISOString() });
+  localStorage.setItem('obeid_sync_queue', JSON.stringify(q));
+}
+
+async function dbFlushQueue() {
+  const url = getDBUrl(); if (!url) return;
+  const q = JSON.parse(localStorage.getItem('obeid_sync_queue')||'[]');
+  if (!q.length) return;
+  const remaining = [];
+  for (const item of q) {
+    const ok = await dbWrite(item.type, item.record);
+    if (!ok) remaining.push(item);
+  }
+  localStorage.setItem('obeid_sync_queue', JSON.stringify(remaining));
+  if (remaining.length < q.length) {
+    toast('✓ Synced ' + (q.length - remaining.length) + ' queued records to DB');
+  }
+}
+
+// ── Status display ──
+function dbShowStatus(state, count) {
+  const bar = document.getElementById('db-status-bar');
+  const dot = document.getElementById('db-dot');
+  const txt = document.getElementById('db-txt');
+  if (!bar || !dot || !txt) return;
+  bar.style.display = 'flex';
+  if (state === 'online') {
+    dot.style.background = 'var(--gn)'; dot.style.animation = '';
+    txt.textContent = '☁ DB Connected — ' + (count||0) + ' records synced across all devices';
+    txt.style.color = 'var(--gn)';
+  } else if (state === 'loading') {
+    dot.style.background = 'var(--or)'; dot.style.animation = 'pulse 1s infinite';
+    txt.textContent = '⟳ Loading data from cloud database...';
+    txt.style.color = 'var(--or)';
+  } else {
+    dot.style.background = 'var(--rd)'; dot.style.animation = '';
+    txt.textContent = '⚠ Offline mode — data saved locally only · Connect DB in Settings';
+    txt.style.color = 'var(--rd)';
+  }
+}
+
+// ── Enhanced sv that also writes to DB ──
+async function svDB(type, record) {
+  // 1. Save to local cache immediately (instant UI)
+  const arr = ld(type);
+  const idx = arr.findIndex(r => String(r._id) === String(record._id));
+  if (idx >= 0) arr[idx] = record; else arr.unshift(record);
+  sv(type, arr);
+  // 2. Write to DB in background (non-blocking)
+  dbWrite(type, record).then(ok => {
+    if (ok) {
+      const queueLen = JSON.parse(localStorage.getItem('obeid_sync_queue')||'[]').length;
+      if (queueLen === 0) {
+        const dot = document.getElementById('db-dot');
+        if (dot) { dot.style.background='var(--gn)'; }
+      }
+    }
+  });
+}
 
 // ── UNIVERSAL FILE STORE ──
 // Files stored under a STABLE key (no PX prefix) so they survive HTML updates
@@ -2262,7 +2453,13 @@ function init(){
   if(!localStorage.getItem('obeid_bannerDismissed')&&!localStorage.getItem('obeid_appsScriptURL')){
     const b=document.getElementById('first-visit-banner');
     if(b)b.style.display='flex';
-  }
+  
+  // Connect to cloud DB
+  const dbUrl = getDBUrl();
+  if (dbUrl) {
+    setTimeout(() => { dbFlushQueue(); dbLoadAll(); }, 800);
+  } else { dbShowStatus('offline'); }
+}
 }
 function countdown(){const d=Math.ceil((new Date('2026-10-01')-new Date())/86400000);document.getElementById('cdDays').textContent=d>0?d:'0';}
 function setDate(){document.getElementById('tbDate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});}
@@ -2323,7 +2520,9 @@ function sv2(type){
   d.f.forEach(f=>{const[k,id]=f.split(':');const e=document.getElementById(id);if(!e)return;e.type==='file'?(e.files[0]&&(rec[k]={n:e.files[0].name,s:Math.round(e.files[0].size/1024)+'KB'})):rec[k]=e.value;});
   const miss=d.r.filter(r=>!rec[r]||rec[r]==='');
   if(miss.length){toast('⚠️ Fill: '+miss.join(', '),'#f59e0b');return;}
+  // Save locally immediately + sync to DB
   const arr=ld(type);arr.unshift(rec);sv(type,arr);
+  dbWrite(type,rec); // non-blocking DB write
   logA(type);renderLog(type);renderAll();toast('✓ Saved');
   d.f.filter(f=>f.includes('file')).forEach(f=>{const e=document.getElementById(f.split(':')[1]);if(e)e.value='';});
 }
@@ -4203,6 +4402,7 @@ function mgSave(type) {
   }
 
   const arr = ld('mg_' + type); arr.unshift(rec); sv('mg_' + type, arr);
+  dbWrite('mg_' + type, rec);
   // Also log to general activity
   logA('mg_' + type);
   renderMGTable(type);
@@ -4772,6 +4972,7 @@ function eqAddRecord() {
   };
 
   const arr = ld('eq_added'); arr.unshift(rec); sv('eq_added', arr);
+  dbWrite('eq_added', rec);
   EQ_ALL = null; // reset cache so new record appears
 
   // Clear form
@@ -4884,6 +5085,50 @@ function getDynNames() {
   } catch(e) { return {director:'FMS Director',maintenance:'Mostapha',biomedical:'Bashar',safety:'Moe',security:'Bader'}; }
 }
 function saveDynNames(names) { localStorage.setItem(USER_NAMES_KEY, JSON.stringify(names)); }
+
+function connectDB() {
+  const input = document.getElementById('db-url-input');
+  if (!input || !input.value.trim()) { toast('Paste the Apps Script URL first','#f59e0b'); return; }
+  const url = input.value.trim();
+  if (!url.includes('script.google.com')) { toast('That does not look like an Apps Script URL','#f59e0b'); return; }
+  setDBUrl(url);
+  toast('✓ DB URL saved — syncing now...');
+  dbFlushQueue();
+  dbLoadAll();
+}
+
+// Push ALL local data to DB (one-time migration)
+async function dbPushAll() {
+  const url = getDBUrl();
+  if (!url) { toast('Connect DB first','#f59e0b'); return; }
+  const allKeys = ['eoc','training','incident','secInc','secDrill','chemical','wasteAudit',
+    'emDrill','fireAlarm','fireSup','fireExit','fireDrill','ppm','genTest','waterTest',
+    'pmgCheck','airPurity','tldReview','leadApron','shieldCert','doc','workorders',
+    'eq_added','eq_relocations','contracts','evaluations','risk_register',
+    'mg_lox','mg_o2backup','mg_n2o','mg_vacuum','mg_aircomp','mg_airbackup',
+    'mg_ambulance','mg_cylinder','mg_o2refill','mg_airrefill',
+    'rad_tld','rad_apron','rad_shield'];
+  let total = 0, pushed = 0;
+  toast('⟳ Pushing all local data to DB...');
+  for (const key of allKeys) {
+    const records = ld(key);
+    if (!records.length) continue;
+    total += records.length;
+    for (const rec of records) {
+      const ok = await dbWrite(key, rec);
+      if (ok) pushed++;
+    }
+  }
+  toast(`✓ Pushed ${pushed}/${total} records to DB`);
+  settingsUpdateQueueCount();
+}
+
+function settingsUpdateQueueCount() {
+  const el = document.getElementById('db-queue-count');
+  if (el) el.textContent = JSON.parse(localStorage.getItem('obeid_sync_queue')||'[]').length;
+  const input = document.getElementById('db-url-input');
+  if (input) input.value = getDBUrl() || '';
+}
 
 function settingsRenderUsers() {
   const tb = document.getElementById('users-tb'); if (!tb) return;
@@ -5013,9 +5258,10 @@ function saveRelocation() {
   if (!date) { toast('Select relocation date','#f59e0b'); return; }
 
   const log = ld('eq_relocations');
-  log.unshift({ _id:Date.now(), asset, name, from, to, reason, by, date,
-                _by:CU.name, _ts:new Date().toISOString() });
+  const relocRec = { _id:Date.now(), asset, name, from, to, reason, by, date, _by:CU.name, _ts:new Date().toISOString() };
+  log.unshift(relocRec);
   sv('eq_relocations', log);
+  dbWrite('eq_relocations', relocRec);
 
   // Also update the manually-added record if it exists
   const added = ld('eq_added');
@@ -5216,6 +5462,7 @@ function saveRisk() {
     owner, review:rev, _by:CU.name, _ts:new Date().toISOString() };
   if (existing >= 0) arr[existing] = rec; else arr.unshift(rec);
   sv('risk_register', arr);
+  dbWrite('risk_register', rec);
   clearRiskForm();
   toast('✓ Risk entry saved');
   riskTab('heatmap', document.querySelector('[onclick="riskTab(\'heatmap\',this)"]'));
@@ -5329,6 +5576,7 @@ function saveContract() {
   if (!arr.length) { DEFAULT_CONTRACTS.forEach(d=>arr.push(d)); }
   arr.unshift(c);
   sv('contracts', arr);
+  dbWrite('contracts', c);
   toast('✓ Contract saved');
   ctrTab('list', null);
 }
@@ -5406,6 +5654,7 @@ function saveEvaluation() {
     _by:        CU.name, _ts: new Date().toISOString()
   };
   const arr = ld('evaluations'); arr.unshift(ev); sv('evaluations', arr);
+  dbWrite('evaluations', ev);
   toast('✓ Evaluation saved — ' + ev.contractName + ' Q' + ev.quarter + ' ' + ev.year);
   ctrTab('history', document.querySelector('[onclick="ctrTab(\'history\',this)"]'));
 }
@@ -5494,7 +5743,7 @@ function doLogin() {
     if (id === 'contracts') { setTimeout(() => ctrTab('list', null), 80); }
     if (id === 'settings') {
       if (CU.role !== 'director') { toast('⛔ Settings: Director only','#ef4444'); return; }
-      settingsRenderUsers(); settingsRenderAccessLog();
+      settingsRenderUsers(); settingsRenderAccessLog(); settingsUpdateQueueCount();
     }
     if (id === 'safety') {
       updateTargetProgress();
@@ -5546,17 +5795,31 @@ function updateTargetProgress() {
 
 // Build upload widgets on safety page init
 function initSafetyUploadWidgets() {
-  ['esr-upload-widget','tr-upload-widget','inc-upload-widget'].forEach(id => {
+  const widgets = [
+    {id:'esr-upload-widget', fileId:'esr-files', label:'📎 Attach Documents — Multiple Files (PDF, Word, Images)'},
+    {id:'tr-upload-widget',  fileId:'tr-files',  label:'📎 Attach Training Documents (Attendance sheets, certificates)'},
+    {id:'inc-upload-widget', fileId:'inc-files', label:'📎 Attach Incident Documents (Photos, reports)'},
+  ];
+  widgets.forEach(({id, fileId, label}) => {
     const el = document.getElementById(id);
-    if (el && !el.innerHTML.trim()) {
-      const key = id.replace('-upload-widget','');
-      const inputId = 'upload-' + key + '-' + Date.now();
-      el.innerHTML = `<label style="font-size:10px;color:var(--mu);display:block;margin-bottom:5px;">Upload Evidence (multiple files)</label>
-        <input type="file" id="${inputId}" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx"
-          style="font-size:10px;color:var(--mu);"
-          onchange="pendingFiles['${key}']=this.files">
-      <div style="font-size:9px;color:var(--mu);margin-top:3px;">Files are saved with the record · PDF, Word, Images</div>`;
-    }
+    if (!el) return;
+    // Always rebuild to ensure event handlers are fresh
+    el.innerHTML = `
+      <label style="font-size:10px;color:var(--mu);display:block;margin-bottom:6px;">${label}</label>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <input type="file" id="${fileId}" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx,.xls"
+          style="font-size:11px;color:var(--mu);flex:1;">
+        <span style="font-size:9px;color:var(--mu);white-space:nowrap;">Hold Ctrl/Cmd to select multiple</span>
+      </div>
+      <div id="${fileId}-preview" style="margin-top:6px;"></div>`;
+    // Preview selected files before save
+    document.getElementById(fileId)?.addEventListener('change', function() {
+      const preview = document.getElementById(fileId+'-preview');
+      if (!preview) return;
+      preview.innerHTML = Array.from(this.files).map(f =>
+        `<div style="font-size:10px;color:var(--gn);padding:2px 0;">✓ ${f.name} (${Math.round(f.size/1024)}KB)</div>`
+      ).join('');
+    });
   });
 }
 
@@ -5581,13 +5844,14 @@ async function saveESR() {
   };
 
   // Save files
-  const fileInput = document.querySelector('#esr-upload-widget input[type=file]');
+  const fileInput = document.getElementById('esr-files') || document.querySelector('#esr-upload-widget input[type=file]');
   if (fileInput && fileInput.files.length) {
     await fsStoreFiles(rec.fileKey, fileInput.files);
     fileInput.value = '';
   }
 
   const arr = ld('eoc'); arr.unshift(rec); sv('eoc', arr);
+  dbWrite('eoc', rec); // sync to cloud DB
   ['eoc-round','eoc-areas','eoc-notes','eoc-by'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   ['eoc-date','eoc-findings','eoc-closed'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   renderESRTable();
@@ -5642,6 +5906,7 @@ async function saveWithFiles(type, prefix) {
   }
 
   const arr = ld(type); arr.unshift(rec); sv(type, arr);
+  dbWrite(type, rec);
   // Clear text fields
   d.f.filter(f=>!f.includes('file')).forEach(f=>{const e=document.getElementById(f.split(':')[1]);if(e&&e.type!=='select-one')e.value='';});
   logA(type); renderLog(type); renderAll();
@@ -5725,6 +5990,7 @@ async function saveRadiation(type) {
   }
 
   const arr = ld('rad_'+type); arr.unshift(rec); sv('rad_'+type, arr);
+  dbWrite('rad_'+type, rec);
   renderRadTable(type);
   logA('rad_'+type);
   toast('✓ Saved');
@@ -5808,6 +6074,7 @@ async function docUpload() {
   };
   await fsStoreFiles(rec.fileKey, input.files);
   const arr = ld('doc'); arr.unshift(rec); sv('doc', arr);
+  dbWrite('doc', rec);
   document.getElementById('doc-title').value = '';
   input.value = '';
   renderDocs();
