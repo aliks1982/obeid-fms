@@ -2252,15 +2252,28 @@ async function dbWrite(type, record) {
 // ── Delete from DB ──
 async function dbDelete(type, id) {
   const url = getDBUrl();
-  if (!url) return;
+  if (!url) {
+    const q = JSON.parse(localStorage.getItem('obeid_delete_queue')||'[]');
+    q.push({ type, id, ts: new Date().toISOString() });
+    localStorage.setItem('obeid_delete_queue', JSON.stringify(q));
+    return;
+  }
   try {
-    await fetch(url, {
+    const r = await fetch(url, {
       method: 'POST',
       headers: {'Content-Type':'text/plain'},
-      body: JSON.stringify({ action:'delete', type, id }),
-      signal: AbortSignal.timeout(6000)
+      body: JSON.stringify({ action:'delete', type, id: String(id) }),
+      signal: AbortSignal.timeout(8000)
     });
-  } catch(e) { console.warn('dbDelete failed:', e.message); }
+    const j = await r.json();
+    if (j.ok) { console.log('✓ Deleted from DB:', type, id); }
+    else { console.warn('DB delete response:', j.error); }
+  } catch(e) {
+    console.warn('dbDelete failed:', e.message);
+    const q = JSON.parse(localStorage.getItem('obeid_delete_queue')||'[]');
+    q.push({ type, id, ts: new Date().toISOString() });
+    localStorage.setItem('obeid_delete_queue', JSON.stringify(q));
+  }
 }
 
 // ── Read all from DB on load ──
@@ -2334,17 +2347,37 @@ function dbQueue(type, record, action) {
 
 async function dbFlushQueue() {
   const url = getDBUrl(); if (!url) return;
-  const q = JSON.parse(localStorage.getItem('obeid_sync_queue')||'[]');
-  if (!q.length) return;
-  const remaining = [];
-  for (const item of q) {
+
+  // Flush write queue
+  const wq = JSON.parse(localStorage.getItem('obeid_sync_queue')||'[]');
+  const wRemaining = [];
+  for (const item of wq) {
     const ok = await dbWrite(item.type, item.record);
-    if (!ok) remaining.push(item);
+    if (!ok) wRemaining.push(item);
   }
-  localStorage.setItem('obeid_sync_queue', JSON.stringify(remaining));
-  if (remaining.length < q.length) {
-    toast('✓ Synced ' + (q.length - remaining.length) + ' queued records to DB');
+  localStorage.setItem('obeid_sync_queue', JSON.stringify(wRemaining));
+  if (wRemaining.length < wq.length) {
+    console.log('✓ Synced', wq.length - wRemaining.length, 'queued writes');
   }
+
+  // Flush delete queue
+  const dq = JSON.parse(localStorage.getItem('obeid_delete_queue')||'[]');
+  const dRemaining = [];
+  for (const item of dq) {
+    try {
+      const r = await fetch(url, {
+        method:'POST', headers:{'Content-Type':'text/plain'},
+        body: JSON.stringify({ action:'delete', type:item.type, id:String(item.id) }),
+        signal: AbortSignal.timeout(6000)
+      });
+      const j = await r.json();
+      if (!j.ok) dRemaining.push(item);
+    } catch(e) { dRemaining.push(item); }
+  }
+  localStorage.setItem('obeid_delete_queue', JSON.stringify(dRemaining));
+
+  const total = (wq.length-wRemaining.length) + (dq.length-dRemaining.length);
+  if (total > 0) toast('✓ Synced ' + total + ' queued operations');
 }
 
 // ── Status display ──
@@ -5240,7 +5273,8 @@ function dbClearAndResync() {
   // Clear all record keys from localStorage (keep settings/pins/URLs)
   const keepKeys = ['obeid_pins','obeid_user_names','obeid_db_url','obeid_appsScriptURL',
                     'obeid_bannerDismissed','obeid_doc_standards','obeid_sync_queue',
-                    'fms_version', FILE_STORE_KEY];
+                    'fms_version', FILE_STORE_KEY,
+                    'safety_esr_target','safety_tr_target'];
   const toDelete = [];
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
@@ -5940,12 +5974,25 @@ function doLogin() {
 
 function saveTarget(inputId, storeKey) {
   const v = parseInt(document.getElementById(inputId)?.value || 0);
-  if (v > 0) localStorage.setItem(storeKey, v);
+  if (v > 0) {
+    localStorage.setItem(storeKey, v);
+    // Sync setting to DB so all devices share the same target
+    dbWrite('app_settings', { _id: storeKey, key: storeKey, value: String(v), _by: CU.name, _ts: new Date().toISOString() });
+  }
   updateTargetProgress();
 }
 
 function loadTarget(storeKey, defaultVal) {
-  return parseInt(localStorage.getItem(storeKey) || defaultVal);
+  const local = localStorage.getItem(storeKey);
+  if (local && parseInt(local) > 0) return parseInt(local);
+  // Check if DB loaded a setting for this key
+  const dbSettings = ld('app_settings');
+  const found = dbSettings.find(s => s.key === storeKey || s._id === storeKey);
+  if (found && parseInt(found.value) > 0) {
+    localStorage.setItem(storeKey, found.value); // cache locally
+    return parseInt(found.value);
+  }
+  return parseInt(defaultVal);
 }
 
 function updateTargetProgress() {
@@ -5954,10 +6001,11 @@ function updateTargetProgress() {
   const esrC = ld('eoc').length;
   const trC  = ld('training').length;
 
+  // Always set input values — not just when empty
   const esrEl = document.getElementById('esr-target');
-  if (esrEl && !esrEl.value) esrEl.value = esrT;
+  if (esrEl) esrEl.value = esrT;
   const trEl = document.getElementById('tr-target');
-  if (trEl && !trEl.value) trEl.value = trT;
+  if (trEl) trEl.value = trT;
 
   const esrLbl = document.getElementById('esr-progress-label');
   if (esrLbl) esrLbl.textContent = esrC + ' / ' + esrT + ' rounds done';
@@ -6089,10 +6137,14 @@ async function saveWithFiles(type, prefix) {
 }
 
 // Generic delete record
-function delRecord(type, id, callback) {
+async function delRecord(type, id, callback) {
   if (!confirm('Delete this record?')) return;
+  // 1. Delete from localStorage immediately
   const arr = ld(type).filter(r => String(r._id) !== String(id));
   sv(type, arr);
+  // 2. Delete from DB (await so it's gone before re-render)
+  await dbDelete(type, String(id));
+  // 3. Re-render after confirmed deletion
   if (callback) callback();
   else renderLog(type);
   toast('Deleted');
