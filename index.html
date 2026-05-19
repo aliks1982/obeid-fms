@@ -1,4 +1,4 @@
-<thead style="position:sticky;top:0;background:var(--sf);z-index:2;"><tr><th style="min-width:90px;cursor:pointer;" onclick="eqSort('asset')">Asset No</th><th style="min-width:150px;cursor:pointer;" onclick="eqSort('desc')">Equipment</th><th style="min-width:110px;cursor:pointer;" onclick="eqSort('dept')">Department</th><th>Location</th><th>Model</th><th>Serial No.</th><th onclick="eqSort('mfr')" style="cursor:pointer;">Manufacturer</th><th>PPM Freq.</th><th style="min-width:105px;cursor:pointer;" onclick="eqSort('lastPPM')">Last PPM Date</th><th style="min-width:105px;cursor:pointer;" onclick="eqSort('nextPPM')">Next Due Date</th><th style="min-width:95px;">PPM Validity</th><th style="min-width:90px;">PPM By</th><th>Warranty</th><th style="min-width:80px;">Status</th><th>Docs</th><th style="min-width:80px;">Actions</th></tr></thead><!DOCTYPE html>
+<thead style="position:sticky;top:0;background:var(--sf);z-index:2;"><tr style="font-size:10px;"><th style="min-width:80px;cursor:pointer;" onclick="eqSort('asset')">Asset No.</th><th style="min-width:60px;cursor:pointer;" onclick="eqSort('inv')">Inv. No.</th><th style="min-width:160px;cursor:pointer;" onclick="eqSort('desc')">Equipment Description</th><th style="min-width:120px;cursor:pointer;" onclick="eqSort('dept')">Department</th><th style="min-width:90px;">Location</th><th style="min-width:90px;">Model No.</th><th style="min-width:110px;">Serial No.</th><th style="min-width:110px;cursor:pointer;" onclick="eqSort('mfr')">Manufacturer</th><th style="min-width:80px;">Installed</th><th style="min-width:90px;">Covered By</th><th style="min-width:70px;">PPM Freq.</th><th style="min-width:100px;cursor:pointer;" onclick="eqSort('lastPPM')">Last PPM Date</th><th style="min-width:100px;cursor:pointer;" onclick="eqSort('nextPPM')">Next Due Date</th><th style="min-width:100px;">PPM Validity</th><th style="min-width:90px;">PPM Performed By</th><th style="min-width:110px;cursor:pointer;" onclick="eqSort('warranty')">Warranty</th><th style="min-width:80px;cursor:pointer;" onclick="eqSort('status')">Status</th><th style="min-width:50px;">Docs</th><th style="min-width:80px;">Actions</th></tr></thead><!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -855,6 +855,7 @@ if ('caches' in window) {
   </div>
   <div class="tb" style="flex-wrap:wrap;">
     <button class="tbtn active" onclick="eqTab('inv',this)">📋 Inventory (1,848)</button>
+    <button class="tbtn" onclick="eqTab('upload',this)">📤 Upload Inventory</button>
     <button class="tbtn" onclick="eqTab('ppm',this)">🔧 Log PPM</button>
     <button class="tbtn" onclick="eqTab('add',this)">➕ Add Equipment</button>
     <button class="tbtn" onclick="eqTab('relocate',this)">🔄 Relocations</button>
@@ -967,6 +968,49 @@ if ('caches' in window) {
       <div style="padding:10px 14px;border-top:1px solid var(--bd);font-size:10px;color:var(--mu);">
         Showing first 200 results — use search/filters to narrow down
       </div>
+    </div>
+  </div>
+
+  <!-- ══ UPLOAD INVENTORY ══ -->
+  <div id="eq-upload" style="display:none;">
+    <div class="g g2">
+      <div class="card"><div class="ch"><div class="ct">📤 Upload Updated Inventory (Excel / CSV)</div></div><div class="cb">
+        <div style="border:2px dashed var(--b2);border-radius:11px;padding:28px;text-align:center;cursor:pointer;background:rgba(0,180,255,.03);" onclick="document.getElementById('inv-upload-file').click()" id="inv-upload-zone" ondragover="event.preventDefault();this.style.borderColor='var(--ac)'" ondragleave="this.style.borderColor='var(--b2)'" ondrop="event.preventDefault();this.style.borderColor='var(--b2)';invHandleDrop(event)">
+          <div style="font-size:36px;margin-bottom:8px;">📊</div>
+          <div style="font-size:13px;color:var(--tx);font-weight:600;">Drop your Excel or CSV inventory file here</div>
+          <div style="font-size:10px;color:var(--mu);margin-top:6px;">Supports .xlsx · .xls · .csv · Any column order</div>
+          <input type="file" id="inv-upload-file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="invReadFile(this)">
+          <div id="inv-upload-progress" style="margin-top:10px;font-size:11px;color:var(--mu);"></div>
+        </div>
+
+        <div id="inv-col-mapper" style="display:none;margin-top:16px;">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--or);margin-bottom:10px;">Map Your Columns</div>
+          <div style="font-size:10px;color:var(--mu);margin-bottom:10px;">Match your Excel headers to the inventory fields. Detected automatically — adjust if needed.</div>
+          <div id="inv-col-map-rows"></div>
+          <button class="btn bg" style="width:100%;margin-top:14px;" onclick="invImport()">✓ Import & Merge with Inventory</button>
+        </div>
+      </div></div>
+
+      <div class="card"><div class="ch"><div class="ct">📋 Required / Recommended Columns</div></div><div class="cb" style="padding:14px;">
+        <table class="tbl" style="font-size:10px;">
+          <thead><tr><th>Field</th><th>Examples of header names</th><th>Required?</th></tr></thead>
+          <tbody>
+            <tr><td style="color:var(--ac);font-weight:600;">Asset No.</td><td style="color:var(--mu);">Asset, Asset No, Tag, ID, Code</td><td><span style="color:var(--rd);">Yes</span></td></tr>
+            <tr><td style="color:var(--ac);font-weight:600;">Equipment Description</td><td style="color:var(--mu);">Description, Equipment, Name, Device</td><td><span style="color:var(--rd);">Yes</span></td></tr>
+            <tr><td>Inventory No.</td><td style="color:var(--mu);">Inventory, Inv No, Stock No</td><td style="color:var(--mu);">Optional</td></tr>
+            <tr><td>Department</td><td style="color:var(--mu);">Department, Dept, Ward, Unit</td><td style="color:var(--mu);">Optional</td></tr>
+            <tr><td>Location</td><td style="color:var(--mu);">Location, Room, Area, Placed at</td><td style="color:var(--mu);">Optional</td></tr>
+            <tr><td>Model No.</td><td style="color:var(--mu);">Model, Model No, Version</td><td style="color:var(--mu);">Optional</td></tr>
+            <tr><td>Serial No.</td><td style="color:var(--mu);">Serial, Serial No, S/N</td><td style="color:var(--mu);">Optional</td></tr>
+            <tr><td>Manufacturer</td><td style="color:var(--mu);">Manufacturer, Make, Brand, Vendor</td><td style="color:var(--mu);">Optional</td></tr>
+            <tr><td>Date Installed</td><td style="color:var(--mu);">Installed, Purchase Date, Acquired</td><td style="color:var(--mu);">Optional</td></tr>
+            <tr><td>PPM Frequency</td><td style="color:var(--mu);">PPM Freq, Frequency, Service Cycle</td><td style="color:var(--mu);">Optional</td></tr>
+            <tr><td>Last PPM Date</td><td style="color:var(--mu);">Last PPM, Last Service, Last Maint.</td><td style="color:var(--mu);">Optional</td></tr>
+            <tr><td>Warranty Status</td><td style="color:var(--mu);">Warranty, Warranty Status</td><td style="color:var(--mu);">Optional</td></tr>
+            <tr><td>Status</td><td style="color:var(--mu);">Status, Condition, Operational</td><td style="color:var(--mu);">Optional</td></tr>
+          </tbody>
+        </table>
+      </div></div>
     </div>
   </div>
 
@@ -4946,13 +4990,25 @@ function eqDecode(r) {
   const d = EQ_PAYLOAD.d;
   const dec = v => (typeof v === 'number') ? d[v] : (v || '');
   return {
-    asset:     dec(r[0]),  inv:       dec(r[1]),  name:      dec(r[2]),
-    dept:      dec(r[3]),  location:  dec(r[4]),  desc:      dec(r[5]),
-    model:     dec(r[6]),  serial:    dec(r[7]),  mfr:       dec(r[8]),
-    installed: dec(r[9]),  warranty:  dec(r[10]), ppmFreq:   dec(r[11]),
-    annualPPM: dec(r[12]), semiPPM:   dec(r[13]), remarks:   dec(r[14]),
-    status:    dec(r[15]), source:    dec(r[16]), supplier:  dec(r[17]),
-    coveredBy: dec(r[18])
+    asset:     dec(r[0]),   // Asset No. (e.g. 00-04)
+    inv:       dec(r[1]),   // Inventory No. (e.g. 0725)
+    name:      dec(r[2]),   // Asset code/label (e.g. ER-BED4-0004)
+    dept:      dec(r[3]),   // Department
+    location:  dec(r[4]),   // Location within dept
+    desc:      dec(r[5]),   // Equipment description (e.g. Patient Bed) ← main display name
+    model:     dec(r[6]),   // Model number
+    serial:    dec(r[7]),   // Serial number
+    mfr:       dec(r[8]),   // Manufacturer
+    installed: dec(r[9]),   // Installation date
+    warranty:  dec(r[10]),  // Warranty status
+    ppmFreq:   dec(r[11]),  // PPM frequency (Annual/Semi/X)
+    annualPPM: dec(r[12]),  // Annual PPM scheduled
+    semiPPM:   dec(r[13]),  // Semi-annual PPM scheduled
+    remarks:   dec(r[14]),  // Remarks/notes
+    status:    dec(r[15]),  // Status (Active/InActive)
+    source:    dec(r[16]),  // Source sheet
+    supplier:  dec(r[17]),  // Supplier
+    coveredBy: dec(r[18])   // Covered by (BIOMED/Contract)
   };
 }
 
@@ -4984,7 +5040,7 @@ function eqTab(tab, btn) {
   // IMPORTANT: Only hide the 5 top-level tab panel divs — NOT inner elements.
   // Using [id^="eq-"] would also hide eq-search, eq-dept-filter, eq-stats, etc.
   // which are CHILDREN of eq-inv and would remain hidden even when eq-inv is shown.
-  ['eq-inv','eq-ppm','eq-add','eq-relocate','eq-kpi'].forEach(id => {
+  ['eq-inv','eq-upload','eq-ppm','eq-add','eq-relocate','eq-kpi'].forEach(id => {
     const e = document.getElementById(id);
     if (e) e.style.display = 'none';
   });
@@ -5000,6 +5056,7 @@ function eqTab(tab, btn) {
     eqRender();
     setTimeout(eqCharts, 120);
   }
+  if (tab === 'upload')   { /* upload tab - no init needed */ }
   if (tab === 'ppm')      { eqBuildAssetDatalist(); renderLog('ppm'); }
   if (tab === 'add')      { renderEqAdded(); }
   if (tab === 'relocate') { renderRelocationLog(); }
@@ -5106,58 +5163,125 @@ function eqRender() {
   };
 
   tb.innerHTML = slice.map(r => {
-    const ov=getPPMData(r.asset)||{};
-    const lp=ov.lastPPM||r.lastPPM||'';
-    let np=ov.nextPPM||r.nextPPM||'';
-    if(!np&&lp&&r.ppmFreq){
-      const d=new Date(lp);
-      if(!isNaN(d)){
-        const f=(r.ppmFreq||'').toLowerCase();
-        if(/month|30d/i.test(f)) d.setMonth(d.getMonth()+1);
-        else if(/quarter|3.?month|90/i.test(f)) d.setMonth(d.getMonth()+3);
-        else if(/6.?month|semi|bi.?ann|180/i.test(f)) d.setMonth(d.getMonth()+6);
-        else if(/annual|year|12.?month/i.test(f)) d.setFullYear(d.getFullYear()+1);
-        else if(/2.?year/i.test(f)) d.setFullYear(d.getFullYear()+2);
-        np=d.toISOString().split('T')[0];
+    const ov = getPPMData(r.asset) || {};
+
+    // Dates: PPM override first, then base record
+    const lp = ov.lastPPM || r.lastPPM || '';
+    let   np = ov.nextPPM || r.nextPPM || '';
+
+    // Auto-calculate Next Due from Last PPM + Frequency
+    if (!np && lp && r.ppmFreq) {
+      const d = new Date(lp);
+      if (!isNaN(d)) {
+        const f = (r.ppmFreq || '').toLowerCase();
+        if      (/month|30d/i.test(f))                  d.setMonth(d.getMonth() + 1);
+        else if (/quarter|3.?month|90/i.test(f))        d.setMonth(d.getMonth() + 3);
+        else if (/6.?month|semi|bi.?ann|180/i.test(f))  d.setMonth(d.getMonth() + 6);
+        else if (/annual|year|12.?month/i.test(f))      d.setFullYear(d.getFullYear() + 1);
+        else if (/2.?year/i.test(f))                    d.setFullYear(d.getFullYear() + 2);
+        np = d.toISOString().split('T')[0];
       }
     }
-    let vb='<span style="font-size:9px;color:var(--mu);">—</span>';
-    if(np){
-      const t=new Date();t.setHours(0,0,0,0);
-      const diff=Math.ceil((new Date(np)-t)/864e5);
-      if(diff<0) vb='<div style="background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.35);border-radius:5px;padding:3px 6px;font-size:9px;font-weight:700;text-align:center;line-height:1.4;">🔴 EXPIRED<div style="font-size:8px;font-weight:400;">'+Math.abs(diff)+'d ago</div></div>';
-      else if(diff<=30) vb='<div style="background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.35);border-radius:5px;padding:3px 6px;font-size:9px;font-weight:700;text-align:center;line-height:1.4;">🟡 DUE SOON<div style="font-size:8px;font-weight:400;">in '+diff+'d</div></div>';
-      else vb='<div style="background:rgba(0,255,136,.1);color:#00d4aa;border:1px solid rgba(0,255,136,.25);border-radius:5px;padding:3px 6px;font-size:9px;font-weight:700;text-align:center;line-height:1.4;">✅ VALID<div style="font-size:8px;font-weight:400;">'+diff+'d left</div></div>';
+
+    // PPM Validity badge
+    let vb = '<span style="font-size:9px;color:var(--mu);">—</span>';
+    if (np) {
+      const today = new Date(); today.setHours(0,0,0,0);
+      const diff  = Math.ceil((new Date(np) - today) / 864e5);
+      if (diff < 0)
+        vb = '<div style="background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.35);border-radius:5px;padding:3px 6px;font-size:9px;font-weight:700;text-align:center;line-height:1.4;">🔴 EXPIRED<div style="font-size:8px;font-weight:400;">' + Math.abs(diff) + 'd ago</div></div>';
+      else if (diff <= 30)
+        vb = '<div style="background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.35);border-radius:5px;padding:3px 6px;font-size:9px;font-weight:700;text-align:center;line-height:1.4;">🟡 DUE SOON<div style="font-size:8px;font-weight:400;">in ' + diff + 'd</div></div>';
+      else
+        vb = '<div style="background:rgba(0,255,136,.1);color:#00d4aa;border:1px solid rgba(0,255,136,.25);border-radius:5px;padding:3px 6px;font-size:9px;font-weight:700;text-align:center;line-height:1.4;">✅ VALID<div style="font-size:8px;font-weight:400;">' + diff + 'd left</div></div>';
     }
-    const pb=ov.ppmBy||'';
-    const bc={'In-house':'#00d4aa','Manufacturer':'#818cf8','Contractor':'#f59e0b'}[pb]||'var(--mu)';
-    const byB=pb?('<span style="background:'+bc+'22;color:'+bc+';border:1px solid '+bc+'44;border-radius:4px;padding:2px 6px;font-size:9px;font-weight:600;">'+pb+'</span>'):'<span style="font-size:9px;color:var(--mu);">—</span>';
-    const st=ov.status||r.status||'Active';
-    const stB=st==='Active'?'<span style="color:#00d4aa;font-size:10px;font-weight:600;">✅ Active</span>':st==='Under Repair'?'<span style="color:#f59e0b;font-size:10px;font-weight:600;">🔧 Repair</span>':st==='Condemned'?'<span style="color:#888;font-size:10px;font-weight:600;">🗑 Condemned</span>':'<span style="color:#ef4444;font-size:10px;font-weight:600;">❌ OOS</span>';
-    const src=r.source==='medgas'?'<span style="font-size:8px;color:#10b981;"> Gas</span>':r.source==='outoforder'?'<span style="font-size:8px;color:#ef4444;"> OOS</span>':r.source==='added'?'<span style="font-size:8px;color:#f59e0b;"> +</span>':'';
-    const fk='eq_ppm_'+r.asset;const fc=fsGetFiles(fk).length;
-    const escDesc=(r.desc||r.asset||'').replace(/'/g,'');
-    const escAsset=(r.asset||'').replace(/'/g,'');
-    const escDept=(r.dept||'').replace(/'/g,'');
-    const dB=fc>0?('<button class="btn bb" style="font-size:9px;padding:2px 7px;" onclick="showFilesModal(\''+fk+'\',\''+escDesc+'\')">📎 '+fc+'</button>'):('<button class="btn bo" style="font-size:9px;padding:2px 6px;" onclick="openEqEdit(\''+escAsset+'\')">+Doc</button>');
+
+    // PPM By badge
+    const pb  = ov.ppmBy || '';
+    const pbc = {'In-house':'#00d4aa','Manufacturer':'#818cf8','Contractor':'#f59e0b'}[pb] || 'var(--mu)';
+    const byB = pb
+      ? '<span style="background:' + pbc + '22;color:' + pbc + ';border:1px solid ' + pbc + '44;border-radius:4px;padding:2px 6px;font-size:9px;font-weight:600;">' + pb + '</span>'
+      : '<span style="font-size:9px;color:var(--mu);">—</span>';
+
+    // Status badge
+    const st  = ov.status || r.status || 'Active';
+    const stB = st === 'Active'
+      ? '<span style="color:#00d4aa;font-size:10px;font-weight:600;">✅ Active</span>'
+      : st === 'Under Repair'
+      ? '<span style="color:#f59e0b;font-size:10px;font-weight:600;">🔧 Repair</span>'
+      : st === 'Condemned'
+      ? '<span style="color:#888;font-size:10px;font-weight:600;">🗑 Condemned</span>'
+      : '<span style="color:#ef4444;font-size:10px;font-weight:600;">❌ OOS</span>';
+
+    // Warranty badge
+    const wt = r.warranty || '—';
+    const wtC = /under.?warrant/i.test(wt) ? '#00d4aa' : /contract/i.test(wt) ? '#818cf8' : 'var(--mu)';
+
+    // Source indicator (only for non-standard sources)
+    const src = r.source === 'medgas'     ? ' <sup style="color:#10b981;font-size:8px;">Gas</sup>'
+              : r.source === 'outoforder' ? ' <sup style="color:#ef4444;font-size:8px;">OOS</sup>'
+              : r.source === 'added'      ? ' <sup style="color:#f59e0b;font-size:8px;">New</sup>' : '';
+
+    // coveredBy display
+    const cb = r.coveredBy || '—';
+    const cbC = /biomed/i.test(cb) ? '#818cf8' : /contract/i.test(cb) ? '#f59e0b' : 'var(--mu)';
+
+    // Docs button
+    const fk  = 'eq_ppm_' + r.asset;
+    const fc  = fsGetFiles(fk).length;
+    const escD = (r.desc || r.asset || '').replace(/'/g, '');
+    const escA = (r.asset  || '').replace(/'/g, '');
+    const escDp= (r.dept   || '').replace(/'/g, '');
+    const dB  = fc > 0
+      ? '<button class="btn bb" style="font-size:9px;padding:2px 7px;" onclick="showFilesModal(\'' + fk + '\',\'' + escD + '\')">📎 ' + fc + '</button>'
+      : '<button class="btn bo" style="font-size:9px;padding:2px 5px;" onclick="openEqEdit(\'' + escA + '\')" title="Upload PPM report">+</button>';
+
+    // PPM frequency display (replace 'X' with proper label)
+    const pf = r.ppmFreq && r.ppmFreq !== 'X' && r.ppmFreq !== 'x' && r.ppmFreq !== '' ? r.ppmFreq : '—';
+
     return '<tr>'
-      +'<td style="font-family:\'Rajdhani\',sans-serif;font-weight:700;color:var(--ac);font-size:12px;white-space:nowrap;">'+(r.asset||'—')+src+'</td>'
-      +'<td style="font-weight:600;font-size:11px;">'+(r.desc||'—')+'</td>'
-      +'<td style="font-size:11px;">'+(r.dept||'—')+'</td>'
-      +'<td style="font-size:10px;color:var(--mu);">'+(r.location||'—')+'</td>'
-      +'<td style="font-size:10px;">'+(r.model||'—')+'</td>'
-      +'<td style="font-size:10px;color:var(--mu);">'+(r.serial||'—')+'</td>'
-      +'<td style="font-size:11px;">'+(r.mfr||'—')+'</td>'
-      +'<td style="font-size:10px;text-align:center;">'+(r.ppmFreq||'—')+'</td>'
-      +'<td style="font-size:10px;color:'+(lp?'var(--tx)':'var(--mu)')+';">'+(lp||'—')+'</td>'
-      +'<td style="font-size:10px;color:'+(np?'var(--tx)':'var(--mu)')+';">'+(np||'—')+'</td>'
-      +'<td>'+vb+'</td>'
-      +'<td>'+byB+'</td>'
-      +'<td style="font-size:10px;color:var(--mu);white-space:nowrap;">'+(r.warranty||'—')+'</td>'
-      +'<td>'+stB+'</td>'
-      +'<td style="text-align:center;">'+dB+'</td>'
-      +'<td style="white-space:nowrap;"><button class="btn bo" style="font-size:9px;padding:2px 5px;" title="Relocate" onclick="openRelocation(\''+escAsset+'\',\''+escDept+'\',\''+escDesc+'\')">🔄</button> <button class="btn bp" style="font-size:9px;padding:2px 5px;" title="Edit PPM" onclick="openEqEdit(\''+escAsset+'\')">✏</button></td>'
-      +'</tr>';
+      // Col 1: Asset No.
+      + '<td style="font-family:\'Rajdhani\',sans-serif;font-weight:700;color:var(--ac);font-size:12px;white-space:nowrap;">' + (r.asset || '—') + src + '</td>'
+      // Col 2: Inv. No.
+      + '<td style="font-size:10px;color:var(--mu);">' + (r.inv || '—') + '</td>'
+      // Col 3: Equipment Description
+      + '<td style="font-weight:600;font-size:11px;min-width:140px;">' + (r.desc || '—') + '</td>'
+      // Col 4: Department
+      + '<td style="font-size:11px;">' + (r.dept || '—') + '</td>'
+      // Col 5: Location
+      + '<td style="font-size:10px;color:var(--mu);">' + (r.location || '—') + '</td>'
+      // Col 6: Model No.
+      + '<td style="font-size:10px;">' + (r.model || '—') + '</td>'
+      // Col 7: Serial No.
+      + '<td style="font-size:10px;color:var(--mu);">' + (r.serial || '—') + '</td>'
+      // Col 8: Manufacturer
+      + '<td style="font-size:11px;">' + (r.mfr || '—') + '</td>'
+      // Col 9: Installed
+      + '<td style="font-size:10px;color:var(--mu);">' + (r.installed || '—') + '</td>'
+      // Col 10: Covered By
+      + '<td style="font-size:10px;color:' + cbC + ';font-weight:600;">' + cb + '</td>'
+      // Col 11: PPM Freq.
+      + '<td style="font-size:10px;text-align:center;">' + pf + '</td>'
+      // Col 12: Last PPM Date
+      + '<td style="font-size:10px;color:' + (lp ? 'var(--tx)' : 'var(--mu)') + ';">' + (lp || '—') + '</td>'
+      // Col 13: Next Due Date
+      + '<td style="font-size:10px;color:' + (np ? 'var(--tx)' : 'var(--mu)') + ';">' + (np || '—') + '</td>'
+      // Col 14: PPM Validity
+      + '<td>' + vb + '</td>'
+      // Col 15: PPM Performed By
+      + '<td>' + byB + '</td>'
+      // Col 16: Warranty
+      + '<td style="font-size:10px;color:' + wtC + ';white-space:nowrap;">' + wt + '</td>'
+      // Col 17: Status
+      + '<td>' + stB + '</td>'
+      // Col 18: Docs
+      + '<td style="text-align:center;">' + dB + '</td>'
+      // Col 19: Actions
+      + '<td style="white-space:nowrap;">'
+        + '<button class="btn bo" style="font-size:9px;padding:2px 5px;" title="Relocate" onclick="openRelocation(\'' + escA + '\',\'' + escDp + '\',\'' + escD + '\')">🔄</button>'
+        + ' <button class="btn bp" style="font-size:9px;padding:2px 5px;" title="Edit PPM / Update" onclick="openEqEdit(\'' + escA + '\')">✏ Edit</button>'
+      + '</td>'
+      + '</tr>';
   }).join('');
 }
 
@@ -7081,6 +7205,155 @@ function exportDeptList() {
 
 
 function sbHide(){const s=document.getElementById("main-sidebar"),m=document.querySelector(".main");if(s)s.classList.add("sb-hidden");if(m)m.style.marginLeft="8px";}function sbShow(){const s=document.getElementById("main-sidebar"),m=document.querySelector(".main");if(s)s.classList.remove("sb-hidden");if(m)m.style.marginLeft="var(--sb)";}window.addEventListener("load",sbShow);
+
+// ── INVENTORY UPLOAD ──
+function invHandleDrop(e) {
+  const f = e.dataTransfer?.files?.[0];
+  if (f) { document.getElementById('inv-upload-file').files; invProcessFile(f); }
+}
+function invReadFile(input) {
+  if (input.files?.[0]) invProcessFile(input.files[0]);
+}
+function invProcessFile(file) {
+  const prog = document.getElementById('inv-upload-progress');
+  if (prog) prog.textContent = '⟳ Reading ' + file.name + '...';
+  const ext = file.name.split('.').pop().toLowerCase();
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      let headers = [], rows = [];
+      if (ext === 'csv') {
+        const lines = e.target.result.split('\n').filter(l=>l.trim());
+        headers = invParseCSVLine(lines[0]);
+        rows = lines.slice(1).map(invParseCSVLine).filter(r=>r.some(c=>c.trim()));
+      } else if (typeof XLSX !== 'undefined') {
+        const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array',cellDates:true});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        // Find first non-empty row as header
+        let hi = 0;
+        for (let i=0;i<Math.min(5,data.length);i++) { if(data[i].some(c=>c!=='')){hi=i;break;} }
+        headers = data[hi].map(h=>String(h||'').trim());
+        rows = data.slice(hi+1).filter(r=>r.some(c=>c!=='')).map(r=>r.map(c=>{
+          if(c instanceof Date) return c.toISOString().split('T')[0];
+          return c===null||c===undefined?'':String(c).trim();
+        }));
+      } else {
+        toast('SheetJS not loaded — please use CSV format','#f59e0b'); return;
+      }
+      if (prog) prog.textContent = '✅ Loaded ' + rows.length + ' rows · ' + headers.length + ' columns — confirm mapping below';
+      invBuildMapper(headers, rows);
+    } catch(err) {
+      if (prog) prog.textContent = '❌ Error: ' + err.message;
+    }
+  };
+  if (ext==='csv') reader.readAsText(file); else reader.readAsArrayBuffer(file);
+}
+function invParseCSVLine(line) {
+  const cells=[]; let cell='',inQ=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(ch==='"'){inQ=!inQ;}
+    else if(ch===','&&!inQ){cells.push(cell.trim());cell='';}
+    else cell+=ch;
+  }
+  cells.push(cell.trim()); return cells;
+}
+
+let INV_RAW_HEADERS=[], INV_RAW_ROWS=[];
+const INV_FIELD_MAP = [
+  {key:'asset',  label:'Asset No.',           kw:['asset','asset no','tag','id','code','bio id']},
+  {key:'desc',   label:'Equipment Description',kw:['description','equipment','name','device','item']},
+  {key:'inv',    label:'Inventory No.',         kw:['inventory','inv no','stock']},
+  {key:'dept',   label:'Department',            kw:['department','dept','ward','unit','area']},
+  {key:'location',label:'Location',             kw:['location','room','placed','installed at']},
+  {key:'model',  label:'Model No.',             kw:['model','model no','version']},
+  {key:'serial', label:'Serial No.',            kw:['serial','serial no','s/n','s.n']},
+  {key:'mfr',    label:'Manufacturer',          kw:['manufacturer','make','brand','vendor','mfr']},
+  {key:'installed',label:'Date Installed',      kw:['installed','purchase','acquired','commissioning']},
+  {key:'ppmFreq',label:'PPM Frequency',         kw:['ppm freq','frequency','service cycle','pm freq']},
+  {key:'lastPPM',label:'Last PPM Date',         kw:['last ppm','last service','last maint','last pm','last done']},
+  {key:'nextPPM',label:'Next Due Date',         kw:['next ppm','next service','due date','next due']},
+  {key:'warranty',label:'Warranty Status',      kw:['warranty','warranty status']},
+  {key:'status', label:'Status',                kw:['status','condition','operational']},
+  {key:'remarks',label:'Remarks',               kw:['remarks','notes','comments']},
+];
+function invBuildMapper(headers, rows) {
+  INV_RAW_HEADERS = headers; INV_RAW_ROWS = rows;
+  const norm = headers.map(h=>h.toLowerCase().replace(/[^a-z0-9 ]/g,' ').trim());
+  const mapper = document.getElementById('inv-col-map-rows');
+  const container = document.getElementById('inv-col-mapper');
+  if (!mapper||!container) return;
+  container.style.display='block';
+  mapper.innerHTML = INV_FIELD_MAP.map(def=>{
+    let bestIdx=-1,bestScore=0;
+    norm.forEach((h,i)=>{
+      def.kw.forEach(kw=>{ if(h===kw&&bestScore<100){bestIdx=i;bestScore=100;} else if(h.includes(kw)&&bestScore<70){bestIdx=i;bestScore=70;} });
+    });
+    const opts = ['<option value="-1">— Skip —</option>',...headers.map((h,i)=>`<option value="${i}"${i===bestIdx?' selected':''}>${h||'Col '+(i+1)}</option>`)].join('');
+    const det = bestIdx>=0?'<span style="font-size:9px;color:var(--gn);margin-left:4px;">✓ Detected</span>':'';
+    return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid rgba(0,180,255,.06);">
+      <div style="font-size:11px;font-weight:600;">${def.label}${det}</div>
+      <select id="imap-${def.key}" style="background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:5px 8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:10px;outline:none;">${opts}</select>
+    </div>`;
+  }).join('');
+}
+function invImport() {
+  const get = key => { const s=document.getElementById('imap-'+key); return s?parseInt(s.value):-1; };
+  const assetIdx = get('asset');
+  if (assetIdx<0) { toast('Map the Asset No. column first','#f59e0b'); return; }
+  
+  let added=0, updated=0;
+  const existing = ld('eq_added');
+  const existingAssets = new Set(existing.map(r=>r.asset));
+  const existingInPayload = new Set(eqAll().map(r=>r.asset));
+
+  INV_RAW_ROWS.forEach(row => {
+    const g = idx => idx>=0&&idx<row.length ? String(row[idx]||'').trim() : '';
+    const asset = g(assetIdx); if(!asset) return;
+    
+    const rec = {
+      asset, inv:g(get('inv')), desc:g(get('desc')), dept:g(get('dept')),
+      location:g(get('location')), model:g(get('model')), serial:g(get('serial')),
+      mfr:g(get('mfr')), installed:g(get('installed')), ppmFreq:g(get('ppmFreq')),
+      lastPPM:g(get('lastPPM')), nextPPM:g(get('nextPPM')),
+      warranty:g(get('warranty')), status:g(get('status'))||'Active',
+      remarks:g(get('remarks')), source:'added', _by:CU.name, _ts:new Date().toISOString(),
+      _id: Date.now()+Math.random()
+    };
+
+    // Update PPM override if dates provided
+    if (rec.lastPPM || rec.nextPPM) {
+      const ov = getPPMOverrides();
+      if (!ov[asset]) ov[asset] = {};
+      if (rec.lastPPM) ov[asset].lastPPM = rec.lastPPM;
+      if (rec.nextPPM) ov[asset].nextPPM = rec.nextPPM;
+      ov[asset].updatedBy = CU.name; ov[asset].updatedAt = new Date().toISOString();
+      savePPMOverrides(ov);
+    }
+
+    if (!existingInPayload.has(asset)) {
+      if (existingAssets.has(asset)) {
+        // Update existing manual record
+        const idx = existing.findIndex(r=>r.asset===asset);
+        if (idx>=0) { Object.assign(existing[idx], rec); updated++; }
+      } else {
+        existing.push(rec); added++;
+      }
+    } else {
+      // Asset is in base payload — just update PPM override (done above)
+      updated++;
+    }
+  });
+
+  sv('eq_added', existing);
+  EQ_ALL = null;
+  document.getElementById('inv-col-mapper').style.display='none';
+  const prog = document.getElementById('inv-upload-progress');
+  if (prog) prog.textContent = '✅ Done — ' + added + ' new records added, ' + updated + ' updated';
+  toast('✅ Inventory updated: ' + added + ' added, ' + updated + ' updated');
+}
+
 </script>
 </body>
 </html>
