@@ -3,25 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <script>
-// CACHE BUSTER - runs before anything else
+// CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260519-0611';
-  var stored = sessionStorage.getItem('_fms_v');
-  // Clear all caches
+  var v = '20260519-0820';
+  var url = window.location.href;
+  // If no version param, redirect to versioned URL (100% cache bypass)
+  if (url.indexOf('?v=') === -1 && url.indexOf('&v=') === -1) {
+    var sep = url.indexOf('?') === -1 ? '?' : '&';
+    window.location.replace(url + sep + 'v=' + v);
+    return; // stop loading old content
+  }
+  // Clear service workers and caches
   if (window.caches) {
-    caches.keys().then(function(keys){ keys.forEach(function(k){ caches.delete(k); }); });
+    caches.keys().then(function(k){ k.forEach(function(n){ caches.delete(n); }); });
   }
-  if (window.navigator && window.navigator.serviceWorker) {
-    navigator.serviceWorker.getRegistrations().then(function(regs){
-      regs.forEach(function(r){ r.unregister(); });
-    });
-  }
-  // Force reload if version changed
-  if (stored && stored !== v) {
-    sessionStorage.setItem('_fms_v', v);
-    window.location.reload(true);
-  } else {
-    sessionStorage.setItem('_fms_v', v);
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.getRegistrations().then(function(r){ r.forEach(function(s){ s.unregister(); }); });
   }
 })();
 </script>
@@ -6764,8 +6761,8 @@ function invParseCSVLine(line) {
   cells.push(cell.trim()); return cells;
 }
 
-let INV_RAW_HEADERS=[], INV_RAW_ROWS=[];
-const INV_FIELD_MAP = [
+let _INVH=[], _INVR=[];
+const _INVM = [
   {key:'asset',  label:'Asset No.',           kw:['asset','asset no','tag','id','code','bio id']},
   {key:'desc',   label:'Equipment Description',kw:['description','equipment','name','device','item']},
   {key:'inv',    label:'Inventory No.',         kw:['inventory','inv no','stock']},
@@ -6783,13 +6780,13 @@ const INV_FIELD_MAP = [
   {key:'remarks',label:'Remarks',               kw:['remarks','notes','comments']},
 ];
 function invBuildMapper(headers, rows) {
-  INV_RAW_HEADERS = headers; INV_RAW_ROWS = rows;
+  _INVH = headers; _INVR = rows;
   const norm = headers.map(h=>h.toLowerCase().replace(/[^a-z0-9 ]/g,' ').trim());
   const mapper = document.getElementById('inv-col-map-rows');
   const container = document.getElementById('inv-col-mapper');
   if (!mapper||!container) return;
   container.style.display='block';
-  mapper.innerHTML = INV_FIELD_MAP.map(def=>{
+  mapper.innerHTML = _INVM.map(def=>{
     let bestIdx=-1,bestScore=0;
     norm.forEach((h,i)=>{
       def.kw.forEach(kw=>{ if(h===kw&&bestScore<100){bestIdx=i;bestScore=100;} else if(h.includes(kw)&&bestScore<70){bestIdx=i;bestScore=70;} });
@@ -6812,7 +6809,7 @@ function invImport() {
   const existingAssets = new Set(existing.map(r=>r.asset));
   const existingInPayload = new Set(eqAll().map(r=>r.asset));
 
-  INV_RAW_ROWS.forEach(row => {
+  _INVR.forEach(row => {
     const g = idx => idx>=0&&idx<row.length ? String(row[idx]||'').trim() : '';
     const asset = g(assetIdx); if(!asset) return;
     
