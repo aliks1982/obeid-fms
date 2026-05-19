@@ -248,14 +248,11 @@ if ('caches' in window) {
   <div class="lf"><label>Full Name</label><input id="lname" type="text" placeholder="Enter your full name"></div>
   <div class="lf"><label>PIN</label><input id="lpin" type="password" placeholder="4-digit PIN" maxlength="4"></div>
   <button class="lbtn" onclick="doLogin()">ACCESS PLATFORM →</button>
-  <div class="lerr" id="lerr"></div>
-  <div class="pin-grid">
-    <div class="pr">FMS Director: <b>1234</b></div>
-    <div class="pr">Mostapha (Maint.): <b>2222</b></div>
-    <div class="pr">Bashar (Biomed): <b>3333</b></div>
-    <div class="pr">Moe (Safety): <b>4444</b></div>
-    <div class="pr">Bader (Security): <b>5555</b></div>
+  <div style="margin-top:12px;font-size:10px;color:rgba(255,255,255,.35);text-align:center;">
+    Forgot your PIN? Contact the FMS Director.
   </div>
+  <div class="lerr" id="lerr"></div>
+
 </div>
 </div>
 
@@ -914,6 +911,7 @@ if ('caches' in window) {
             <option value="Under Contract">Under Contract</option>
           </select>
           <span id="eq-count" style="font-size:10px;color:var(--mu);white-space:nowrap;"></span>
+          <button class="btn bg" style="padding:5px 14px;font-size:10px;white-space:nowrap;" onclick="exportDeptList()">📥 Export Dept List</button>
         </div>
       </div>
     </div>
@@ -952,11 +950,14 @@ if ('caches' in window) {
                 <th>Installed</th>
                 <th>Warranty</th>
                 <th>PPM Freq.</th>
-                <th>Annual PPM</th>
-                <th>Semi PPM</th>
+                <th class="sort-th" onclick="eqSort('lastPPM')" style="cursor:pointer;">Last PPM ↕</th>
+                <th class="sort-th" onclick="eqSort('nextPPM')" style="cursor:pointer;">Next Due ↕</th>
+                <th>PPM Status</th>
+                <th>PPM By</th>
                 <th>Status</th>
-                <th>Remarks</th>
+                <th>Notes</th>
                 <th>Move</th>
+                <th>Edit</th>
               </tr>
             </thead>
             <tbody id="eq-tbody"></tbody>
@@ -2061,26 +2062,47 @@ if ('caches' in window) {
     <!-- Edit User (Director only) -->
     <div class="card director-settings-only"><div class="ch"><div class="ct">✏️ Edit User / Change PIN</div></div><div class="cb">
       <div class="fg fg2">
-        <div class="ff"><label>Select User</label>
-          <select id="set-role" onchange="settingsLoadUser()">
-            <option value="director">FMS Director</option>
-            <option value="maintenance">Maintenance Manager — Mostapha</option>
-            <option value="biomedical">Biomedical Engineer — Bashar</option>
-            <option value="safety">Safety Officer — Moe</option>
-            <option value="security">Security Manager — Bader</option>
+        <div class="ff" style="grid-column:1/-1"><label>Select User to Edit</label>
+          <select id="set-role" onchange="settingsLoadUser()" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px 12px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;">
           </select>
         </div>
         <div class="ff"><label>Display Name</label>
           <input type="text" id="set-name" placeholder="Full name">
         </div>
-        <div class="ff"><label>New PIN (4 digits)</label>
-          <input type="password" id="set-pin" maxlength="4" placeholder="Leave blank to keep current">
+        <div class="ff"><label>New PIN (4–8 digits)</label>
+          <input type="password" id="set-pin" maxlength="8" placeholder="Leave blank to keep current PIN">
         </div>
-        <div class="ff"><label>Confirm PIN</label>
-          <input type="password" id="set-pin2" maxlength="4" placeholder="Repeat new PIN">
+        <div class="ff"><label>Confirm New PIN</label>
+          <input type="password" id="set-pin2" maxlength="8" placeholder="Repeat new PIN">
         </div>
       </div>
       <button class="btn bg" style="width:100%;margin-top:12px;" onclick="settingsSaveUser()">✓ Save Changes</button>
+    </div></div>
+
+    <!-- Add New User (Director only) -->
+    <div class="card director-settings-only"><div class="ch"><div class="ct">➕ Add New User</div></div><div class="cb">
+      <div style="font-size:10px;color:var(--mu);margin-bottom:12px;">Add additional staff members. They will inherit the access level of the selected template role.</div>
+      <div class="fg fg2">
+        <div class="ff"><label>Role ID (unique, no spaces)</label>
+          <input type="text" id="new-user-role" placeholder="e.g. maintenance2 or safety_deputy">
+          <div class="ht">Used internally — short, lowercase, no spaces</div>
+        </div>
+        <div class="ff"><label>Display Name / Title</label>
+          <input type="text" id="new-user-label" placeholder="e.g. Maintenance Deputy — Ahmad">
+        </div>
+        <div class="ff"><label>Access Level Template</label>
+          <select id="new-user-access" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px 12px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;width:100%;">
+            <option value="maintenance">Maintenance (same access as Mostapha)</option>
+            <option value="biomedical">Biomedical (same access as Bashar)</option>
+            <option value="safety">Safety (same access as Moe)</option>
+            <option value="security">Security (same access as Bader)</option>
+          </select>
+        </div>
+        <div class="ff"><label>Initial PIN (4–8 digits)</label>
+          <input type="password" id="new-user-pin" maxlength="8" placeholder="Set their PIN">
+        </div>
+      </div>
+      <button class="btn bp" style="width:100%;margin-top:12px;" onclick="settingsAddUser()">➕ Add User</button>
     </div></div>
   </div>
 
@@ -2165,6 +2187,86 @@ if ('caches' in window) {
   <div class="mb" id="files-modal-list" style="max-height:450px;overflow-y:auto;"></div>
   </div>
 </div>
+
+<!-- Equipment Edit / PPM Modal -->
+<div class="mov" id="mod-eq-edit">
+  <div class="mbox" style="max-width:580px;"><div class="mh">
+    <div class="mt">✏️ Edit Equipment — <span id="eq-edit-asset" style="color:var(--ac);"></span></div>
+    <button class="mc" onclick="closeMod('eq-edit')">✕</button>
+  </div>
+  <div class="mb" style="max-height:75vh;overflow-y:auto;">
+    <!-- Hidden asset field used by JS -->
+    <input type="hidden" id="eq-edit-asset">
+    <div class="fg fg2" style="margin-bottom:14px;">
+      <div class="ff" style="grid-column:1/-1">
+        <label style="font-size:10px;color:var(--mu);">Equipment</label>
+        <div id="eq-edit-name" style="font-size:13px;font-weight:600;color:var(--tx);padding:6px 0;"></div>
+      </div>
+      <div class="ff">
+        <label>Department</label>
+        <div id="eq-edit-dept" style="font-size:11px;color:var(--mu);padding:4px 0;"></div>
+      </div>
+      <div class="ff">
+        <label>Current Status</label>
+        <select id="eq-edit-status" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:7px 10px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+          <option value="Active">✅ Active / Operational</option>
+          <option value="InActive">❌ Out of Order</option>
+          <option value="Under Repair">🔧 Under Repair</option>
+          <option value="Condemned">🗑 Condemned</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- PPM Section -->
+    <div style="background:rgba(0,180,255,.05);border:1px solid rgba(0,180,255,.15);border-radius:9px;padding:14px;margin-bottom:14px;">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:var(--ac);margin-bottom:12px;">🔧 PPM Record</div>
+      <div class="fg fg2">
+        <div class="ff">
+          <label>Last PPM Performed</label>
+          <input type="date" id="eq-edit-last-ppm">
+        </div>
+        <div class="ff">
+          <label>Next PPM Due Date</label>
+          <input type="date" id="eq-edit-next-ppm">
+        </div>
+        <div class="ff">
+          <label>PPM Type</label>
+          <select id="eq-edit-ppm-type" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:7px 10px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+            <option>Annual PPM</option>
+            <option>Semi-Annual PPM</option>
+            <option>Corrective Maintenance</option>
+            <option>Calibration</option>
+            <option>Safety Inspection</option>
+          </select>
+        </div>
+        <div class="ff">
+          <label>PPM Performed By</label>
+          <select id="eq-edit-ppm-by" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:7px 10px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+            <option value="In-house">In-house (Biomedical)</option>
+            <option value="Manufacturer">Manufacturer</option>
+            <option value="Contractor">Contractor</option>
+          </select>
+        </div>
+        <div class="ff" style="grid-column:1/-1">
+          <label>Notes / Findings</label>
+          <textarea id="eq-edit-notes" style="min-height:60px;" placeholder="PPM findings, parts replaced, calibration values, observations..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upload PPM Report -->
+    <div style="background:rgba(0,255,136,.04);border:1px solid rgba(0,255,136,.15);border-radius:9px;padding:14px;margin-bottom:14px;">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:var(--gn);margin-bottom:10px;">📎 PPM Reports / Certificates</div>
+      <div id="eq-edit-files-list" style="margin-bottom:10px;"></div>
+      <input type="file" id="eq-edit-report" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+        style="font-size:10px;color:var(--mu);">
+      <div style="font-size:9px;color:var(--mu);margin-top:4px;">Upload PPM completion reports, calibration certificates, service records</div>
+    </div>
+
+    <button class="btn bg" style="width:100%;padding:12px;" onclick="saveEqEdit()">✓ Save Equipment Record</button>
+  </div></div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -2545,19 +2647,7 @@ const PINS={director:'1234',maintenance:'2222',biomedical:'3333',safety:'4444',s
 const RLBL={director:'FMS Director',maintenance:'Maintenance Mgr',biomedical:'Biomedical Eng.',safety:'Safety Officer',security:'Security Mgr'};
 let CU={};
 
-function doLogin(){
-  const role=document.getElementById('lr').value,name=document.getElementById('lname').value.trim(),pin=document.getElementById('lpin').value.trim(),err=document.getElementById('lerr');
-  err.textContent='';
-  if(!role||!name||!pin){err.textContent='Please fill all fields';return;}
-  if(PINS[role]!==pin){err.textContent='Incorrect PIN for this role';return;}
-  CU={name,role,rl:RLBL[role],ab:name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)};
-  document.getElementById('sbAv').textContent=CU.ab;
-  document.getElementById('sbName').textContent=CU.name;
-  document.getElementById('sbRole').textContent=CU.rl;
-  document.getElementById('loginScreen').style.display='none';
-  document.getElementById('app').style.display='block';
-  init();
-}
+// doLogin defined below with dynamic PINs
 function hardReload() {
   if (confirm('Reload platform to get the latest version? Your data is safe.')) {
     // Clear browser cache for this page and reload
@@ -5027,11 +5117,14 @@ function eqRender() {
     <td style="font-size:10px;color:var(--mu);">${r.installed||'—'}</td>
     <td style="font-size:10px;white-space:nowrap;">${r.warranty||'—'}</td>
     <td style="font-size:10px;">${r.ppmFreq||'—'}</td>
-    <td>${ppmBadge(r.annualPPM)}</td>
-    <td>${ppmBadge(r.semiPPM)}</td>
+
     <td>${statusBadge(r.status)}</td>
-    <td style="font-size:9px;color:var(--mu);max-width:180px;" title="${r.remarks||''}">${(r.remarks||'').slice(0,40)}${r.remarks&&r.remarks.length>40?'…':''}</td>
-    <td><button class="btn bo" style="font-size:9px;padding:2px 7px;white-space:nowrap;" onclick="openRelocation('${r.asset}','${r.dept}','${r.desc}')">🔄</button></td>
+    <td>${ppmStatusBadge(r)}</td>
+    <td>${ppmByBadge(r)}</td>
+    <td>${statusBadge(r.status)}</td>
+    <td style="font-size:9px;color:var(--mu);max-width:120px;" title="${r.remarks||''}">${(r.remarks||'').slice(0,30)}${r.remarks&&r.remarks.length>30?'…':''}</td>
+    <td><button class="btn bo" style="font-size:9px;padding:2px 6px;" onclick="openRelocation('${r.asset}','${r.dept}','${r.desc}')">🔄</button></td>
+    <td><button class="btn bp" style="font-size:9px;padding:2px 7px;white-space:nowrap;" onclick="openEqEdit('${r.asset}')">✏ Edit</button></td>
   </tr>`).join('');
 }
 
@@ -5303,6 +5396,142 @@ function copyDBUrl() {
     document.execCommand('copy'); document.body.removeChild(el);
     toast('✓ DB URL copied');
   });
+}
+
+function settingsUpdateQueueCount() {
+  const el = document.getElementById('db-queue-count');
+  if (el) el.textContent = JSON.parse(localStorage.getItem('obeid_sync_queue')||'[]').length;
+  const input = document.getElementById('db-url-input');
+  if (input) input.value = getDBUrl() || '';
+  const display = document.getElementById('db-url-display');
+  if (display) display.textContent = getDBUrl() || 'Not connected — paste URL above and click Connect';
+}
+
+function getDynUsers() {
+  const defaults = [
+    {role:'director',    label:'FMS Director',         defaultName:'Director', access:'Full Access',                         custom:false},
+    {role:'maintenance', label:'Maintenance Manager',  defaultName:'Mostapha', access:'Maintenance · MMS · Utilities · Fire',custom:false},
+    {role:'biomedical',  label:'Biomedical Engineer',  defaultName:'Bashar',   access:'Equipment · Medical Gas · Radiation', custom:false},
+    {role:'safety',      label:'Safety Officer',       defaultName:'Moe',      access:'Safety · Hazmat · Emergency · Fire',  custom:false},
+    {role:'security',    label:'Security Manager',     defaultName:'Bader',    access:'Security',                            custom:false},
+  ];
+  try {
+    const extra = JSON.parse(localStorage.getItem('obeid_extra_users')||'[]');
+    return [...defaults, ...extra];
+  } catch(e) { return defaults; }
+}
+
+function settingsRenderUsers() {
+  const tb = document.getElementById('users-tb'); if (!tb) return;
+  const pins  = getDynPINs();
+  const names = getDynNames();
+  const users = getDynUsers();
+  // Populate edit dropdown
+  const sel = document.getElementById('set-role');
+  if (sel) {
+    sel.innerHTML = users.map(u =>
+      `<option value="${u.role}">${u.label} — ${names[u.role]||u.defaultName}</option>`
+    ).join('');
+  }
+  tb.innerHTML = users.map(u => `<tr>
+    <td style="font-weight:600;">${u.label}</td>
+    <td>${names[u.role]||u.defaultName||'—'}</td>
+    <td style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--ac);">••••</td>
+    <td style="font-size:10px;color:var(--mu);">${u.access}</td>
+    <td>
+      <button class="btn bo" style="font-size:9px;padding:3px 8px;" onclick="settingsEditUser('${u.role}')">✏ Edit</button>
+      ${u.custom ? `<button class="btn br" style="font-size:9px;padding:3px 6px;margin-left:3px;" onclick="settingsDeleteUser('${u.role}')">✕</button>` : ''}
+    </td>
+  </tr>`).join('');
+}
+
+function settingsEditUser(role) {
+  const sel = document.getElementById('set-role');
+  if (sel) sel.value = role;
+  settingsLoadUser();
+}
+
+function settingsLoadUser() {
+  const role  = document.getElementById('set-role')?.value;
+  const names = getDynNames();
+  const nameEl = document.getElementById('set-name');
+  if (nameEl) nameEl.value = names[role] || '';
+  const p1 = document.getElementById('set-pin');  if(p1) p1.value='';
+  const p2 = document.getElementById('set-pin2'); if(p2) p2.value='';
+}
+
+function settingsSaveUser() {
+  const role  = document.getElementById('set-role')?.value;
+  const name  = document.getElementById('set-name')?.value.trim();
+  const pin   = document.getElementById('set-pin')?.value.trim();
+  const pin2  = document.getElementById('set-pin2')?.value.trim();
+  if (!role) { toast('Select a user','#f59e0b'); return; }
+
+  if (name) {
+    const names = getDynNames(); names[role] = name; saveDynNames(names);
+  }
+  if (pin) {
+    if (!/^\d{4,8}$/.test(pin)) { toast('PIN must be 4-8 digits','#f59e0b'); return; }
+    if (pin !== pin2) { toast('PINs do not match','#f59e0b'); return; }
+    const pins = getDynPINs();
+    pins[role] = pin;
+    saveDynPINs(pins);
+    // Push new PIN to DB so other devices get it
+    dbWrite('app_settings', {_id:'pin_'+role, key:'pin_'+role, value:pin, _by:CU.name, _ts:new Date().toISOString()});
+    toast('PIN updated for ' + role + ' — effective immediately on all devices');
+  } else if (name) {
+    toast('Name updated for ' + role);
+  }
+  settingsRenderUsers();
+  logAccessEvent('Settings: updated user ' + role);
+}
+
+function settingsAddUser() {
+  const newRole   = document.getElementById('new-user-role')?.value.trim().toLowerCase().replace(/\s+/g,'_');
+  const newLabel  = document.getElementById('new-user-label')?.value.trim();
+  const newPin    = document.getElementById('new-user-pin')?.value.trim();
+  const newAccess = document.getElementById('new-user-access')?.value || 'security';
+  if (!newRole||!newLabel||!newPin) { toast('Fill all fields','#f59e0b'); return; }
+  if (!/^\d{4,8}$/.test(newPin)) { toast('PIN must be 4-8 digits','#f59e0b'); return; }
+
+  const extras = JSON.parse(localStorage.getItem('obeid_extra_users')||'[]');
+  if (getDynUsers().find(u=>u.role===newRole)) { toast('Role ID already exists — choose a different ID','#f59e0b'); return; }
+  extras.push({role:newRole, label:newLabel, defaultName:newLabel, access:newAccess+' (same as template)', custom:true});
+  localStorage.setItem('obeid_extra_users', JSON.stringify(extras));
+
+  const pins = getDynPINs(); pins[newRole] = newPin; saveDynPINs(pins);
+  const names = getDynNames(); names[newRole] = newLabel; saveDynNames(names);
+
+  ROLE_ACCESS[newRole] = [...(ROLE_ACCESS[newAccess]||ROLE_ACCESS['security'])];
+  PAGE_ACCESS[newRole] = [...(PAGE_ACCESS[newAccess]||PAGE_ACCESS['security'])];
+  RLBL[newRole] = newLabel;
+
+  ['new-user-role','new-user-label','new-user-pin'].forEach(id=>{
+    const e=document.getElementById(id); if(e) e.value='';
+  });
+  settingsRenderUsers();
+  toast('User ' + newLabel + ' added successfully');
+}
+
+function settingsDeleteUser(role) {
+  const u = getDynUsers().find(x=>x.role===role);
+  if (!u?.custom) { toast('Cannot delete built-in users','#f59e0b'); return; }
+  if (!confirm('Delete user "'+u.label+'"? This cannot be undone.')) return;
+  const extras = JSON.parse(localStorage.getItem('obeid_extra_users')||'[]').filter(x=>x.role!==role);
+  localStorage.setItem('obeid_extra_users', JSON.stringify(extras));
+  const pins=getDynPINs(); delete pins[role]; saveDynPINs(pins);
+  const names=getDynNames(); delete names[role]; saveDynNames(names);
+  settingsRenderUsers();
+  toast('User deleted');
+}
+
+function buildLoginRoles() {
+  const sel = document.getElementById('lr'); if (!sel) return;
+  const users = getDynUsers();
+  const names = getDynNames();
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— Choose your role —</option>' +
+    users.map(u => `<option value="${u.role}"${u.role===current?' selected':''}>${u.label} — ${names[u.role]||u.defaultName}</option>`).join('');
 }
 
 function settingsUpdateQueueCount() {
@@ -6539,6 +6768,283 @@ window.renderLog = function(type) {
 
 // safety/radiation/docs init now handled in consolidated gp() override below
 
+
+
+// ════════════════════════════════════════════════════════════════
+// EQUIPMENT PAGE — ENHANCED PPM TRACKING + EDIT + EXPORT
+// ════════════════════════════════════════════════════════════════
+
+// PPM override store: { assetNo: { lastPPM, nextPPM, ppmBy, ppmType, notes, fileKey } }
+function getPPMOverrides() {
+  try { return JSON.parse(localStorage.getItem('obeid_ppm_overrides')||'{}'); }
+  catch(e) { return {}; }
+}
+function savePPMOverrides(obj) {
+  localStorage.setItem('obeid_ppm_overrides', JSON.stringify(obj));
+  dbWrite('app_settings', {_id:'ppm_overrides', key:'ppm_overrides',
+    value: JSON.stringify(obj), _by: CU.name, _ts: new Date().toISOString()
+  });
+}
+
+function getPPMData(assetNo) {
+  const ov = getPPMOverrides();
+  return ov[assetNo] || null;
+}
+
+// Compute PPM status using override data first, then base record
+function ppmStatus(r) {
+  const ov = getPPMData(r.asset);
+  const lastDate  = ov?.lastPPM  || r.lastPPM  || '';
+  const nextDate  = ov?.nextPPM  || r.nextPPM  || '';
+  if (!nextDate && !lastDate) return 'na';
+  if (nextDate) {
+    const d = new Date(nextDate);
+    if (isNaN(d)) return 'na';
+    const today = new Date(); today.setHours(0,0,0,0);
+    const diff = Math.ceil((d-today)/(1000*60*60*24));
+    if (diff < 0)  return 'overdue';
+    if (diff <= 30) return 'soon';
+    return 'ok';
+  }
+  return 'na';
+}
+
+function ppmStatusBadge(r) {
+  const s = ppmStatus(r);
+  const ov = getPPMData(r.asset);
+  const last = ov?.lastPPM || r.lastPPM || '';
+  const next = ov?.nextPPM || r.nextPPM || '';
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  const badges = {
+    overdue: `<span style="background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3);border-radius:4px;padding:2px 6px;font-size:9px;font-weight:700;">🔴 OVERDUE</span>`,
+    soon:    `<span style="background:rgba(255,170,0,.15);color:#ffaa00;border:1px solid rgba(255,170,0,.3);border-radius:4px;padding:2px 6px;font-size:9px;font-weight:700;">🟡 DUE SOON</span>`,
+    ok:      `<span style="background:rgba(0,255,136,.1);color:#00d4aa;border:1px solid rgba(0,255,136,.25);border-radius:4px;padding:2px 6px;font-size:9px;font-weight:700;">✅ OK</span>`,
+    na:      `<span style="color:var(--mu);font-size:9px;">—</span>`
+  };
+  const badge = badges[s] || badges.na;
+  const dateInfo = last ? `<div style="font-size:8px;color:var(--mu);margin-top:2px;">Last: ${last}</div>` : '';
+  const nextInfo = next ? `<div style="font-size:8px;color:var(--mu);">Next: ${next}</div>` : '';
+  return badge + dateInfo + nextInfo;
+}
+
+function ppmByBadge(r) {
+  const ov = getPPMData(r.asset);
+  const by = ov?.ppmBy || '';
+  if (!by) return '<span style="font-size:9px;color:var(--mu);">—</span>';
+  const colors = {
+    'Manufacturer': '#818cf8', 'In-house': '#00d4aa', 'Contractor': '#f59e0b'
+  };
+  const c = colors[by] || 'var(--mu)';
+  return `<span style="background:${c}22;color:${c};border:1px solid ${c}44;border-radius:4px;padding:2px 6px;font-size:9px;font-weight:600;">${by}</span>`;
+}
+
+// Open the edit modal for a device
+function openEqEdit(assetNo) {
+  const all = eqAll();
+  const rec = all.find(r => r.asset === assetNo);
+  if (!rec) { toast('Record not found','#f59e0b'); return; }
+  const ov = getPPMData(assetNo) || {};
+
+  document.getElementById('eq-edit-asset').value        = assetNo;
+  const nameEl = document.getElementById('eq-edit-name');
+  const deptEl = document.getElementById('eq-edit-dept');
+  if (nameEl) nameEl.textContent = (rec.desc||'') + (rec.model?' — '+rec.model:'');
+  if (deptEl) deptEl.textContent = (rec.dept||'') + (rec.location?' · '+rec.location:'');
+  // Also update modal title
+  const titleAsset = document.querySelector('#mod-eq-edit .mt span');
+  if (titleAsset) titleAsset.textContent = assetNo;
+  document.getElementById('eq-edit-last-ppm').value    = ov.lastPPM  || rec.lastPPM  || '';
+  document.getElementById('eq-edit-next-ppm').value    = ov.nextPPM  || rec.nextPPM  || '';
+  document.getElementById('eq-edit-ppm-by').value      = ov.ppmBy    || 'In-house';
+  document.getElementById('eq-edit-ppm-type').value    = ov.ppmType  || 'Annual PPM';
+  document.getElementById('eq-edit-notes').value       = ov.notes    || rec.remarks   || '';
+  document.getElementById('eq-edit-status').value      = ov.status   || rec.status    || 'Active';
+
+  // Render existing files for this asset
+  const fileKey = 'eq_ppm_' + assetNo;
+  const files   = fsGetFiles(fileKey);
+  const fileList = document.getElementById('eq-edit-files-list');
+  if (fileList) {
+    fileList.innerHTML = files.length
+      ? files.map(f => `
+        <div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--bd);">
+          <span style="font-size:16px;">${fileIcon(f.name)}</span>
+          <span style="flex:1;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${f.name}</span>
+          <span style="font-size:9px;color:var(--mu);">${f.size}</span>
+          <button class="btn bb" style="font-size:9px;padding:2px 6px;" onclick="fsViewFile('${fileKey}','${f.id}')">👁</button>
+          <button class="btn br" style="font-size:9px;padding:2px 5px;" onclick="fsDeleteFile('${fileKey}','${f.id}');openEqEdit('${assetNo}')">✕</button>
+        </div>`).join('')
+      : '<div style="font-size:10px;color:var(--mu);">No reports uploaded yet</div>';
+  }
+  openMod('eq-edit');
+}
+
+async function saveEqEdit() {
+  const asset    = document.getElementById('eq-edit-asset')?.value;
+  const lastPPM  = document.getElementById('eq-edit-last-ppm')?.value;
+  const nextPPM  = document.getElementById('eq-edit-next-ppm')?.value;
+  const ppmBy    = document.getElementById('eq-edit-ppm-by')?.value;
+  const ppmType  = document.getElementById('eq-edit-ppm-type')?.value;
+  const notes    = document.getElementById('eq-edit-notes')?.value;
+  const status   = document.getElementById('eq-edit-status')?.value;
+  const fileInput= document.getElementById('eq-edit-report');
+
+  // Save PPM report files
+  const fileKey = 'eq_ppm_' + asset;
+  if (fileInput && fileInput.files.length) {
+    await fsStoreFiles(fileKey, fileInput.files);
+    fileInput.value = '';
+    toast('✓ ' + fileInput.files.length + ' report(s) saved');
+  }
+
+  // Save PPM override data
+  const ov = getPPMOverrides();
+  ov[asset] = { lastPPM, nextPPM, ppmBy, ppmType, notes, status,
+    updatedBy: CU.name, updatedAt: new Date().toISOString(), fileKey };
+  savePPMOverrides(ov);
+
+  // If status changed on a manually-added record, update it
+  const added = ld('eq_added');
+  const idx = added.findIndex(r => r.asset === asset);
+  if (idx >= 0) {
+    added[idx].lastPPM = lastPPM;
+    added[idx].nextPPM = nextPPM;
+    added[idx].status  = status;
+    added[idx].remarks = notes;
+    sv('eq_added', added);
+    dbWrite('eq_added', added[idx]);
+    EQ_ALL = null;
+  }
+
+  closeMod('eq-edit');
+  eqRender();
+  toast('✓ Equipment record updated');
+}
+
+// Export department equipment list as printable HTML
+function exportDeptList() {
+  const dept = document.getElementById('eq-dept-filter')?.value;
+  if (!dept) { toast('Select a department first to export its list','#f59e0b'); return; }
+
+  const all = eqAll();
+  const recs = all.filter(r => r.dept === dept);
+  if (!recs.length) { toast('No equipment found for: ' + dept,'#f59e0b'); return; }
+
+  const exportDate = new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'long',year:'numeric'});
+  const exportTime = new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
+  const ov = getPPMOverrides();
+
+  const rows = recs.map((r,i) => {
+    const o = ov[r.asset] || {};
+    const last = o.lastPPM || r.lastPPM || '—';
+    const next = o.nextPPM || r.nextPPM || '—';
+    const by   = o.ppmBy   || '—';
+    const stat = o.status  || r.status  || 'Active';
+    const s    = ppmStatus(r);
+    const sc   = s==='overdue'?'#ef4444':s==='soon'?'#f59e0b':s==='ok'?'#10b981':'#888';
+    const sl   = s==='overdue'?'OVERDUE':s==='soon'?'DUE SOON':s==='ok'?'OK':'N/A';
+    return `<tr>
+      <td style="text-align:center;">${i+1}</td>
+      <td style="font-weight:600;color:#00b4ff;">${r.asset||'—'}</td>
+      <td style="font-weight:600;">${r.desc||'—'}</td>
+      <td>${r.location||r.dept||'—'}</td>
+      <td>${r.model||'—'}</td>
+      <td>${r.serial||'—'}</td>
+      <td>${r.mfr||'—'}</td>
+      <td>${r.ppmFreq||'—'}</td>
+      <td>${last}</td>
+      <td>${next}</td>
+      <td style="font-weight:700;color:${sc};">${sl}</td>
+      <td>${by}</td>
+      <td>${r.warranty||'—'}</td>
+      <td style="text-align:center;">${stat==='Active'?'✅':'❌'}</td>
+    </tr>`;
+  }).join('');
+
+  const active  = recs.filter(r=>(ov[r.asset]?.status||r.status)==='Active').length;
+  const overdue = recs.filter(r=>ppmStatus(r)==='overdue').length;
+  const soon    = recs.filter(r=>ppmStatus(r)==='soon').length;
+  const ok      = recs.filter(r=>ppmStatus(r)==='ok').length;
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<title>Equipment List — ${dept} — ${exportDate}</title>
+<style>
+  body{font-family:Arial,sans-serif;margin:0;padding:24px;color:#1a1a2e;font-size:11px;}
+  .header{text-align:center;border-bottom:3px solid #00b4ff;padding-bottom:14px;margin-bottom:18px;}
+  .header h1{font-size:18px;margin:0 0 4px;color:#00b4ff;}
+  .header h2{font-size:14px;margin:4px 0;color:#333;}
+  .header p{margin:2px 0;color:#666;font-size:10px;}
+  .summary{display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;}
+  .sum-box{border:1px solid #ddd;border-radius:6px;padding:10px 16px;text-align:center;flex:1;min-width:80px;}
+  .sum-val{font-size:22px;font-weight:bold;}
+  .sum-lbl{font-size:9px;color:#888;text-transform:uppercase;}
+  table{width:100%;border-collapse:collapse;margin-bottom:20px;}
+  th{background:#003366;color:#fff;padding:7px 5px;text-align:left;font-size:10px;}
+  td{padding:6px 5px;border-bottom:1px solid #eee;font-size:10px;}
+  tr:nth-child(even){background:#f8f9fa;}
+  .sig-section{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:30px;}
+  .sig-box{border-top:1px solid #333;padding-top:6px;}
+  .sig-lbl{font-size:10px;color:#888;}
+  .sig-line{height:40px;}
+  .footer{margin-top:20px;font-size:9px;color:#999;text-align:center;border-top:1px solid #ddd;padding-top:8px;}
+  @media print{body{padding:10px;}}
+</style></head>
+<body>
+<div class="header">
+  <div style="font-size:10px;color:#888;">OBEID SPECIALIZED HOSPITAL — RIYADH · BIOMEDICAL ENGINEERING DEPARTMENT</div>
+  <h1>MEDICAL EQUIPMENT INVENTORY LIST</h1>
+  <h2>${dept}</h2>
+  <p>FMS.1.1.7 — Medical Equipment Management · CBAHI Accreditation 2026</p>
+  <p>Exported by: ${CU.name} (${CU.rl}) · Date: ${exportDate} ${exportTime}</p>
+</div>
+
+<div class="summary">
+  <div class="sum-box"><div class="sum-val" style="color:#00b4ff;">${recs.length}</div><div class="sum-lbl">Total Devices</div></div>
+  <div class="sum-box"><div class="sum-val" style="color:#10b981;">${active}</div><div class="sum-lbl">Active</div></div>
+  <div class="sum-box"><div class="sum-val" style="color:#ef4444;">${overdue}</div><div class="sum-lbl">Overdue PPM</div></div>
+  <div class="sum-box"><div class="sum-val" style="color:#f59e0b;">${soon}</div><div class="sum-lbl">Due Soon</div></div>
+  <div class="sum-box"><div class="sum-val" style="color:#10b981;">${ok}</div><div class="sum-lbl">PPM OK</div></div>
+</div>
+
+<table>
+  <thead><tr>
+    <th>#</th><th>Asset No.</th><th>Equipment</th><th>Location</th>
+    <th>Model</th><th>Serial No.</th><th>Manufacturer</th>
+    <th>PPM Freq.</th><th>Last PPM</th><th>Next Due</th>
+    <th>PPM Status</th><th>PPM By</th><th>Warranty</th><th>Status</th>
+  </tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+
+<div class="sig-section">
+  <div class="sig-box">
+    <div class="sig-lbl">Biomedical Engineer</div>
+    <div class="sig-line"></div>
+    <div><b>${CU.name}</b></div>
+    <div style="font-size:9px;color:#888;">Date: ${exportDate}</div>
+  </div>
+  <div class="sig-box">
+    <div class="sig-lbl">Head of Department — ${dept}</div>
+    <div class="sig-line"></div>
+    <div style="font-size:9px;color:#888;">Name &amp; Signature &amp; Date</div>
+    <div style="margin-top:6px;font-size:9px;color:#888;">
+      By signing, I confirm the accuracy of the above equipment list for my department.
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  Obeid Specialized Hospital · FMS Command Platform · Generated: ${exportDate} ${exportTime} · FMS.1.1.7 CBAHI 2026
+</div>
+</body></html>`;
+
+  const blob = new Blob([html], {type:'text/html'});
+  const win  = window.open(URL.createObjectURL(blob), '_blank');
+  if (win) { setTimeout(() => win.print(), 800); }
+  toast('✓ Department list exported — use Print → Save as PDF');
+}
 
 </script>
 </body>
