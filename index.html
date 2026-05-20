@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260520-0854';
+  var v = '20260520-0909';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   if (url.indexOf('?v=') === -1 && url.indexOf('&v=') === -1) {
@@ -288,6 +288,7 @@ if ('caches' in window) {
     <div class="nsc">Overview</div>
     <div class="ni active" onclick="gp('dash')" id="n-dash"><span class="ni-ic">⬡</span>Command Center</div>
     <div class="ni" onclick="gp('kpi')" id="n-kpi"><span class="ni-ic">📊</span>KPI Dashboard</div>
+    <div class="ni" onclick="gp('kpi2')" id="n-kpi2"><span class="ni-ic">🎯</span>FMS Indicators</div>
     <div class="ni" onclick="gp('cbahi')" id="n-cbahi"><span class="ni-ic">✓</span>CBAHI Tracker</div>
     <div class="nsc">Maintenance Intelligence</div>
     <div class="ni" onclick="gp('mms')" id="n-mms"><span class="ni-ic">🔩</span>Maintenance Analytics</div>
@@ -2187,6 +2188,119 @@ if ('caches' in window) {
   </div>
 </div>
 
+<!-- ===== FMS KPI DASHBOARD ===== -->
+<div class="pg" id="page-kpi2">
+  <div class="ph">
+    <h1>📊 FMS Performance Indicators</h1>
+    <p>11 KPIs · CBAHI Standards · Enter values · Attach evidence · Track trends · Auto-calculated results</p>
+  </div>
+
+  <!-- Top filter bar -->
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px;">
+    <div class="tb" style="margin:0;" id="kpi2-dept-tabs">
+      <button class="tbtn active" onclick="kpi2Filter('all',this)">🏥 All Departments</button>
+      <button class="tbtn" onclick="kpi2Filter('safety',this)">🛡 Safety</button>
+      <button class="tbtn" onclick="kpi2Filter('security',this)">🔒 Security</button>
+      <button class="tbtn" onclick="kpi2Filter('biomedical',this)">⚕ Biomedical</button>
+      <button class="tbtn" onclick="kpi2Filter('maintenance',this)">🔧 Maintenance</button>
+    </div>
+    <div class="pb" style="margin:0;" id="kpi2-period-tabs">
+      <button class="pbtn active" onclick="kpi2Period('this_month',this)">This Month</button>
+      <button class="pbtn" onclick="kpi2Period('last_month',this)">Last Month</button>
+      <button class="pbtn" onclick="kpi2Period('ytd',this)">Year to Date</button>
+      <button class="pbtn" onclick="kpi2Period('all',this)">All Time</button>
+    </div>
+    <select id="kpi2-month-sel" onchange="kpi2RenderAll()"
+      style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:6px 12px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;">
+    </select>
+    <button class="btn bg" style="margin-left:auto;padding:6px 16px;font-size:11px;" onclick="kpi2ExportReport()">📥 Export KPI Report</button>
+  </div>
+
+  <!-- Summary scorecard row -->
+  <div id="kpi2-summary-cards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:18px;"></div>
+
+  <!-- Main KPI cards grid -->
+  <div id="kpi2-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:16px;"></div>
+
+  <!-- Trend chart section -->
+  <div class="card" style="margin-top:16px;">
+    <div class="ch">
+      <div class="ct">📈 KPI Trend — All Indicators</div>
+      <select id="kpi2-trend-sel" onchange="kpi2RenderTrend()"
+        style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:5px 10px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:10px;outline:none;">
+      </select>
+    </div>
+    <div class="cb" style="padding:16px;position:relative;height:260px;">
+      <canvas id="kpi2-trend-chart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- KPI Data Entry Modal -->
+<div class="mov" id="mod-kpi2-entry">
+  <div class="mbox" style="max-width:580px;">
+    <div class="mh">
+      <div class="mt" id="kpi2-modal-title">Enter KPI Data</div>
+      <button class="mc" onclick="closeMod('kpi2-entry')">✕</button>
+    </div>
+    <div class="mb" style="max-height:80vh;overflow-y:auto;">
+      <input type="hidden" id="kpi2-entry-id">
+
+      <!-- KPI info banner -->
+      <div id="kpi2-entry-info" style="background:rgba(0,180,255,.07);border:1px solid rgba(0,180,255,.2);border-radius:9px;padding:12px;margin-bottom:14px;"></div>
+
+      <div class="fg fg2">
+        <div class="ff"><label>Reporting Period</label>
+          <select id="kpi2-entry-month" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px 12px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;"></select>
+        </div>
+        <div class="ff"><label>Year</label>
+          <input type="number" id="kpi2-entry-year" placeholder="2026" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px 12px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;width:100%;">
+        </div>
+        <div class="ff">
+          <label id="kpi2-num-label">Numerator</label>
+          <input type="number" id="kpi2-entry-num" placeholder="0" min="0" step="any"
+            oninput="kpi2CalcResult()"
+            style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px 12px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:13px;outline:none;width:100%;">
+        </div>
+        <div class="ff" id="kpi2-denom-field">
+          <label id="kpi2-den-label">Denominator</label>
+          <input type="number" id="kpi2-entry-den" placeholder="0" min="0" step="any"
+            oninput="kpi2CalcResult()"
+            style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px 12px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:13px;outline:none;width:100%;">
+        </div>
+      </div>
+
+      <!-- Live result display -->
+      <div style="background:var(--s2);border-radius:11px;padding:16px;margin:14px 0;text-align:center;" id="kpi2-live-result">
+        <div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Calculated Result</div>
+        <div id="kpi2-result-val" style="font-family:'Rajdhani',sans-serif;font-size:52px;font-weight:700;color:var(--ac);">—</div>
+        <div id="kpi2-result-status" style="margin-top:6px;font-size:12px;font-weight:600;"></div>
+        <div id="kpi2-result-bar" style="margin-top:10px;height:8px;background:var(--s3);border-radius:4px;overflow:hidden;">
+          <div id="kpi2-result-fill" style="height:100%;width:0%;background:var(--gn);transition:width .5s;border-radius:4px;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:3px;font-size:9px;color:var(--mu);">
+          <span>0</span><span id="kpi2-target-label">Target: —</span>
+        </div>
+      </div>
+
+      <div class="fg fg2">
+        <div class="ff" style="grid-column:1/-1"><label>Comments / Notes</label>
+          <textarea id="kpi2-entry-notes" style="min-height:60px;" placeholder="Context, issues encountered, improvement actions..."></textarea>
+        </div>
+        <div class="ff" style="grid-column:1/-1">
+          <label>Attach Evidence Documents</label>
+          <input type="file" id="kpi2-entry-files" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx"
+            style="font-size:11px;color:var(--mu);">
+          <div class="ht">Attach data collection forms, screenshots, reports · Multiple files allowed</div>
+          <div id="kpi2-existing-files" style="margin-top:8px;"></div>
+        </div>
+      </div>
+
+      <button class="btn bg" style="width:100%;margin-top:14px;padding:12px;font-size:13px;" onclick="kpi2SaveEntry()">✓ Save KPI Entry</button>
+    </div>
+  </div>
+</div>
+
 </main>
 </div>
 </div>
@@ -2344,7 +2458,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260520-0854';
+const APP_VERSION = '20260520-0909';
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
@@ -4966,19 +5080,19 @@ function eqDelAdded(ts) {
 const ROLE_ACCESS = {
   director:    ['ALL'],
   // All roles include n-settings so every manager can connect to the DB
-  maintenance: ['n-dash','n-kpi','n-mms','n-reports','n-wo','n-utils','n-fire','n-ckpi','n-settings'],
-  biomedical:  ['n-dash','n-kpi','n-equip','n-medgas','n-radiation','n-wo','n-ckpi','n-settings'],
-  safety:      ['n-dash','n-kpi','n-cbahi','n-safety','n-hazmat','n-emergency','n-fire','n-wo','n-ckpi','n-docs','n-settings'],
-  security:    ['n-dash','n-kpi','n-security','n-wo','n-ckpi','n-settings'],
+  maintenance: ['n-dash','n-kpi','n-kpi2','n-mms','n-reports','n-wo','n-utils','n-fire','n-ckpi','n-settings'],
+  biomedical:  ['n-dash','n-kpi','n-kpi2','n-equip','n-medgas','n-radiation','n-wo','n-ckpi','n-settings'],
+  safety:      ['n-dash','n-kpi','n-kpi2','n-cbahi','n-safety','n-hazmat','n-emergency','n-fire','n-wo','n-ckpi','n-docs','n-settings'],
+  security:    ['n-dash','n-kpi','n-kpi2','n-security','n-wo','n-ckpi','n-settings'],
 };
 
 // Page access — which pages each role can open
 const PAGE_ACCESS = {
   director:    ['ALL'],
-  maintenance: ['dash','kpi','mms','reports','wo','utils','fire','ckpi','settings'],
-  biomedical:  ['dash','kpi','equip','medgas','radiation','wo','ckpi','settings'],
-  safety:      ['dash','kpi','cbahi','safety','hazmat','emergency','fire','wo','ckpi','docs','settings'],
-  security:    ['dash','kpi','security','wo','ckpi','settings'],
+  maintenance: ['dash','kpi','kpi2','mms','reports','wo','utils','fire','ckpi','settings'],
+  biomedical:  ['dash','kpi','kpi2','equip','medgas','radiation','wo','ckpi','settings'],
+  safety:      ['dash','kpi','kpi2','cbahi','safety','hazmat','emergency','fire','wo','ckpi','docs','settings'],
+  security:    ['dash','kpi','kpi2','security','wo','ckpi','settings'],
 };
 
 // Page access — which page IDs each role can visit
@@ -5978,7 +6092,8 @@ function doLogin() {
       initRadiationUploadWidgets();
       ['tld','apron','shield'].forEach(t => renderRadTable(t));
     }
-    if (id === 'docs') { rebuildDocStdSelects(); renderDocs(); }
+    if (id === 'docs')  { rebuildDocStdSelects(); renderDocs(); }
+    if (id === 'kpi2')  { kpi2BuildMonthSelect(); kpi2BuildTrendSelect(); kpi2RenderAll(); }
   };
 })();;
 
@@ -6985,6 +7100,648 @@ function invImport() {
   if (prog) prog.textContent = '✅ Done — ' + added + ' new records added, ' + updated + ' updated';
   toast('✅ Inventory updated: ' + added + ' added, ' + updated + ' updated');
 }
+
+
+// ════════════════════════════════════════════════════════════════
+// FMS KPI SYSTEM — Full KPI Dashboard with Data Entry & Infographics
+// ════════════════════════════════════════════════════════════════
+
+const FMS_KPIS = [
+  { id:'KPI-001', dept:'safety',      category:'Safety',      name:'Fire Drill Effectiveness',      standard:'FMS.7.2',  num:'Count of staff demonstrating RACE & PASS', den:'Total staff participating in drill', formula:'percent', target:100, unit:'%', hib:true,  src:'Fire Drill Critique Reports',  freq:'Quarterly', icon:'🔥', color:'#ef4444' },
+  { id:'KPI-002', dept:'safety',      category:'Safety',      name:'Safety Round Closure Rate',     standard:'FMS.4.2',  num:'Safety deficiencies corrected on time',    den:'Total deficiencies identified',     formula:'percent', target:90,  unit:'%', hib:true,  src:'Facility Safety Round Logs',    freq:'Monthly',   icon:'🛡', color:'#f59e0b' },
+  { id:'KPI-003', dept:'security',    category:'Security',    name:'Code Response Time',            standard:'FMS.5.1',  num:'Sum of (Arrival Time - Dispatch Time)',     den:'Total emergency calls',             formula:'ratio',   target:3,   unit:'mins', hib:false, src:'Security Command Center Log',  freq:'Monthly',   icon:'⏱', color:'#3b82f6' },
+  { id:'KPI-004', dept:'security',    category:'Security',    name:'Staff ID Compliance',           standard:'FMS.5.2',  num:'Staff wearing valid ID badge',             den:'Total staff observed during audit', formula:'percent', target:100, unit:'%', hib:true,  src:'Security Audit Sheets',         freq:'Monthly',   icon:'🪪', color:'#6366f1' },
+  { id:'KPI-005', dept:'biomedical',  category:'Biomedical',  name:'PM Completion Rate',            standard:'FMS.25.1', num:'High-risk devices with completed PM',      den:'Total high-risk devices due for PM',formula:'percent', target:100, unit:'%', hib:true,  src:'Biomed CMMS Records',           freq:'Monthly',   icon:'⚕', color:'#8b5cf6' },
+  { id:'KPI-006', dept:'biomedical',  category:'Biomedical',  name:'User Error Incident Rate',      standard:'FMS.27.1', num:'Repair requests due to operator error',    den:'Total corrective maintenance requests',formula:'percent',target:10, unit:'%', hib:false, src:'Maintenance Work Orders',       freq:'Monthly',   icon:'⚠', color:'#ec4899' },
+  { id:'KPI-007', dept:'maintenance', category:'Maintenance', name:'Generator Reliability',         standard:'FMS.31.2', num:'Load tests starting ≤10 seconds',          den:'Total monthly load tests performed',formula:'percent', target:100, unit:'%', hib:true,  src:'Generator Testing Logs',        freq:'Monthly',   icon:'⚡', color:'#10b981' },
+  { id:'KPI-008', dept:'maintenance', category:'Maintenance', name:'Fire System Uptime',            standard:'FMS.22.2', num:'Days FM-200 & Sprinklers fully functional', den:'Total days in month',              formula:'percent', target:100, unit:'%', hib:true,  src:'System Pressure Logs',          freq:'Monthly',   icon:'🧯', color:'#00d4aa' },
+  { id:'KPI-009', dept:'maintenance', category:'Utilities',   name:'Critical Area ACH Compliance',  standard:'FMS.34.5', num:'Rooms meeting Air Change per Hour specs',  den:'Total critical rooms tested',       formula:'percent', target:100, unit:'%', hib:true,  src:'HVAC Airflow Reports',          freq:'Quarterly', icon:'💨', color:'#06b6d4' },
+  { id:'KPI-010', dept:'safety',      category:'Waste/Hazmat',name:'Waste Segregation Compliance',  standard:'FMS.15.1', num:'Waste bins correctly segregated',          den:'Total waste bins audited',          formula:'percent', target:95,  unit:'%', hib:true,  src:'Safety Round Audit',            freq:'Monthly',   icon:'♻', color:'#84cc16' },
+  { id:'KPI-011', dept:'safety',      category:'Waste/Hazmat',name:'Waste Manifest Accuracy',       standard:'FMS.16.1', num:'Manifests with final disposal signature',   den:'Total waste shipments sent',        formula:'percent', target:100, unit:'%', hib:true,  src:'Waste Manifest Files',          freq:'Monthly',   icon:'📋', color:'#a78bfa' },
+];
+
+// ── State ──
+let KPI2_FILTER = 'all';
+let KPI2_PERIOD = 'this_month';
+let KPI2_CHART  = null;
+
+// ── Storage ──
+function kpi2GetEntries(kpiId) {
+  try { return JSON.parse(localStorage.getItem('kpi2_entries_' + kpiId) || '[]'); }
+  catch(e) { return []; }
+}
+function kpi2SaveEntries(kpiId, arr) {
+  localStorage.setItem('kpi2_entries_' + kpiId, JSON.stringify(arr));
+  dbWrite('kpi2_entries', { _id: kpiId, kpiId, entries: arr, _ts: new Date().toISOString() });
+}
+
+// ── Access control — managers see only their dept KPIs ──
+function kpi2VisibleKPIs() {
+  const role = typeof CU !== 'undefined' ? (CU.role || '') : '';
+  const eff  = typeof getEffectiveRole === 'function' ? getEffectiveRole(role) : role;
+  // Director sees all
+  if (!eff || eff === 'director') return FMS_KPIS;
+  // Dept filter
+  const deptMap = {
+    maintenance: ['maintenance'],
+    biomedical:  ['biomedical'],
+    safety:      ['safety'],
+    security:    ['security']
+  };
+  const allowed = deptMap[eff] || [];
+  const base = FMS_KPIS.filter(k => allowed.includes(k.dept));
+  // Also apply dept tab filter
+  if (KPI2_FILTER !== 'all') return base.filter(k => k.dept === KPI2_FILTER);
+  return base;
+}
+
+// ── Period helpers ──
+function kpi2PeriodKey() {
+  const sel = document.getElementById('kpi2-month-sel');
+  return sel ? sel.value : '';
+}
+
+function kpi2MonthOptions() {
+  const months = [];
+  const now = new Date();
+  for (let i = 0; i < 24; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    const lbl = d.toLocaleString('en-GB', { month:'long', year:'numeric' });
+    months.push({ key, lbl });
+  }
+  return months;
+}
+
+function kpi2BuildMonthSelect() {
+  const sel = document.getElementById('kpi2-month-sel'); if (!sel) return;
+  const months = kpi2MonthOptions();
+  sel.innerHTML = months.map(m => `<option value="${m.key}">${m.lbl}</option>`).join('');
+  sel.value = months[0].key; // default to this month
+}
+
+function kpi2BuildTrendSelect() {
+  const sel = document.getElementById('kpi2-trend-sel'); if (!sel) return;
+  sel.innerHTML = '<option value="all">All KPIs (avg achievement)</option>' +
+    FMS_KPIS.map(k => `<option value="${k.id}">${k.id} — ${k.name}</option>`).join('');
+}
+
+// ── Get latest entry for a KPI in current period ──
+function kpi2GetLatest(kpiId) {
+  const entries = kpi2GetEntries(kpiId);
+  if (!entries.length) return null;
+  const period = kpi2PeriodKey();
+  const inPeriod = entries.filter(e => e.period === period);
+  if (inPeriod.length) return inPeriod.sort((a,b) => b.ts > a.ts ? 1 : -1)[0];
+  // Fallback to latest overall
+  return entries.sort((a,b) => b.ts > a.ts ? 1 : -1)[0];
+}
+
+// ── Calculate result from entry ──
+function kpi2Calc(kpi, entry) {
+  if (!entry) return null;
+  const num = parseFloat(entry.num);
+  const den = parseFloat(entry.den);
+  if (isNaN(num)) return null;
+  if (kpi.formula === 'percent') {
+    if (isNaN(den) || den === 0) return null;
+    return Math.round((num / den) * 1000) / 10;
+  }
+  if (kpi.formula === 'ratio') {
+    if (isNaN(den) || den === 0) return null;
+    return Math.round((num / den) * 100) / 100;
+  }
+  return num;
+}
+
+// ── Status logic ──
+function kpi2Status(kpi, result) {
+  if (result === null) return 'no-data';
+  if (kpi.hib) {
+    if (result >= kpi.target)            return 'met';
+    if (result >= kpi.target * 0.85)     return 'partial';
+    return 'gap';
+  } else {
+    if (result <= kpi.target)            return 'met';
+    if (result <= kpi.target * 1.15)     return 'partial';
+    return 'gap';
+  }
+}
+
+const KPI2_STATUS_STYLES = {
+  met:     { label:'✅ Target Met',   color:'#00d4aa', bg:'rgba(0,212,170,.12)',  border:'rgba(0,212,170,.35)' },
+  partial: { label:'⚠️ Near Target',  color:'#f59e0b', bg:'rgba(245,158,11,.12)', border:'rgba(245,158,11,.35)' },
+  gap:     { label:'❌ Below Target', color:'#ef4444', bg:'rgba(239,68,68,.12)',  border:'rgba(239,68,68,.35)' },
+  'no-data':{ label:'➕ Enter Data',  color:'var(--mu)', bg:'var(--s2)',           border:'var(--bd)' },
+};
+
+// ── Summary cards ──
+function kpi2RenderSummary() {
+  const el = document.getElementById('kpi2-summary-cards'); if (!el) return;
+  const visible = kpi2VisibleKPIs();
+  let met=0, partial=0, gap=0, nodata=0;
+  visible.forEach(k => {
+    const entry  = kpi2GetLatest(k.id);
+    const result = kpi2Calc(k, entry);
+    const status = kpi2Status(k, result);
+    if      (status === 'met')     met++;
+    else if (status === 'partial') partial++;
+    else if (status === 'gap')     gap++;
+    else                           nodata++;
+  });
+  const total = visible.length;
+  const score = total ? Math.round((met / total) * 100) : 0;
+  const scoreColor = score >= 80 ? '#00d4aa' : score >= 60 ? '#f59e0b' : '#ef4444';
+
+  el.innerHTML = `
+    <div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:16px;text-align:center;">
+      <div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Overall Achievement</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:48px;font-weight:700;color:${scoreColor};line-height:1;">${score}%</div>
+      <div style="font-size:10px;color:var(--mu);margin-top:4px;">${met} of ${total} KPIs met</div>
+      <div style="margin-top:10px;height:6px;background:var(--s3);border-radius:3px;overflow:hidden;">
+        <div style="height:100%;width:${score}%;background:${scoreColor};border-radius:3px;transition:width .6s;"></div>
+      </div>
+    </div>
+    <div style="background:var(--sf);border:1px solid rgba(0,212,170,.3);border-radius:12px;padding:16px;text-align:center;">
+      <div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">✅ Target Met</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:48px;font-weight:700;color:#00d4aa;">${met}</div>
+      <div style="font-size:10px;color:var(--mu);">KPIs on target</div>
+    </div>
+    <div style="background:var(--sf);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:16px;text-align:center;">
+      <div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">⚠️ Near Target</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:48px;font-weight:700;color:#f59e0b;">${partial}</div>
+      <div style="font-size:10px;color:var(--mu);">≥85% of target</div>
+    </div>
+    <div style="background:var(--sf);border:1px solid rgba(239,68,68,.3);border-radius:12px;padding:16px;text-align:center;">
+      <div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">❌ Gap</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:48px;font-weight:700;color:#ef4444;">${gap}</div>
+      <div style="font-size:10px;color:var(--mu);">${nodata} pending data</div>
+    </div>`;
+}
+
+// ── Individual KPI card ──
+function kpi2CardHTML(k) {
+  const entry  = kpi2GetLatest(k.id);
+  const result = kpi2Calc(k, entry);
+  const status = kpi2Status(k, result);
+  const ss     = KPI2_STATUS_STYLES[status];
+  const entries = kpi2GetEntries(k.id);
+  const fileKey = 'kpi2_' + k.id;
+  const fc  = fsGetFiles ? fsGetFiles(fileKey).length : 0;
+
+  // Progress bar fill
+  let fillPct = 0;
+  if (result !== null) {
+    if (k.hib) fillPct = Math.min(100, (result / (k.target * 1.2)) * 100);
+    else fillPct = Math.max(0, 100 - ((result / (k.target * 2)) * 100));
+  }
+
+  // Trend sparkline data (last 6 entries)
+  const history = entries.slice(-6).map(e => kpi2Calc(k, e)).filter(v => v !== null);
+  const sparklineId = 'spark-' + k.id.replace('-','');
+
+  return `<div style="background:var(--sf);border:1px solid ${ss.border};border-top:3px solid ${k.color};border-radius:13px;padding:16px;position:relative;">
+    <!-- Header -->
+    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;">
+      <div style="width:42px;height:42px;border-radius:10px;background:${k.color}22;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">${k.icon}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--tx);line-height:1.2;">${k.name}</div>
+        <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;">
+          <span style="background:${k.color}22;color:${k.color};border:1px solid ${k.color}44;border-radius:4px;padding:1px 7px;font-size:9px;font-weight:700;">${k.standard}</span>
+          <span style="background:var(--s2);color:var(--mu);border-radius:4px;padding:1px 7px;font-size:9px;">${k.category}</span>
+          <span style="background:var(--s2);color:var(--mu);border-radius:4px;padding:1px 7px;font-size:9px;">📅 ${k.freq}</span>
+        </div>
+      </div>
+      <!-- Result display -->
+      <div style="text-align:center;flex-shrink:0;">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:32px;font-weight:700;color:${ss.color};line-height:1;">${result !== null ? result + k.unit : '—'}</div>
+        <div style="font-size:9px;color:var(--mu);">Target: ${k.hib ? '≥' : '≤'}${k.target}${k.unit}</div>
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div style="height:7px;background:var(--s3);border-radius:4px;overflow:hidden;margin-bottom:8px;">
+      <div style="height:100%;width:${fillPct}%;background:${ss.color};border-radius:4px;transition:width .7s;"></div>
+    </div>
+
+    <!-- Formula row -->
+    <div style="font-size:9px;color:var(--mu);margin-bottom:8px;line-height:1.6;">
+      <b style="color:var(--tx);">Formula:</b> (${k.num}) ÷ (${k.den}) ${k.formula==='percent'?'× 100':''}<br>
+      <b style="color:var(--tx);">Source:</b> ${k.src}
+    </div>
+
+    <!-- Status badge + entry count + files -->
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <span style="background:${ss.bg};color:${ss.color};border:1px solid ${ss.border};border-radius:6px;padding:3px 10px;font-size:10px;font-weight:600;">${ss.label}</span>
+      ${entries.length ? `<span style="font-size:9px;color:var(--mu);">📊 ${entries.length} entr${entries.length===1?'y':'ies'}</span>` : ''}
+      ${fc > 0 ? `<span class="bx bb2" style="cursor:pointer;font-size:9px;" onclick="showFilesModal('${fileKey}','${k.name}')">📎 ${fc} doc${fc===1?'':'s'}</span>` : ''}
+      ${entry && entry.notes ? `<span style="font-size:9px;color:var(--mu);" title="${entry.notes}">💬 Note</span>` : ''}
+    </div>
+
+    <!-- Sparkline (mini trend) -->
+    ${history.length > 1 ? `<div style="margin-top:10px;height:40px;position:relative;"><canvas id="${sparklineId}" height="40"></canvas></div>` : ''}
+
+    <!-- Action buttons -->
+    <div style="margin-top:12px;display:flex;gap:8px;">
+      <button class="btn bg" style="flex:1;font-size:10px;padding:7px;" onclick="kpi2OpenEntry('${k.id}')">📝 Enter Data</button>
+      ${entries.length ? `<button class="btn bo" style="font-size:10px;padding:7px;" onclick="kpi2ShowHistory('${k.id}')">📊 History</button>` : ''}
+    </div>
+  </div>`;
+}
+
+// ── Render all KPI cards ──
+function kpi2RenderCards() {
+  const el = document.getElementById('kpi2-cards'); if (!el) return;
+  const visible = kpi2VisibleKPIs();
+  if (!visible.length) {
+    el.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--mu);">No KPIs for your role in this view.</div>';
+    return;
+  }
+  el.innerHTML = visible.map(kpi2CardHTML).join('');
+  // Render sparklines after DOM update
+  setTimeout(() => {
+    visible.forEach(k => {
+      const entries = kpi2GetEntries(k.id);
+      const history = entries.slice(-6).map(e => kpi2Calc(k, e)).filter(v => v !== null);
+      if (history.length < 2) return;
+      const cvs = document.getElementById('spark-' + k.id.replace('-',''));
+      if (!cvs) return;
+      if (cvs._chart) { try { cvs._chart.destroy(); } catch(e){} }
+      cvs._chart = new Chart(cvs, {
+        type: 'line',
+        data: {
+          labels: history.map((_,i) => i+1),
+          datasets: [{ data: history, borderColor: k.color, backgroundColor: k.color+'20',
+            borderWidth:2, pointRadius:3, tension:0.4, fill:true }]
+        },
+        options: {
+          responsive:true, maintainAspectRatio:false, animation:false,
+          plugins:{ legend:{display:false}, tooltip:{enabled:false} },
+          scales:{ x:{display:false}, y:{display:false} }
+        }
+      });
+    });
+  }, 100);
+}
+
+// ── Trend chart ──
+function kpi2RenderTrend() {
+  const sel = document.getElementById('kpi2-trend-sel');
+  const kpiId = sel ? sel.value : 'all';
+  const cvs = document.getElementById('kpi2-trend-chart'); if (!cvs) return;
+  if (KPI2_CHART) { try { KPI2_CHART.destroy(); } catch(e){} }
+
+  const months = kpi2MonthOptions().slice(0,12).reverse();
+  const labels = months.map(m => m.lbl.replace(' 2026','').replace(' 2025',''));
+
+  let datasets = [];
+  if (kpiId === 'all') {
+    // Average achievement % across all visible KPIs per month
+    const data = months.map(m => {
+      const visible = kpi2VisibleKPIs();
+      const scores = visible.map(k => {
+        const entries = kpi2GetEntries(k.id).filter(e => e.period === m.key);
+        if (!entries.length) return null;
+        const latest = entries.sort((a,b) => b.ts>a.ts?1:-1)[0];
+        const result = kpi2Calc(k, latest);
+        if (result === null) return null;
+        if (k.unit === '%') return k.hib ? Math.min(100, (result/k.target)*100) : Math.max(0, 100-Math.max(0,(result-k.target)/k.target*100));
+        return k.hib ? Math.min(100,(result/k.target)*100) : (result<=k.target?100:Math.max(0,(1-(result-k.target)/k.target)*100));
+      }).filter(v => v !== null);
+      return scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : null;
+    });
+    datasets = [{ label:'Average KPI Achievement %', data, borderColor:'#00d4aa',
+      backgroundColor:'rgba(0,212,170,.1)', fill:true, tension:0.4, borderWidth:2.5,
+      pointRadius:5, pointBackgroundColor:'#00d4aa', pointBorderColor:'#fff', spanGaps:true }];
+    // Add target line
+    datasets.push({ label:'Target 100%', data:months.map(()=>100),
+      borderColor:'rgba(255,255,255,.2)', borderDash:[5,5], borderWidth:1,
+      pointRadius:0, fill:false });
+  } else {
+    const k = FMS_KPIS.find(x => x.id === kpiId);
+    if (!k) return;
+    const data = months.map(m => {
+      const entries = kpi2GetEntries(k.id).filter(e => e.period === m.key);
+      if (!entries.length) return null;
+      const latest = entries.sort((a,b)=>b.ts>a.ts?1:-1)[0];
+      return kpi2Calc(k, latest);
+    });
+    datasets = [
+      { label: k.name + ' ' + k.unit, data, borderColor: k.color,
+        backgroundColor: k.color + '20', fill:true, tension:0.4, borderWidth:2.5,
+        pointRadius:5, pointBackgroundColor:k.color, pointBorderColor:'#fff', spanGaps:true },
+      { label: 'Target: ' + k.target + k.unit, data: months.map(()=>k.target),
+        borderColor:'rgba(255,255,255,.3)', borderDash:[5,5], borderWidth:1.5,
+        pointRadius:0, fill:false }
+    ];
+  }
+
+  requestAnimationFrame(() => {
+    KPI2_CHART = new Chart(cvs, {
+      type:'line', data:{ labels, datasets },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{
+          legend:{ display:true, position:'bottom', labels:{color:'var(--mu)',font:{size:10},padding:12} },
+          tooltip:{ backgroundColor:'#0f2040', titleColor:'#d4e8ff', bodyColor:'#5a7fa8', padding:10 }
+        },
+        scales:{
+          x:{ grid:{color:'rgba(0,180,255,.05)'}, ticks:{color:'var(--mu)',font:{size:9}} },
+          y:{ grid:{color:'rgba(0,180,255,.05)'}, ticks:{color:'var(--mu)',font:{size:9},callback:v=>v+(kpiId==='all'?'%':'')} }
+        }
+      }
+    });
+  });
+}
+
+// ── Render all ──
+function kpi2RenderAll() {
+  kpi2RenderSummary();
+  kpi2RenderCards();
+  kpi2RenderTrend();
+}
+
+// ── Filter and period handlers ──
+function kpi2Filter(dept, btn) {
+  KPI2_FILTER = dept;
+  if (btn) {
+    btn.closest('#kpi2-dept-tabs').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  kpi2RenderAll();
+}
+function kpi2Period(period, btn) {
+  KPI2_PERIOD = period;
+  if (btn) {
+    btn.closest('#kpi2-period-tabs').querySelectorAll('.pbtn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  kpi2RenderAll();
+}
+
+// ── Open entry modal ──
+function kpi2OpenEntry(kpiId) {
+  const k = FMS_KPIS.find(x=>x.id===kpiId); if (!k) return;
+  document.getElementById('kpi2-entry-id').value = kpiId;
+  document.getElementById('kpi2-modal-title').textContent = k.icon + ' ' + k.name + ' — ' + k.standard;
+  document.getElementById('kpi2-num-label').textContent   = k.num;
+  document.getElementById('kpi2-den-label').textContent   = k.den;
+  document.getElementById('kpi2-entry-num').value = '';
+  document.getElementById('kpi2-entry-den').value = '';
+  document.getElementById('kpi2-entry-notes').value = '';
+
+  // Info banner
+  document.getElementById('kpi2-entry-info').innerHTML = `
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;">
+      <div style="flex:1;">
+        <div style="font-size:11px;font-weight:600;color:var(--ac);margin-bottom:4px;">${k.category} · ${k.standard}</div>
+        <div style="font-size:10px;color:var(--mu);line-height:1.7;">
+          <b style="color:var(--tx);">Numerator:</b> ${k.num}<br>
+          <b style="color:var(--tx);">Denominator:</b> ${k.den}<br>
+          <b style="color:var(--tx);">Target:</b> ${k.hib?'≥':'≤'}${k.target}${k.unit} · <b style="color:var(--tx);">Source:</b> ${k.src}
+        </div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:28px;">${k.icon}</div>
+        <div style="font-size:9px;color:var(--mu);">${k.freq}</div>
+      </div>
+    </div>`;
+
+  // Month/year selects
+  const monthSel = document.getElementById('kpi2-entry-month');
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  monthSel.innerHTML = monthNames.map((m,i)=>`<option value="${String(i+1).padStart(2,'0')}">${m}</option>`).join('');
+  const now = new Date();
+  monthSel.value = String(now.getMonth()+1).padStart(2,'0');
+  document.getElementById('kpi2-entry-year').value = now.getFullYear();
+
+  // Target label
+  document.getElementById('kpi2-target-label').textContent = 'Target: ' + k.target + k.unit;
+
+  // Existing files
+  const fk = 'kpi2_' + kpiId;
+  const files = fsGetFiles ? fsGetFiles(fk) : [];
+  const filesEl = document.getElementById('kpi2-existing-files');
+  if (filesEl) {
+    filesEl.innerHTML = files.length
+      ? '<div style="font-size:10px;color:var(--mu);margin-bottom:4px;">' + files.length + ' file(s) already attached:</div>' +
+        files.map(f=>`<div style="display:flex;align-items:center;gap:6px;margin:2px 0;">
+          <span>${fileIcon?fileIcon(f.name):'📎'}</span>
+          <span style="flex:1;font-size:10px;">${f.name}</span>
+          <button class="btn bb" style="font-size:9px;padding:1px 6px;" onclick="fsViewFile('${fk}','${f.id}')">👁</button>
+          <button class="btn br" style="font-size:9px;padding:1px 5px;" onclick="fsDeleteFile('${fk}','${f.id}');kpi2OpenEntry('${kpiId}')">✕</button>
+        </div>`).join('')
+      : '';
+  }
+
+  kpi2CalcResult();
+  openMod('kpi2-entry');
+}
+
+// ── Live result calculator ──
+function kpi2CalcResult() {
+  const kpiId = document.getElementById('kpi2-entry-id').value;
+  const k = FMS_KPIS.find(x=>x.id===kpiId); if (!k) return;
+  const num = parseFloat(document.getElementById('kpi2-entry-num').value);
+  const den = parseFloat(document.getElementById('kpi2-entry-den').value);
+
+  const resEl = document.getElementById('kpi2-result-val');
+  const statEl = document.getElementById('kpi2-result-status');
+  const fillEl = document.getElementById('kpi2-result-fill');
+
+  if (isNaN(num) || (k.formula==='percent' && (isNaN(den)||den===0))) {
+    resEl.textContent = '—'; resEl.style.color = 'var(--ac)';
+    statEl.textContent = ''; fillEl.style.width = '0%'; return;
+  }
+
+  let result;
+  if (k.formula==='percent') result = Math.round((num/den)*1000)/10;
+  else result = Math.round((num/den)*100)/100;
+
+  const status = kpi2Status(k, result);
+  const ss = KPI2_STATUS_STYLES[status];
+  resEl.textContent = result + k.unit;
+  resEl.style.color = ss.color;
+  statEl.innerHTML = `<span style="background:${ss.bg};color:${ss.color};border:1px solid ${ss.border};border-radius:5px;padding:3px 10px;">${ss.label}</span>`;
+
+  let fill = 0;
+  if (k.hib) fill = Math.min(100, (result / Math.max(k.target, result * 1.1)) * 100);
+  else fill = Math.max(0, 100 - ((Math.max(0, result - k.target) / k.target) * 100));
+  fillEl.style.width = fill + '%';
+  fillEl.style.background = ss.color;
+}
+
+// ── Save entry ──
+async function kpi2SaveEntry() {
+  const kpiId  = document.getElementById('kpi2-entry-id').value;
+  const k = FMS_KPIS.find(x=>x.id===kpiId); if (!k) return;
+  const month  = document.getElementById('kpi2-entry-month').value;
+  const year   = document.getElementById('kpi2-entry-year').value;
+  const num    = document.getElementById('kpi2-entry-num').value;
+  const den    = document.getElementById('kpi2-entry-den').value;
+  const notes  = document.getElementById('kpi2-entry-notes').value.trim();
+  const period = year + '-' + month;
+
+  if (!num) { toast('Enter the numerator value','#f59e0b'); return; }
+  if (k.formula==='percent' && !den) { toast('Enter the denominator value','#f59e0b'); return; }
+
+  const fileInput = document.getElementById('kpi2-entry-files');
+  const fk = 'kpi2_' + kpiId;
+  if (fileInput && fileInput.files.length) {
+    await fsStoreFiles(fk, fileInput.files);
+    fileInput.value = '';
+    toast('📎 Evidence saved');
+  }
+
+  const entry = { _id: Date.now(), period, month, year, num, den, notes,
+    _by: (typeof CU!=='undefined'?CU.name:''), _ts: new Date().toISOString() };
+
+  const arr = kpi2GetEntries(kpiId);
+  arr.push(entry);
+  kpi2SaveEntries(kpiId, arr);
+
+  closeMod('kpi2-entry');
+  kpi2RenderAll();
+  toast('✅ KPI data saved for ' + k.name);
+}
+
+// ── History modal ──
+function kpi2ShowHistory(kpiId) {
+  const k = FMS_KPIS.find(x=>x.id===kpiId); if (!k) return;
+  const entries = kpi2GetEntries(kpiId).sort((a,b)=>b._ts>a._ts?1:-1);
+
+  const rows = entries.map(e => {
+    const result = kpi2Calc(k, e);
+    const status = kpi2Status(k, result);
+    const ss = KPI2_STATUS_STYLES[status];
+    const fk = 'kpi2_' + kpiId;
+    return `<tr>
+      <td style="font-weight:600;">${e.period||'—'}</td>
+      <td>${e.num||'—'}</td>
+      <td>${e.den||'—'}</td>
+      <td style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:${ss.color};">${result!==null?result+k.unit:'—'}</td>
+      <td><span style="background:${ss.bg};color:${ss.color};border:1px solid ${ss.border};border-radius:4px;padding:2px 8px;font-size:9px;">${ss.label}</span></td>
+      <td style="font-size:10px;color:var(--mu);">${e._by||'—'}</td>
+      <td style="font-size:10px;color:var(--mu);">${e.notes||'—'}</td>
+      <td><button class="btn br" style="font-size:9px;padding:2px 6px;" onclick="kpi2DeleteEntry('${kpiId}','${e._id}')">✕</button></td>
+    </tr>`;
+  }).join('');
+
+  // Reuse files modal to show history in a simple alert-style approach
+  const html = `<div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;margin-bottom:12px;">${k.icon} ${k.name} — Entry History</div>
+    <div style="overflow-x:auto;"><table class="tbl" style="min-width:600px;">
+      <thead><tr><th>Period</th><th>Numerator</th><th>Denominator</th><th>Result</th><th>Status</th><th>By</th><th>Notes</th><th></th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="8" class="em">No entries yet</td></tr>'}</tbody>
+    </table></div>`;
+
+  document.getElementById('files-modal-title').textContent = k.name + ' — History';
+  document.getElementById('files-modal-list').innerHTML = html;
+  openMod('files');
+}
+
+function kpi2DeleteEntry(kpiId, entryId) {
+  if (!confirm('Delete this KPI entry?')) return;
+  const arr = kpi2GetEntries(kpiId).filter(e => String(e._id) !== String(entryId));
+  kpi2SaveEntries(kpiId, arr);
+  kpi2ShowHistory(kpiId);
+  kpi2RenderAll();
+}
+
+// ── Export KPI Report ──
+function kpi2ExportReport() {
+  const visible = kpi2VisibleKPIs();
+  const period  = document.getElementById('kpi2-month-sel')?.options[0]?.text || new Date().toLocaleString('en-GB',{month:'long',year:'numeric'});
+
+  const rows = visible.map((k,i) => {
+    const entry  = kpi2GetLatest(k.id);
+    const result = kpi2Calc(k, entry);
+    const status = kpi2Status(k, result);
+    const ss = KPI2_STATUS_STYLES[status];
+    return `<tr>
+      <td style="font-weight:600;color:#00b4ff;">${k.id}</td>
+      <td>${k.icon} ${k.name}</td>
+      <td><span style="background:${k.color}22;color:${k.color};border:1px solid ${k.color}44;border-radius:4px;padding:2px 6px;font-size:10px;">${k.standard}</span></td>
+      <td style="font-size:10px;">${k.category}</td>
+      <td style="font-size:10px;">${k.num}</td>
+      <td style="font-size:10px;">${k.den}</td>
+      <td style="text-align:center;">${entry?.num||'—'}</td>
+      <td style="text-align:center;">${entry?.den||'—'}</td>
+      <td style="font-weight:700;font-size:15px;color:${ss.color};">${result!==null?result+k.unit:'—'}</td>
+      <td style="text-align:center;font-weight:600;">${k.hib?'≥':'≤'}${k.target}${k.unit}</td>
+      <td><span style="background:${ss.bg};color:${ss.color};border:1px solid ${ss.border};border-radius:4px;padding:2px 8px;font-size:10px;white-space:nowrap;">${ss.label}</span></td>
+      <td style="font-size:10px;color:#666;">${k.freq}</td>
+    </tr>`;
+  }).join('');
+
+  const met = visible.filter(k=>kpi2Status(k,kpi2Calc(k,kpi2GetLatest(k.id)))==='met').length;
+  const score = visible.length ? Math.round((met/visible.length)*100) : 0;
+  const sc = score>=80?'#10b981':score>=60?'#f59e0b':'#ef4444';
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>FMS KPI Report — ${period}</title>
+<style>
+  body{font-family:Arial,sans-serif;margin:0;padding:24px;color:#1a1a2e;font-size:11px;}
+  .header{text-align:center;border-bottom:3px solid #00b4ff;padding-bottom:14px;margin-bottom:20px;}
+  .header h1{font-size:20px;margin:0 0 4px;color:#00b4ff;}
+  .summary{display:flex;gap:16px;margin-bottom:20px;justify-content:center;}
+  .sum-box{border:1px solid #ddd;border-radius:8px;padding:12px 20px;text-align:center;}
+  .sum-val{font-size:26px;font-weight:bold;}
+  .sum-lbl{font-size:10px;color:#888;text-transform:uppercase;}
+  table{width:100%;border-collapse:collapse;font-size:10px;}
+  th{background:#003366;color:#fff;padding:8px 6px;text-align:left;}
+  td{padding:7px 6px;border-bottom:1px solid #eee;}
+  tr:nth-child(even){background:#f8f9fa;}
+  .sig-section{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:30px;}
+  .sig-box{border-top:1px solid #333;padding-top:6px;}
+  .sig-line{height:50px;}
+  .footer{margin-top:20px;font-size:9px;color:#999;text-align:center;border-top:1px solid #eee;padding-top:8px;}
+</style></head>
+<body>
+<div class="header">
+  <div style="font-size:10px;color:#888;">OBEID SPECIALIZED HOSPITAL — RIYADH · FACILITY MANAGEMENT & SAFETY</div>
+  <h1>FMS PERFORMANCE INDICATORS REPORT</h1>
+  <p style="margin:4px 0;color:#555;">Reporting Period: ${period} · CBAHI Accreditation 2026</p>
+  <p style="margin:2px 0;font-size:10px;color:#888;">Generated by: ${typeof CU!=='undefined'?CU.name:'FMS Director'} · ${new Date().toLocaleString('en-GB')}</p>
+</div>
+<div class="summary">
+  <div class="sum-box"><div class="sum-val" style="color:${sc};">${score}%</div><div class="sum-lbl">Overall Achievement</div></div>
+  <div class="sum-box"><div class="sum-val" style="color:#10b981;">${met}</div><div class="sum-lbl">KPIs Met</div></div>
+  <div class="sum-box"><div class="sum-val" style="color:#1a1a2e;">${visible.length}</div><div class="sum-lbl">Total KPIs</div></div>
+</div>
+<table>
+  <thead><tr>
+    <th>KPI ID</th><th>Indicator Name</th><th>Standard</th><th>Category</th>
+    <th>Numerator</th><th>Denominator</th><th>Actual N</th><th>Actual D</th>
+    <th>Result</th><th>Target</th><th>Status</th><th>Frequency</th>
+  </tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+<div class="sig-section">
+  <div class="sig-box">
+    <div style="font-size:10px;color:#888;">FMS Director</div>
+    <div class="sig-line"></div>
+    <div style="font-size:10px;color:#888;">Name &amp; Signature &amp; Date</div>
+  </div>
+  <div class="sig-box">
+    <div style="font-size:10px;color:#888;">Quality / Accreditation Manager</div>
+    <div class="sig-line"></div>
+    <div style="font-size:10px;color:#888;">Name &amp; Signature &amp; Date</div>
+  </div>
+</div>
+<div class="footer">Obeid Specialized Hospital FMS Platform · CBAHI 2026 · Generated: ${new Date().toLocaleString('en-GB')}</div>
+</body></html>`;
+
+  const blob = new Blob([html],{type:'text/html'});
+  const win  = window.open(URL.createObjectURL(blob),'_blank');
+  if (win) setTimeout(()=>win.print(), 800);
+  toast('✅ KPI Report opened — Print → Save as PDF');
+}
+
+// ── Init on page load ──
+window.addEventListener('load', function() {
+  kpi2BuildMonthSelect();
+  kpi2BuildTrendSelect();
+});
 
 </script>
 </body>
