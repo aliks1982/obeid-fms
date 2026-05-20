@@ -2128,16 +2128,24 @@ if ('caches' in window) {
       <div class="fg fg2">
         <div class="ff" style="grid-column:1/-1"><label>Select User to Edit</label>
           <select id="set-role" onchange="settingsLoadUser()" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px 12px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;">
+            <option value="director">FMS Director</option>
+            <option value="maintenance">Maintenance Manager</option>
+            <option value="biomedical">Biomedical Engineer</option>
+            <option value="safety">Safety Officer</option>
+            <option value="security">Security Manager</option>
           </select>
+          <div id="set-role-hint" style="font-size:9px;color:var(--mu);margin-top:3px;"></div>
         </div>
         <div class="ff"><label>Display Name</label>
-          <input type="text" id="set-name" placeholder="Full name">
+          <input type="text" id="set-name" placeholder="Enter full name">
+          <div class="ht">Leave blank to keep the current name</div>
         </div>
-        <div class="ff"><label>New PIN (4–8 digits)</label>
-          <input type="password" id="set-pin" maxlength="8" placeholder="Leave blank to keep current PIN">
+        <div class="ff"><label>New PIN (4 to 8 digits)</label>
+          <input type="password" id="set-pin" maxlength="8" placeholder="Enter new PIN (digits only)">
+          <div class="ht">Leave blank to keep the current PIN · Numbers only</div>
         </div>
         <div class="ff"><label>Confirm New PIN</label>
-          <input type="password" id="set-pin2" maxlength="8" placeholder="Repeat new PIN">
+          <input type="password" id="set-pin2" maxlength="8" placeholder="Repeat the new PIN exactly">
         </div>
       </div>
       <button class="btn bg" style="width:100%;margin-top:12px;" onclick="settingsSaveUser()">✓ Save Changes</button>
@@ -5134,41 +5142,80 @@ function settingsEditUser(role) {
 }
 
 function settingsLoadUser() {
-  const role  = document.getElementById('set-role')?.value;
-  const names = getDynNames();
+  const role   = document.getElementById('set-role')?.value;
+  if (!role) return;
+  const names  = getDynNames();
+  const users  = getDynUsers();
+  const user   = users.find(u => u.role === role);
+
   const nameEl = document.getElementById('set-name');
-  if (nameEl) nameEl.value = names[role] || '';
-  const p1 = document.getElementById('set-pin');  if(p1) p1.value='';
-  const p2 = document.getElementById('set-pin2'); if(p2) p2.value='';
+  if (nameEl) nameEl.value = names[role] || user?.defaultName || '';
+
+  const p1 = document.getElementById('set-pin');  if (p1) p1.value = '';
+  const p2 = document.getElementById('set-pin2'); if (p2) p2.value = '';
+
+  // Update role label hint
+  const hint = document.getElementById('set-role-hint');
+  if (hint && user) hint.textContent = user.access;
 }
 
 
 
 function settingsAddUser() {
-  const newRole   = document.getElementById('new-user-role')?.value.trim().toLowerCase().replace(/\s+/g,'_');
-  const newLabel  = document.getElementById('new-user-label')?.value.trim();
-  const newPin    = document.getElementById('new-user-pin')?.value.trim();
-  const newAccess = document.getElementById('new-user-access')?.value || 'security';
-  if (!newRole||!newLabel||!newPin) { toast('Fill all fields','#f59e0b'); return; }
-  if (!/^\d{4,8}$/.test(newPin)) { toast('PIN must be 4-8 digits','#f59e0b'); return; }
+  const roleInput  = document.getElementById('new-user-role');
+  const labelInput = document.getElementById('new-user-label');
+  const pinInput   = document.getElementById('new-user-pin');
+  const accessSel  = document.getElementById('new-user-access');
 
-  const extras = JSON.parse(localStorage.getItem('obeid_extra_users')||'[]');
-  if (getDynUsers().find(u=>u.role===newRole)) { toast('Role ID already exists — choose a different ID','#f59e0b'); return; }
-  extras.push({role:newRole, label:newLabel, defaultName:newLabel, access:newAccess+' (same as template)', custom:true});
+  const newRole   = (roleInput?.value  || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  const newLabel  = (labelInput?.value || '').trim();
+  const newPin    = (pinInput?.value   || '').trim();
+  const newAccess = accessSel?.value   || 'security';
+
+  // Validation
+  if (!newRole)  { toast('Enter a Role ID (e.g. maintenance2)','#f59e0b'); roleInput?.focus(); return; }
+  if (!newLabel) { toast('Enter the Display Name','#f59e0b'); labelInput?.focus(); return; }
+  if (!newPin)   { toast('Enter a PIN for this user','#f59e0b'); pinInput?.focus(); return; }
+  if (!/^\d{4,8}$/.test(newPin)) { toast('PIN must be 4 to 8 digits only','#f59e0b'); pinInput?.focus(); return; }
+
+  const allUsers = getDynUsers();
+  if (allUsers.find(u => u.role === newRole)) {
+    toast('Role ID "' + newRole + '" already exists — use a different ID','#f59e0b');
+    roleInput?.focus();
+    return;
+  }
+
+  // Save new user
+  const extras = JSON.parse(localStorage.getItem('obeid_extra_users') || '[]');
+  extras.push({
+    role: newRole, label: newLabel, defaultName: newLabel,
+    access: newAccess + ' access (same as ' + newAccess + ')',
+    custom: true
+  });
   localStorage.setItem('obeid_extra_users', JSON.stringify(extras));
 
-  const pins = getDynPINs(); pins[newRole] = newPin; saveDynPINs(pins);
-  const names = getDynNames(); names[newRole] = newLabel; saveDynNames(names);
+  // Save PIN and name
+  const pins  = getDynPINs(); pins[newRole]  = newPin;    saveDynPINs(pins);
+  const names = getDynNames(); names[newRole] = newLabel;  saveDynNames(names);
 
-  ROLE_ACCESS[newRole] = [...(ROLE_ACCESS[newAccess]||ROLE_ACCESS['security'])];
-  PAGE_ACCESS[newRole] = [...(PAGE_ACCESS[newAccess]||PAGE_ACCESS['security'])];
-  RLBL[newRole] = newLabel;
+  // Add to runtime access maps
+  if (typeof ROLE_ACCESS !== 'undefined') {
+    ROLE_ACCESS[newRole] = [...(ROLE_ACCESS[newAccess] || ROLE_ACCESS['security'] || [])];
+  }
+  if (typeof PAGE_ACCESS !== 'undefined') {
+    PAGE_ACCESS[newRole] = [...(PAGE_ACCESS[newAccess] || PAGE_ACCESS['security'] || [])];
+  }
+  if (typeof RLBL !== 'undefined') {
+    RLBL[newRole] = newLabel;
+  }
 
-  ['new-user-role','new-user-label','new-user-pin'].forEach(id=>{
-    const e=document.getElementById(id); if(e) e.value='';
-  });
+  // Clear form
+  if (roleInput)  roleInput.value  = '';
+  if (labelInput) labelInput.value = '';
+  if (pinInput)   pinInput.value   = '';
+
   settingsRenderUsers();
-  toast('User ' + newLabel + ' added successfully');
+  toast('✅ User "' + newLabel + '" added with PIN ••••');
 }
 
 function settingsDeleteUser(role) {
@@ -5202,23 +5249,32 @@ function settingsUpdateQueueCount() {
 }
 
 function settingsRenderUsers() {
-  const tb = document.getElementById('users-tb'); if (!tb) return;
+  const tb    = document.getElementById('users-tb'); if (!tb) return;
   const pins  = getDynPINs();
   const names = getDynNames();
-  const roles = [
-    { key:'director',    label:'FMS Director',              access:'Full Access' },
-    { key:'maintenance', label:'Maintenance Manager',        access:'Maint. · Utilities · Fire · MMS' },
-    { key:'biomedical',  label:'Biomedical Engineer',        access:'Equipment · Medical Gas · Radiation' },
-    { key:'safety',      label:'Safety Officer',             access:'Safety · Hazmat · Emergency · Fire' },
-    { key:'security',    label:'Security Manager',           access:'Security only' },
-  ];
-  tb.innerHTML = roles.map(r => `<tr>
-    <td style="font-weight:600;">${r.label}</td>
-    <td>${names[r.key] || '—'}</td>
-    <td style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--ac);">${pins[r.key]||'—'}</td>
-    <td style="font-size:10px;color:var(--mu);">${r.access}</td>
-    <td><button class="btn bo" style="font-size:9px;padding:3px 8px;" onclick="settingsEditUser('${r.key}')">Edit</button></td>
+  const users = getDynUsers(); // includes built-in + added users
+
+  // Render table
+  tb.innerHTML = users.map(u => `<tr>
+    <td style="font-weight:600;">${u.label}</td>
+    <td style="color:var(--ac);">${names[u.role] || u.defaultName || '—'}</td>
+    <td style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--gn);">••••</td>
+    <td style="font-size:10px;color:var(--mu);">${u.access}</td>
+    <td>
+      <button class="btn bo" style="font-size:9px;padding:3px 8px;" onclick="settingsEditUser('${u.role}')">✏ Edit</button>
+      ${u.custom ? `<button class="btn br" style="font-size:9px;padding:3px 6px;margin-left:3px;" onclick="settingsDeleteUser('${u.role}')">✕</button>` : ''}
+    </td>
   </tr>`).join('');
+
+  // Always rebuild the set-role dropdown to include ALL users
+  const sel = document.getElementById('set-role');
+  if (sel) {
+    const currentVal = sel.value;
+    sel.innerHTML = users.map(u =>
+      `<option value="${u.role}">${u.label} — ${names[u.role] || u.defaultName}</option>`
+    ).join('');
+    if (currentVal) sel.value = currentVal;
+  }
 }
 
 function settingsEditUser(role) {
@@ -5242,18 +5298,57 @@ function settingsSaveUser() {
   const name  = document.getElementById('set-name')?.value.trim();
   const pin   = document.getElementById('set-pin')?.value.trim();
   const pin2  = document.getElementById('set-pin2')?.value.trim();
-  if (!role) { toast('Select a user','#f59e0b'); return; }
-  if (pin) {
-    if (pin.length !== 4 || !/^\d{4}$/.test(pin)) { toast('PIN must be exactly 4 digits','#f59e0b'); return; }
-    if (pin !== pin2) { toast('PINs do not match','#f59e0b'); return; }
-    const pins = getDynPINs(); pins[role] = pin; saveDynPINs(pins);
-  }
+
+  if (!role) { toast('Select a user first','#f59e0b'); return; }
+
+  let changed = false;
+
+  // Update name if provided
   if (name) {
-    const names = getDynNames(); names[role] = name; saveDynNames(names);
+    const names = getDynNames();
+    names[role] = name;
+    saveDynNames(names);
+    changed = true;
   }
+
+  // Update PIN if provided
+  if (pin) {
+    if (!/^\d{4,8}$/.test(pin)) {
+      toast('PIN must be 4 to 8 digits only','#f59e0b');
+      return;
+    }
+    if (pin !== pin2) {
+      toast('PINs do not match — re-enter both fields','#f59e0b');
+      return;
+    }
+    const pins = getDynPINs();
+    pins[role] = pin;
+    saveDynPINs(pins);
+    // Sync new PIN to DB so all connected devices get it
+    dbWrite('app_settings', {
+      _id:   'pin_' + role,
+      key:   'pin_' + role,
+      value: pin,
+      _by:   (typeof CU !== 'undefined' ? CU.name : 'Director'),
+      _ts:   new Date().toISOString()
+    });
+    changed = true;
+  }
+
+  if (!changed) {
+    toast('Nothing to save — enter a name or new PIN','#f59e0b');
+    return;
+  }
+
+  // Clear PIN fields after successful save
+  const p1 = document.getElementById('set-pin');  if (p1) p1.value = '';
+  const p2 = document.getElementById('set-pin2'); if (p2) p2.value = '';
+
   settingsRenderUsers();
-  logAccessEvent('PIN/name updated for role: ' + role);
-  toast('✓ User updated');
+  if (typeof logAccessEvent === 'function') logAccessEvent('Updated user: ' + role);
+
+  const savedName = (document.getElementById('set-name')?.value||'') || role;
+  toast('✓ Changes saved for ' + savedName + (pin ? ' — PIN updated' : ''));
 }
 
 function settingsRenderAccessLog() {
