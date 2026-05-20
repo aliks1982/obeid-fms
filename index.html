@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260519-0820';
+  var v = '20260520-0839';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   if (url.indexOf('?v=') === -1 && url.indexOf('&v=') === -1) {
@@ -257,16 +257,16 @@ if ('caches' in window) {
   <div class="lsb">Obeid Specialized Hospital · Riyadh · CBAHI 2026</div>
   <div class="lh">🏥 Integrated FMS & Maintenance Intelligence Platform</div>
   <div class="lf"><label>Select Role</label>
-    <select id="lr">
+    <select id="lr" onmousedown="buildLoginRoles()" onfocus="buildLoginRoles()">
       <option value="">— Choose your role —</option>
       <option value="director">FMS Director</option>
-      <option value="maintenance">Maintenance Manager — Mostapha</option>
-      <option value="biomedical">Biomedical Engineer — Bashar</option>
-      <option value="safety">Safety Officer — Moe</option>
-      <option value="security">Security Manager — Bader</option>
+      <option value="maintenance">Maintenance Manager</option>
+      <option value="biomedical">Biomedical Engineer</option>
+      <option value="safety">Safety Officer</option>
+      <option value="security">Security Manager</option>
     </select></div>
   <div class="lf"><label>Full Name</label><input id="lname" type="text" placeholder="Enter your full name"></div>
-  <div class="lf"><label>PIN</label><input id="lpin" type="password" placeholder="4-digit PIN" maxlength="4"></div>
+  <div class="lf"><label>PIN</label><input id="lpin" type="password" placeholder="Enter your PIN" maxlength="8"></div>
   <button class="lbtn" onclick="doLogin()">ACCESS PLATFORM →</button>
   <div style="margin-top:12px;font-size:10px;color:rgba(255,255,255,.35);text-align:center;">
     Forgot your PIN? Contact the FMS Director.
@@ -2344,7 +2344,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260519-0611';
+const APP_VERSION = '20260520-0839';
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
@@ -2728,7 +2728,9 @@ function hardReload() {
   }
 }
 
-function doLogout(){document.getElementById('loginScreen').style.display='flex';document.getElementById('app').style.display='none';destroyCharts();}
+function doLogout(){document.getElementById('loginScreen').style.display='flex';document.getElementById('app').style.display='none';destroyCharts();
+  setTimeout(buildLoginRoles, 50);
+}
 
 // ===== INIT =====
 let CH={};
@@ -5275,6 +5277,8 @@ function settingsRenderUsers() {
     ).join('');
     if (currentVal) sel.value = currentVal;
   }
+  // Also rebuild the login dropdown if it exists
+  buildLoginRoles();
 }
 
 function settingsEditUser(role) {
@@ -6800,7 +6804,10 @@ function exportDeptList() {
 }
 
 
-function sbHide(){const s=document.getElementById("main-sidebar"),m=document.querySelector(".main");if(s)s.classList.add("sb-hidden");if(m)m.style.marginLeft="8px";}function sbShow(){const s=document.getElementById("main-sidebar"),m=document.querySelector(".main");if(s)s.classList.remove("sb-hidden");if(m)m.style.marginLeft="var(--sb)";}window.addEventListener("load",sbShow);
+function sbHide(){const s=document.getElementById("main-sidebar"),m=document.querySelector(".main");if(s)s.classList.add("sb-hidden");if(m)m.style.marginLeft="8px";}function sbShow(){const s=document.getElementById("main-sidebar"),m=document.querySelector(".main");if(s)s.classList.remove("sb-hidden");if(m)m.style.marginLeft="var(--sb)";}window.addEventListener("load", function() {
+  sbShow();
+  buildLoginRoles(); // populate login dropdown with all users including added ones
+});
 
 // ── INVENTORY UPLOAD ──
 function invHandleDrop(e) {
