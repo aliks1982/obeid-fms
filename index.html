@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260520-0839';
+  var v = '20260520-0854';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   if (url.indexOf('?v=') === -1 && url.indexOf('&v=') === -1) {
@@ -2344,7 +2344,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260520-0839';
+const APP_VERSION = '20260520-0854';
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
@@ -4984,18 +4984,39 @@ const PAGE_ACCESS = {
 // Page access — which page IDs each role can visit
 ;
 
+function getEffectiveRole(role) {
+  // For built-in roles, return as-is
+  const builtIn = ['director','maintenance','biomedical','safety','security'];
+  if (builtIn.includes(role)) return role;
+  // For custom roles, look up their template role from extra_users
+  try {
+    const extras = JSON.parse(localStorage.getItem('obeid_extra_users') || '[]');
+    const found  = extras.find(u => u.role === role);
+    if (found) {
+      // access field is like "biomedical access (same as biomedical)"
+      // or templateRole is stored as newAccess when added
+      const template = found.templateRole || found.newAccess;
+      if (template && builtIn.includes(template)) return template;
+      // Parse from access string as fallback
+      const match = (found.access || '').match(/same as (\w+)/);
+      if (match && builtIn.includes(match[1])) return match[1];
+    }
+  } catch(e) {}
+  return 'security'; // safest fallback
+}
+
 function applyRBAC() {
   if (!CU.role || CU.role === 'director') {
-    // Director sees all — show everything
     document.querySelectorAll('.ni, .nsc').forEach(el => el.style.display = '');
     return;
   }
-  const allowed = ROLE_ACCESS[CU.role] || [];
-  // Hide nav items not in allowed list
+  // Resolve custom roles to their template role for access lookup
+  const effectiveRole = getEffectiveRole(CU.role);
+  const allowed = ROLE_ACCESS[effectiveRole] || ROLE_ACCESS['security'] || [];
+
   document.querySelectorAll('.ni[id]').forEach(el => {
     el.style.display = allowed.includes(el.id) ? '' : 'none';
   });
-  // Hide section headers if all items in them are hidden
   document.querySelectorAll('.nsc').forEach(sec => {
     let next = sec.nextElementSibling;
     let hasVisible = false;
@@ -5010,7 +5031,8 @@ function applyRBAC() {
 function canAccessPage(pageId) {
   if (!CU.role || CU.role === 'director') return true;
   if (pageId === 'settings') return true; // all roles can access settings for DB connection
-  const allowed = PAGE_ACCESS[CU.role] || [];
+  const effectiveRole = getEffectiveRole(CU.role);
+  const allowed = PAGE_ACCESS[effectiveRole] || PAGE_ACCESS['security'] || [];
   return allowed.includes(pageId);
 }
 
@@ -5190,9 +5212,12 @@ function settingsAddUser() {
   // Save new user
   const extras = JSON.parse(localStorage.getItem('obeid_extra_users') || '[]');
   extras.push({
-    role: newRole, label: newLabel, defaultName: newLabel,
-    access: newAccess + ' access (same as ' + newAccess + ')',
-    custom: true
+    role:         newRole,
+    label:        newLabel,
+    defaultName:  newLabel,
+    access:       newAccess + ' access (same as ' + newAccess + ')',
+    templateRole: newAccess,   // ← explicit, used by getEffectiveRole()
+    custom:       true
   });
   localStorage.setItem('obeid_extra_users', JSON.stringify(extras));
 
@@ -5881,7 +5906,11 @@ function doLogin() {
   if (pins[role] !== pin) { err.textContent='Incorrect PIN for this role'; return; }
 
   const dynNames = getDynNames();
-  CU = { name, role, rl:RLBL[role], ab:name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2) };
+  // For custom roles, get label from getDynUsers() since RLBL only has built-ins
+  const allUsers  = getDynUsers();
+  const userDef   = allUsers.find(u => u.role === role);
+  const roleLabel = RLBL[role] || (userDef ? userDef.label : role);
+  CU = { name, role, rl: roleLabel, ab: name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2) };
   document.getElementById('sbAv').textContent  = CU.ab;
   document.getElementById('sbName').textContent = CU.name;
   document.getElementById('sbRole').textContent = CU.rl;
