@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260520-0909';
+  var v = '20260521-1237';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   if (url.indexOf('?v=') === -1 && url.indexOf('&v=') === -1) {
@@ -2458,7 +2458,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260520-0909';
+const APP_VERSION = '20260521-1237';
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
@@ -2604,7 +2604,7 @@ async function dbLoadAll() {
       sv(key, [...dbRows, ...queuedLocal]);
     });
     dbShowStatus('online', totalRecords);
-    // Full re-render with fresh DB data — updates KPIs, dashboard, all pages
+    if(j.data&&j.data.platform_settings) settingsPullFromDB(j.data.platform_settings);
     renderAll();
     if (typeof renderDash === 'function') renderDash();
     if (typeof renderAnalytics === 'function') renderAnalytics();
@@ -5181,7 +5181,8 @@ function connectDB() {
   if (!url.includes('script.google.com')) { toast('That does not look like an Apps Script URL','#f59e0b'); return; }
   setDBUrl(url);
   DB_URL = url;
-  toast('✓ DB URL saved — syncing now...');
+  toast('✓ Connected — uploading users & PINs to all devices...');
+  settingsPushToDB();
   dbFlushQueue().then(() => dbLoadAll());
 }
 
@@ -5197,6 +5198,7 @@ async function dbPushAll() {
     'mg_ambulance','mg_cylinder','mg_o2refill','mg_airrefill',
     'rad_tld','rad_apron','rad_shield'];
   let total = 0, pushed = 0;
+  settingsPushToDB();
   toast('⟳ Pushing all local data to DB...');
   for (const key of allKeys) {
     const records = ld(key);
@@ -5232,6 +5234,40 @@ function dbClearAndResync() {
     if (typeof renderDash === 'function') renderDash();
     toast('✅ Resync complete');
   }), 500);
+}
+
+function settingsPushToDB() {
+  const payload = {
+    _id: 'platform_settings',
+    extra_users: localStorage.getItem('obeid_extra_users') || '[]',
+    pins:        localStorage.getItem('obeid_pins')        || '{}',
+    names:       localStorage.getItem('obeid_user_names')  || '{}',
+    doc_stds:    localStorage.getItem('obeid_doc_standards')|| '[]',
+    esr_target:  localStorage.getItem('safety_esr_target') || '12',
+    tr_target:   localStorage.getItem('safety_tr_target')  || '12',
+    _by: (typeof CU!=='undefined'?CU.name:'System'),
+    _ts: new Date().toISOString()
+  };
+  return dbWrite('platform_settings', payload);
+}
+
+function settingsPullFromDB(rows) {
+  if (!rows||!rows.length) return;
+  const row = Array.isArray(rows)?rows.find(r=>r._id==='platform_settings'):rows;
+  if (!row) return;
+  if (row.extra_users&&row.extra_users.length>2) localStorage.setItem('obeid_extra_users',row.extra_users);
+  if (row.pins&&row.pins.length>2) {
+    try{const d=JSON.parse(row.pins),l=JSON.parse(localStorage.getItem('obeid_pins')||'{}');
+        localStorage.setItem('obeid_pins',JSON.stringify(Object.assign({},l,d)));}catch(e){}
+  }
+  if (row.names&&row.names.length>2) {
+    try{const d=JSON.parse(row.names),l=JSON.parse(localStorage.getItem('obeid_user_names')||'{}');
+        localStorage.setItem('obeid_user_names',JSON.stringify(Object.assign({},l,d)));}catch(e){}
+  }
+  if (row.doc_stds&&row.doc_stds.length>2) localStorage.setItem('obeid_doc_standards',row.doc_stds);
+  if (row.esr_target) localStorage.setItem('safety_esr_target',row.esr_target);
+  if (row.tr_target)  localStorage.setItem('safety_tr_target', row.tr_target);
+  console.log('✓ Settings synced from DB — users/PINs updated');
 }
 
 function copyDBUrl() {
@@ -5356,7 +5392,8 @@ function settingsAddUser() {
   if (pinInput)   pinInput.value   = '';
 
   settingsRenderUsers();
-  toast('✅ User "' + newLabel + '" added with PIN ••••');
+  settingsPushToDB();
+  toast('✅ User "' + newLabel + '" added — syncing to all devices');
 }
 
 function settingsDeleteUser(role) {
@@ -5368,7 +5405,8 @@ function settingsDeleteUser(role) {
   const pins=getDynPINs(); delete pins[role]; saveDynPINs(pins);
   const names=getDynNames(); delete names[role]; saveDynNames(names);
   settingsRenderUsers();
-  toast('User deleted');
+  settingsPushToDB();
+  toast('User deleted — syncing to all devices');
 }
 
 function buildLoginRoles() {
@@ -5489,6 +5527,7 @@ function settingsSaveUser() {
 
   settingsRenderUsers();
   if (typeof logAccessEvent === 'function') logAccessEvent('Updated user: ' + role);
+  settingsPushToDB();
 
   const savedName = (document.getElementById('set-name')?.value||'') || role;
   toast('✓ Changes saved for ' + savedName + (pin ? ' — PIN updated' : ''));
