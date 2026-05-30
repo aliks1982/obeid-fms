@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260530-0940';
+  var v = '20260530-2009';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   if (url.indexOf('?v=') === -1 && url.indexOf('&v=') === -1) {
@@ -309,6 +309,7 @@ if ('caches' in window) {
     <div class="ni" onclick="gp('ckpi')" id="n-ckpi"><span class="ni-ic">⚙</span>Custom KPIs</div>
     <div class="ni" onclick="gp('docs')" id="n-docs"><span class="ni-ic">📁</span>Documents</div>
     <div class="nsc">Compliance</div>
+    <div class="ni" onclick="gp('budget')" id="n-budget"><span class="ni-ic">💰</span>FMS Budget</div>
     <div class="ni" onclick="gp('risk')" id="n-risk"><span class="ni-ic">⚠️</span>Risk Assessment</div>
     <div class="ni" onclick="gp('contracts')" id="n-contracts"><span class="ni-ic">📃</span>Contract Review</div>
     <div class="ni" onclick="gp('settings')" id="n-settings"><span class="ni-ic">⚙</span>Settings / DB</div>
@@ -850,38 +851,66 @@ if ('caches' in window) {
     </div></div>
     <div class="card"><div class="ch"><div class="ct">Exit Inspection Log</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Location</th><th>23.1</th><th>23.2</th><th>23.3</th><th>23.4</th><th>23.6</th><th>Doc</th></tr></thead><tbody id="fireExit-tb"></tbody></table></div></div>
   </div></div>
-  <div id="fire-drills" style="display:none;"><div class="g g2">
-    <div class="card"><div class="ch"><div class="ct">Log Fire Drill (4/year)</div></div><div class="cb">
-      <div class="fg fg2">
-        <div class="ff"><label>Date</label><input type="date" id="fd-date"></div>
-        <div class="ff"><label>Shift</label><select id="fd-shift"><option>Day</option><option>Evening</option><option>Night</option></select></div>
-        <div class="ff"><label>Area</label><input type="text" id="fd-area" placeholder="Area"></div>
-        <div class="ff"><label>Duration (min)</label><input type="number" id="fd-dur" placeholder="18"></div>
-        <div class="ff"><label>Participants</label><input type="number" id="fd-count" placeholder="40"></div>
-        <div class="ff"><label>Deficiencies</label><input type="text" id="fd-def" placeholder="None / details"></div>
-        <div class="ff" style="grid-column:1/-1"><label>Report</label><input type="file" id="fd-file"></div>
-      </div>
-      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('fireDrill')">✓ Save Drill</button>
-    </div></div>
-    <div class="card"><div class="ch"><div class="ct">Fire Drill Log (4/year)</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>#</th><th>Date</th><th>Shift</th><th>Area</th><th>Dur.</th><th>Part.</th><th>Issues</th><th>Doc</th></tr></thead><tbody id="fireDrill-tb"></tbody></table></div></div>
-  </div></div>
-  <div id="fire-kpi" style="display:none;"><div id="fire-kpi-out"></div></div>
-</div>
+  <div id="fire-drills" style="display:none;">
+    <!-- Infographic summary -->
+    <div id="drill-infographic" style="margin-bottom:16px;"></div>
 
-<!-- ===== EQUIPMENT ===== -->
-<div class="pg" id="page-equip">
-  <div class="ph">
-    <h1>⚕ Medical Equipment — FMS.1.1.7</h1>
-    <p>1,848 devices loaded · 3 sheets: Active Inventory · Medical Gas Equipment · Out of Order · Manager: Bashar</p>
-  </div>
-  <div class="tb" style="flex-wrap:wrap;">
-    <button class="tbtn active" onclick="eqTab('inv',this)">📋 Inventory (1,848)</button>
-    <button class="tbtn" onclick="eqTab('upload',this)">📤 Upload Inventory</button>
-    <button class="tbtn" onclick="eqTab('ppm',this)">🔧 Log PPM</button>
-    <button class="tbtn" onclick="eqTab('add',this)">➕ Add Equipment</button>
-    <button class="tbtn" onclick="eqTab('relocate',this)">🔄 Relocations</button>
-    <button class="tbtn" onclick="eqTab('kpi',this)">📊 KPIs</button>
-  </div>
+    <!-- Code Drill form -->
+    <div class="g g2" style="margin-bottom:14px;">
+      <div class="card"><div class="ch"><div class="ct">🚨 Log Emergency Code Drill</div></div><div class="cb">
+        <div class="fg fg2">
+          <div class="ff"><label>Emergency Code</label>
+            <select id="drill-code" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;width:100%;">
+              <option value="Code Red">🔥 Code Red — Fire Emergency</option>
+              <option value="Code Yellow">⚠️ Code Yellow — Internal Disaster / Mass Casualty</option>
+              <option value="Code Pink">👶 Code Pink — Infant / Child Abduction</option>
+              <option value="Code Brown">☣️ Code Brown — Hazardous Material Spill</option>
+            </select>
+          </div>
+          <div class="ff"><label>Date</label><input type="date" id="drill-date"></div>
+          <div class="ff"><label>Shift</label>
+            <select id="drill-shift" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+              <option>Day</option><option>Evening</option><option>Night</option>
+            </select>
+          </div>
+          <div class="ff"><label>Area / Department</label><input type="text" id="drill-area" placeholder="ER, ICU, Floor 2..."></div>
+          <div class="ff"><label>Duration (minutes)</label><input type="number" id="drill-dur" placeholder="15"></div>
+          <div class="ff"><label>Participants</label><input type="number" id="drill-count" placeholder="30"></div>
+          <div class="ff"><label>Overall Outcome</label>
+            <select id="drill-outcome" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+              <option value="pass">✅ Passed — Staff responded correctly</option>
+              <option value="fail">❌ Needs Improvement — Gaps identified</option>
+            </select>
+          </div>
+          <div class="ff" style="grid-column:1/-1"><label>Gaps / Deficiencies Identified</label>
+            <textarea id="drill-gaps" style="min-height:60px;" placeholder="List any gaps, delays, wrong responses..."></textarea>
+          </div>
+          <div class="ff" style="grid-column:1/-1"><label>Corrective Actions / Follow-up</label>
+            <textarea id="drill-actions" style="min-height:60px;" placeholder="What actions were taken or planned..."></textarea>
+          </div>
+          <div class="ff" style="grid-column:1/-1">
+            <label>Upload Reports & Action Plans (multiple files)</label>
+            <input type="file" id="drill-files" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+              style="font-size:11px;color:var(--mu);">
+            <div class="ht">Attendance sheets, critique reports, photos, action plans — all CBAHI evidence</div>
+          </div>
+        </div>
+        <button class="btn bg" style="width:100%;margin-top:12px;" onclick="saveCodeDrill()">✓ Log Code Drill</button>
+      </div></div>
+
+      <div class="card"><div class="ch"><div class="ct">📋 Code Drill Log</div>
+        <div style="font-size:10px;color:var(--mu);">Target: 4 drills/year per code type · CBAHI requirement</div>
+      </div>
+        <div class="cb" style="padding:0;max-height:500px;overflow-y:auto;">
+          <table class="tbl">
+            <thead><tr><th>Code</th><th>Date</th><th>Shift</th><th>Area</th><th>Duration</th><th>Staff</th><th>Outcome</th><th>Docs</th><th></th></tr></thead>
+            <tbody id="code-drills-tb"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+</div>
 
   <!-- ══ INVENTORY VIEW ══ -->
   <div id="eq-inv">
@@ -1763,8 +1792,24 @@ if ('caches' in window) {
         <div class="ff"><label>Current Value</label><input type="number" id="ck-val" step="0.1" placeholder="4.2"></div>
         <div class="ff"><label>Target Value</label><input type="number" id="ck-tgt" step="0.1" placeholder="5.0"></div>
         <div class="ff"><label>Unit</label><input type="text" id="ck-unit" placeholder="score, %, hrs, SAR"></div>
-        <div class="ff"><label>Period</label><select id="ck-period"><option>Monthly</option><option>Quarterly</option><option>Annual</option></select></div>
-        <div class="ff" style="grid-column:1/-1"><label>Notes / Formula</label><textarea id="ck-notes" placeholder="How measured..."></textarea></div>
+        <div class="ff"><label>Frequency</label>
+          <select id="ck-period" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+            <option>Monthly</option>
+            <option>Quarterly</option>
+            <option>Semi-Annual</option>
+            <option>Annual</option>
+          </select>
+        </div>
+        <div class="ff"><label>Number of Departments Covered</label>
+          <input type="number" id="ck-ndepts" min="0" placeholder="e.g. 5" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;width:100%;">
+          <div class="ht">How many departments are included in this KPI measurement</div>
+        </div>
+        <div class="ff" style="grid-column:1/-1"><label>Department Names (optional)</label>
+          <input type="text" id="ck-dept-names" placeholder="e.g. ICU, ER, OR, Ward 1, Pharmacy — enter manually">
+        </div>
+        <div class="ff" style="grid-column:1/-1"><label>Notes / Formula / Data Source</label>
+          <textarea id="ck-notes" placeholder="How is this KPI measured? What is the data source?"></textarea>
+        </div>
       </div>
       <button class="btn bg" style="margin-top:10px;width:100%;" onclick="saveCKPI()">+ Add Custom KPI</button>
     </div></div>
@@ -2318,6 +2363,249 @@ if ('caches' in window) {
   </div>
 </div>
 
+<!-- ===== FMS ANNUAL BUDGET — FMS.1.4 ===== -->
+<div class="pg" id="page-budget">
+  <div class="ph">
+    <h1>💰 FMS Annual Budget — FMS.1.4</h1>
+    <p>Facility Management & Safety Program Budget · Upgrading · Replacement · Compliance · CBAHI FMS.1.4 & FMS.3.5</p>
+  </div>
+
+  <div class="tb" style="flex-wrap:wrap;">
+    <button class="tbtn active" onclick="budgetTab('overview',this)">📊 Overview</button>
+    <button class="tbtn" onclick="budgetTab('opex',this)">🔧 Operating Expenses</button>
+    <button class="tbtn" onclick="budgetTab('capex',this)">🏗 Capital Expenses</button>
+    <button class="tbtn" onclick="budgetTab('contracts',this)">📃 Contracts Budget</button>
+    <button class="tbtn" onclick="budgetTab('manpower',this)">👥 Manpower</button>
+    <button class="tbtn" onclick="budgetTab('history',this)">📋 Budget History</button>
+  </div>
+
+  <!-- Year selector always visible -->
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
+    <label style="font-size:11px;color:var(--mu);">Fiscal Year:</label>
+    <select id="budget-year" onchange="budgetRenderAll()"
+      style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:6px 14px;color:var(--ac);font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;outline:none;">
+    </select>
+    <button class="btn bo" style="font-size:10px;padding:5px 12px;" onclick="budgetAddYear()">+ New Year</button>
+    <button class="btn bg" style="font-size:10px;padding:5px 14px;margin-left:auto;" onclick="budgetExport()">📥 Export Budget Report</button>
+  </div>
+
+  <!-- OVERVIEW TAB -->
+  <div id="budget-overview">
+    <div id="budget-summary-cards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:18px;"></div>
+    <div class="g g2" style="margin-bottom:14px;">
+      <div class="card"><div class="ch"><div class="ct">📊 Budget Allocation by Category</div></div>
+        <div class="cb" style="position:relative;height:240px;"><canvas id="budget-pie-chart"></canvas></div>
+      </div>
+      <div class="card"><div class="ch"><div class="ct">📈 Spend vs Budget by Category</div></div>
+        <div class="cb" style="position:relative;height:240px;"><canvas id="budget-bar-chart"></canvas></div>
+      </div>
+    </div>
+    <div class="card"><div class="ch"><div class="ct">📋 Budget Summary Table — FMS.1.4 Compliance</div>
+      <div style="font-size:9px;color:var(--mu);">Required by CBAHI to demonstrate budget allocated for upgrading & replacement</div>
+    </div>
+    <div class="cb" style="padding:0;overflow-x:auto;"><table class="tbl" id="budget-summary-table">
+      <thead><tr><th>Category</th><th>Sub-category</th><th>Allocated (SAR)</th><th>Spent (SAR)</th><th>Remaining</th><th>% Used</th><th>Status</th><th></th></tr></thead>
+      <tbody id="budget-summary-tb"></tbody>
+    </table></div></div>
+  </div>
+
+  <!-- OPEX TAB -->
+  <div id="budget-opex" style="display:none;">
+    <div class="g g2">
+      <div class="card"><div class="ch"><div class="ct">➕ Add Operating Expense Line</div></div><div class="cb">
+        <div class="fg fg2">
+          <div class="ff"><label>Sub-category</label>
+            <select id="opex-subcat" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+              <option>Maintenance Supplies & Spare Parts</option>
+              <option>Medical Gas Consumables</option>
+              <option>Safety Equipment & PPE</option>
+              <option>Fire Safety Materials</option>
+              <option>Tools & Workshop Equipment</option>
+              <option>Utilities (Electricity, Water, HVAC)</option>
+              <option>Waste Management Supplies</option>
+              <option>Cleaning & Housekeeping Supplies</option>
+              <option>IT & Communication (FMS systems)</option>
+              <option>Training & Competency Programs</option>
+              <option>Other Operating Expenses</option>
+            </select>
+          </div>
+          <div class="ff"><label>Description</label><input type="text" id="opex-desc" placeholder="Detailed description"></div>
+          <div class="ff"><label>Allocated Budget (SAR)</label><input type="number" id="opex-budget" placeholder="0.00" step="0.01" min="0"></div>
+          <div class="ff"><label>Actual Spend (SAR)</label><input type="number" id="opex-spent" placeholder="0.00" step="0.01" min="0"></div>
+          <div class="ff"><label>Quarter</label>
+            <select id="opex-quarter" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+              <option value="Q1">Q1 (Jan–Mar)</option><option value="Q2">Q2 (Apr–Jun)</option>
+              <option value="Q3">Q3 (Jul–Sep)</option><option value="Q4">Q4 (Oct–Dec)</option>
+              <option value="Annual">Annual</option>
+            </select>
+          </div>
+          <div class="ff"><label>Justification / Notes</label><input type="text" id="opex-notes" placeholder="CBAHI requirement, breakdown, vendor..."></div>
+        </div>
+        <button class="btn bg" style="width:100%;margin-top:12px;" onclick="budgetAddLine('opex')">+ Add Operating Expense</button>
+      </div></div>
+      <div class="card"><div class="ch"><div class="ct">Operating Expense Lines</div></div>
+        <div class="cb" style="padding:0;overflow-x:auto;max-height:500px;">
+          <table class="tbl"><thead><tr><th>Sub-category</th><th>Description</th><th>Quarter</th><th>Budget (SAR)</th><th>Spent (SAR)</th><th>Variance</th><th>%</th><th>Notes</th><th></th></tr></thead>
+          <tbody id="opex-tb"></tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CAPEX TAB -->
+  <div id="budget-capex" style="display:none;">
+    <div style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:9px;padding:12px;margin-bottom:14px;font-size:10px;color:var(--mu);">
+      <b style="color:var(--rd);">🏗 Capital Expenditure — FMS.1.4 Compliance</b> · CBAHI requires documented budget for upgrading and replacement of building systems, equipment, and infrastructure as identified by monitoring data or to meet applicable laws and regulations.
+    </div>
+    <div class="g g2">
+      <div class="card"><div class="ch"><div class="ct">➕ Add Capital Expense</div></div><div class="cb">
+        <div class="fg fg2">
+          <div class="ff"><label>Category</label>
+            <select id="capex-cat" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+              <option>Medical Equipment Replacement</option>
+              <option>Medical Equipment Upgrade</option>
+              <option>Building Infrastructure Upgrade</option>
+              <option>HVAC / Ventilation System</option>
+              <option>Electrical System Upgrade</option>
+              <option>Plumbing / Water System</option>
+              <option>Fire Detection & Suppression System</option>
+              <option>Medical Gas System</option>
+              <option>Generator / Emergency Power</option>
+              <option>Elevator / Vertical Transport</option>
+              <option>Security System (CCTV, Access Control)</option>
+              <option>IT Infrastructure</option>
+              <option>Furniture & Fixtures</option>
+              <option>Civil Works / Renovation</option>
+              <option>Regulatory Compliance Upgrade (CBAHI/Civil Defense)</option>
+            </select>
+          </div>
+          <div class="ff"><label>Asset / Project Description</label><input type="text" id="capex-desc" placeholder="e.g. Replace 2 Ventilators ICU — End of Life"></div>
+          <div class="ff"><label>Justification Source</label>
+            <select id="capex-just" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+              <option>End of Life / Age</option>
+              <option>Monitoring Data / Breakdown History</option>
+              <option>CBAHI Survey Finding</option>
+              <option>Civil Defense Requirement</option>
+              <option>MOH Regulation</option>
+              <option>Safety Risk Assessment</option>
+              <option>Patient Safety / Zero Harm</option>
+              <option>Capacity Expansion</option>
+            </select>
+          </div>
+          <div class="ff"><label>Estimated Cost (SAR)</label><input type="number" id="capex-cost" placeholder="0.00" step="0.01"></div>
+          <div class="ff"><label>Approved Budget (SAR)</label><input type="number" id="capex-approved" placeholder="0.00" step="0.01"></div>
+          <div class="ff"><label>Priority</label>
+            <select id="capex-priority" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+              <option value="critical">🔴 Critical — Patient Safety / Regulatory</option>
+              <option value="high">🟠 High — Operational Impact</option>
+              <option value="medium">🟡 Medium — Planned Maintenance</option>
+              <option value="low">🟢 Low — Improvement</option>
+            </select>
+          </div>
+          <div class="ff"><label>Status</label>
+            <select id="capex-status" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+              <option>Proposed</option><option>Approved</option><option>In Tender</option>
+              <option>In Progress</option><option>Completed</option><option>Deferred</option>
+            </select>
+          </div>
+          <div class="ff"><label>Target Quarter</label>
+            <select id="capex-quarter" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+              <option>Q1</option><option>Q2</option><option>Q3</option><option>Q4</option>
+            </select>
+          </div>
+          <div class="ff" style="grid-column:1/-1"><label>Notes / Vendor Quote Reference</label><input type="text" id="capex-notes" placeholder="Quote ref, vendor, MOH code..."></div>
+        </div>
+        <button class="btn bg" style="width:100%;margin-top:12px;" onclick="budgetAddLine('capex')">+ Add Capital Item</button>
+      </div></div>
+      <div class="card"><div class="ch"><div class="ct">Capital Items — Upgrading & Replacement Register</div></div>
+        <div class="cb" style="padding:0;overflow-x:auto;max-height:500px;">
+          <table class="tbl"><thead><tr><th>Category</th><th>Description</th><th>Justification</th><th>Priority</th><th>Est. Cost</th><th>Approved</th><th>Quarter</th><th>Status</th><th>Notes</th><th></th></tr></thead>
+          <tbody id="capex-tb"></tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTRACTS BUDGET TAB -->
+  <div id="budget-contracts" style="display:none;">
+    <div class="g g2">
+      <div class="card"><div class="ch"><div class="ct">➕ Add Contract Budget Line</div></div><div class="cb">
+        <div class="fg fg2">
+          <div class="ff"><label>Contract Service</label><input type="text" id="cbudget-name" placeholder="e.g. Fire Alarm PPM — Civil Defense Co."></div>
+          <div class="ff"><label>Vendor / Contractor</label><input type="text" id="cbudget-vendor" placeholder="Company name"></div>
+          <div class="ff"><label>Annual Contract Value (SAR)</label><input type="number" id="cbudget-value" placeholder="0.00" step="0.01"></div>
+          <div class="ff"><label>Frequency</label>
+            <select id="cbudget-freq" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+              <option>Monthly</option><option>Quarterly</option><option>Semi-Annual</option><option>Annual</option><option>One-time</option>
+            </select>
+          </div>
+          <div class="ff"><label>Category</label>
+            <select id="cbudget-cat" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+              <option>PPM / Maintenance Contract</option>
+              <option>Cleaning & Housekeeping</option>
+              <option>Pest Control</option>
+              <option>Waste Management</option>
+              <option>Elevator Maintenance</option>
+              <option>Generator Service</option>
+              <option>Fire System PPM</option>
+              <option>Medical Gas Service</option>
+              <option>Security Services</option>
+              <option>HVAC Service</option>
+              <option>Calibration / Testing</option>
+              <option>Other Service Contract</option>
+            </select>
+          </div>
+          <div class="ff"><label>Notes</label><input type="text" id="cbudget-notes" placeholder="Contract ref, renewal date..."></div>
+        </div>
+        <button class="btn bg" style="width:100%;margin-top:12px;" onclick="budgetAddLine('cbudget')">+ Add Contract</button>
+      </div></div>
+      <div class="card"><div class="ch"><div class="ct">Service Contracts Budget</div></div>
+        <div class="cb" style="padding:0;overflow-x:auto;">
+          <table class="tbl"><thead><tr><th>Service</th><th>Vendor</th><th>Category</th><th>Frequency</th><th>Annual Value (SAR)</th><th>Monthly</th><th>Notes</th><th></th></tr></thead>
+          <tbody id="cbudget-tb"></tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MANPOWER TAB -->
+  <div id="budget-manpower" style="display:none;">
+    <div class="g g2">
+      <div class="card"><div class="ch"><div class="ct">➕ Add Manpower Cost</div></div><div class="cb">
+        <div class="fg fg2">
+          <div class="ff"><label>Position / Role</label><input type="text" id="mp-role" placeholder="e.g. FMS Director, Maintenance Technician"></div>
+          <div class="ff"><label>Department</label>
+            <select id="mp-dept" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+              <option>FMS Administration</option><option>Maintenance</option><option>Biomedical Engineering</option>
+              <option>Safety & Security</option><option>Housekeeping</option><option>Waste Management</option>
+            </select>
+          </div>
+          <div class="ff"><label>Headcount</label><input type="number" id="mp-count" placeholder="1" min="1"></div>
+          <div class="ff"><label>Monthly Salary (SAR)</label><input type="number" id="mp-salary" placeholder="0.00" step="0.01"></div>
+          <div class="ff"><label>Annual Cost (SAR)</label><input type="number" id="mp-annual" placeholder="Auto" step="0.01"></div>
+          <div class="ff"><label>Staff Type</label>
+            <select id="mp-type" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+              <option>Direct Employee</option><option>Contract Staff</option><option>Outsourced</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn bg" style="width:100%;margin-top:12px;" onclick="budgetAddLine('manpower')">+ Add Position</button>
+      </div></div>
+      <div class="card"><div class="ch"><div class="ct">FMS Manpower Budget</div></div>
+        <div class="cb" style="padding:0;overflow-x:auto;">
+          <table class="tbl"><thead><tr><th>Position</th><th>Department</th><th>Type</th><th>Headcount</th><th>Monthly (SAR)</th><th>Annual (SAR)</th><th></th></tr></thead>
+          <tbody id="manpower-tb"></tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY TAB -->
+  <div id="budget-history" style="display:none;">
+    <div id="budget-history-content"></div>
+  </div>
+</div>
+
 </main>
 </div>
 </div>
@@ -2475,7 +2763,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260530-0940';
+const APP_VERSION = '20260530-2009';
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
@@ -5233,9 +5521,9 @@ function eqDelAdded(ts) {
 const ROLE_ACCESS = {
   director:    ['ALL'],
   // All roles include n-settings so every manager can connect to the DB
-  maintenance: ['n-dash','n-kpi','n-kpi2','n-mms','n-reports','n-wo','n-utils','n-fire','n-ckpi','n-settings'],
-  biomedical:  ['n-dash','n-kpi','n-kpi2','n-equip','n-medgas','n-radiation','n-wo','n-ckpi','n-settings'],
-  safety:      ['n-dash','n-kpi','n-kpi2','n-cbahi','n-safety','n-hazmat','n-emergency','n-fire','n-wo','n-ckpi','n-docs','n-settings'],
+  maintenance: ['n-dash','n-kpi','n-kpi2','n-mms','n-reports','n-wo','n-utils','n-fire','n-ckpi','n-settings','n-budget'],
+  biomedical:  ['n-dash','n-kpi','n-kpi2','n-equip','n-medgas','n-radiation','n-wo','n-ckpi','n-settings','n-budget'],
+  safety:      ['n-dash','n-kpi','n-kpi2','n-cbahi','n-safety','n-hazmat','n-emergency','n-fire','n-wo','n-ckpi','n-docs','n-settings','n-budget'],
   security:    ['n-dash','n-kpi','n-kpi2','n-security','n-wo','n-ckpi','n-settings'],
 };
 
@@ -6284,7 +6572,8 @@ function doLogin() {
       initRadiationUploadWidgets();
       ['tld','apron','shield'].forEach(t => renderRadTable(t));
     }
-    if (id === 'docs')  { rebuildDocStdSelects(); renderDocs(); }
+    if (id === 'docs')   { rebuildDocStdSelects(); renderDocs(); }
+    if (id === 'budget') { budgetBuildYearSelect(); budgetRenderAll(); }
     if (id === 'kpi2')  { kpi2BuildMonthSelect(); kpi2BuildTrendSelect(); kpi2RenderAll(); }
   };
 })();;
@@ -8030,6 +8319,636 @@ function mgDeleteInventoryItem(assetNo) {
   // Re-render wherever inventory is shown
   if (typeof eqRender === 'function') eqRender();
   toast('✅ ' + assetNo + ' removed from inventory');
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// FMS ANNUAL BUDGET — FMS.1.4 & FMS.3.5
+// ════════════════════════════════════════════════════════════════
+
+const BUDGET_CATS = {
+  opex:     { label:'Operating Expenses',  color:'#3b82f6',  icon:'🔧' },
+  capex:    { label:'Capital Expenses',     color:'#ef4444',  icon:'🏗' },
+  cbudget:  { label:'Service Contracts',   color:'#10b981',  icon:'📃' },
+  manpower: { label:'Manpower',            color:'#8b5cf6',  icon:'👥' },
+};
+
+let BUDGET_YEAR = new Date().getFullYear();
+let BUDGET_PIE_CHART = null;
+let BUDGET_BAR_CHART = null;
+
+function budgetGetKey(year) { return 'fms_budget_' + (year || BUDGET_YEAR); }
+function budgetLoad(year)   { try { return JSON.parse(localStorage.getItem(budgetGetKey(year))||'{}'); } catch(e) { return {}; } }
+function budgetSave(data, year) {
+  localStorage.setItem(budgetGetKey(year||BUDGET_YEAR), JSON.stringify(data));
+  dbWrite('app_settings', { _id: budgetGetKey(year||BUDGET_YEAR), key: budgetGetKey(year||BUDGET_YEAR),
+    value: JSON.stringify(data), _by: (typeof CU!=='undefined'?CU.name:''), _ts: new Date().toISOString() });
+}
+
+function budgetBuildYearSelect() {
+  const sel = document.getElementById('budget-year'); if (!sel) return;
+  const years = [];
+  const base = new Date().getFullYear();
+  for (let y = base + 1; y >= base - 3; y--) years.push(y);
+  sel.innerHTML = years.map(y => `<option value="${y}"${y===BUDGET_YEAR?' selected':''}>${y}</option>`).join('');
+}
+
+function budgetAddYear() {
+  const yr = prompt('Enter fiscal year:', new Date().getFullYear()+1);
+  if (yr && parseInt(yr) > 2000) {
+    BUDGET_YEAR = parseInt(yr);
+    budgetBuildYearSelect();
+    budgetRenderAll();
+    toast('Fiscal year ' + BUDGET_YEAR + ' created');
+  }
+}
+
+function budgetTab(tab, btn) {
+  ['budget-overview','budget-opex','budget-capex','budget-contracts','budget-manpower','budget-history']
+    .forEach(id=>{ const e=document.getElementById(id); if(e) e.style.display='none'; });
+  const el = document.getElementById('budget-'+tab);
+  if (el) el.style.display = 'block';
+  if (btn) {
+    btn.closest('.tb').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  if (tab==='overview')  budgetRenderOverview();
+  if (tab==='opex')      budgetRenderTable('opex');
+  if (tab==='capex')     budgetRenderTable('capex');
+  if (tab==='contracts') budgetRenderTable('cbudget');
+  if (tab==='manpower')  budgetRenderTable('manpower');
+  if (tab==='history')   budgetRenderHistory();
+}
+
+function budgetRenderAll() {
+  const selYear = document.getElementById('budget-year');
+  if (selYear) BUDGET_YEAR = parseInt(selYear.value);
+  budgetRenderOverview();
+  budgetRenderTable('opex');
+  budgetRenderTable('capex');
+  budgetRenderTable('cbudget');
+  budgetRenderTable('manpower');
+}
+
+function budgetGetItems(cat) {
+  const data = budgetLoad();
+  return (data[cat] || []).filter(Boolean);
+}
+
+function budgetSaveItem(cat, item) {
+  const data = budgetLoad();
+  if (!data[cat]) data[cat] = [];
+  data[cat].push(item);
+  budgetSave(data);
+}
+
+function budgetDeleteItem(cat, id) {
+  if (!confirm('Delete this budget line?')) return;
+  const data = budgetLoad();
+  if (data[cat]) data[cat] = data[cat].filter(x=>String(x._id)!==String(id));
+  budgetSave(data);
+  budgetRenderAll();
+  toast('Deleted');
+}
+
+function budgetAddLine(cat) {
+  let item = { _id: Date.now(), _by: (typeof CU!=='undefined'?CU.name:''), _ts: new Date().toISOString() };
+  if (cat==='opex') {
+    item.subcat  = document.getElementById('opex-subcat')?.value;
+    item.desc    = document.getElementById('opex-desc')?.value.trim();
+    item.budget  = parseFloat(document.getElementById('opex-budget')?.value||0);
+    item.spent   = parseFloat(document.getElementById('opex-spent')?.value||0);
+    item.quarter = document.getElementById('opex-quarter')?.value;
+    item.notes   = document.getElementById('opex-notes')?.value.trim();
+    if (!item.desc) { toast('Enter a description','#f59e0b'); return; }
+    ['opex-desc','opex-notes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    ['opex-budget','opex-spent'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  } else if (cat==='capex') {
+    item.cat      = document.getElementById('capex-cat')?.value;
+    item.desc     = document.getElementById('capex-desc')?.value.trim();
+    item.just     = document.getElementById('capex-just')?.value;
+    item.cost     = parseFloat(document.getElementById('capex-cost')?.value||0);
+    item.approved = parseFloat(document.getElementById('capex-approved')?.value||0);
+    item.priority = document.getElementById('capex-priority')?.value;
+    item.status   = document.getElementById('capex-status')?.value;
+    item.quarter  = document.getElementById('capex-quarter')?.value;
+    item.notes    = document.getElementById('capex-notes')?.value.trim();
+    if (!item.desc) { toast('Enter a description','#f59e0b'); return; }
+    ['capex-desc','capex-notes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    ['capex-cost','capex-approved'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  } else if (cat==='cbudget') {
+    item.name   = document.getElementById('cbudget-name')?.value.trim();
+    item.vendor = document.getElementById('cbudget-vendor')?.value.trim();
+    item.value  = parseFloat(document.getElementById('cbudget-value')?.value||0);
+    item.freq   = document.getElementById('cbudget-freq')?.value;
+    item.cat    = document.getElementById('cbudget-cat')?.value;
+    item.notes  = document.getElementById('cbudget-notes')?.value.trim();
+    if (!item.name) { toast('Enter contract name','#f59e0b'); return; }
+    ['cbudget-name','cbudget-vendor','cbudget-notes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    document.getElementById('cbudget-value').value='';
+  } else if (cat==='manpower') {
+    const count  = parseFloat(document.getElementById('mp-count')?.value||1);
+    const salary = parseFloat(document.getElementById('mp-salary')?.value||0);
+    item.role    = document.getElementById('mp-role')?.value.trim();
+    item.dept    = document.getElementById('mp-dept')?.value;
+    item.count   = count;
+    item.salary  = salary;
+    item.annual  = parseFloat(document.getElementById('mp-annual')?.value||0) || salary*12*count;
+    item.mtype   = document.getElementById('mp-type')?.value;
+    if (!item.role) { toast('Enter position name','#f59e0b'); return; }
+    ['mp-role'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    ['mp-count','mp-salary','mp-annual'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  }
+  budgetSaveItem(cat, item);
+  budgetRenderAll();
+  toast('✓ Added to ' + BUDGET_CATS[cat].label);
+}
+
+function budgetRenderTable(cat) {
+  const items = budgetGetItems(cat);
+  const sar = v => 'SAR ' + (v||0).toLocaleString('en-SA', {minimumFractionDigits:0, maximumFractionDigits:0});
+  const pctBadge = (s,b) => {
+    if (!b) return '—';
+    const p = Math.round((s/b)*100);
+    const c = p>100?'var(--rd)':p>80?'var(--or)':'var(--gn)';
+    return `<span style="color:${c};font-weight:600;">${p}%</span>`;
+  };
+  const prioColors = {critical:'#ef4444',high:'#f59e0b',medium:'#eab308',low:'#10b981'};
+  const statusColors = {Proposed:'var(--mu)',Approved:'#3b82f6','In Tender':'#f59e0b','In Progress':'#818cf8',Completed:'#10b981',Deferred:'#888'};
+
+  if (cat==='opex') {
+    const tb = document.getElementById('opex-tb'); if (!tb) return;
+    if (!items.length) { tb.innerHTML='<tr><td colspan="9" class="em">No operating expense lines yet</td></tr>'; return; }
+    const total_b = items.reduce((s,i)=>s+(i.budget||0),0);
+    const total_s = items.reduce((s,i)=>s+(i.spent||0),0);
+    tb.innerHTML = items.map(i => {
+      const v = (i.budget||0)-(i.spent||0);
+      const vc = v>=0?'var(--gn)':'var(--rd)';
+      return `<tr>
+        <td style="font-weight:600;font-size:11px;">${i.subcat||'—'}</td>
+        <td style="font-size:11px;">${i.desc||'—'}</td>
+        <td style="text-align:center;">${i.quarter||'—'}</td>
+        <td style="color:var(--ac);font-weight:600;">${sar(i.budget)}</td>
+        <td style="color:var(--or);">${sar(i.spent)}</td>
+        <td style="color:${vc};font-weight:600;">${v>=0?'+':''}${sar(v)}</td>
+        <td>${pctBadge(i.spent,i.budget)}</td>
+        <td style="font-size:10px;color:var(--mu);">${i.notes||'—'}</td>
+        <td><button class="btn br" style="font-size:9px;padding:2px 5px;" onclick="budgetDeleteItem('opex','${i._id}')">✕</button></td>
+      </tr>`;
+    }).join('') + `<tr style="background:rgba(0,180,255,.05);font-weight:700;">
+      <td colspan="3">TOTAL OPEX</td>
+      <td style="color:var(--ac);">${sar(total_b)}</td>
+      <td style="color:var(--or);">${sar(total_s)}</td>
+      <td style="color:${total_b-total_s>=0?'var(--gn)':'var(--rd)'};">${sar(total_b-total_s)}</td>
+      <td>${pctBadge(total_s,total_b)}</td><td></td><td></td></tr>`;
+
+  } else if (cat==='capex') {
+    const tb = document.getElementById('capex-tb'); if (!tb) return;
+    if (!items.length) { tb.innerHTML='<tr><td colspan="10" class="em">No capital items yet — add upgrading/replacement projects above</td></tr>'; return; }
+    tb.innerHTML = items.map(i => {
+      const pc = prioColors[i.priority] || 'var(--mu)';
+      const sc = statusColors[i.status] || 'var(--mu)';
+      return `<tr>
+        <td style="font-size:10px;">${i.cat||'—'}</td>
+        <td style="font-weight:600;font-size:11px;">${i.desc||'—'}</td>
+        <td style="font-size:10px;color:var(--mu);">${i.just||'—'}</td>
+        <td><span style="background:${pc}22;color:${pc};border:1px solid ${pc}44;border-radius:4px;padding:2px 7px;font-size:9px;font-weight:700;">${i.priority?.toUpperCase()||'—'}</span></td>
+        <td style="color:var(--mu);">${sar(i.cost)}</td>
+        <td style="color:var(--ac);font-weight:600;">${sar(i.approved)}</td>
+        <td style="text-align:center;">${i.quarter||'—'}</td>
+        <td><span style="color:${sc};font-weight:600;font-size:10px;">${i.status||'—'}</span></td>
+        <td style="font-size:10px;color:var(--mu);">${i.notes||'—'}</td>
+        <td><button class="btn br" style="font-size:9px;padding:2px 5px;" onclick="budgetDeleteItem('capex','${i._id}')">✕</button></td>
+      </tr>`;
+    }).join('');
+
+  } else if (cat==='cbudget') {
+    const tb = document.getElementById('cbudget-tb'); if (!tb) return;
+    if (!items.length) { tb.innerHTML='<tr><td colspan="8" class="em">No contracts yet</td></tr>'; return; }
+    const total = items.reduce((s,i)=>s+(i.value||0),0);
+    tb.innerHTML = items.map(i=>`<tr>
+      <td style="font-weight:600;font-size:11px;">${i.name||'—'}</td>
+      <td style="font-size:10px;">${i.vendor||'—'}</td>
+      <td style="font-size:10px;">${i.cat||'—'}</td>
+      <td style="text-align:center;">${i.freq||'—'}</td>
+      <td style="color:var(--ac);font-weight:600;">${sar(i.value)}</td>
+      <td style="color:var(--mu);">${sar(Math.round((i.value||0)/12))}/mo</td>
+      <td style="font-size:10px;color:var(--mu);">${i.notes||'—'}</td>
+      <td><button class="btn br" style="font-size:9px;padding:2px 5px;" onclick="budgetDeleteItem('cbudget','${i._id}')">✕</button></td>
+    </tr>`).join('') + `<tr style="background:rgba(0,180,255,.05);font-weight:700;"><td colspan="4">TOTAL CONTRACTS</td><td style="color:var(--ac);">${sar(total)}</td><td style="color:var(--mu);">${sar(Math.round(total/12))}/mo</td><td colspan="2"></td></tr>`;
+
+  } else if (cat==='manpower') {
+    const tb = document.getElementById('manpower-tb'); if (!tb) return;
+    if (!items.length) { tb.innerHTML='<tr><td colspan="7" class="em">No manpower lines yet</td></tr>'; return; }
+    const totalAnnual = items.reduce((s,i)=>s+(i.annual||i.salary*12*i.count||0),0);
+    tb.innerHTML = items.map(i=>`<tr>
+      <td style="font-weight:600;">${i.role||'—'}</td>
+      <td style="font-size:11px;">${i.dept||'—'}</td>
+      <td style="font-size:10px;">${i.mtype||'—'}</td>
+      <td style="text-align:center;">${i.count||1}</td>
+      <td>${sar(i.salary)}</td>
+      <td style="color:var(--ac);font-weight:600;">${sar(i.annual||i.salary*12*(i.count||1))}</td>
+      <td><button class="btn br" style="font-size:9px;padding:2px 5px;" onclick="budgetDeleteItem('manpower','${i._id}')">✕</button></td>
+    </tr>`).join('') + `<tr style="background:rgba(0,180,255,.05);font-weight:700;"><td colspan="5">TOTAL MANPOWER</td><td style="color:var(--ac);">${sar(totalAnnual)}</td><td></td></tr>`;
+  }
+}
+
+function budgetRenderOverview() {
+  const sar = v => 'SAR ' + (v||0).toLocaleString('en-SA',{maximumFractionDigits:0});
+  const opex     = budgetGetItems('opex');
+  const capex    = budgetGetItems('capex');
+  const cbudget  = budgetGetItems('cbudget');
+  const manpower = budgetGetItems('manpower');
+
+  const totals = {
+    opex:     { b: opex.reduce((s,i)=>s+(i.budget||0),0),     s: opex.reduce((s,i)=>s+(i.spent||0),0) },
+    capex:    { b: capex.reduce((s,i)=>s+(i.approved||0),0),  s: capex.filter(i=>i.status==='Completed').reduce((s,i)=>s+(i.cost||0),0) },
+    cbudget:  { b: cbudget.reduce((s,i)=>s+(i.value||0),0),   s: cbudget.reduce((s,i)=>s+(i.value||0),0) },
+    manpower: { b: manpower.reduce((s,i)=>s+(i.annual||i.salary*12*(i.count||1)||0),0), s: manpower.reduce((s,i)=>s+(i.annual||i.salary*12*(i.count||1)||0),0) },
+  };
+  const totalBudget = Object.values(totals).reduce((s,t)=>s+t.b,0);
+  const totalSpent  = Object.values(totals).reduce((s,t)=>s+t.s,0);
+  const remaining   = totalBudget - totalSpent;
+  const pctUsed     = totalBudget > 0 ? Math.round((totalSpent/totalBudget)*100) : 0;
+  const pc = pctUsed > 90 ? '#ef4444' : pctUsed > 70 ? '#f59e0b' : '#00d4aa';
+
+  // Summary cards
+  const cards = document.getElementById('budget-summary-cards');
+  if (cards) cards.innerHTML = `
+    <div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:16px;text-align:center;border-top:3px solid var(--ac);">
+      <div style="font-size:10px;color:var(--mu);text-transform:uppercase;margin-bottom:6px;">Total Budget ${BUDGET_YEAR}</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;color:var(--ac);">${sar(totalBudget)}</div>
+      <div style="font-size:9px;color:var(--mu);">FMS.1.4 Documented Budget</div>
+    </div>
+    <div style="background:var(--sf);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:16px;text-align:center;border-top:3px solid #f59e0b;">
+      <div style="font-size:10px;color:var(--mu);text-transform:uppercase;margin-bottom:6px;">Total Spent / Committed</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;color:#f59e0b;">${sar(totalSpent)}</div>
+      <div style="font-size:9px;color:var(--mu);">${pctUsed}% of budget used</div>
+    </div>
+    <div style="background:var(--sf);border:1px solid ${remaining>=0?'rgba(0,255,136,.25)':'rgba(239,68,68,.3)'};border-radius:12px;padding:16px;text-align:center;border-top:3px solid ${remaining>=0?'#00d4aa':'#ef4444'};">
+      <div style="font-size:10px;color:var(--mu);text-transform:uppercase;margin-bottom:6px;">${remaining>=0?'Remaining Budget':'OVER BUDGET'}</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;color:${remaining>=0?'#00d4aa':'#ef4444'};">${sar(Math.abs(remaining))}</div>
+      <div style="font-size:9px;color:var(--mu);">${remaining>=0?'available to spend':'exceeded by this amount'}</div>
+    </div>
+    <div style="background:var(--sf);border:1px solid rgba(239,68,68,.2);border-radius:12px;padding:16px;text-align:center;border-top:3px solid #ef4444;">
+      <div style="font-size:10px;color:var(--mu);text-transform:uppercase;margin-bottom:6px;">Capital Projects</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;color:#ef4444;">${capex.length}</div>
+      <div style="font-size:9px;color:var(--mu);">${capex.filter(i=>i.status==='Completed').length} completed · ${capex.filter(i=>i.priority==='critical').length} critical</div>
+    </div>`;
+
+  // Pie chart
+  const pieEl = document.getElementById('budget-pie-chart'); if (!pieEl) return;
+  if (BUDGET_PIE_CHART) { try{BUDGET_PIE_CHART.destroy();}catch(e){} }
+  const pieLabels = Object.values(BUDGET_CATS).map(c=>c.label);
+  const pieData   = [totals.opex.b, totals.capex.b, totals.cbudget.b, totals.manpower.b];
+  const pieColors = Object.values(BUDGET_CATS).map(c=>c.color);
+  requestAnimationFrame(() => {
+    BUDGET_PIE_CHART = new Chart(pieEl, {
+      type:'doughnut',
+      data:{ labels:pieLabels, datasets:[{ data:pieData, backgroundColor:pieColors, borderWidth:0 }] },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:true,position:'bottom',labels:{color:'var(--mu)',font:{size:9},padding:10}},
+          tooltip:{callbacks:{label:ctx=>' SAR '+ctx.raw.toLocaleString('en-SA',{maximumFractionDigits:0})}} } }
+    });
+  });
+
+  // Bar chart
+  const barEl = document.getElementById('budget-bar-chart'); if (!barEl) return;
+  if (BUDGET_BAR_CHART) { try{BUDGET_BAR_CHART.destroy();}catch(e){} }
+  requestAnimationFrame(() => {
+    BUDGET_BAR_CHART = new Chart(barEl, {
+      type:'bar',
+      data:{
+        labels: pieLabels,
+        datasets:[
+          { label:'Budget', data:[totals.opex.b,totals.capex.b,totals.cbudget.b,totals.manpower.b], backgroundColor:pieColors.map(c=>c+'88'), borderColor:pieColors, borderWidth:2 },
+          { label:'Spent/Committed', data:[totals.opex.s,totals.capex.s,totals.cbudget.s,totals.manpower.s], backgroundColor:pieColors.map(c=>c+'44'), borderColor:pieColors, borderWidth:1, borderDash:[4,4] }
+        ]
+      },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:true,position:'bottom',labels:{color:'var(--mu)',font:{size:9},padding:8}} },
+        scales:{ x:{grid:{color:'rgba(0,180,255,.04)'},ticks:{color:'var(--mu)',font:{size:9}}},
+          y:{grid:{color:'rgba(0,180,255,.04)'},ticks:{color:'var(--mu)',font:{size:9},callback:v=>'SAR '+v.toLocaleString()}} } }
+    });
+  });
+
+  // Summary table
+  const tb = document.getElementById('budget-summary-tb'); if (!tb) return;
+  const sar2 = v=>'SAR '+Math.round(v||0).toLocaleString('en-SA');
+  const rows = Object.entries(totals).map(([cat,t]) => {
+    const c = BUDGET_CATS[cat];
+    const pct = t.b>0?Math.round((t.s/t.b)*100):0;
+    const pc2 = pct>90?'var(--rd)':pct>70?'var(--or)':'var(--gn)';
+    const status = pct>100?'⚠️ Over Budget':pct>80?'🟡 High Usage':'✅ On Track';
+    const items = budgetGetItems(cat);
+    return `<tr>
+      <td style="font-weight:700;color:${c.color};">${c.icon} ${c.label}</td>
+      <td style="font-size:10px;color:var(--mu);">${items.length} line item${items.length!==1?'s':''}</td>
+      <td style="font-weight:600;color:var(--ac);">${sar2(t.b)}</td>
+      <td style="color:var(--or);">${sar2(t.s)}</td>
+      <td style="color:${t.b-t.s>=0?'var(--gn)':'var(--rd)'};font-weight:600;">${t.b-t.s>=0?'+':''}${sar2(t.b-t.s)}</td>
+      <td style="color:${pc2};font-weight:700;">${pct}%</td>
+      <td>${status}</td>
+      <td><button class="btn bo" style="font-size:9px;padding:2px 8px;" onclick="budgetTab('${cat==='cbudget'?'contracts':cat==='manpower'?'manpower':cat}',null)">View</button></td>
+    </tr>`;
+  });
+  const grandB = Object.values(totals).reduce((s,t)=>s+t.b,0);
+  const grandS = Object.values(totals).reduce((s,t)=>s+t.s,0);
+  tb.innerHTML = rows.join('') + `<tr style="background:rgba(0,180,255,.06);font-weight:700;">
+    <td>GRAND TOTAL</td><td></td>
+    <td style="color:var(--ac);">${sar2(grandB)}</td>
+    <td style="color:var(--or);">${sar2(grandS)}</td>
+    <td style="color:${grandB-grandS>=0?'var(--gn)':'var(--rd)'};">${sar2(grandB-grandS)}</td>
+    <td style="color:${grandB>0&&Math.round(grandS/grandB*100)>90?'var(--rd)':'var(--gn)'};">${grandB>0?Math.round(grandS/grandB*100):0}%</td>
+    <td></td><td></td></tr>`;
+}
+
+function budgetRenderHistory() {
+  const el = document.getElementById('budget-history-content'); if (!el) return;
+  const years = [];
+  for (let k in localStorage) {
+    if (k.startsWith('fms_budget_')) years.push(parseInt(k.replace('fms_budget_','')));
+  }
+  years.sort((a,b)=>b-a);
+  if (!years.length) { el.innerHTML='<div class="em">No budget history yet</div>'; return; }
+  const sar = v=>'SAR '+(v||0).toLocaleString('en-SA',{maximumFractionDigits:0});
+  el.innerHTML = years.map(y => {
+    const data = budgetLoad(y);
+    const getTotal = cat => (data[cat]||[]).reduce((s,i)=>s+((cat==='capex'?i.approved:cat==='manpower'?(i.annual||i.salary*12*(i.count||1)):i.value||i.budget)||0),0);
+    const total = ['opex','capex','cbudget','manpower'].reduce((s,c)=>s+getTotal(c),0);
+    return `<div style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:var(--ac);">FY ${y}</div>
+        <div style="font-size:10px;color:var(--mu);">OPEX ${sar(getTotal('opex'))} · CAPEX ${sar(getTotal('capex'))} · Contracts ${sar(getTotal('cbudget'))} · Manpower ${sar(getTotal('manpower'))}</div>
+      </div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:var(--tx);">${sar(total)}</div>
+      <button class="btn bo" style="font-size:10px;padding:5px 12px;" onclick="BUDGET_YEAR=${y};budgetBuildYearSelect();budgetRenderAll();budgetTab('overview',null);">View ${y}</button>
+    </div>`;
+  }).join('');
+}
+
+function budgetExport() {
+  const sar = v=>'SAR '+Math.round(v||0).toLocaleString('en-SA');
+  const opex     = budgetGetItems('opex');
+  const capex    = budgetGetItems('capex');
+  const cbudget  = budgetGetItems('cbudget');
+  const manpower = budgetGetItems('manpower');
+  const totalB   = [...opex,...cbudget].reduce((s,i)=>s+(i.budget||i.value||0),0)
+    + capex.reduce((s,i)=>s+(i.approved||0),0)
+    + manpower.reduce((s,i)=>s+(i.annual||i.salary*12*(i.count||1)||0),0);
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>FMS Annual Budget ${BUDGET_YEAR} — Obeid Specialized Hospital</title>
+<style>
+  body{font-family:Arial,sans-serif;margin:0;padding:24px;color:#1a1a2e;font-size:11px;}
+  .header{text-align:center;border-bottom:3px solid #00b4ff;padding-bottom:14px;margin-bottom:20px;}
+  .header h1{font-size:18px;margin:0 0 4px;color:#00b4ff;}
+  .section{margin-bottom:20px;}
+  .section-title{font-family:Arial,sans-serif;font-size:13px;font-weight:bold;color:#003366;border-bottom:2px solid #003366;padding-bottom:4px;margin-bottom:10px;}
+  table{width:100%;border-collapse:collapse;margin-bottom:8px;font-size:10px;}
+  th{background:#003366;color:#fff;padding:7px 6px;text-align:left;}
+  td{padding:6px;border-bottom:1px solid #eee;}
+  tr:nth-child(even){background:#f8f9fa;}
+  .total-row{background:#e8f4fd;font-weight:bold;}
+  .grand-total{background:#003366;color:#fff;font-weight:bold;}
+  .sig-section{display:grid;grid-template-columns:1fr 1fr 1fr;gap:30px;margin-top:30px;}
+  .sig-box{border-top:1px solid #333;padding-top:6px;}
+  .sig-line{height:50px;}
+  .footer{margin-top:20px;font-size:9px;color:#999;text-align:center;border-top:1px solid #eee;padding-top:8px;}
+</style></head>
+<body>
+<div class="header">
+  <div style="font-size:10px;color:#888;">OBEID SPECIALIZED HOSPITAL — RIYADH</div>
+  <h1>FACILITY MANAGEMENT & SAFETY — ANNUAL BUDGET</h1>
+  <p style="margin:4px 0;">Fiscal Year: <b>${BUDGET_YEAR}</b> · CBAHI FMS.1.4 Compliance · Total Budget: <b>${sar(totalB)}</b></p>
+  <p style="margin:2px 0;font-size:10px;color:#888;">Generated by: ${typeof CU!=='undefined'?CU.name:'FMS Director'} · ${new Date().toLocaleString('en-GB')}</p>
+</div>
+
+<div class="section">
+  <div class="section-title">🔧 OPERATING EXPENSES</div>
+  <table><thead><tr><th>Sub-category</th><th>Description</th><th>Quarter</th><th>Budget (SAR)</th><th>Spent</th><th>Variance</th><th>%</th><th>Notes</th></tr></thead>
+  <tbody>
+    ${opex.map(i=>`<tr><td>${i.subcat||'—'}</td><td>${i.desc||'—'}</td><td>${i.quarter||'—'}</td><td>${sar(i.budget)}</td><td>${sar(i.spent)}</td><td style="color:${(i.budget-i.spent)>=0?'green':'red'};">${sar(i.budget-i.spent)}</td><td>${i.budget?Math.round(i.spent/i.budget*100)+'%':'—'}</td><td>${i.notes||'—'}</td></tr>`).join('')}
+    <tr class="total-row"><td colspan="3">OPEX TOTAL</td><td>${sar(opex.reduce((s,i)=>s+(i.budget||0),0))}</td><td>${sar(opex.reduce((s,i)=>s+(i.spent||0),0))}</td><td colspan="3"></td></tr>
+  </tbody></table>
+</div>
+
+<div class="section">
+  <div class="section-title">🏗 CAPITAL EXPENSES — Upgrading & Replacement (FMS.1.4)</div>
+  <table><thead><tr><th>Category</th><th>Description</th><th>Justification</th><th>Priority</th><th>Est. Cost</th><th>Approved</th><th>Quarter</th><th>Status</th></tr></thead>
+  <tbody>
+    ${capex.map(i=>`<tr><td>${i.cat||'—'}</td><td>${i.desc||'—'}</td><td>${i.just||'—'}</td><td style="font-weight:600;">${(i.priority||'').toUpperCase()}</td><td>${sar(i.cost)}</td><td>${sar(i.approved)}</td><td>${i.quarter||'—'}</td><td>${i.status||'—'}</td></tr>`).join('')}
+    <tr class="total-row"><td colspan="4">CAPEX TOTAL</td><td>${sar(capex.reduce((s,i)=>s+(i.cost||0),0))}</td><td>${sar(capex.reduce((s,i)=>s+(i.approved||0),0))}</td><td colspan="2"></td></tr>
+  </tbody></table>
+</div>
+
+<div class="section">
+  <div class="section-title">📃 SERVICE CONTRACTS</div>
+  <table><thead><tr><th>Service</th><th>Vendor</th><th>Category</th><th>Frequency</th><th>Annual Value</th><th>Monthly</th></tr></thead>
+  <tbody>
+    ${cbudget.map(i=>`<tr><td>${i.name||'—'}</td><td>${i.vendor||'—'}</td><td>${i.cat||'—'}</td><td>${i.freq||'—'}</td><td>${sar(i.value)}</td><td>${sar(Math.round((i.value||0)/12))}</td></tr>`).join('')}
+    <tr class="total-row"><td colspan="4">CONTRACTS TOTAL</td><td>${sar(cbudget.reduce((s,i)=>s+(i.value||0),0))}</td><td>${sar(Math.round(cbudget.reduce((s,i)=>s+(i.value||0),0)/12))}/mo</td></tr>
+  </tbody></table>
+</div>
+
+<div class="section">
+  <div class="section-title">👥 MANPOWER COSTS</div>
+  <table><thead><tr><th>Position</th><th>Department</th><th>Type</th><th>Count</th><th>Monthly</th><th>Annual</th></tr></thead>
+  <tbody>
+    ${manpower.map(i=>`<tr><td>${i.role||'—'}</td><td>${i.dept||'—'}</td><td>${i.mtype||'—'}</td><td>${i.count||1}</td><td>${sar(i.salary)}</td><td>${sar(i.annual||i.salary*12*(i.count||1))}</td></tr>`).join('')}
+    <tr class="total-row"><td colspan="5">MANPOWER TOTAL</td><td>${sar(manpower.reduce((s,i)=>s+(i.annual||i.salary*12*(i.count||1)||0),0))}</td></tr>
+  </tbody></table>
+</div>
+
+<div style="background:#003366;color:#fff;padding:12px 16px;border-radius:8px;display:flex;justify-content:space-between;font-size:13px;font-weight:bold;margin-bottom:20px;">
+  <span>GRAND TOTAL FMS BUDGET ${BUDGET_YEAR}</span>
+  <span>${sar(totalB)}</span>
+</div>
+
+<div class="sig-section">
+  <div class="sig-box"><div style="font-size:10px;color:#888;">FMS Director</div><div class="sig-line"></div><div style="font-size:9px;color:#888;">Name & Signature & Date</div></div>
+  <div class="sig-box"><div style="font-size:10px;color:#888;">Finance Director / CFO</div><div class="sig-line"></div><div style="font-size:9px;color:#888;">Name & Signature & Date</div></div>
+  <div class="sig-box"><div style="font-size:10px;color:#888;">Hospital Director / CEO</div><div class="sig-line"></div><div style="font-size:9px;color:#888;">Name & Signature & Date</div></div>
+</div>
+<div class="footer">Obeid Specialized Hospital FMS Platform · CBAHI FMS.1.4 Annual Budget · Generated: ${new Date().toLocaleString('en-GB')}</div>
+</body></html>`;
+
+  const blob = new Blob([html],{type:'text/html'});
+  const win  = window.open(URL.createObjectURL(blob),'_blank');
+  if (win) setTimeout(()=>win.print(),800);
+  toast('✅ Budget report opened — Print → Save as PDF for CBAHI surveyor');
+}
+
+// ════════════════════════════════════════════════════════════════
+// CUSTOM KPI — Department count + frequency fixes
+// ════════════════════════════════════════════════════════════════
+function saveCKPI(){
+  const nm   = document.getElementById('ck-name')?.value.trim();
+  const vl   = document.getElementById('ck-val')?.value;
+  const tg   = document.getElementById('ck-tgt')?.value;
+  const un   = document.getElementById('ck-unit')?.value.trim();
+  const dv   = document.getElementById('ck-div')?.value;
+  const pd   = document.getElementById('ck-period')?.value;
+  const nt   = document.getElementById('ck-notes')?.value.trim();
+  const ndepts = parseInt(document.getElementById('ck-ndepts')?.value||0);
+  const dnames = document.getElementById('ck-dept-names')?.value.trim();
+
+  if(!nm||!vl||!tg){toast('Fill name, value, target','#f59e0b');return;}
+
+  const arr = ld('customKPI');
+  arr.unshift({_id:Date.now(), name:nm, val:Number(vl), target:Number(tg), unit:un, div:dv,
+    period:pd, notes:nt, ndepts, dnames, _by:CU.name, _rl:CU.rl, _ts:new Date().toISOString()});
+  sv('customKPI',arr);
+  dbWrite('customKPI',arr[0]);
+  ['ck-name','ck-val','ck-tgt','ck-unit','ck-notes','ck-ndepts','ck-dept-names'].forEach(id=>{
+    const e=document.getElementById(id); if(e) e.value='';
+  });
+  renderCKPI('all');
+  toast('✓ Custom KPI added');
+}
+
+function renderCKPI(f){
+  const e=document.getElementById('ckpiList'); if(!e) return;
+  let data=ld('customKPI');
+  if(f&&f!=='all') data=data.filter(k=>k.div===f);
+  if(!data.length){e.innerHTML='<div class="em">No custom KPIs yet — add above</div>';return;}
+  e.innerHTML=data.map(k=>{
+    const pct=Math.min(100,Math.round((k.val/k.target)*100));
+    const c=pct>=90?'var(--gn)':pct>=60?'var(--or)':'var(--rd)';
+    const freqColor={'Monthly':'#3b82f6','Quarterly':'#8b5cf6','Semi-Annual':'#10b981','Annual':'#f59e0b'}[k.period]||'var(--mu)';
+    const deptBadge = k.ndepts ? `<span style="background:rgba(0,180,255,.1);color:var(--ac);border-radius:4px;padding:1px 7px;font-size:9px;">🏥 ${k.ndepts} dept${k.ndepts!==1?'s':''}</span>` : '';
+    return `<div class="cki">
+      <div style="width:9px;height:40px;border-radius:3px;background:${DC[k.div]||'var(--ac)'};flex-shrink:0;"></div>
+      <div style="flex:1;">
+        <div style="font-size:12px;font-weight:600;">${k.name}</div>
+        <div style="font-size:9px;color:var(--mu);margin-top:2px;display:flex;gap:6px;flex-wrap:wrap;">
+          <span>${DL[k.div]||k.div}</span>
+          <span style="background:${freqColor}22;color:${freqColor};border-radius:4px;padding:1px 6px;font-weight:600;">${k.period}</span>
+          ${deptBadge}
+          <span>by ${k._by}</span>
+        </div>
+        ${k.dnames?`<div style="font-size:9px;color:var(--mu);margin-top:2px;">Depts: ${k.dnames}</div>`:''}
+        <div style="margin-top:6px;display:flex;align-items:center;gap:7px;">
+          <div class="pw" style="flex:1;"><div class="pf" style="width:${pct}%;background:${c};"></div></div>
+          <span style="font-size:9px;color:${c};font-weight:600;">${pct}%</span>
+        </div>
+        ${k.notes?`<div style="font-size:9px;color:var(--mu);margin-top:2px;">${k.notes}</div>`:''}
+      </div>
+      <div style="text-align:right;">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:${c};">${k.val}${k.unit}</div>
+        <div style="font-size:9px;color:var(--mu);">/ ${k.target}${k.unit}</div>
+      </div>
+      <button class="btn br" style="padding:3px 8px;font-size:10px;" onclick="delCKPI(${k._id})">✕</button>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════════════
+// FIRE DRILLS — Code Red, Yellow, Pink, Brown
+// ════════════════════════════════════════════════════════════════
+function saveCodeDrill() {
+  const code    = document.getElementById('drill-code')?.value;
+  const date    = document.getElementById('drill-date')?.value;
+  const shift   = document.getElementById('drill-shift')?.value;
+  const area    = document.getElementById('drill-area')?.value.trim();
+  const duration= document.getElementById('drill-dur')?.value;
+  const count   = document.getElementById('drill-count')?.value;
+  const outcome = document.getElementById('drill-outcome')?.value;
+  const gaps    = document.getElementById('drill-gaps')?.value.trim();
+  const actions = document.getElementById('drill-actions')?.value.trim();
+  const fileIn  = document.getElementById('drill-files');
+
+  if (!code||!date||!area) { toast('Code, date, and area are required','#f59e0b'); return; }
+
+  const rec = { _id:Date.now(), code, date, shift, area, duration, count, outcome, gaps, actions,
+    fileKey:'drill_'+Date.now(), _by:CU.name, _ts:new Date().toISOString() };
+
+  (async () => {
+    if (fileIn && fileIn.files.length) {
+      await fsStoreFiles(rec.fileKey, fileIn.files);
+      fileIn.value='';
+    }
+    const arr = ld('fireDrills_code'); arr.unshift(rec); sv('fireDrills_code', arr);
+    dbWrite('fireDrills_code', rec);
+    ['drill-area','drill-dur','drill-count','drill-gaps','drill-actions'].forEach(id=>{
+      const e=document.getElementById(id); if(e) e.value='';
+    });
+    renderCodeDrills();
+    toast('✅ '+code+' drill logged');
+  })();
+}
+
+function renderCodeDrills() {
+  const tb = document.getElementById('code-drills-tb'); if (!tb) return;
+  const data = ld('fireDrills_code').sort((a,b)=>b.date>a.date?1:-1);
+  if (!data.length) { tb.innerHTML='<tr><td colspan="9" class="em">No code drills logged yet</td></tr>'; return; }
+  const codeColors = {'Code Red':'#ef4444','Code Yellow':'#f59e0b','Code Pink':'#ec4899','Code Brown':'#92400e'};
+  tb.innerHTML = data.map(r => {
+    const cc = codeColors[r.code] || 'var(--mu)';
+    const files = r.fileKey ? fsGetFiles(r.fileKey) : [];
+    const fb = files.length
+      ? `<span class="bx bb2" style="cursor:pointer;" onclick="showFilesModal('${r.fileKey}','${r.code} ${r.date}')">📎 ${files.length}</span>`
+      : '—';
+    return `<tr>
+      <td><span style="background:${cc}22;color:${cc};border:1px solid ${cc}44;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;">${r.code}</span></td>
+      <td style="font-weight:600;">${r.date||'—'}</td>
+      <td>${r.shift||'—'}</td>
+      <td>${r.area||'—'}</td>
+      <td style="text-align:center;">${r.duration||'—'} min</td>
+      <td style="text-align:center;">${r.count||'—'}</td>
+      <td><span class="bx ${r.outcome==='pass'?'bg2':'br2'}">${r.outcome==='pass'?'✅ Pass':'❌ Needs Work'}</span></td>
+      <td>${fb}</td>
+      <td><button class="btn br" style="font-size:9px;padding:2px 5px;" onclick="deleteCodeDrill('${r._id}')">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function deleteCodeDrill(id) {
+  if (!confirm('Delete this drill record?')) return;
+  const arr = ld('fireDrills_code').filter(r=>String(r._id)!==String(id));
+  sv('fireDrills_code', arr);
+  dbDelete('fireDrills_code', String(id));
+  renderCodeDrills();
+  toast('Deleted');
+}
+
+function renderDrillInfographics() {
+  const data = ld('fireDrills_code');
+  const el   = document.getElementById('drill-infographic'); if (!el) return;
+  if (!data.length) { el.innerHTML='<div class="em">Log some drills to see infographics</div>'; return; }
+
+  const codes = ['Code Red','Code Yellow','Code Pink','Code Brown'];
+  const codeColors = {'Code Red':'#ef4444','Code Yellow':'#f59e0b','Code Pink':'#ec4899','Code Brown':'#92400e'};
+  const totalTarget = 4; // 4 drills per year per type minimum
+
+  el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:13px;">
+    ${codes.map(code => {
+      const recs  = data.filter(r=>r.code===code);
+      const pass  = recs.filter(r=>r.outcome==='pass').length;
+      const cc    = codeColors[code];
+      const pct   = totalTarget > 0 ? Math.min(100, Math.round((recs.length/totalTarget)*100)) : 0;
+      const codeDescriptions = {
+        'Code Red':    'Fire emergency — evacuation + RACE/PASS response',
+        'Code Yellow': 'Internal disaster / mass casualty incident',
+        'Code Pink':   'Infant / child abduction',
+        'Code Brown':  'Chemical / hazardous material spill'
+      };
+      return `<div style="background:var(--sf);border:1px solid ${cc}44;border-top:3px solid ${cc};border-radius:12px;padding:14px;text-align:center;">
+        <div style="font-size:28px;margin-bottom:6px;">${code==='Code Red'?'🔥':code==='Code Yellow'?'⚠️':code==='Code Pink'?'👶':'☣️'}</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:${cc};">${code}</div>
+        <div style="font-size:9px;color:var(--mu);margin-bottom:10px;line-height:1.4;">${codeDescriptions[code]}</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:36px;font-weight:700;color:${pct>=100?'#00d4aa':pct>=75?'#f59e0b':cc};">${recs.length}</div>
+        <div style="font-size:9px;color:var(--mu);">drills / ${totalTarget} target</div>
+        <div style="margin:8px 0;height:7px;background:var(--s3);border-radius:4px;overflow:hidden;">
+          <div style="height:100%;width:${pct}%;background:${pct>=100?'#00d4aa':pct>=75?'#f59e0b':cc};border-radius:4px;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--mu);">
+          <span>✅ ${pass} passed</span>
+          <span>${pct}% of target</span>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
 }
 
 </script>
