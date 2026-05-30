@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260521-1237';
+  var v = '20260530-0940';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   if (url.indexOf('?v=') === -1 && url.indexOf('&v=') === -1) {
@@ -1226,8 +1226,25 @@ if ('caches' in window) {
 
   <!-- ═══ 1. LIQUID OXYGEN ═══ -->
   <div id="mg-lox">
-    <div style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25);border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:10px;color:var(--mu);">
-      <b style="color:#3b82f6;">DAILY CHECK LIST — LIQUID OXYGEN (LOX)</b> · Check twice daily: AM & PM
+    <div style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25);border-radius:10px;padding:12px 16px;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div style="font-size:10px;color:var(--mu);"><b style="color:#3b82f6;">DAILY CHECK LIST — LIQUID OXYGEN (LOX)</b> · Check twice daily: AM & PM</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span style="font-size:10px;color:var(--mu);">Normal Pressure Range (BAR):</span>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <input type="number" id="lox-pmin" step="0.1" placeholder="Min"
+              style="width:60px;background:var(--s2);border:1px solid var(--b2);border-radius:5px;padding:4px 6px;color:var(--ac);font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;text-align:center;outline:none;"
+              oninput="saveLOXRange()" title="Minimum normal pressure">
+            <span style="color:var(--mu);font-size:11px;">to</span>
+            <input type="number" id="lox-pmax" step="0.1" placeholder="Max"
+              style="width:60px;background:var(--s2);border:1px solid var(--b2);border-radius:5px;padding:4px 6px;color:var(--ac);font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;text-align:center;outline:none;"
+              oninput="saveLOXRange()" title="Maximum normal pressure">
+            <span style="font-size:10px;color:var(--mu);">BAR</span>
+          </div>
+          <span style="font-size:9px;color:var(--gn);">🟢 Within range</span>
+          <span style="font-size:9px;color:var(--rd);">🔴 Outside range</span>
+        </div>
+      </div>
     </div>
     <div class="g g2">
       <div class="card"><div class="ch"><div class="ct">Submit LOX Daily Entry</div></div><div class="cb">
@@ -1259,7 +1276,7 @@ if ('caches' in window) {
       </div></div>
       <div class="card"><div class="ch"><div class="ct">LOX Log (Latest Entries)</div></div>
         <div class="cb" style="padding:0;max-height:500px;overflow-y:auto;">
-          <table class="tbl"><thead><tr><th>Date</th><th>Shift</th><th>O₂%</th><th>Pressure</th><th>Leak</th><th>Damage</th><th>Ice</th><th>By</th></tr></thead>
+          <table class="tbl"><thead><tr><th>Date</th><th>Shift</th><th>O₂%</th><th>Pressure AM</th><th>Pressure PM</th><th>Leak</th><th>Damage</th><th>Ice</th><th>By</th><th>Actions</th></tr></thead>
           <tbody id="lox-tb"></tbody></table>
         </div>
       </div>
@@ -1331,7 +1348,7 @@ if ('caches' in window) {
       </div></div>
       <div class="card"><div class="ch"><div class="ct">N₂O Log</div></div>
         <div class="cb" style="padding:0;max-height:500px;overflow-y:auto;">
-          <table class="tbl"><thead><tr><th>Date</th><th>Shift</th><th>Left</th><th>Central</th><th>Right</th><th>Leak</th><th>Damage</th><th>By</th></tr></thead>
+          <table class="tbl"><thead><tr><th>Date</th><th>Shift</th><th>Left</th><th>Central</th><th>Right</th><th>Leak</th><th>Damage</th><th>By</th><th>Actions</th></tr></thead>
           <tbody id="n2o-tb"></tbody></table>
         </div>
       </div>
@@ -1615,7 +1632,7 @@ if ('caches' in window) {
     </div>
     <div class="card"><div class="ch"><div class="ct">All Medical Gas Records</div></div>
       <div class="cb" style="padding:0;max-height:600px;overflow-y:auto;">
-        <table class="tbl"><thead><tr><th>Date</th><th>System</th><th>Shift</th><th>Key Reading</th><th>Issues Found</th><th>Submitted By</th></tr></thead>
+        <table class="tbl"><thead><tr><th>Date</th><th>System</th><th>Shift</th><th>Key Reading</th><th>Status</th><th>By</th><th></th></tr></thead>
         <tbody id="mg-all-tb"></tbody>
       </table></div>
     </div>
@@ -2458,7 +2475,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260521-1237';
+const APP_VERSION = '20260530-0940';
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
@@ -4218,17 +4235,30 @@ function reinitAnalCharts() {
 // ════════════════════════════════════════════════════════════════
 
 // Tab navigation
+// Top-level MG tab panel IDs — only these get hidden on tab switch
+const MG_TAB_IDS = ['mg-lox','mg-o2backup','mg-n2o','mg-vacuum','mg-aircomp',
+  'mg-airbackup','mg-ambulance','mg-cylinder','mg-o2refill','mg-airrefill',
+  'mg-o2calc','mg-log','mg-kpi'];
+
 function mgTab(tab, btn) {
-  document.querySelectorAll('[id^="mg-"]').forEach(e => e.style.display = 'none');
+  // Only hide top-level tab divs — NOT inner tables, inputs, etc.
+  MG_TAB_IDS.forEach(id => {
+    const e = document.getElementById(id);
+    if (e) e.style.display = 'none';
+  });
   const el = document.getElementById('mg-' + tab);
   if (el) el.style.display = 'block';
   if (btn) {
     btn.closest('.tb').querySelectorAll('.tbtn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
   }
-  if (tab === 'log')    renderMGLog('all');
-  if (tab === 'kpi')    renderMGKPIs();
+  // Per-tab init
+  if (tab === 'log')    { renderMGLog('all'); }
+  if (tab === 'kpi')    { renderMGKPIs(); }
   if (tab === 'o2calc') { calcO2Reserve(); renderLOXTrend(); }
+  // Re-render the specific table if it's a checklist tab
+  const checklistTabs = ['lox','o2backup','n2o','vacuum','aircomp','airbackup','ambulance','cylinder','o2refill','airrefill'];
+  if (checklistTabs.includes(tab)) renderMGTable(tab);
 }
 
 // ── SAVE functions per system ──
@@ -4357,13 +4387,24 @@ function mgSave(type) {
 
 // ── TABLE RENDERERS per system ──
 const MG_ROWS = {
-  lox: r => `<td>${r.date||'—'}</td><td>${r.shift||'—'}</td>
+  lox: r => {
+    const minP = parseFloat(localStorage.getItem('lox_pmin')||'7');
+    const maxP = parseFloat(localStorage.getItem('lox_pmax')||'16');
+    const pam  = parseFloat(r.pam);
+    const ppm  = parseFloat(r.ppm);
+    const pamOk = !isNaN(pam) && pam >= minP && pam <= maxP;
+    const ppmOk = !isNaN(ppm) && ppm >= minP && ppm <= maxP;
+    const pamC  = isNaN(pam) ? 'var(--mu)' : pamOk ? 'var(--gn)' : 'var(--rd)';
+    const ppmC  = isNaN(ppm) ? 'var(--mu)' : ppmOk ? 'var(--gn)' : 'var(--rd)';
+    return `<td>${r.date||'—'}</td><td>${r.shift||'—'}</td>
     <td>${r.o2am!==undefined&&r.o2am!==''?r.o2am+'%':'—'}</td>
-    <td style="color:${parseFloat(r.pam)>=100?'var(--gn)':'var(--rd)'};">${r.pam||'—'} BAR</td>
+    <td style="color:${pamC};font-weight:600;">${r.pam||'—'} BAR</td>
+    <td style="color:${ppmC};font-weight:600;">${r.ppm||'—'} BAR</td>
     <td>${r.leak==='ok'?'<span class="bx bg2">✅</span>':'<span class="bx br2">❌</span>'}</td>
     <td>${r.damage==='ok'?'<span class="bx bg2">✅</span>':'<span class="bx br2">❌</span>'}</td>
     <td>${r.ice==='ok'?'<span class="bx bg2">✅</span>':'<span class="bx br2">❌</span>'}</td>
-    <td style="font-size:10px;">${r._by||r.by||'—'}</td>`,
+    <td style="font-size:10px;">${r._by||r.by||'—'}</td>`;
+  },
 
   o2backup: r => `<td>${r.date||'—'}</td><td>${r.shift||'—'}</td>
     <td>${r.left||'—'}</td>
@@ -4428,10 +4469,20 @@ const MG_ROWS = {
 
 function renderMGTable(type) {
   const tb = document.getElementById(type + '-tb'); if (!tb) return;
-  const data = ld('mg_' + type);
-  if (!data.length) { tb.innerHTML = '<tr><td colspan="10" class="em">No entries yet</td></tr>'; return; }
+  // Sort newest first by date then timestamp
+  const data = [...ld('mg_' + type)].sort((a,b) => {
+    const da = a.date || a._ts || ''; const db = b.date || b._ts || '';
+    return da > db ? -1 : da < db ? 1 : 0;
+  });
+  if (!data.length) { tb.innerHTML = '<tr><td colspan="12" class="em">No entries yet — submit a daily checklist above</td></tr>'; return; }
   const fn = MG_ROWS[type]; if (!fn) return;
-  tb.innerHTML = data.slice(0, 60).map(r => `<tr>${fn(r)}</tr>`).join('');
+  tb.innerHTML = data.map(r => `<tr>
+    ${fn(r)}
+    <td style="white-space:nowrap;">
+      <button class="btn bo" style="font-size:9px;padding:2px 5px;" onclick="mgEditRecord('${type}','${r._id}')">✏</button>
+      <button class="btn br" style="font-size:9px;padding:2px 5px;margin-left:2px;" onclick="mgDeleteRecord('${type}','${r._id}')">✕</button>
+    </td>
+  </tr>`).join('');
 }
 
 // Render all MG tables on init
@@ -4480,19 +4531,42 @@ function renderMGLog(filter) {
   const tb = document.getElementById('mg-all-tb'); if (!tb) return;
   if (!all.length) { tb.innerHTML = '<tr><td colspan="6" class="em">No records yet — start submitting daily checklists</td></tr>'; return; }
   const def = MG_DEFS;
-  tb.innerHTML = all.slice(0, 100).map(r => {
-    const issueCell = r._hasIssue
-      ? '<span class="bx br2">⚠️ Issue</span>'
-      : '<span class="bx bg2">✅ OK</span>';
-    return `<tr>
-      <td style="font-weight:600;">${r.date||r._ts?.slice(0,10)||'—'}</td>
-      <td>${(MG_DEFS[r._stype]?.icon||'') + ' ' + (MG_DEFS[r._stype]?.label||r._stype)}</td>
-      <td>${r.shift||'—'}</td>
-      <td style="font-size:11px;">${r._keyReading||'—'}</td>
-      <td>${issueCell}</td>
-      <td style="font-size:10px;">${r._by||r.by||'—'}</td>
+  // Group by month for display
+  const byMonth = {};
+  all.forEach(r => {
+    const m = (r.date||r._ts||'').slice(0,7);
+    if (!byMonth[m]) byMonth[m] = [];
+    byMonth[m].push(r);
+  });
+  const monthLabels = Object.keys(byMonth).sort((a,b)=>b>a?1:-1);
+
+  let html = '';
+  monthLabels.forEach(m => {
+    const d = new Date(m+'-01');
+    const lbl = d.toLocaleString('en-GB',{month:'long',year:'numeric'});
+    const cnt = byMonth[m].length;
+    const issueCount = byMonth[m].filter(r=>r._hasIssue).length;
+    html += `<tr style="background:rgba(0,180,255,.06);">
+      <td colspan="7" style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--ac);padding:8px 10px;">
+        📅 ${lbl} — ${cnt} entries ${issueCount ? `<span style="color:var(--rd);font-size:11px;">· ${issueCount} issues</span>` : '<span style="color:var(--gn);font-size:11px;">· No issues</span>'}
+      </td>
     </tr>`;
-  }).join('');
+    byMonth[m].forEach(r => {
+      const issueCell = r._hasIssue
+        ? '<span class="bx br2">⚠️ Issue</span>'
+        : '<span class="bx bg2">✅ OK</span>';
+      html += `<tr>
+        <td style="font-weight:600;">${r.date||r._ts?.slice(0,10)||'—'}</td>
+        <td>${(MG_DEFS[r._stype]?.icon||'') + ' ' + (MG_DEFS[r._stype]?.label||r._stype)}</td>
+        <td>${r.shift||'—'}</td>
+        <td style="font-size:11px;">${r._keyReading||'—'}</td>
+        <td>${issueCell}</td>
+        <td style="font-size:10px;">${r._by||r.by||'—'}</td>
+        <td><button class="btn br" style="font-size:9px;padding:2px 5px;" onclick="mgDeleteRecord('${r._stype}','${r._id}')">✕</button></td>
+      </tr>`;
+    });
+  });
+  tb.innerHTML = html || '<tr><td colspan="7" class="em">No records yet</td></tr>';
 }
 
 function getKeyReading(type, r) {
@@ -4581,6 +4655,85 @@ function renderLOXTrend() {
 
 // ── KPIs ──
 function renderMGKPIs() {
+  const el = document.getElementById('mg-kpi-content'); if (!el) return;
+  const types = Object.keys(MG_DEFS);
+  const today = new Date().toISOString().split('T')[0];
+  const thisMonth = today.slice(0,7);
+
+  const kpiData = types.map(type => {
+    const all     = ld('mg_'+type);
+    const monthly = all.filter(r => (r.date||r._ts||'').slice(0,7) === thisMonth);
+    const todayRecs= all.filter(r => (r.date||'') === today);
+    const issues  = monthly.filter(r => detectIssue(type, r));
+    const def     = MG_DEFS[type];
+    // Expected: twice daily for LOX/aircomp/vacuum, once for others
+    const dailyTarget = ['lox','aircomp','vacuum','o2backup','airbackup'].includes(type) ? 2 : 1;
+    const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth()+1, 0).getDate();
+    const daysPassed  = new Date().getDate();
+    const expected    = daysPassed * dailyTarget;
+    const compliance  = expected > 0 ? Math.min(100, Math.round((monthly.length / expected) * 100)) : 0;
+    const cc = compliance >= 90 ? '#00d4aa' : compliance >= 70 ? '#f59e0b' : '#ef4444';
+    return { type, def, monthly, todayRecs, issues, compliance, cc, total: all.length, daysPassed, expected };
+  });
+
+  const totalMonthly = kpiData.reduce((s,k)=>s+k.monthly.length,0);
+  const totalIssues  = kpiData.reduce((s,k)=>s+k.issues.length,0);
+  const avgCompliance= kpiData.length ? Math.round(kpiData.reduce((s,k)=>s+k.compliance,0)/kpiData.length) : 0;
+  const acC = avgCompliance>=90?'#00d4aa':avgCompliance>=70?'#f59e0b':'#ef4444';
+
+  el.innerHTML = `
+    <!-- Summary row -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:18px;">
+      <div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:16px;text-align:center;">
+        <div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Monthly Compliance</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:42px;font-weight:700;color:${acC};">${avgCompliance}%</div>
+        <div style="font-size:10px;color:var(--mu);">across all systems</div>
+        <div style="margin-top:8px;height:6px;background:var(--s3);border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:${avgCompliance}%;background:${acC};border-radius:3px;"></div>
+        </div>
+      </div>
+      <div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:16px;text-align:center;">
+        <div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Entries This Month</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:42px;font-weight:700;color:var(--ac);">${totalMonthly}</div>
+        <div style="font-size:10px;color:var(--mu);">${thisMonth}</div>
+      </div>
+      <div style="background:var(--sf);border:1px solid ${totalIssues?'rgba(239,68,68,.3)':'rgba(0,255,136,.25)'};border-radius:12px;padding:16px;text-align:center;">
+        <div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Issues Flagged</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:42px;font-weight:700;color:${totalIssues?'#ef4444':'#00d4aa'};">${totalIssues}</div>
+        <div style="font-size:10px;color:var(--mu);">this month</div>
+      </div>
+      <div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:16px;text-align:center;">
+        <div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Today's Entries</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:42px;font-weight:700;color:var(--gn);">${kpiData.reduce((s,k)=>s+k.todayRecs.length,0)}</div>
+        <div style="font-size:10px;color:var(--mu);">${today}</div>
+      </div>
+    </div>
+
+    <!-- Per-system KPI cards -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:13px;">
+      ${kpiData.map(k => `
+        <div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:14px;border-top:3px solid ${k.cc};">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <div>
+              <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;">${k.def.icon} ${k.def.label}</div>
+              <div style="font-size:9px;color:var(--mu);">Expected ${k.expected} entries this month · ${k.monthly.length} submitted</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-family:'Rajdhani',sans-serif;font-size:26px;font-weight:700;color:${k.cc};">${k.compliance}%</div>
+              <div style="font-size:9px;color:var(--mu);">compliance</div>
+            </div>
+          </div>
+          <div style="height:6px;background:var(--s3);border-radius:3px;overflow:hidden;margin-bottom:8px;">
+            <div style="height:100%;width:${k.compliance}%;background:${k.cc};border-radius:3px;"></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:9px;background:var(--s2);padding:2px 8px;border-radius:4px;">📊 ${k.total} total entries</span>
+            ${k.issues.length ? `<span style="font-size:9px;background:rgba(239,68,68,.12);color:#ef4444;padding:2px 8px;border-radius:4px;">⚠️ ${k.issues.length} issues</span>` : '<span style="font-size:9px;background:rgba(0,255,136,.1);color:#00d4aa;padding:2px 8px;border-radius:4px;">✅ No issues</span>'}
+            ${k.todayRecs.length ? `<span style="font-size:9px;background:rgba(0,180,255,.1);color:var(--ac);padding:2px 8px;border-radius:4px;">✓ Today done</span>` : '<span style="font-size:9px;color:var(--or);padding:2px 8px;background:rgba(245,158,11,.1);border-radius:4px;">⏳ Today pending</span>'}
+          </div>
+        </div>`).join('')}
+    </div>`;
+}function renderMGKPIs() {
   const el = document.getElementById('mg-kpi-content'); if (!el) return;
   const today = new Date().toISOString().split('T')[0];
   const kpis = [
@@ -6099,7 +6252,7 @@ function doLogin() {
     if (id === 'equip') {
       setTimeout(() => eqTab('inv', document.querySelector('#page-equip .tbtn')), 60);
     }
-    if (id === 'medgas')    { renderAllMGTables(); renderMGLog('all'); }
+    if (id === 'medgas')    { renderAllMGTables(); renderMGLog('all'); setTimeout(loadLOXRange, 100); }
     if (id === 'risk')      { setTimeout(() => riskTab('heatmap', null), 80); }
     if (id === 'contracts') { setTimeout(() => ctrTab('list', null), 80); }
     if (id === 'settings') {
@@ -7781,6 +7934,103 @@ window.addEventListener('load', function() {
   kpi2BuildMonthSelect();
   kpi2BuildTrendSelect();
 });
+
+
+// ── MedGas Edit/Delete ──
+function mgDeleteRecord(type, id) {
+  if (!confirm('Delete this entry? This cannot be undone.')) return;
+  const arr = ld('mg_'+type).filter(r => String(r._id) !== String(id));
+  sv('mg_'+type, arr);
+  dbDelete('mg_'+type, String(id));
+  renderMGTable(type);
+  renderMGLog('all');
+  toast('Entry deleted');
+}
+
+function mgEditRecord(type, id) {
+  const arr = ld('mg_'+type);
+  const rec = arr.find(r => String(r._id) === String(id));
+  if (!rec) { toast('Record not found','#f59e0b'); return; }
+  const def = MG_DEFS[type]; if (!def) return;
+  // Populate form fields with existing data
+  def.fields.forEach(f => {
+    const [key, elId] = f.split(':');
+    const el = document.getElementById(elId); if (!el) return;
+    if (el.type !== 'file' && rec[key] !== undefined) el.value = rec[key];
+  });
+  // Store edit mode
+  window._mgEditId   = id;
+  window._mgEditType = type;
+  // Scroll to form
+  const formEl = document.querySelector('#mg-'+type+' .card');
+  if (formEl) formEl.scrollIntoView({behavior:'smooth', block:'start'});
+  // Change save button text
+  const btn = document.querySelector('#mg-'+type+' .btn.bg');
+  if (btn) {
+    btn.textContent = '✓ Update Entry';
+    btn.style.background = 'var(--or)';
+  }
+  toast('📝 Edit mode — modify values and click Update', '#f59e0b');
+}
+
+// Patch mgSave to handle edit mode
+const _mgSaveOrig = mgSave;
+mgSave = function(type) {
+  // Check if in edit mode for this type
+  if (window._mgEditType === type && window._mgEditId) {
+    const def = MG_DEFS[type]; if (!def) return;
+    const arr = ld('mg_'+type);
+    const idx = arr.findIndex(r => String(r._id) === String(window._mgEditId));
+    if (idx >= 0) {
+      def.fields.forEach(f => {
+        const [key, id] = f.split(':');
+        const el = document.getElementById(id); if (!el) return;
+        if (el.type !== 'file') arr[idx][key] = el.value;
+      });
+      arr[idx]._editedBy = (typeof CU!=='undefined'?CU.name:'');
+      arr[idx]._editedAt = new Date().toISOString();
+      sv('mg_'+type, arr);
+      dbWrite('mg_'+type, arr[idx]);
+      renderMGTable(type);
+      // Reset edit mode
+      window._mgEditType = null;
+      window._mgEditId   = null;
+      const btn = document.querySelector('#mg-'+type+' .btn.bg');
+      if (btn) { btn.textContent = '✓ Save Entry'; btn.style.background = ''; }
+      toast('✅ Entry updated');
+      return;
+    }
+  }
+  _mgSaveOrig(type);
+};
+
+// ── LOX Range Settings ──
+function saveLOXRange() {
+  const minEl = document.getElementById('lox-pmin');
+  const maxEl = document.getElementById('lox-pmax');
+  if (minEl && minEl.value) localStorage.setItem('lox_pmin', minEl.value);
+  if (maxEl && maxEl.value) localStorage.setItem('lox_pmax', maxEl.value);
+  renderMGTable('lox');
+}
+
+function loadLOXRange() {
+  const minEl = document.getElementById('lox-pmin');
+  const maxEl = document.getElementById('lox-pmax');
+  if (minEl) minEl.value = localStorage.getItem('lox_pmin') || '7';
+  if (maxEl) maxEl.value = localStorage.getItem('lox_pmax') || '16';
+}
+
+// ── Inventory delete (for equipment added via eq_added) ──
+function mgDeleteInventoryItem(assetNo) {
+  if (!confirm('Remove asset ' + assetNo + ' from inventory?')) return;
+  const arr = ld('eq_added').filter(r => r.asset !== assetNo);
+  sv('eq_added', arr);
+  dbDelete('eq_added', assetNo);
+  EQ_ALL = null;
+  // Re-render wherever inventory is shown
+  if (typeof eqRender === 'function') eqRender();
+  toast('✅ ' + assetNo + ' removed from inventory');
+}
 
 </script>
 </body>
