@@ -5,13 +5,15 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260601-0837';
+  var v = '20260601-0900';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
-  if (url.indexOf('?v=') === -1 && url.indexOf('&v=') === -1) {
-    var sep = url.indexOf('?') === -1 ? '?' : '&';
-    window.location.replace(url + sep + 'v=' + v);
-    return; // stop loading old content
+  // Strip any existing v= param to avoid v=v= doubling
+  var cleanUrl = url.replace(/[?&]v=[^&]*/g, '').replace(/[?&]$/, '');
+  if (url.indexOf('?v=' + v) === -1 && url.indexOf('&v=' + v) === -1) {
+    var sep = cleanUrl.indexOf('?') === -1 ? '?' : '&';
+    window.location.replace(cleanUrl + sep + 'v=' + v);
+    return;
   }
   // Clear service workers and caches
   if (window.caches) {
@@ -1091,7 +1093,10 @@ if ('caches' in window) {
     </div>
 
     <!-- Results info -->
-    <div id="eq-result-info" style="font-size:10px;color:var(--mu);margin-bottom:8px;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div id="eq-result-info" style="font-size:10px;color:var(--mu);"></div>
+      <span style="font-size:10px;color:var(--mu);">Showing: <b id="eq-count">—</b> · <span id="eq-table-label">All Records</span></span>
+    </div>
 
     <!-- Table -->
     <div style="overflow-x:auto;max-height:600px;overflow-y:auto;">
@@ -2847,7 +2852,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260601-0837';
+const APP_VERSION = '20260601-0900';
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
@@ -4478,7 +4483,11 @@ function reinitAnalCharts() {
     if (CH[id]) { try { CH[id].destroy(); } catch(e){} delete CH[id]; }
     const canvas = document.getElementById(id);
     if (!canvas) return;
-    // Use requestAnimationFrame to ensure canvas has been laid out
+    // Also destroy any chart Chart.js is tracking on this canvas
+    try {
+      const existing = Chart.getChart(canvas);
+      if (existing) existing.destroy();
+    } catch(e) {}
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         try { CH[id] = new Chart(canvas, cfg); }
