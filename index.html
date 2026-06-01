@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260601-1000';
+  var v = '20260601-1030';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -950,64 +950,105 @@ if ('caches' in window) {
     <div class="card"><div class="ch"><div class="ct">Exit Inspection Log</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Location</th><th>23.1</th><th>23.2</th><th>23.3</th><th>23.4</th><th>23.6</th><th>Doc</th></tr></thead><tbody id="fireExit-tb"></tbody></table></div></div>
   </div></div>
   <div id="fire-unitdrill" style="display:none;">
-    <!-- Upload schedule banner -->
+    <!-- Top banner -->
     <div style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:12px 16px;margin-bottom:14px;">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
         <div>
-          <div style="font-weight:700;color:var(--rd);font-size:12px;">🔥 UNIT LEVEL FIRE DRILL — CBAHI Requirement</div>
-          <div style="font-size:10px;color:var(--mu);margin-top:3px;">Each unit/department must conduct fire drills at the required frequency · Surveyor will check drill schedules, attendance, and critique reports</div>
+          <div style="font-weight:700;color:var(--rd);font-size:13px;">🔥 UNIT LEVEL FIRE DRILL — CBAHI FMS.1.1.6</div>
+          <div style="font-size:10px;color:var(--mu);margin-top:3px;">
+            <b style="color:var(--tx);">Quarterly:</b> 7 In-Patient units (4×/year) · 
+            <b style="color:var(--tx);">Semi-Annual:</b> 11 Out-Patient units (2×/year) · 
+            <b style="color:var(--tx);">Annual:</b> 9 Non-Patient units (1×/year) · 
+            <b style="color:var(--ac);">Total: 27 units · KPI Target: 100%</b>
+          </div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <label style="font-size:10px;color:var(--mu);">Upload Annual Schedule:</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <label style="font-size:10px;color:var(--mu);">Annual Schedule:</label>
           <input type="file" id="fire-schedule-file" multiple accept=".pdf,.doc,.docx,.xlsx,.jpg,.png"
             style="font-size:9px;color:var(--mu);" onchange="saveFireSchedule(this)">
-          <button class="btn bo" style="font-size:9px;padding:3px 10px;" onclick="showFireSchedule()">📎 View Schedule</button>
+          <button class="btn bo" style="font-size:9px;padding:3px 10px;" onclick="showFireSchedule()">📎 View</button>
+          <button class="btn bg" style="font-size:9px;padding:3px 12px;" onclick="exportUnitDrillReport()">📥 Export KPI Report</button>
         </div>
       </div>
     </div>
 
-    <!-- KPI summary infographic -->
+    <!-- KPI infographic -->
     <div id="unit-drill-infographic" style="margin-bottom:16px;"></div>
 
     <div class="g g2">
+      <!-- FORM -->
       <div class="card"><div class="ch"><div class="ct">Log Unit Level Fire Drill</div></div><div class="cb">
         <div class="fg fg2">
           <div class="ff"><label>Date</label><input type="date" id="ufd-date"></div>
           <div class="ff"><label>Unit / Department</label>
-            <input type="text" id="ufd-unit" list="ufd-unit-list" placeholder="e.g. ICU, ER, OR, Ward 2...">
+            <input type="text" id="ufd-unit" list="ufd-unit-list" placeholder="Select or type department..."
+              oninput="ufdAutoFreq(this.value)">
             <datalist id="ufd-unit-list">
-              <option>ICU</option><option>NICU / PICU</option><option>Emergency Room</option>
-              <option>Operating Room</option><option>Delivery Room</option><option>Inpatient Ward</option>
-              <option>Pharmacy</option><option>Laboratory</option><option>Radiology</option>
-              <option>Kitchen</option><option>Administration</option><option>Outpatient Clinic</option>
+              <option value="--- In-Patient Care (Quarterly) ---">--- In-Patient Care (Quarterly) ---</option>
+              <option value="Station B & G">Station B & G</option>
+              <option value="Labor & Delivery">Labor & Delivery</option>
+              <option value="NICU/PICU">NICU/PICU</option>
+              <option value="Intensive Care Unit">Intensive Care Unit</option>
+              <option value="Operating Room">Operating Room</option>
+              <option value="Station C, F & H">Station C, F & H</option>
+              <option value="CCU/Cardiac ICU">CCU/Cardiac ICU</option>
+              <option value="--- Out-Patient Care (Semi-Annual) ---">--- Out-Patient Care (Semi-Annual) ---</option>
+              <option value="Laboratory">Laboratory</option>
+              <option value="Radiology">Radiology</option>
+              <option value="OPD Optha">OPD Optha</option>
+              <option value="OPD Endoscopy/Urology">OPD Endoscopy/Urology</option>
+              <option value="In-Patient Pharmacy">In-Patient Pharmacy</option>
+              <option value="Emergency Room">Emergency Room</option>
+              <option value="OPD Orth/Surgery/Pedia/IM/Derma">OPD Orth/Surgery/Pedia/IM/Derma</option>
+              <option value="OPD Dental">OPD Dental</option>
+              <option value="OPD ENT/Cardio">OPD ENT/Cardio</option>
+              <option value="Out-Patient Pharmacy">Out-Patient Pharmacy</option>
+              <option value="Physiotherapy">Physiotherapy</option>
+              <option value="--- Non-Patient Care (Annual) ---">--- Non-Patient Care (Annual) ---</option>
+              <option value="Communication, ICD & IT Software">Communication, ICD & IT Software</option>
+              <option value="Laundry">Laundry</option>
+              <option value="Kitchen">Kitchen</option>
+              <option value="Medical Records & Reports">Medical Records & Reports</option>
+              <option value="Billing">Billing</option>
+              <option value="CSSD">CSSD</option>
+              <option value="BioMed & IT Hardware">BioMed & IT Hardware</option>
+              <option value="Maintenance">Maintenance</option>
+              <option value="Main Pharmacy Store">Main Pharmacy Store</option>
             </datalist>
+            <div class="ht" id="ufd-freq-hint"></div>
           </div>
-          <div class="ff"><label>Frequency / Schedule</label>
+          <div class="ff"><label>Frequency</label>
             <select id="ufd-freq" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
-              <option value="quarterly">Quarterly (Q1/Q2/Q3/Q4)</option>
-              <option value="semi">Semi-Annual (H1/H2)</option>
-              <option value="annual">Annual</option>
+              <option value="quarterly">Quarterly — 4×/year (In-Patient)</option>
+              <option value="semi">Semi-Annual — 2×/year (Out-Patient)</option>
+              <option value="annual">Annual — 1×/year (Non-Patient)</option>
             </select>
           </div>
-          <div class="ff"><label>Period / Quarter</label>
+          <div class="ff"><label>Period</label>
             <select id="ufd-period" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
               <option value="Q1">Q1 — January to March</option>
               <option value="Q2">Q2 — April to June</option>
               <option value="Q3">Q3 — July to September</option>
               <option value="Q4">Q4 — October to December</option>
-              <option value="H1">H1 — First Half of Year</option>
-              <option value="H2">H2 — Second Half of Year</option>
-              <option value="Annual">Annual</option>
+              <option value="H1">H1 — First Half (Jan–Jun)</option>
+              <option value="H2">H2 — Second Half (Jul–Dec)</option>
+              <option value="Annual">Annual (Full Year)</option>
             </select>
           </div>
-          <div class="ff"><label>Year</label><input type="number" id="ufd-year" placeholder="2026"></div>
+          <div class="ff"><label>Year</label>
+            <input type="number" id="ufd-year" placeholder="2026" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;width:100%;">
+          </div>
           <div class="ff"><label>Shift</label>
             <select id="ufd-shift" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
-              <option>Day</option><option>Evening</option><option>Night</option>
+              <option>Day</option><option>Evening</option><option>Night</option><option>Broken Shift</option>
             </select>
           </div>
-          <div class="ff"><label>Duration (minutes)</label><input type="number" id="ufd-dur" placeholder="15" min="1"></div>
-          <div class="ff"><label>Participants Count</label><input type="number" id="ufd-count" placeholder="0" min="0"></div>
+          <div class="ff"><label>Duration (minutes)</label>
+            <input type="number" id="ufd-dur" placeholder="15" min="1" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;width:100%;">
+          </div>
+          <div class="ff"><label>Participants Count</label>
+            <input type="number" id="ufd-count" placeholder="0" min="0" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;width:100%;">
+          </div>
           <div class="ff"><label>Outcome</label>
             <select id="ufd-outcome" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
               <option value="satisfactory">✅ Satisfactory</option>
@@ -1015,36 +1056,43 @@ if ('caches' in window) {
               <option value="unsatisfactory">❌ Unsatisfactory</option>
             </select>
           </div>
-          <div class="ff"><label>Conducted By</label><input type="text" id="ufd-by" placeholder="Safety Officer / FMS"></div>
+          <div class="ff"><label>Conducted By</label>
+            <input type="text" id="ufd-by" placeholder="Safety Officer / FMS" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;width:100%;">
+          </div>
           <div class="ff" style="grid-column:1/-1"><label>Deficiencies / Observations</label>
-            <textarea id="ufd-deficiencies" style="min-height:60px;" placeholder="Gaps found during drill, response issues, equipment problems..."></textarea>
+            <textarea id="ufd-deficiencies" style="min-height:55px;" placeholder="Gaps found, response issues, equipment problems..."></textarea>
           </div>
           <div class="ff" style="grid-column:1/-1"><label>Corrective Actions</label>
-            <textarea id="ufd-actions" style="min-height:50px;" placeholder="Actions taken or planned to address deficiencies..."></textarea>
+            <textarea id="ufd-actions" style="min-height:45px;" placeholder="Actions taken or planned..."></textarea>
           </div>
           <div class="ff" style="grid-column:1/-1">
-            <label>Upload Documents (Attendance List, Critique Report, Photos)</label>
+            <label>📎 Upload Attendance Sheet & Documents</label>
             <input type="file" id="ufd-files" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
               style="font-size:10px;color:var(--mu);">
-            <div class="ht">CBAHI requires attendance list + critique report as evidence for each drill</div>
+            <div class="ht">Attendance list is the <b>source of data</b> for the KPI · Required evidence for CBAHI surveyor</div>
           </div>
         </div>
         <button class="btn bg" style="width:100%;margin-top:12px;" onclick="saveUnitDrill()">✓ Log Unit Level Drill</button>
       </div></div>
 
+      <!-- LOG TABLE -->
       <div class="card"><div class="ch">
         <div class="ct">Unit Drill Log — <span id="ufd-count-label">0 drills</span></div>
-        <button class="btn bo" style="font-size:9px;padding:3px 10px;" onclick="exportUnitDrillReport()">📥 Export Report</button>
       </div>
-        <div class="cb" style="padding:0;max-height:500px;overflow-y:auto;">
+        <div class="cb" style="padding:0;max-height:520px;overflow-y:auto;">
           <table class="tbl">
-            <thead><tr><th>Date</th><th>Unit</th><th>Freq.</th><th>Period</th><th>Year</th><th>Duration</th><th>Staff</th><th>Outcome</th><th>By</th><th>Docs</th><th></th></tr></thead>
+            <thead><tr>
+              <th>Date</th><th>Unit / Department</th><th>Freq.</th><th>Period</th><th>Year</th>
+              <th>Duration</th><th>Staff</th><th>Shift</th><th>Outcome</th><th>By</th><th>Docs</th><th>Actions</th>
+            </tr></thead>
             <tbody id="ufd-tb"></tbody>
           </table>
         </div>
       </div>
     </div>
-     <!-- ══ FIRE KPIs ══ -->
+  
+
+    <!-- ══ FIRE KPIs ══ -->
   <div id="fire-kpi" style="display:none;">
     <div id="fire-kpi-out"></div>
   </div>
@@ -2855,7 +2903,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260601-1000';
+const APP_VERSION = '20260601-1030';
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
@@ -9114,6 +9162,52 @@ function renderDrillInfographics() {
 
 
 // ── Unit Level Fire Drill ──
+// ═══════════════════════════════════════════════════════════════
+// UNIT LEVEL FIRE DRILL — Complete Module
+// ═══════════════════════════════════════════════════════════════
+
+// Department master list with required frequency
+const UFD_DEPTS = {
+  quarterly: ["Station B & G", "Labor & Delivery", "NICU/PICU", "Intensive Care Unit", "Operating Room", "Station C, F & H", "CCU/Cardiac ICU"],
+  semi:      ["Laboratory", "Radiology", "OPD Optha", "OPD Endoscopy/Urology", "In-Patient Pharmacy", "Emergency Room", "OPD Orth/Surgery/Pedia/IM/Derma", "OPD Dental", "OPD ENT/Cardio", "Out-Patient Pharmacy", "Physiotherapy"],
+  annual:    ["Communication, ICD & IT Software", "Laundry", "Kitchen", "Medical Records & Reports", "Billing", "CSSD", "BioMed & IT Hardware", "Maintenance", "Main Pharmacy Store"]
+};
+const UFD_ALL = [...UFD_DEPTS.quarterly, ...UFD_DEPTS.semi, ...UFD_DEPTS.annual];
+
+// Auto-fill frequency when department is selected
+function ufdAutoFreq(val) {
+  const sel  = document.getElementById('ufd-freq');
+  const hint = document.getElementById('ufd-freq-hint');
+  const per  = document.getElementById('ufd-period');
+  if (!sel) return;
+  if (UFD_DEPTS.quarterly.includes(val)) {
+    sel.value = 'quarterly';
+    if (hint) hint.textContent = '✅ In-Patient Care — 4 drills/year required';
+    if (hint) hint.style.color = '#ef4444';
+    // Show quarterly periods only
+    if (per) Array.from(per.options).forEach(o =>
+      o.style.display = ['Q1','Q2','Q3','Q4'].includes(o.value) ? '' : 'none');
+  } else if (UFD_DEPTS.semi.includes(val)) {
+    sel.value = 'semi';
+    if (hint) hint.textContent = '✅ Out-Patient Care — 2 drills/year required';
+    if (hint) hint.style.color = '#f59e0b';
+    if (per) Array.from(per.options).forEach(o =>
+      o.style.display = ['H1','H2'].includes(o.value) ? '' : 'none');
+    if (per) per.value = 'H1';
+  } else if (UFD_DEPTS.annual.includes(val)) {
+    sel.value = 'annual';
+    if (hint) hint.textContent = '✅ Non-Patient Care — 1 drill/year required';
+    if (hint) hint.style.color = '#10b981';
+    if (per) Array.from(per.options).forEach(o =>
+      o.style.display = ['Annual'].includes(o.value) ? '' : 'none');
+    if (per) per.value = 'Annual';
+  } else {
+    if (hint) hint.textContent = '';
+    if (per) Array.from(per.options).forEach(o => o.style.display = '');
+  }
+}
+
+// Save drill record
 function saveUnitDrill() {
   const date   = document.getElementById('ufd-date')?.value;
   const unit   = document.getElementById('ufd-unit')?.value.trim();
@@ -9129,9 +9223,9 @@ function saveUnitDrill() {
   const action = document.getElementById('ufd-actions')?.value.trim();
   const fileIn = document.getElementById('ufd-files');
 
-  if (!date || !unit) { toast('Date and Unit are required','#f59e0b'); return; }
+  if (!date || !unit) { toast('Date and Department are required','#f59e0b'); return; }
 
-  const rec = { _id:Date.now(), date, unit, freq, period, year, shift, dur, count,
+  const rec = { _id:Date.now(), date, unit, freq, period, year:String(year), shift, dur, count,
     outcome, byWho, defi, action, fileKey:'ufd_'+Date.now(),
     _by:(typeof CU!=='undefined'?CU.name:''), _ts:new Date().toISOString() };
 
@@ -9147,136 +9241,228 @@ function saveUnitDrill() {
     });
     renderUnitDrills();
     renderUnitDrillKPIs();
-    toast('✅ Unit Level Fire Drill logged');
+    toast('✅ Unit Level Fire Drill logged for ' + unit);
   })();
 }
 
+// Edit drill record
+function editUnitDrill(id) {
+  const arr = ld('unitFireDrills');
+  const rec = arr.find(r=>String(r._id)===String(id));
+  if (!rec) { toast('Record not found','#f59e0b'); return; }
+  ['ufd-date','ufd-unit','ufd-freq','ufd-period','ufd-year','ufd-shift',
+   'ufd-dur','ufd-count','ufd-outcome','ufd-by','ufd-deficiencies','ufd-actions'].forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    const key=id.replace('ufd-','').replace('-','');
+    const map={'date':'date','unit':'unit','freq':'freq','period':'period','year':'year',
+               'shift':'shift','dur':'dur','count':'count','outcome':'outcome',
+               'by':'byWho','deficiencies':'defi','actions':'action'};
+    const field=map[id.replace('ufd-','')];
+    if(field && rec[field]!==undefined) el.value=rec[field];
+  });
+  ufdAutoFreq(rec.unit||'');
+  // Store edit mode
+  window._ufdEditId = id;
+  const btn = document.querySelector('#fire-unitdrill .btn.bg');
+  if(btn){ btn.textContent='✓ Update Drill Record'; btn.style.background='var(--or)'; }
+  document.querySelector('#fire-unitdrill .card')?.scrollIntoView({behavior:'smooth'});
+  toast('📝 Edit mode — modify and click Update', '#f59e0b');
+}
+
+// Delete drill record
+function deleteUnitDrill(id) {
+  if (!confirm('Delete this drill record? This cannot be undone.')) return;
+  const arr = ld('unitFireDrills').filter(r=>String(r._id)!==String(id));
+  sv('unitFireDrills', arr);
+  dbDelete('unitFireDrills', String(id));
+  renderUnitDrills();
+  renderUnitDrillKPIs();
+  toast('Deleted');
+}
+
+// Render drill table
 function renderUnitDrills() {
-  const tb = document.getElementById('ufd-tb'); if (!tb) return;
-  const data = ld('unitFireDrills').sort((a,b)=> b.date>a.date?1:-1);
+  const tb  = document.getElementById('ufd-tb'); if (!tb) return;
+  const data = ld('unitFireDrills').sort((a,b)=>b.date>a.date?1:-1);
   const lbl  = document.getElementById('ufd-count-label');
   if (lbl) lbl.textContent = data.length + ' drill' + (data.length!==1?'s':'');
-  if (!data.length) { tb.innerHTML='<tr><td colspan="11" class="em">No unit drills logged yet — add above</td></tr>'; return; }
+  if (!data.length) {
+    tb.innerHTML='<tr><td colspan="12" class="em">No drills logged yet — add above</td></tr>';
+    return;
+  }
   const outcomeStyles = {
-    satisfactory:   {c:'#00d4aa', label:'✅ Satisfactory'},
-    needs_improvement:{c:'#f59e0b',label:'⚠️ Needs Improvement'},
-    unsatisfactory:  {c:'#ef4444', label:'❌ Unsatisfactory'},
+    satisfactory:   {c:'#00d4aa',label:'✅ OK'},
+    needs_improvement:{c:'#f59e0b',label:'⚠️ Improve'},
+    unsatisfactory: {c:'#ef4444',label:'❌ Unsat'},
   };
+  const freqLabels = {quarterly:'Quarterly',semi:'Semi-Annual',annual:'Annual'};
   tb.innerHTML = data.map(r => {
-    const os = outcomeStyles[r.outcome] || {c:'var(--mu)',label:r.outcome||'—'};
-    const files = r.fileKey ? (fsGetFiles?fsGetFiles(r.fileKey):[]) : [];
-    const fb = files.length
-      ? `<button class="btn bb" style="font-size:9px;padding:2px 6px;" onclick="showFilesModal('${r.fileKey}','${r.unit} ${r.date}')">📎 ${files.length}</button>`
+    const os  = outcomeStyles[r.outcome]||{c:'var(--mu)',label:r.outcome||'—'};
+    const fk  = r.fileKey;
+    const fc  = fk&&typeof fsGetFiles==='function' ? fsGetFiles(fk).length : 0;
+    const fb  = fc>0
+      ? `<button class="btn bb" style="font-size:9px;padding:2px 6px;" onclick="showFilesModal('${fk}','${r.unit} ${r.date}')">📎 ${fc}</button>`
       : '<span style="font-size:9px;color:var(--mu);">—</span>';
     return `<tr>
       <td style="font-weight:600;">${r.date||'—'}</td>
-      <td style="font-weight:600;">${r.unit||'—'}</td>
-      <td><span style="background:rgba(0,180,255,.1);color:var(--ac);border-radius:4px;padding:1px 7px;font-size:9px;">${r.freq||'—'}</span></td>
+      <td style="font-weight:600;font-size:11px;">${r.unit||'—'}</td>
+      <td><span style="background:var(--s2);padding:1px 6px;border-radius:4px;font-size:9px;">${freqLabels[r.freq]||r.freq||'—'}</span></td>
       <td style="font-size:10px;">${r.period||'—'}</td>
-      <td style="text-align:center;">${r.year||'—'}</td>
+      <td style="font-size:10px;text-align:center;">${r.year||'—'}</td>
       <td style="text-align:center;">${r.dur||'—'} min</td>
       <td style="text-align:center;">${r.count||'—'}</td>
+      <td style="font-size:10px;">${r.shift||'—'}</td>
       <td><span style="color:${os.c};font-size:10px;font-weight:600;">${os.label}</span></td>
       <td style="font-size:10px;">${r.byWho||r._by||'—'}</td>
-      <td>${fb}</td>
-      <td><button class="btn br" style="font-size:9px;padding:2px 5px;" onclick="deleteUnitDrill('${r._id}')">✕</button></td>
+      <td style="text-align:center;">${fb}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn bo" style="font-size:9px;padding:2px 5px;" onclick="editUnitDrill('${r._id}')">✏</button>
+        <button class="btn br" style="font-size:9px;padding:2px 5px;margin-left:2px;" onclick="deleteUnitDrill('${r._id}')">✕</button>
+      </td>
     </tr>`;
   }).join('');
 }
 
-function deleteUnitDrill(id) {
-  if (!confirm('Delete this drill record?')) return;
-  sv('unitFireDrills', ld('unitFireDrills').filter(r=>String(r._id)!==String(id)));
-  renderUnitDrills(); renderUnitDrillKPIs();
-  toast('Deleted');
-}
-
+// KPI infographic
 function renderUnitDrillKPIs() {
   const el = document.getElementById('unit-drill-infographic'); if (!el) return;
-  const data = ld('unitFireDrills');
-  const now  = new Date();
-  const year = now.getFullYear();
-  const yearData = data.filter(r => String(r.year) === String(year));
+  const now      = new Date();
+  const year     = now.getFullYear();
+  const allData  = ld('unitFireDrills');
+  const yearData = allData.filter(r=>String(r.year)===String(year));
 
-  // KPI: Unit Level Fire Drill Compliance
-  // Numerator: Number of units that completed their required drills this year
-  // Denominator: Total number of units/departments required to conduct drills
-  // Formula: (Numerator / Denominator) × 100
-  // CBAHI Standard: FMS.1.1.6 — each unit must conduct drills per their scheduled frequency
-  // Source: Unit Level Fire Drill Log (this register)
-  const units = [...new Set(yearData.map(r=>r.unit))];
-  // Quarterly units need 4 drills, semi need 2, annual need 1
-  const drillsPerUnit = {};
-  yearData.forEach(r => { drillsPerUnit[r.unit] = (drillsPerUnit[r.unit]||0)+1; });
+  // Per-department compliance
+  const reqMap   = {};
+  UFD_DEPTS.quarterly.forEach(d=>reqMap[d]=4);
+  UFD_DEPTS.semi.forEach(d=>reqMap[d]=2);
+  UFD_DEPTS.annual.forEach(d=>reqMap[d]=1);
 
-  const totalUnits = units.length || 0;
-  const satisfactoryUnits = units.filter(u => {
-    const drills = yearData.filter(r=>r.unit===u);
-    const freqMap = {quarterly:4, semi:2, annual:1};
-    const required = freqMap[drills[0]?.freq] || 1;
-    return drills.length >= required;
-  }).length;
-  const compliancePct = totalUnits>0 ? Math.round((satisfactoryUnits/totalUnits)*100) : 0;
+  const totalRequired = Object.values(reqMap).reduce((s,v)=>s+v,0); // 7×4 + 11×2 + 9×1 = 59
+  const donePerDept   = {};
+  yearData.forEach(r=>{ donePerDept[r.unit]=(donePerDept[r.unit]||0)+1; });
+
+  let totalDone = 0;
+  let deptsCompliant = 0;
+  const totalDepts = UFD_ALL.length; // 27
+
+  UFD_ALL.forEach(dept=>{
+    const required = reqMap[dept]||1;
+    const done     = Math.min(donePerDept[dept]||0, required);
+    totalDone     += done;
+    if ((donePerDept[dept]||0) >= required) deptsCompliant++;
+  });
+
+  // KPI = (Total drills done / Total drills required) × 100
+  const compliancePct = totalRequired>0 ? Math.round((totalDone/totalRequired)*100) : 0;
+  const deptCompPct   = Math.round((deptsCompliant/totalDepts)*100);
   const cc = compliancePct>=100?'#00d4aa':compliancePct>=75?'#f59e0b':'#ef4444';
 
-  // Completion by frequency type
-  const byFreq = {quarterly:{done:0,req:0},semi:{done:0,req:0},annual:{done:0,req:0}};
-  units.forEach(u => {
-    const drills = yearData.filter(r=>r.unit===u);
-    const freq   = drills[0]?.freq||'quarterly';
-    const freqMap = {quarterly:4, semi:2, annual:1};
-    const required = freqMap[freq]||1;
-    const key = freq==='quarterly'?'quarterly':freq==='semi'?'semi':'annual';
-    byFreq[key].req  += required;
-    byFreq[key].done += Math.min(drills.length, required);
+  const freqSummary = [
+    { label:'In-Patient (Quarterly)', depts:UFD_DEPTS.quarterly, req:4, color:'#ef4444' },
+    { label:'Out-Patient (Semi-Annual)', depts:UFD_DEPTS.semi, req:2, color:'#f59e0b' },
+    { label:'Non-Patient (Annual)', depts:UFD_DEPTS.annual, req:1, color:'#10b981' },
+  ].map(g=>{
+    const groupReq  = g.depts.length * g.req;
+    const groupDone = g.depts.reduce((s,d)=>s+Math.min(donePerDept[d]||0,g.req),0);
+    const pct       = groupReq>0?Math.round((groupDone/groupReq)*100):0;
+    const c2        = pct>=100?'#00d4aa':pct>=75?'#f59e0b':g.color;
+    return `<div style="background:var(--sf);border:1px solid ${c2}44;border-top:3px solid ${c2};border-radius:11px;padding:13px;">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:${c2};margin-bottom:6px;">${g.label}</div>
+      <div style="font-size:9px;color:var(--mu);margin-bottom:8px;">${g.depts.length} units · ${g.req}×/year · Required: ${groupReq} drills</div>
+      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:8px;">
+        <span style="font-family:'Rajdhani',sans-serif;font-size:32px;font-weight:700;color:${c2};">${pct}%</span>
+        <span style="font-size:10px;color:var(--mu);">${groupDone}/${groupReq} done</span>
+      </div>
+      <div style="height:6px;background:var(--s3);border-radius:3px;overflow:hidden;">
+        <div style="height:100%;width:${pct}%;background:${c2};border-radius:3px;"></div>
+      </div>
+    </div>`;
   });
 
   el.innerHTML = `
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:16px;">
-    <!-- Overall KPI -->
-    <div style="background:var(--sf);border:1px solid ${cc}44;border-top:3px solid ${cc};border-radius:12px;padding:14px;text-align:center;">
-      <div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Overall Compliance</div>
-      <div style="font-family:'Rajdhani',sans-serif;font-size:42px;font-weight:700;color:${cc};">${compliancePct}%</div>
-      <div style="font-size:9px;color:var(--mu);">${satisfactoryUnits} of ${totalUnits} units</div>
-      <div style="margin-top:8px;height:6px;background:var(--s3);border-radius:3px;overflow:hidden;">
-        <div style="height:100%;width:${compliancePct}%;background:${cc};border-radius:3px;"></div>
-      </div>
-      <div style="font-size:9px;color:var(--mu);margin-top:4px;">FMS.1.1.6 · ${year}</div>
+  <!-- KPI Summary Cards -->
+  <div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:14px;">
+    <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:var(--ac);margin-bottom:12px;border-bottom:1px solid var(--bd);padding-bottom:8px;">
+      📊 KPI: Unit Level Fire Drill Compliance — FMS.1.1.6 · Target: <span style="color:#00d4aa;">100%</span>
     </div>
-    <!-- Total Drills -->
-    <div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:14px;text-align:center;">
-      <div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Total Drills ${year}</div>
-      <div style="font-family:'Rajdhani',sans-serif;font-size:42px;font-weight:700;color:var(--ac);">${yearData.length}</div>
-      <div style="font-size:9px;color:var(--mu);">${units.length} units covered</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:14px;">
+      <div style="text-align:center;padding:12px;background:var(--s2);border-radius:10px;border-top:3px solid ${cc};">
+        <div style="font-size:10px;color:var(--mu);text-transform:uppercase;margin-bottom:6px;">Overall Compliance</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:42px;font-weight:700;color:${cc};">${compliancePct}%</div>
+        <div style="font-size:9px;color:var(--mu);">${totalDone} / ${totalRequired} drills done</div>
+        <div style="margin-top:8px;height:6px;background:var(--s3);border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:${compliancePct}%;background:${cc};border-radius:3px;"></div>
+        </div>
+      </div>
+      <div style="text-align:center;padding:12px;background:var(--s2);border-radius:10px;">
+        <div style="font-size:10px;color:var(--mu);text-transform:uppercase;margin-bottom:6px;">Depts Fully Compliant</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:42px;font-weight:700;color:var(--ac);">${deptsCompliant}</div>
+        <div style="font-size:9px;color:var(--mu);">of 27 departments (${deptCompPct}%)</div>
+      </div>
+      <div style="text-align:center;padding:12px;background:var(--s2);border-radius:10px;">
+        <div style="font-size:10px;color:var(--mu);text-transform:uppercase;margin-bottom:6px;">Numerator</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;color:var(--ac);">${totalDone}</div>
+        <div style="font-size:9px;color:var(--mu);">Unit drills completed<br>as per schedule</div>
+      </div>
+      <div style="text-align:center;padding:12px;background:var(--s2);border-radius:10px;">
+        <div style="font-size:10px;color:var(--mu);text-transform:uppercase;margin-bottom:6px;">Denominator</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;color:var(--mu);">${totalRequired}</div>
+        <div style="font-size:9px;color:var(--mu);">Total required drills<br>7×4 + 11×2 + 9×1 = 59</div>
+      </div>
     </div>
-    <!-- Quarterly KPI -->
-    <div style="background:var(--sf);border:1px solid rgba(59,130,246,.3);border-radius:12px;padding:14px;">
-      <div style="font-size:10px;color:var(--mu);text-transform:uppercase;margin-bottom:6px;">Quarterly Drills</div>
-      <div style="font-size:10px;color:var(--mu);line-height:1.8;">
-        <b style="color:var(--tx);">Numerator:</b> Quarterly drills completed<br>
-        <b style="color:var(--tx);">Denominator:</b> Required quarterly drills (4/unit/year)<br>
-        <b style="color:var(--tx);">Formula:</b> (N ÷ D) × 100<br>
-        <b style="color:var(--tx);">Source:</b> Unit Level Fire Drill Log
-      </div>
-      <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:#3b82f6;margin-top:6px;">
-        ${byFreq.quarterly.done}/${byFreq.quarterly.req}
-      </div>
+    <div style="background:var(--s2);border-radius:8px;padding:10px 14px;font-size:10px;color:var(--mu);line-height:1.9;">
+      <b style="color:var(--tx);">Formula:</b> (Number of unit drills completed per schedule ÷ Total required unit drills per year) × 100<br>
+      <b style="color:var(--tx);">Standard:</b> CBAHI FMS.1.1.6 · <b style="color:var(--tx);">Target:</b> 100% · 
+      <b style="color:var(--tx);">Source of Data:</b> Attendance Sheets from each Unit Level Fire Drill (uploaded per drill entry) · 
+      <b style="color:var(--tx);">Frequency:</b> Quarterly review · Annual KPI report
     </div>
-    <!-- Semi/Annual KPI -->
-    <div style="background:var(--sf);border:1px solid rgba(139,92,246,.3);border-radius:12px;padding:14px;">
-      <div style="font-size:10px;color:var(--mu);text-transform:uppercase;margin-bottom:6px;">Semi/Annual Drills</div>
-      <div style="font-size:10px;color:var(--mu);line-height:1.8;">
-        <b style="color:var(--tx);">Numerator:</b> Semi/Annual drills completed<br>
-        <b style="color:var(--tx);">Denominator:</b> Required drills (2 or 1/unit/year)<br>
-        <b style="color:var(--tx);">Formula:</b> (N ÷ D) × 100<br>
-        <b style="color:var(--tx);">Source:</b> Unit Level Fire Drill Log
-      </div>
-      <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:#8b5cf6;margin-top:6px;">
-        ${byFreq.semi.done+byFreq.annual.done}/${byFreq.semi.req+byFreq.annual.req}
-      </div>
+  </div>
+
+  <!-- Per-group breakdown -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin-bottom:14px;">
+    ${freqSummary.join('')}
+  </div>
+
+  <!-- Department detail table -->
+  <div class="card"><div class="ch"><div class="ct">📋 Department Compliance Detail — ${year}</div></div>
+    <div class="cb" style="padding:0;overflow-x:auto;">
+      <table class="tbl" style="font-size:10px;">
+        <thead><tr>
+          <th>Department</th><th>Category</th><th>Required/Year</th>
+          <th>Completed</th><th>Remaining</th><th>Compliance</th>
+        </tr></thead>
+        <tbody>
+          ${UFD_ALL.map(dept=>{
+            const cat = UFD_DEPTS.quarterly.includes(dept)?'In-Patient (Q)':UFD_DEPTS.semi.includes(dept)?'Out-Patient (SA)':'Non-Patient (A)';
+            const req = reqMap[dept]||1;
+            const done= Math.min(donePerDept[dept]||0,req);
+            const rem = Math.max(0,req-done);
+            const pct2= Math.round((done/req)*100);
+            const c3  = pct2>=100?'#00d4aa':pct2>=50?'#f59e0b':'#ef4444';
+            return `<tr>
+              <td style="font-weight:600;">${dept}</td>
+              <td style="font-size:9px;">${cat}</td>
+              <td style="text-align:center;">${req}</td>
+              <td style="text-align:center;color:${c3};font-weight:600;">${done}</td>
+              <td style="text-align:center;color:${rem>0?'var(--rd)':'var(--gn)'};font-weight:600;">${rem}</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <div style="flex:1;height:5px;background:var(--s3);border-radius:3px;overflow:hidden;">
+                    <div style="height:100%;width:${pct2}%;background:${c3};border-radius:3px;"></div>
+                  </div>
+                  <span style="color:${c3};font-size:9px;font-weight:700;min-width:28px;">${pct2}%</span>
+                </div>
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
     </div>
   </div>`;
 }
+
+// Export KPI Report
+
 
 function saveFireSchedule(input) {
   if (!input.files.length) return;
