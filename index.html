@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260601-0600';
+  var v = '20260601-0837';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   if (url.indexOf('?v=') === -1 && url.indexOf('&v=') === -1) {
@@ -1040,264 +1040,124 @@ if ('caches' in window) {
         </div>
       </div>
     </div>
-   id="page-fire">
-  <div class="ph"><h1>🔥 Fire Safety — FMS.1.1.6</h1><p>FMS.21 Alarm · FMS.22 Suppression · FMS.23 Exits · Moe + Mostapha</p></div>
-  <div class="tb"><button class="tbtn active" onclick="st('fire','alarm',this)">Alarm (FMS.21)</button><button class="tbtn" onclick="st('fire','sup',this)">Suppression (FMS.22)</button><button class="tbtn" onclick="st('fire','exits',this)">Exits (FMS.23)</button><button class="tbtn" onclick="st('fire','unitdrill',this)">🔥 Unit Level Drills</button><button class="tbtn" onclick="st('fire','kpi',this)">📊 KPIs</button></div>
-  <div id="fire-alarm"><div class="g g2">
-    <div class="card"><div class="ch"><div class="ct">Fire Alarm Record (FMS.21)</div></div><div class="cb">
-      <div class="fg fg2">
-        <div class="ff"><label>Date</label><input type="date" id="fa-date"></div>
-        <div class="ff"><label>Activity</label><select id="fa-type"><option>Monthly Inspection (FMS.21.1)</option><option>Weekly Test (FMS.21.2)</option><option>Quarterly PPM — Civil Defense (FMS.21.3)</option><option>Elevator Test (FMS.21.4)</option></select></div>
-        <div class="ff"><label>Zone</label><input type="text" id="fa-zone" placeholder="Zone 1 — ER"></div>
-        <div class="ff"><label>Result</label><select id="fa-res"><option value="pass">✅ Pass</option><option value="partial">⚠️ Partial</option><option value="fail">❌ Fail</option></select></div>
-        <div class="ff"><label>Civil Defense Contractor</label><input type="text" id="fa-cont" placeholder="Company name"></div>
-        <div class="ff"><label>Technician</label><input type="text" id="fa-tech" placeholder="Name"></div>
-        <div class="ff" style="grid-column:1/-1"><label>Notes</label><textarea id="fa-notes" placeholder="Findings..."></textarea></div>
-        <div class="ff" style="grid-column:1/-1"><label>Certificate/Report</label><input type="file" id="fa-file"></div>
-      </div>
-      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('fireAlarm')">✓ Save Record</button>
-    </div></div>
-    <div class="card"><div class="ch"><div class="ct">Fire Alarm Log</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Type</th><th>Zone</th><th>Result</th><th>Contractor</th><th>Doc</th></tr></thead><tbody id="fireAlarm-tb"></tbody></table></div></div>
-  </div></div>
-  <div id="fire-sup" style="display:none;"><div class="g g2">
-    <div class="card"><div class="ch"><div class="ct">Suppression PPM (FMS.22)</div></div><div class="cb">
-      <div class="fg fg2">
-        <div class="ff"><label>Date</label><input type="date" id="fs-date"></div>
-        <div class="ff"><label>System</label><select id="fs-sys"><option>Sprinkler (FMS.22.1)</option><option>FM200 Clean Agent (FMS.22.2)</option><option>Wet Chemical Kitchen (FMS.22.3)</option><option>Stand Pipes (FMS.22.4)</option></select></div>
-        <div class="ff"><label>Activity</label><select id="fs-act"><option>Monthly Inspection</option><option>Quarterly PPM</option><option>Annual Service</option></select></div>
-        <div class="ff"><label>Result</label><select id="fs-res"><option value="pass">✅ Pass</option><option value="partial">⚠️ Partial</option><option value="fail">❌ Fail</option></select></div>
-        <div class="ff"><label>Contractor</label><input type="text" id="fs-cont" placeholder="Company"></div>
-        <div class="ff"><label>Technician</label><input type="text" id="fs-tech" placeholder="Name"></div>
-        <div class="ff" style="grid-column:1/-1"><label>Notes</label><textarea id="fs-notes" placeholder="Details..."></textarea></div>
-        <div class="ff" style="grid-column:1/-1"><label>Certificate</label><input type="file" id="fs-file"></div>
-      </div>
-      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('fireSup')">✓ Save Record</button>
-    </div></div>
-    <div class="card"><div class="ch"><div class="ct">Suppression Log (8/year)</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>System</th><th>Activity</th><th>Result</th><th>Contractor</th><th>Doc</th></tr></thead><tbody id="fireSup-tb"></tbody></table></div></div>
-  </div></div>
-  <div id="fire-exits" style="display:none;"><div class="g g2">
-    <div class="card"><div class="ch"><div class="ct">Exit Inspection (FMS.23 — 5 criteria)</div></div><div class="cb">
-      <div class="fg fg2">
-        <div class="ff"><label>Date</label><input type="date" id="ex-date"></div>
-        <div class="ff"><label>Exit Location</label><input type="text" id="ex-loc" placeholder="Ground Floor West"></div>
-        <div class="ff"><label>23.1 Available</label><select id="ex-1"><option value="pass">✅ Yes</option><option value="fail">❌ No</option></select></div>
-        <div class="ff"><label>23.2 Not Locked</label><select id="ex-2"><option value="pass">✅ OK</option><option value="fail">❌ Locked</option></select></div>
-        <div class="ff"><label>23.3 Clear</label><select id="ex-3"><option value="pass">✅ Clear</option><option value="fail">❌ Blocked</option></select></div>
-        <div class="ff"><label>23.4 Panic Hardware</label><select id="ex-4"><option value="pass">✅ Present</option><option value="fail">❌ Missing</option></select></div>
-        <div class="ff"><label>23.6 Exit Sign</label><select id="ex-6"><option value="pass">✅ Lit</option><option value="fail">❌ Out</option></select></div>
-        <div class="ff"><label>By</label><input type="text" id="ex-by" placeholder="Name"></div>
-        <div class="ff" style="grid-column:1/-1"><label>Photo</label><input type="file" id="ex-file"></div>
-      </div>
-      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('fireExit')">✓ Save Inspection</button>
-    </div></div>
-    <div class="card"><div class="ch"><div class="ct">Exit Inspection Log</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Location</th><th>23.1</th><th>23.2</th><th>23.3</th><th>23.4</th><th>23.6</th><th>Doc</th></tr></thead><tbody id="fireExit-tb"></tbody></table></div></div>
-  </div></div>
-  <div id="fire-drills" style="display:none;">
-    <!-- Infographic summary -->
-    <div id="drill-infographic" style="margin-bottom:16px;"></div>
-
-    <!-- Code Drill form -->
-    <div class="g g2" style="margin-bottom:14px;">
-      <div class="card"><div class="ch"><div class="ct">🚨 Log Emergency Code Drill</div></div><div class="cb">
-        <div class="fg fg2">
-          <div class="ff"><label>Emergency Code</label>
-            <select id="drill-code" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;width:100%;">
-              <option value="Code Red">🔥 Code Red — Fire Emergency</option>
-              <option value="Code Yellow">⚠️ Code Yellow — Internal Disaster / Mass Casualty</option>
-              <option value="Code Pink">👶 Code Pink — Infant / Child Abduction</option>
-              <option value="Code Brown">☣️ Code Brown — Hazardous Material Spill</option>
-            </select>
-          </div>
-          <div class="ff"><label>Date</label><input type="date" id="drill-date"></div>
-          <div class="ff"><label>Shift</label>
-            <select id="drill-shift" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
-              <option>Day</option><option>Evening</option><option>Night</option>
-            </select>
-          </div>
-          <div class="ff"><label>Area / Department</label><input type="text" id="drill-area" placeholder="ER, ICU, Floor 2..."></div>
-          <div class="ff"><label>Duration (minutes)</label><input type="number" id="drill-dur" placeholder="15"></div>
-          <div class="ff"><label>Participants</label><input type="number" id="drill-count" placeholder="30"></div>
-          <div class="ff"><label>Overall Outcome</label>
-            <select id="drill-outcome" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
-              <option value="pass">✅ Passed — Staff responded correctly</option>
-              <option value="fail">❌ Needs Improvement — Gaps identified</option>
-            </select>
-          </div>
-          <div class="ff" style="grid-column:1/-1"><label>Gaps / Deficiencies Identified</label>
-            <textarea id="drill-gaps" style="min-height:60px;" placeholder="List any gaps, delays, wrong responses..."></textarea>
-          </div>
-          <div class="ff" style="grid-column:1/-1"><label>Corrective Actions / Follow-up</label>
-            <textarea id="drill-actions" style="min-height:60px;" placeholder="What actions were taken or planned..."></textarea>
-          </div>
-          <div class="ff" style="grid-column:1/-1">
-            <label>Upload Reports & Action Plans (multiple files)</label>
-            <input type="file" id="drill-files" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-              style="font-size:11px;color:var(--mu);">
-            <div class="ht">Attendance sheets, critique reports, photos, action plans — all CBAHI evidence</div>
-          </div>
-        </div>
-        <button class="btn bg" style="width:100%;margin-top:12px;" onclick="saveCodeDrill()">✓ Log Code Drill</button>
-      </div></div>
-
-      <div class="card"><div class="ch"><div class="ct">📋 Code Drill Log</div>
-        <div style="font-size:10px;color:var(--mu);">Target: 4 drills/year per code type · CBAHI requirement</div>
-      </div>
-        <div class="cb" style="padding:0;max-height:500px;overflow-y:auto;">
-          <table class="tbl">
-            <thead><tr><th>Code</th><th>Date</th><th>Shift</th><th>Area</th><th>Duration</th><th>Staff</th><th>Outcome</th><th>Docs</th><th></th></tr></thead>
-            <tbody id="code-drills-tb"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
+     <!-- ══ FIRE KPIs ══ -->
+  <div id="fire-kpi" style="display:none;">
+    <div id="fire-kpi-out"></div>
+  </div>
 </div>
+
+<!-- ===== EQUIPMENT ===== -->
+<div class="pg" id="page-equip">
+  <div class="ph">
+    <h1>⚕ Medical Equipment — FMS.1.1.7</h1>
+    <p>1,848 assets · PPM tracking · CBAHI accreditation · Biomedical Engineer: Bashar</p>
+  </div>
+
+  <div class="tb" style="flex-wrap:wrap;">
+    <button class="tbtn active" onclick="eqTab('inv',this)">📋 Inventory (1,848)</button>
+    <button class="tbtn" onclick="eqTab('upload',this)">📤 Upload Inventory</button>
+    <button class="tbtn" onclick="eqTab('ppm',this)">🔧 Log PPM</button>
+    <button class="tbtn" onclick="eqTab('add',this)">➕ Add Equipment</button>
+    <button class="tbtn" onclick="eqTab('relocate',this)">🔄 Relocations</button>
+    <button class="tbtn" onclick="eqTab('kpi',this)">📊 KPIs</button>
+  </div>
 
   <!-- ══ INVENTORY VIEW ══ -->
   <div id="eq-inv">
     <!-- Stats bar -->
     <div class="g g4" style="margin-bottom:14px;" id="eq-stats"></div>
 
-    <!-- Filters -->
-    <div class="card" style="margin-bottom:13px;">
-      <div class="cb" style="padding:11px 14px;">
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-          <input type="text" id="eq-search"
-            style="flex:1;min-width:220px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:7px 12px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;"
-            placeholder="🔍 Search name, asset, serial, model, manufacturer, department..."
-            oninput="eqRender()">
-          <select id="eq-dept-filter" onchange="eqRender()"
-            style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:7px 12px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;max-width:200px;">
-            <option value="">All Departments</option>
-          </select>
-          <select id="eq-type-filter" onchange="eqRender()"
-            style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:7px 12px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;max-width:180px;">
-            <option value="">All Equipment Types</option>
-          </select>
-          <select id="eq-status-filter" onchange="eqRender()"
-            style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:7px 12px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;">
-            <option value="">All Status</option>
-            <option value="Active">✅ Active</option>
-            <option value="InActive">❌ Out of Order</option>
-          </select>
-          <select id="eq-src-filter" onchange="eqRender()"
-            style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:7px 12px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;">
-            <option value="">All Sheets</option>
-            <option value="inventory">Inventory 2026</option>
-            <option value="medgas">Medical Gas Room</option>
-            <option value="outoforder">Out of Order</option>
-            <option value="added">Manually Added</option>
-          </select>
-          <select id="eq-ppm-filter" onchange="eqRender()"
-            style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:7px 12px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;">
-            <option value="">All PPM</option>
-            <option value="Annual">Annual</option>
-            <option value="SEMI">Semi-Annual</option>
-            <option value="both">Annual + Semi</option>
-          </select>
-          <select id="eq-warranty-filter" onchange="eqRender()"
-            style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:7px 12px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;">
-            <option value="">All Warranty</option>
-            <option value="OutofWarranty">Out of Warranty</option>
-            <option value="UnderWarranty">Under Warranty</option>
-            <option value="Under Contract">Under Contract</option>
-          </select>
-          <span id="eq-count" style="font-size:10px;color:var(--mu);white-space:nowrap;"></span>
-          <button class="btn bg" style="padding:5px 14px;font-size:10px;white-space:nowrap;" onclick="exportDeptList()">📥 Export Dept List</button>
-        </div>
-      </div>
+    <!-- Filter bar -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
+      <input type="text" id="eq-search" placeholder="🔍  Search asset, equipment, department, serial..." 
+        oninput="eqRender()" style="flex:1;min-width:200px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:8px 12px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;">
+      <select id="eq-dept-filter" onchange="eqRender()" style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:8px 12px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;">
+        <option value="">All Departments</option>
+      </select>
+      <select id="eq-status-filter" onchange="eqRender()" style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:8px 12px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;">
+        <option value="">All Statuses</option>
+        <option value="Active">Active</option>
+        <option value="Under Repair">Under Repair</option>
+        <option value="OOS">Out of Service</option>
+        <option value="Condemned">Condemned</option>
+      </select>
+      <select id="eq-ppm-filter" onchange="eqRender()" style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:8px 12px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;">
+        <option value="">All PPM Status</option>
+        <option value="expired">🔴 Expired</option>
+        <option value="due_soon">🟡 Due Soon (30d)</option>
+        <option value="valid">✅ Valid</option>
+      </select>
+      <button class="btn bg" style="font-size:10px;padding:6px 14px;" onclick="exportDeptList()">📥 Export Dept List</button>
     </div>
 
-    <!-- Charts -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:13px;margin-bottom:13px;">
-      <div class="card"><div class="ch"><div class="ct">By Equipment Type (Top 10)</div></div>
-        <div class="cb" style="padding:12px;min-height:200px;"><canvas id="eq-type-chart"></canvas></div></div>
-      <div class="card"><div class="ch"><div class="ct">By Department (Top 10)</div></div>
-        <div class="cb" style="padding:12px;min-height:200px;"><canvas id="eq-dept-chart"></canvas></div></div>
-      <div class="card"><div class="ch"><div class="ct">By Manufacturer (Top 10)</div></div>
-        <div class="cb" style="padding:12px;min-height:200px;"><canvas id="eq-mfr-chart"></canvas></div></div>
-    </div>
+    <!-- Results info -->
+    <div id="eq-result-info" style="font-size:10px;color:var(--mu);margin-bottom:8px;"></div>
 
     <!-- Table -->
-    <div class="card">
-      <div class="ch">
-        <div class="ct">Equipment Inventory — <span id="eq-table-label">All Records</span></div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <span style="font-size:9px;color:var(--mu);">Click column header to sort</span>
-        </div>
-      </div>
-      <div class="cb" style="padding:0;overflow-x:auto;">
-        <div style="max-height:650px;overflow-y:auto;">
-          <table class="tbl" style="min-width:1100px;">
-            <thead style="position:sticky;top:0;background:var(--sf);z-index:2;">
-              <tr>
-                <th class="sort-th" onclick="eqSort('asset')" style="cursor:pointer;">Asset No ↕</th>
-                <th class="sort-th" onclick="eqSort('inv')" style="cursor:pointer;">Inv. No ↕</th>
-                <th class="sort-th" onclick="eqSort('desc')" style="cursor:pointer;">Equipment ↕</th>
-                <th class="sort-th" onclick="eqSort('dept')" style="cursor:pointer;">Department ↕</th>
-                <th class="sort-th" onclick="eqSort('location')" style="cursor:pointer;">Location ↕</th>
-                <th class="sort-th" onclick="eqSort('model')" style="cursor:pointer;">Model ↕</th>
-                <th>Serial No.</th>
-                <th class="sort-th" onclick="eqSort('mfr')" style="cursor:pointer;">Manufacturer ↕</th>
-                <th>Installed</th>
-                <th>Warranty</th>
-                <th>PPM Freq.</th>
-                <th class="sort-th" onclick="eqSort('lastPPM')" style="cursor:pointer;">Last PPM ↕</th>
-                <th class="sort-th" onclick="eqSort('nextPPM')" style="cursor:pointer;">Next Due ↕</th>
-                <th>PPM Status</th>
-                <th>PPM By</th>
-                <th>Status</th>
-                <th>Notes</th>
-                <th>Move</th>
-                <th>Edit</th>
-              </tr>
-            </thead>
-            <tbody id="eq-tbody"></tbody>
-          </table>
-        </div>
-      </div>
-      <div style="padding:10px 14px;border-top:1px solid var(--bd);font-size:10px;color:var(--mu);">
-        Showing first 200 results — use search/filters to narrow down
-      </div>
+    <div style="overflow-x:auto;max-height:600px;overflow-y:auto;">
+      <table class="tbl" style="min-width:1400px;">
+        <thead style="position:sticky;top:0;background:var(--sf);z-index:2;">
+          <tr style="font-size:10px;">
+            <th style="min-width:90px;cursor:pointer;" onclick="eqSort('asset')">Asset No.</th>
+            <th style="min-width:60px;cursor:pointer;" onclick="eqSort('inv')">Inv. No.</th>
+            <th style="min-width:160px;cursor:pointer;" onclick="eqSort('desc')">Equipment Description</th>
+            <th style="min-width:120px;cursor:pointer;" onclick="eqSort('dept')">Department</th>
+            <th style="min-width:80px;">Location</th>
+            <th style="min-width:90px;">Model No.</th>
+            <th style="min-width:110px;">Serial No.</th>
+            <th style="min-width:110px;cursor:pointer;" onclick="eqSort('mfr')">Manufacturer</th>
+            <th style="min-width:80px;">Installed</th>
+            <th style="min-width:90px;">Covered By</th>
+            <th style="min-width:70px;">PPM Freq.</th>
+            <th style="min-width:105px;cursor:pointer;" onclick="eqSort('lastPPM')">Last PPM Date</th>
+            <th style="min-width:105px;cursor:pointer;" onclick="eqSort('nextPPM')">Next Due Date</th>
+            <th style="min-width:100px;">PPM Validity</th>
+            <th style="min-width:90px;">PPM By</th>
+            <th style="min-width:110px;cursor:pointer;" onclick="eqSort('warranty')">Warranty</th>
+            <th style="min-width:80px;cursor:pointer;" onclick="eqSort('status')">Status</th>
+            <th style="min-width:55px;">Docs</th>
+            <th style="min-width:90px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="eq-tbody"></tbody>
+      </table>
     </div>
+    <!-- Pagination -->
+    <div id="eq-pagination" style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap;"></div>
   </div>
 
   <!-- ══ UPLOAD INVENTORY ══ -->
   <div id="eq-upload" style="display:none;">
     <div class="g g2">
       <div class="card"><div class="ch"><div class="ct">📤 Upload Updated Inventory (Excel / CSV)</div></div><div class="cb">
-        <div style="border:2px dashed var(--b2);border-radius:11px;padding:28px;text-align:center;cursor:pointer;background:rgba(0,180,255,.03);" onclick="document.getElementById('inv-upload-file').click()" id="inv-upload-zone" ondragover="event.preventDefault();this.style.borderColor='var(--ac)'" ondragleave="this.style.borderColor='var(--b2)'" ondrop="event.preventDefault();this.style.borderColor='var(--b2)';invHandleDrop(event)">
+        <div style="border:2px dashed var(--b2);border-radius:11px;padding:28px;text-align:center;cursor:pointer;background:rgba(0,180,255,.03);" onclick="document.getElementById('inv-upload-file').click()" ondragover="event.preventDefault();this.style.borderColor='var(--ac)'" ondragleave="this.style.borderColor='var(--b2)'" ondrop="event.preventDefault();this.style.borderColor='var(--b2)';invHandleDrop(event)">
           <div style="font-size:36px;margin-bottom:8px;">📊</div>
           <div style="font-size:13px;color:var(--tx);font-weight:600;">Drop your Excel or CSV inventory file here</div>
           <div style="font-size:10px;color:var(--mu);margin-top:6px;">Supports .xlsx · .xls · .csv · Any column order</div>
           <input type="file" id="inv-upload-file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="invReadFile(this)">
           <div id="inv-upload-progress" style="margin-top:10px;font-size:11px;color:var(--mu);"></div>
         </div>
-
         <div id="inv-col-mapper" style="display:none;margin-top:16px;">
           <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--or);margin-bottom:10px;">Map Your Columns</div>
-          <div style="font-size:10px;color:var(--mu);margin-bottom:10px;">Match your Excel headers to the inventory fields. Detected automatically — adjust if needed.</div>
+          <div style="font-size:10px;color:var(--mu);margin-bottom:10px;">Match your Excel headers to the inventory fields.</div>
           <div id="inv-col-map-rows"></div>
           <button class="btn bg" style="width:100%;margin-top:14px;" onclick="invImport()">✓ Import & Merge with Inventory</button>
         </div>
       </div></div>
-
       <div class="card"><div class="ch"><div class="ct">📋 Required / Recommended Columns</div></div><div class="cb" style="padding:14px;">
         <table class="tbl" style="font-size:10px;">
-          <thead><tr><th>Field</th><th>Examples of header names</th><th>Required?</th></tr></thead>
+          <thead><tr><th>Field</th><th>Accepted header names</th><th>Required?</th></tr></thead>
           <tbody>
             <tr><td style="color:var(--ac);font-weight:600;">Asset No.</td><td style="color:var(--mu);">Asset, Asset No, Tag, ID, Code</td><td><span style="color:var(--rd);">Yes</span></td></tr>
             <tr><td style="color:var(--ac);font-weight:600;">Equipment Description</td><td style="color:var(--mu);">Description, Equipment, Name, Device</td><td><span style="color:var(--rd);">Yes</span></td></tr>
             <tr><td>Inventory No.</td><td style="color:var(--mu);">Inventory, Inv No, Stock No</td><td style="color:var(--mu);">Optional</td></tr>
             <tr><td>Department</td><td style="color:var(--mu);">Department, Dept, Ward, Unit</td><td style="color:var(--mu);">Optional</td></tr>
-            <tr><td>Location</td><td style="color:var(--mu);">Location, Room, Area, Placed at</td><td style="color:var(--mu);">Optional</td></tr>
+            <tr><td>Location</td><td style="color:var(--mu);">Location, Room, Area</td><td style="color:var(--mu);">Optional</td></tr>
             <tr><td>Model No.</td><td style="color:var(--mu);">Model, Model No, Version</td><td style="color:var(--mu);">Optional</td></tr>
             <tr><td>Serial No.</td><td style="color:var(--mu);">Serial, Serial No, S/N</td><td style="color:var(--mu);">Optional</td></tr>
-            <tr><td>Manufacturer</td><td style="color:var(--mu);">Manufacturer, Make, Brand, Vendor</td><td style="color:var(--mu);">Optional</td></tr>
-            <tr><td>Date Installed</td><td style="color:var(--mu);">Installed, Purchase Date, Acquired</td><td style="color:var(--mu);">Optional</td></tr>
+            <tr><td>Manufacturer</td><td style="color:var(--mu);">Manufacturer, Make, Brand</td><td style="color:var(--mu);">Optional</td></tr>
             <tr><td>PPM Frequency</td><td style="color:var(--mu);">PPM Freq, Frequency, Service Cycle</td><td style="color:var(--mu);">Optional</td></tr>
             <tr><td>Last PPM Date</td><td style="color:var(--mu);">Last PPM, Last Service, Last Maint.</td><td style="color:var(--mu);">Optional</td></tr>
-            <tr><td>Warranty Status</td><td style="color:var(--mu);">Warranty, Warranty Status</td><td style="color:var(--mu);">Optional</td></tr>
             <tr><td>Status</td><td style="color:var(--mu);">Status, Condition, Operational</td><td style="color:var(--mu);">Optional</td></tr>
           </tbody>
         </table>
@@ -1306,129 +1166,112 @@ if ('caches' in window) {
   </div>
 
   <!-- ══ LOG PPM ══ -->
-  <div id="eq-ppm" style="display:none;"><div class="g g2">
-    <div class="card"><div class="ch"><div class="ct">Log Equipment PPM / Service</div></div><div class="cb">
-      <div class="fg fg2">
-        <div class="ff"><label>Date</label><input type="date" id="ppm-date"></div>
-        <div class="ff"><label>Asset No.</label>
-          <input type="text" id="ppm-asset" placeholder="Type asset no. to search..." oninput="eqAutoFill(this.value)" list="ppm-asset-list">
-          <datalist id="ppm-asset-list"></datalist>
-        </div>
-        <div class="ff"><label>Equipment Name</label><input type="text" id="ppm-equip" placeholder="Auto-filled from asset no."></div>
-        <div class="ff"><label>Department</label><input type="text" id="ppm-dept-field" placeholder="Auto-filled"></div>
-        <div class="ff"><label>Model</label><input type="text" id="ppm-model-field" placeholder="Auto-filled"></div>
-        <div class="ff"><label>Serial No.</label><input type="text" id="ppm-serial-field" placeholder="Auto-filled"></div>
-        <div class="ff"><label>Service Type</label>
-          <select id="ppm-type">
-            <option>Annual PPM</option>
-            <option>Semi-Annual PPM</option>
-            <option>Corrective Repair</option>
-            <option>Calibration</option>
-            <option>Safety Check</option>
-            <option>Inspection</option>
-          </select>
-        </div>
-        <div class="ff"><label>Result</label>
-          <select id="ppm-res">
-            <option value="done">✅ Completed</option>
-            <option value="partial">⚠️ Partial</option>
-            <option value="fail">❌ Failed / OOS</option>
-          </select>
-        </div>
-        <div class="ff" style="grid-column:1/-1"><label>Work Done / Findings</label>
-          <textarea id="ppm-notes" placeholder="Describe work performed, parts replaced, calibration values..."></textarea>
-        </div>
-        <div class="ff"><label>Technician</label><input type="text" id="ppm-tech" placeholder="Name"></div>
-        <div class="ff"><label>Next Due Date</label><input type="date" id="ppm-next"></div>
-        <div class="ff" style="grid-column:1/-1"><label>PPM Report / Certificate</label>
-          <input type="file" id="ppm-file">
-        </div>
-      </div>
-      <button class="btn bg" style="margin-top:12px;width:100%;" onclick="sv2('ppm')">✓ Save PPM Record</button>
-    </div></div>
-    <div class="card"><div class="ch"><div class="ct">PPM Log</div></div>
-      <div class="cb" style="padding:0;">
-        <table class="tbl"><thead><tr><th>Date</th><th>Asset</th><th>Equipment</th><th>Dept</th><th>Type</th><th>Result</th><th>Tech</th><th>Doc</th></tr></thead>
-        <tbody id="ppm-tb"></tbody></table>
-      </div>
-    </div>
-  </div></div>
-
-  <!-- ══ ADD EQUIPMENT ══ -->
-  <div id="eq-add" style="display:none;">
+  <div id="eq-ppm" style="display:none;">
     <div class="g g2">
-      <div class="card"><div class="ch"><div class="ct">➕ Add New Equipment to Inventory</div></div><div class="cb">
-        <div style="background:rgba(0,180,255,.06);border:1px solid var(--bd);border-radius:8px;padding:10px;margin-bottom:12px;font-size:10px;color:var(--mu);">
-          New equipment added here is saved locally and merged with the Excel inventory. All fields from the official inventory are supported.
-        </div>
+      <div class="card"><div class="ch"><div class="ct">🔧 Log PPM / Maintenance Activity</div></div><div class="cb">
         <div class="fg fg2">
-          <div class="ff"><label>Asset No.</label><input type="text" id="add-asset" placeholder="e.g. ICU-MON-001"></div>
-          <div class="ff"><label>Inventory No.</label><input type="text" id="add-inv" placeholder="e.g. 1001"></div>
-          <div class="ff"><label>Asset Name / Code</label><input type="text" id="add-name" placeholder="e.g. ICUC-MON1-001"></div>
-          <div class="ff"><label>Equipment Description</label><input type="text" id="add-desc" placeholder="e.g. Cardiac Monitor"></div>
-          <div class="ff"><label>Department</label><input type="text" id="add-dept" placeholder="e.g. ICU"></div>
-          <div class="ff"><label>Location</label><input type="text" id="add-location" placeholder="e.g. ICU Bed 3"></div>
-          <div class="ff"><label>Model</label><input type="text" id="add-model" placeholder="Model number"></div>
-          <div class="ff"><label>Serial Number</label><input type="text" id="add-serial" placeholder="Serial number"></div>
-          <div class="ff"><label>Manufacturer</label><input type="text" id="add-mfr" placeholder="e.g. Philips"></div>
-          <div class="ff"><label>Supplier / Brand</label><input type="text" id="add-supplier" placeholder="Supplier name"></div>
-          <div class="ff"><label>Date Installed</label><input type="date" id="add-installed"></div>
-          <div class="ff"><label>Warranty Status</label>
-            <select id="add-warranty">
-              <option value="UnderWarranty">Under Warranty</option>
-              <option value="OutofWarranty">Out of Warranty</option>
-              <option value="Under Contract">Under Contract</option>
-              <option value="N/A">N/A</option>
+          <div class="ff"><label>Asset No.</label>
+            <input type="text" id="ppm-asset" list="ppm-asset-dl" placeholder="e.g. 00-04" oninput="eqAutoFill(this.value)">
+            <datalist id="ppm-asset-dl"></datalist>
+          </div>
+          <div class="ff"><label>Equipment</label><input type="text" id="ppm-desc" placeholder="Auto-filled" readonly style="opacity:.7;"></div>
+          <div class="ff"><label>Department</label><input type="text" id="ppm-dept" placeholder="Auto-filled" readonly style="opacity:.7;"></div>
+          <div class="ff"><label>PPM Date</label><input type="date" id="ppm-date"></div>
+          <div class="ff"><label>PPM Type</label>
+            <select id="ppm-type" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+              <option>Preventive (PPM)</option><option>Corrective</option><option>Inspection</option><option>Calibration</option>
             </select>
           </div>
-          <div class="ff"><label>Covered By</label><input type="text" id="add-coveredby" placeholder="e.g. Under BIOMED / Contract name"></div>
-          <div class="ff"><label>PPM Frequency</label>
-            <select id="add-ppmfreq">
-              <option value="Annual">Annual</option>
-              <option value="SEMI">Semi-Annual (2/year)</option>
-              <option value="Annual+SEMI">Annual + Semi</option>
-              <option value="Quarterly">Quarterly</option>
-              <option value="">None / As needed</option>
+          <div class="ff"><label>Performed By</label>
+            <select id="ppm-by" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+              <option>In-house</option><option>Manufacturer</option><option>Contractor</option>
             </select>
           </div>
           <div class="ff"><label>Status</label>
-            <select id="add-status">
-              <option value="Active">✅ Active</option>
-              <option value="InActive">❌ Out of Order</option>
-              <option value="Under Repair">🔧 Under Repair</option>
+            <select id="ppm-status" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+              <option>Active</option><option>Under Repair</option><option>OOS</option><option>Condemned</option>
             </select>
           </div>
-          <div class="ff" style="grid-column:1/-1"><label>Remarks / Notes</label>
-            <textarea id="add-remarks" placeholder="Any additional information..."></textarea>
+          <div class="ff" style="grid-column:1/-1"><label>Notes</label><textarea id="ppm-notes" placeholder="Observations, parts replaced, issues found..."></textarea></div>
+          <div class="ff" style="grid-column:1/-1">
+            <label>Attach Documents (PPM report, certificate, photos)</label>
+            <input type="file" id="ppm-files" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style="font-size:10px;color:var(--mu);">
           </div>
         </div>
-        <button class="btn bg" style="margin-top:12px;width:100%;" onclick="eqAddRecord()">➕ Add to Inventory</button>
+        <button class="btn bg" style="width:100%;margin-top:12px;" onclick="savePPMEntry()">✓ Save PPM Entry</button>
       </div></div>
-      <div class="card"><div class="ch"><div class="ct">Recently Added Equipment</div></div>
-        <div class="cb" style="padding:0;">
-          <table class="tbl"><thead><tr><th>Asset</th><th>Equipment</th><th>Dept</th><th>Mfr</th><th>Status</th><th>Added By</th><th></th></tr></thead>
-          <tbody id="eq-added-tb"></tbody>
-        </table></div>
+      <div class="card"><div class="ch"><div class="ct">PPM Log</div></div>
+        <div class="cb" style="padding:0;max-height:450px;overflow-y:auto;">
+          <table class="tbl"><thead><tr><th>Asset</th><th>Equipment</th><th>Date</th><th>Type</th><th>By</th><th>Status</th><th>Notes</th><th>Docs</th></tr></thead>
+          <tbody id="ppm-log-tb"></tbody></table>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- ══ RELOCATION LOG ══ -->
+  <!-- ══ ADD EQUIPMENT ══ -->
+  <div id="eq-add" style="display:none;">
+    <div class="card" style="max-width:700px;"><div class="ch"><div class="ct">➕ Add New Equipment</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Asset No.</label><input type="text" id="add-asset" placeholder="e.g. BM-001"></div>
+        <div class="ff"><label>Inventory No.</label><input type="text" id="add-inv" placeholder="e.g. 9999"></div>
+        <div class="ff" style="grid-column:1/-1"><label>Equipment Description</label><input type="text" id="add-desc" placeholder="e.g. Infusion Pump"></div>
+        <div class="ff"><label>Department</label><input type="text" id="add-dept" placeholder="Department name"></div>
+        <div class="ff"><label>Location</label><input type="text" id="add-loc" placeholder="Room / area"></div>
+        <div class="ff"><label>Model No.</label><input type="text" id="add-model"></div>
+        <div class="ff"><label>Serial No.</label><input type="text" id="add-serial"></div>
+        <div class="ff"><label>Manufacturer</label><input type="text" id="add-mfr"></div>
+        <div class="ff"><label>Date Installed</label><input type="date" id="add-installed"></div>
+        <div class="ff"><label>PPM Frequency</label>
+          <select id="add-ppmfreq" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+            <option>Annual</option><option>Semi-Annual</option><option>Quarterly</option><option>Monthly</option><option>2-Year</option>
+          </select>
+        </div>
+        <div class="ff"><label>Warranty Status</label><input type="text" id="add-warranty" placeholder="Under Warranty / Expired"></div>
+        <div class="ff"><label>Covered By</label>
+          <select id="add-coveredby" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+            <option>BIOMED</option><option>Contract</option><option>Manufacturer</option>
+          </select>
+        </div>
+        <div class="ff" style="grid-column:1/-1"><label>Remarks</label><textarea id="add-remarks" placeholder="Additional notes..."></textarea></div>
+      </div>
+      <button class="btn bg" style="width:100%;margin-top:12px;" onclick="addEquipment()">✓ Add to Inventory</button>
+    </div></div>
+  </div>
+
+  <!-- ══ RELOCATIONS ══ -->
   <div id="eq-relocate" style="display:none;">
-    <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
-      <button class="btn bp" onclick="openRelocation('','','')">+ Log New Relocation</button>
+    <div class="g g2">
+      <div class="card"><div class="ch"><div class="ct">🔄 Log Equipment Relocation</div></div><div class="cb">
+        <div class="fg fg2">
+          <div class="ff"><label>Asset No.</label>
+            <input type="text" id="rel-asset" list="rel-asset-dl" placeholder="e.g. 00-04" oninput="relAutoFill(this.value)">
+            <datalist id="rel-asset-dl"></datalist>
+          </div>
+          <div class="ff"><label>Equipment</label><input type="text" id="rel-desc" placeholder="Auto-filled" readonly style="opacity:.7;"></div>
+          <div class="ff"><label>From Department</label><input type="text" id="rel-from" placeholder="Auto-filled" readonly style="opacity:.7;"></div>
+          <div class="ff"><label>To Department</label><input type="text" id="rel-to" placeholder="New department"></div>
+          <div class="ff"><label>To Location</label><input type="text" id="rel-loc" placeholder="New room / area"></div>
+          <div class="ff"><label>Date</label><input type="date" id="rel-date"></div>
+          <div class="ff"><label>Reason</label><input type="text" id="rel-reason" placeholder="Reason for relocation"></div>
+          <div class="ff"><label>Authorized By</label><input type="text" id="rel-auth" placeholder="Name"></div>
+        </div>
+        <button class="btn bg" style="width:100%;margin-top:12px;" onclick="saveRelocation()">✓ Save Relocation</button>
+      </div></div>
+      <div class="card"><div class="ch"><div class="ct">Relocation Log</div></div>
+        <div class="cb" style="padding:0;max-height:450px;overflow-y:auto;">
+          <table class="tbl"><thead><tr><th>Asset</th><th>Equipment</th><th>From</th><th>To</th><th>Location</th><th>Date</th><th>Reason</th><th>By</th></tr></thead>
+          <tbody id="relocate-tb"></tbody></table>
+        </div>
+      </div>
     </div>
-    <div class="card"><div class="ch"><div class="ct">🔄 Equipment Relocation Log</div>
-      <div style="font-size:10px;color:var(--mu);">All movements from one department to another · Tracked by date</div>
-    </div>
-    <div class="cb" style="padding:0;overflow-x:auto;"><table class="tbl">
-      <thead><tr><th>Asset No.</th><th>Equipment</th><th>Date</th><th>From</th><th>To</th><th>Reason</th><th>Relocated By</th></tr></thead>
-      <tbody id="eq-reloc-tb"></tbody>
-    </table></div></div>
   </div>
 
   <!-- ══ KPIs ══ -->
-  <div id="eq-kpi" style="display:none;"><div id="equip-kpi-out"></div></div>
+  <div id="eq-kpi" style="display:none;">
+    <div id="eq-kpi-out"></div>
+  </div>
+
 </div>
 
 <!-- ===== UTILITIES ===== -->
@@ -3004,7 +2847,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260601-0600';
+const APP_VERSION = '20260601-0837';
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
