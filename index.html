@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260601-1100';
+  var v = '20260601-1105';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -2903,7 +2903,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260601-1100';
+const APP_VERSION = '20260601-1105';
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
@@ -4796,6 +4796,11 @@ function mgSave(type) {
       ? (el.files[0] ? { n: el.files[0].name } : null)
       : el.value;
   });
+  // Normalize date to YYYY-MM-DD regardless of what the input returns
+  if (rec.date && rec.date.length > 10) {
+    const pd = new Date(rec.date);
+    if (!isNaN(pd)) rec.date = pd.getFullYear()+'-'+String(pd.getMonth()+1).padStart(2,'0')+'-'+String(pd.getDate()).padStart(2,'0');
+  }
   const miss = def.req.filter(r => !rec[r] || rec[r] === '');
   if (miss.length) { toast('⚠️ Fill required: ' + miss.join(', '), '#f59e0b'); return; }
 
@@ -4907,15 +4912,13 @@ const MG_ROWS = {
 function renderMGTable(type) {
   const tb = document.getElementById(type + '-tb'); if (!tb) return;
   // Sort newest first by date then timestamp
-  // Sort newest first: compare date strings (YYYY-MM-DD) then full ISO timestamp
-  const data = [...ld('mg_' + type)].sort((a,b) => {
-    const da = (a.date || a._ts || '').substring(0,10);
-    const db = (b.date || b._ts || '').substring(0,10);
-    if (db > da) return 1;   // b is newer → b comes first → b gets lower index
-    if (db < da) return -1;  // a is newer → a comes first
-    // Same date: sort by _ts descending
-    return (b._ts||'') > (a._ts||'') ? 1 : -1;
-  });
+  // Sort newest first — handles YYYY-MM-DD, ISO strings, and JS Date.toString() formats
+  const _mgTs = r => {
+    const d = r.date || r._ts || '';
+    const t = Date.parse(d);
+    return isNaN(t) ? 0 : t;
+  };
+  const data = [...ld('mg_' + type)].sort((a,b) => _mgTs(b) - _mgTs(a));
   if (!data.length) { tb.innerHTML = '<tr><td colspan="12" class="em">No entries yet — submit a daily checklist above</td></tr>'; return; }
   const fn = MG_ROWS[type]; if (!fn) return;
   tb.innerHTML = data.map(r => `<tr>
@@ -4951,14 +4954,9 @@ function renderMGLog(filter) {
     });
   });
   // Sort by date descending
-  // Sort all records newest first
-  all.sort((a,b) => {
-    const da = (a.date||a._ts||'').substring(0,10);
-    const db = (b.date||b._ts||'').substring(0,10);
-    if (db > da) return 1;
-    if (db < da) return -1;
-    return (b._ts||'') > (a._ts||'') ? 1 : -1;
-  });
+  // Sort all records newest first — handles any date format
+  const _mgTs2 = r => { const t = Date.parse(r.date||r._ts||''); return isNaN(t)?0:t; };
+  all.sort((a,b) => _mgTs2(b) - _mgTs2(a));
   // Filter
   if (filter !== 'all') all = all.filter(r => r._stype === filter);
 
@@ -4983,7 +4981,9 @@ function renderMGLog(filter) {
   // Group by month for display
   const byMonth = {};
   all.forEach(r => {
-    const m = (r.date||r._ts||'').slice(0,7);
+    const parsed = new Date(r.date||r._ts||'');
+    const m = isNaN(parsed) ? (r.date||r._ts||'').slice(0,7)
+              : parsed.getFullYear()+'-'+String(parsed.getMonth()+1).padStart(2,'0');
     if (!byMonth[m]) byMonth[m] = [];
     byMonth[m].push(r);
   });
@@ -5001,7 +5001,7 @@ function renderMGLog(filter) {
       </td>
     </tr>`;
     // Sort entries within month newest first
-    byMonth[m].sort((a,b)=>((b._ts||b.date||'')>(a._ts||a.date||''))?1:-1);
+    byMonth[m].sort((a,b)=>{ const ta=Date.parse(a.date||a._ts||''); const tb=Date.parse(b.date||b._ts||''); return (isNaN(tb)?0:tb)-(isNaN(ta)?0:ta); });
     byMonth[m].forEach(r => {
       const issueCell = r._hasIssue
         ? '<span class="bx br2">⚠️ Issue</span>'
