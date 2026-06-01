@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260601-0547';
+  var v = '20260601-0600';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   if (url.indexOf('?v=') === -1 && url.indexOf('&v=') === -1) {
@@ -3004,7 +3004,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260601-0547';
+const APP_VERSION = '20260601-0600';
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
@@ -3060,7 +3060,8 @@ function setDBUrl(url) {
 }
 
 // ── Write to DB (upsert) ──
-async // Valid DB types — must match Apps Script SHEET_MAP
+
+// Valid DB types — must match Apps Script SHEET_MAP
 const DB_VALID_TYPES = new Set([
   'emDrill','safety_esr','safety_tr','hazmat','security_inc','security_par',
   'fire_alarm','fire_sup','fire_exits','fireDrills_code','unitFireDrills',
