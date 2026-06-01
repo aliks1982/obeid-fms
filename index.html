@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260530-2009';
+  var v = '20260601-0506';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   if (url.indexOf('?v=') === -1 && url.indexOf('&v=') === -1) {
@@ -777,31 +777,272 @@ if ('caches' in window) {
 
 <!-- ===== EMERGENCY ===== -->
 <div class="pg" id="page-emergency">
-  <div class="ph"><h1>🚨 Emergency — FMS.1.1.4/5</h1><p>Manager: Moe · Code Red/Blue/Black/MCI · Target 6 drills/year</p></div>
-  <div class="g g2">
-    <div class="card"><div class="ch"><div class="ct">Log Emergency Drill</div></div><div class="cb">
-      <div class="fg fg2">
-        <div class="ff"><label>Date</label><input type="date" id="em-date"></div>
-        <div class="ff"><label>Type</label><select id="em-type"><option>Code Red — Fire</option><option>Code Blue — Cardiac</option><option>Code Black — Bomb</option><option>MCI — Mass Casualty</option><option>Pandemic</option><option>Infrastructure Failure</option><option>Full Evacuation</option></select></div>
-        <div class="ff"><label>Shift</label><select id="em-shift"><option>Day</option><option>Evening</option><option>Night</option></select></div>
-        <div class="ff"><label>Location</label><input type="text" id="em-loc" placeholder="Area"></div>
-        <div class="ff"><label>Duration (min)</label><input type="number" id="em-dur" placeholder="20"></div>
-        <div class="ff"><label>Participants</label><input type="number" id="em-count" placeholder="45"></div>
-        <div class="ff" style="grid-column:1/-1"><label>Deficiencies & Actions</label><textarea id="em-def" placeholder="Issues found..."></textarea></div>
-        <div class="ff"><label>By</label><input type="text" id="em-by" placeholder="Name"></div>
-        <div class="ff"><label>Report</label><input type="file" id="em-file"></div>
-      </div>
-      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('emDrill')">✓ Save Drill</button>
-    </div></div>
-    <div class="card"><div class="ch"><div class="ct">Emergency Drill Log (6/year)</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Type</th><th>Shift</th><th>Part.</th><th>Dur.</th><th>Issues</th><th>Doc</th></tr></thead><tbody id="emDrill-tb"></tbody></table></div></div>
+  <div class="ph">
+    <h1>🚨 Emergency — FMS.1.1.4/5</h1>
+    <p>Manager: Moe (Safety Officer) · Emergency Operations Plan · Annual Plans · Code Drills · CBAHI FMS.1.1.4 & FMS.1.1.5</p>
   </div>
-  <div id="emDrill-kpi-out" style="margin-top:4px;"></div>
-</div>
+  <div class="tb" style="flex-wrap:wrap;">
+    <button class="tbtn active" onclick="st('emergency','drills',this)">🚨 Emergency Drills</button>
+    <button class="tbtn" onclick="st('emergency','codeplans',this)">📋 Annual Plans & Code Drills</button>
+    <button class="tbtn" onclick="st('emergency','kpi',this)">📊 KPIs</button>
+  </div>
 
+  <!-- ══ EXISTING EMERGENCY DRILLS ══ -->
+  <div id="emergency-drills">
+    <div class="g g2">
+      <div class="card"><div class="ch"><div class="ct">Log Emergency Drill</div></div><div class="cb">
+        <div class="fg fg2">
+          <div class="ff"><label>Date</label><input type="date" id="em-date"></div>
+          <div class="ff"><label>Type</label>
+            <select id="em-type">
+              <option>Code Red — Fire</option><option>Code Blue — Cardiac</option>
+              <option>Code Black — Bomb</option><option>MCI — Mass Casualty</option>
+              <option>Pandemic</option><option>Infrastructure Failure</option><option>Full Evacuation</option>
+            </select>
+          </div>
+          <div class="ff"><label>Shift</label><select id="em-shift"><option>Day</option><option>Evening</option><option>Night</option></select></div>
+          <div class="ff"><label>Location</label><input type="text" id="em-loc" placeholder="Area / Department"></div>
+          <div class="ff"><label>Duration (min)</label><input type="number" id="em-dur" placeholder="20"></div>
+          <div class="ff"><label>Participants</label><input type="number" id="em-count" placeholder="30"></div>
+          <div class="ff"><label>Deficiencies</label><input type="text" id="em-def" placeholder="None / list issues"></div>
+          <div class="ff"><label>Drill By</label><input type="text" id="em-by" placeholder="Name"></div>
+          <div class="ff" style="grid-column:1/-1"><label>Notes</label><textarea id="em-notes" placeholder="Observations, corrective actions..."></textarea></div>
+          <div class="ff" style="grid-column:1/-1">
+            <label>Upload Documents</label>
+            <input type="file" id="em-file" multiple accept=".pdf,.doc,.docx,.jpg,.png" style="font-size:10px;color:var(--mu);">
+          </div>
+        </div>
+        <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('emDrill')">✓ Save Emergency Drill</button>
+      </div></div>
+      <div class="card"><div class="ch"><div class="ct">Emergency Drill Log</div></div>
+        <div class="cb" style="padding:0;max-height:400px;overflow-y:auto;">
+          <table class="tbl"><thead><tr><th>Date</th><th>Type</th><th>Location</th><th>Duration</th><th>Count</th><th>Deficiencies</th><th>By</th></tr></thead>
+          <tbody id="emDrill-tb"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ CODE DRILLS (moved from Fire) ══ -->
+  <div id="emergency-codeplans" style="display:none;">
+    <div style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:12px 16px;margin-bottom:14px;">
+      <b style="color:var(--rd);font-size:12px;">📋 Annual Emergency Plans & Code Drills — CBAHI FMS.1.1.4 / FMS.1.1.5</b>
+      <div style="font-size:10px;color:var(--mu);margin-top:4px;">Code-specific drills must be conducted and documented · Plans must be reviewed annually · CBAHI surveyors check schedules, critique reports, and KPI compliance</div>
+    </div>
+
+    <!-- Infographic KPI summary -->
+    <div id="drill-infographic" style="margin-bottom:16px;"></div>
+
+    <!-- Form -->
+    <div class="g g2">
+      <div class="card"><div class="ch"><div class="ct">🚨 Log Annual Plan / Code Drill</div></div><div class="cb">
+        <div class="fg fg2">
+          <div class="ff"><label>Emergency Code</label>
+            <select id="drill-code" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;width:100%;">
+              <option value="Code Red">🔥 Code Red — Fire Emergency</option>
+              <option value="Code Yellow">⚠️ Code Yellow — Internal Disaster / Mass Casualty</option>
+              <option value="Code Pink">👶 Code Pink — Infant / Child Abduction</option>
+              <option value="Code Brown">☣️ Code Brown — Hazardous Material Spill</option>
+            </select>
+          </div>
+          <div class="ff"><label>Date</label><input type="date" id="drill-date"></div>
+          <div class="ff"><label>Shift</label>
+            <select id="drill-shift" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+              <option>Day</option><option>Evening</option><option>Night</option>
+            </select>
+          </div>
+          <div class="ff"><label>Area / Department</label><input type="text" id="drill-area" placeholder="Hospital-wide / specific area"></div>
+          <div class="ff"><label>Duration (minutes)</label><input type="number" id="drill-dur" placeholder="20" min="1"></div>
+          <div class="ff"><label>Participants</label><input type="number" id="drill-count" placeholder="0" min="0"></div>
+          <div class="ff"><label>Overall Outcome</label>
+            <select id="drill-outcome" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+              <option value="pass">✅ Passed — Staff responded correctly</option>
+              <option value="fail">⚠️ Needs Improvement — Gaps identified</option>
+            </select>
+          </div>
+          <div class="ff" style="grid-column:1/-1"><label>Gaps / Deficiencies Identified</label>
+            <textarea id="drill-gaps" style="min-height:60px;" placeholder="List any gaps, delays, incorrect responses observed..."></textarea>
+          </div>
+          <div class="ff" style="grid-column:1/-1"><label>Corrective Actions / Action Plan</label>
+            <textarea id="drill-actions" style="min-height:60px;" placeholder="Actions taken or planned..."></textarea>
+          </div>
+          <div class="ff" style="grid-column:1/-1">
+            <label>Upload Reports & Action Plans (multiple files)</label>
+            <input type="file" id="drill-files" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style="font-size:10px;color:var(--mu);">
+            <div class="ht">Attendance sheets · Critique reports · Photos · Action plans — CBAHI evidence</div>
+          </div>
+        </div>
+        <button class="btn bg" style="width:100%;margin-top:12px;" onclick="saveCodeDrill()">✓ Log Code Drill</button>
+      </div></div>
+
+      <div class="card"><div class="ch"><div class="ct">Code Drill Log</div>
+        <div style="font-size:10px;color:var(--mu);">Target: min. 2 drills/year per code · CBAHI FMS.1.1.4</div>
+      </div>
+        <div class="cb" style="padding:0;max-height:500px;overflow-y:auto;">
+          <table class="tbl">
+            <thead><tr><th>Code</th><th>Date</th><th>Shift</th><th>Area</th><th>Duration</th><th>Staff</th><th>Outcome</th><th>Docs</th><th></th></tr></thead>
+            <tbody id="code-drills-tb"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ KPIs ══ -->
+  <div id="emergency-kpi" style="display:none;">
+    <div id="emergency-kpi-out"></div>
+  </div>
 <!-- ===== FIRE ===== -->
 <div class="pg" id="page-fire">
   <div class="ph"><h1>🔥 Fire Safety — FMS.1.1.6</h1><p>FMS.21 Alarm · FMS.22 Suppression · FMS.23 Exits · Moe + Mostapha</p></div>
-  <div class="tb"><button class="tbtn active" onclick="st('fire','alarm',this)">Alarm (FMS.21)</button><button class="tbtn" onclick="st('fire','sup',this)">Suppression (FMS.22)</button><button class="tbtn" onclick="st('fire','exits',this)">Exits (FMS.23)</button><button class="tbtn" onclick="st('fire','drills',this)">Drills</button><button class="tbtn" onclick="st('fire','kpi',this)">KPIs</button></div>
+  <div class="tb"><button class="tbtn active" onclick="st('fire','alarm',this)">Alarm (FMS.21)</button><button class="tbtn" onclick="st('fire','sup',this)">Suppression (FMS.22)</button><button class="tbtn" onclick="st('fire','exits',this)">Exits (FMS.23)</button><button class="tbtn" onclick="st('fire','unitdrill',this)">🔥 Unit Level Drills</button><button class="tbtn" onclick="st('fire','kpi',this)">📊 KPIs</button></div>
+  <div id="fire-alarm"><div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Fire Alarm Record (FMS.21)</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Date</label><input type="date" id="fa-date"></div>
+        <div class="ff"><label>Activity</label><select id="fa-type"><option>Monthly Inspection (FMS.21.1)</option><option>Weekly Test (FMS.21.2)</option><option>Quarterly PPM — Civil Defense (FMS.21.3)</option><option>Elevator Test (FMS.21.4)</option></select></div>
+        <div class="ff"><label>Zone</label><input type="text" id="fa-zone" placeholder="Zone 1 — ER"></div>
+        <div class="ff"><label>Result</label><select id="fa-res"><option value="pass">✅ Pass</option><option value="partial">⚠️ Partial</option><option value="fail">❌ Fail</option></select></div>
+        <div class="ff"><label>Civil Defense Contractor</label><input type="text" id="fa-cont" placeholder="Company name"></div>
+        <div class="ff"><label>Technician</label><input type="text" id="fa-tech" placeholder="Name"></div>
+        <div class="ff" style="grid-column:1/-1"><label>Notes</label><textarea id="fa-notes" placeholder="Findings..."></textarea></div>
+        <div class="ff" style="grid-column:1/-1"><label>Certificate/Report</label><input type="file" id="fa-file"></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('fireAlarm')">✓ Save Record</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">Fire Alarm Log</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Type</th><th>Zone</th><th>Result</th><th>Contractor</th><th>Doc</th></tr></thead><tbody id="fireAlarm-tb"></tbody></table></div></div>
+  </div></div>
+  <div id="fire-sup" style="display:none;"><div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Suppression PPM (FMS.22)</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Date</label><input type="date" id="fs-date"></div>
+        <div class="ff"><label>System</label><select id="fs-sys"><option>Sprinkler (FMS.22.1)</option><option>FM200 Clean Agent (FMS.22.2)</option><option>Wet Chemical Kitchen (FMS.22.3)</option><option>Stand Pipes (FMS.22.4)</option></select></div>
+        <div class="ff"><label>Activity</label><select id="fs-act"><option>Monthly Inspection</option><option>Quarterly PPM</option><option>Annual Service</option></select></div>
+        <div class="ff"><label>Result</label><select id="fs-res"><option value="pass">✅ Pass</option><option value="partial">⚠️ Partial</option><option value="fail">❌ Fail</option></select></div>
+        <div class="ff"><label>Contractor</label><input type="text" id="fs-cont" placeholder="Company"></div>
+        <div class="ff"><label>Technician</label><input type="text" id="fs-tech" placeholder="Name"></div>
+        <div class="ff" style="grid-column:1/-1"><label>Notes</label><textarea id="fs-notes" placeholder="Details..."></textarea></div>
+        <div class="ff" style="grid-column:1/-1"><label>Certificate</label><input type="file" id="fs-file"></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('fireSup')">✓ Save Record</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">Suppression Log (8/year)</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>System</th><th>Activity</th><th>Result</th><th>Contractor</th><th>Doc</th></tr></thead><tbody id="fireSup-tb"></tbody></table></div></div>
+  </div></div>
+  <div id="fire-exits" style="display:none;"><div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Exit Inspection (FMS.23 — 5 criteria)</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Date</label><input type="date" id="ex-date"></div>
+        <div class="ff"><label>Exit Location</label><input type="text" id="ex-loc" placeholder="Ground Floor West"></div>
+        <div class="ff"><label>23.1 Available</label><select id="ex-1"><option value="pass">✅ Yes</option><option value="fail">❌ No</option></select></div>
+        <div class="ff"><label>23.2 Not Locked</label><select id="ex-2"><option value="pass">✅ OK</option><option value="fail">❌ Locked</option></select></div>
+        <div class="ff"><label>23.3 Clear</label><select id="ex-3"><option value="pass">✅ Clear</option><option value="fail">❌ Blocked</option></select></div>
+        <div class="ff"><label>23.4 Panic Hardware</label><select id="ex-4"><option value="pass">✅ Present</option><option value="fail">❌ Missing</option></select></div>
+        <div class="ff"><label>23.6 Exit Sign</label><select id="ex-6"><option value="pass">✅ Lit</option><option value="fail">❌ Out</option></select></div>
+        <div class="ff"><label>By</label><input type="text" id="ex-by" placeholder="Name"></div>
+        <div class="ff" style="grid-column:1/-1"><label>Photo</label><input type="file" id="ex-file"></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('fireExit')">✓ Save Inspection</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">Exit Inspection Log</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Location</th><th>23.1</th><th>23.2</th><th>23.3</th><th>23.4</th><th>23.6</th><th>Doc</th></tr></thead><tbody id="fireExit-tb"></tbody></table></div></div>
+  </div></div>
+  <div id="fire-unitdrill" style="display:none;">
+    <!-- Upload schedule banner -->
+    <div style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:12px 16px;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div>
+          <div style="font-weight:700;color:var(--rd);font-size:12px;">🔥 UNIT LEVEL FIRE DRILL — CBAHI Requirement</div>
+          <div style="font-size:10px;color:var(--mu);margin-top:3px;">Each unit/department must conduct fire drills at the required frequency · Surveyor will check drill schedules, attendance, and critique reports</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <label style="font-size:10px;color:var(--mu);">Upload Annual Schedule:</label>
+          <input type="file" id="fire-schedule-file" multiple accept=".pdf,.doc,.docx,.xlsx,.jpg,.png"
+            style="font-size:9px;color:var(--mu);" onchange="saveFireSchedule(this)">
+          <button class="btn bo" style="font-size:9px;padding:3px 10px;" onclick="showFireSchedule()">📎 View Schedule</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI summary infographic -->
+    <div id="unit-drill-infographic" style="margin-bottom:16px;"></div>
+
+    <div class="g g2">
+      <div class="card"><div class="ch"><div class="ct">Log Unit Level Fire Drill</div></div><div class="cb">
+        <div class="fg fg2">
+          <div class="ff"><label>Date</label><input type="date" id="ufd-date"></div>
+          <div class="ff"><label>Unit / Department</label>
+            <input type="text" id="ufd-unit" list="ufd-unit-list" placeholder="e.g. ICU, ER, OR, Ward 2...">
+            <datalist id="ufd-unit-list">
+              <option>ICU</option><option>NICU / PICU</option><option>Emergency Room</option>
+              <option>Operating Room</option><option>Delivery Room</option><option>Inpatient Ward</option>
+              <option>Pharmacy</option><option>Laboratory</option><option>Radiology</option>
+              <option>Kitchen</option><option>Administration</option><option>Outpatient Clinic</option>
+            </datalist>
+          </div>
+          <div class="ff"><label>Frequency / Schedule</label>
+            <select id="ufd-freq" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+              <option value="quarterly">Quarterly (Q1/Q2/Q3/Q4)</option>
+              <option value="semi">Semi-Annual (H1/H2)</option>
+              <option value="annual">Annual</option>
+            </select>
+          </div>
+          <div class="ff"><label>Period / Quarter</label>
+            <select id="ufd-period" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+              <option value="Q1">Q1 — January to March</option>
+              <option value="Q2">Q2 — April to June</option>
+              <option value="Q3">Q3 — July to September</option>
+              <option value="Q4">Q4 — October to December</option>
+              <option value="H1">H1 — First Half of Year</option>
+              <option value="H2">H2 — Second Half of Year</option>
+              <option value="Annual">Annual</option>
+            </select>
+          </div>
+          <div class="ff"><label>Year</label><input type="number" id="ufd-year" placeholder="2026"></div>
+          <div class="ff"><label>Shift</label>
+            <select id="ufd-shift" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+              <option>Day</option><option>Evening</option><option>Night</option>
+            </select>
+          </div>
+          <div class="ff"><label>Duration (minutes)</label><input type="number" id="ufd-dur" placeholder="15" min="1"></div>
+          <div class="ff"><label>Participants Count</label><input type="number" id="ufd-count" placeholder="0" min="0"></div>
+          <div class="ff"><label>Outcome</label>
+            <select id="ufd-outcome" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+              <option value="satisfactory">✅ Satisfactory</option>
+              <option value="needs_improvement">⚠️ Needs Improvement</option>
+              <option value="unsatisfactory">❌ Unsatisfactory</option>
+            </select>
+          </div>
+          <div class="ff"><label>Conducted By</label><input type="text" id="ufd-by" placeholder="Safety Officer / FMS"></div>
+          <div class="ff" style="grid-column:1/-1"><label>Deficiencies / Observations</label>
+            <textarea id="ufd-deficiencies" style="min-height:60px;" placeholder="Gaps found during drill, response issues, equipment problems..."></textarea>
+          </div>
+          <div class="ff" style="grid-column:1/-1"><label>Corrective Actions</label>
+            <textarea id="ufd-actions" style="min-height:50px;" placeholder="Actions taken or planned to address deficiencies..."></textarea>
+          </div>
+          <div class="ff" style="grid-column:1/-1">
+            <label>Upload Documents (Attendance List, Critique Report, Photos)</label>
+            <input type="file" id="ufd-files" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+              style="font-size:10px;color:var(--mu);">
+            <div class="ht">CBAHI requires attendance list + critique report as evidence for each drill</div>
+          </div>
+        </div>
+        <button class="btn bg" style="width:100%;margin-top:12px;" onclick="saveUnitDrill()">✓ Log Unit Level Drill</button>
+      </div></div>
+
+      <div class="card"><div class="ch">
+        <div class="ct">Unit Drill Log — <span id="ufd-count-label">0 drills</span></div>
+        <button class="btn bo" style="font-size:9px;padding:3px 10px;" onclick="exportUnitDrillReport()">📥 Export Report</button>
+      </div>
+        <div class="cb" style="padding:0;max-height:500px;overflow-y:auto;">
+          <table class="tbl">
+            <thead><tr><th>Date</th><th>Unit</th><th>Freq.</th><th>Period</th><th>Year</th><th>Duration</th><th>Staff</th><th>Outcome</th><th>By</th><th>Docs</th><th></th></tr></thead>
+            <tbody id="ufd-tb"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+   id="page-fire">
+  <div class="ph"><h1>🔥 Fire Safety — FMS.1.1.6</h1><p>FMS.21 Alarm · FMS.22 Suppression · FMS.23 Exits · Moe + Mostapha</p></div>
+  <div class="tb"><button class="tbtn active" onclick="st('fire','alarm',this)">Alarm (FMS.21)</button><button class="tbtn" onclick="st('fire','sup',this)">Suppression (FMS.22)</button><button class="tbtn" onclick="st('fire','exits',this)">Exits (FMS.23)</button><button class="tbtn" onclick="st('fire','unitdrill',this)">🔥 Unit Level Drills</button><button class="tbtn" onclick="st('fire','kpi',this)">📊 KPIs</button></div>
   <div id="fire-alarm"><div class="g g2">
     <div class="card"><div class="ch"><div class="ct">Fire Alarm Record (FMS.21)</div></div><div class="cb">
       <div class="fg fg2">
@@ -2763,7 +3004,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260530-2009';
+const APP_VERSION = '20260601-0506';
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
@@ -3208,7 +3449,12 @@ function st(domain,sub,btn){
   document.querySelectorAll('[id^="'+domain+'-"]').forEach(e=>e.style.display='none');
   const e=document.getElementById(domain+'-'+sub);if(e)e.style.display='block';
   if(btn){btn.closest('.tb').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
-  if(sub==='kpi')renderDomainKPI(domain);
+  if(sub==='kpi') renderDomainKPI(domain);
+  // Fire — Unit Level Drills
+  if(domain==='fire' && sub==='unitdrill')       { setTimeout(()=>{renderUnitDrills();renderUnitDrillKPIs();},60); }
+  // Emergency — Code Drills (Annual Plans)
+  if(domain==='emergency' && sub==='codeplans')  { setTimeout(()=>{renderCodeDrills();renderDrillInfographics();},60); }
+  if(domain==='emergency' && sub==='drills')     { setTimeout(()=>renderLog('emDrill'),60); }
 }
 
 // ===== RECORD DEFS =====
@@ -7599,6 +7845,9 @@ const FMS_KPIS = [
   { id:'KPI-009', dept:'maintenance', category:'Utilities',   name:'Critical Area ACH Compliance',  standard:'FMS.34.5', num:'Rooms meeting Air Change per Hour specs',  den:'Total critical rooms tested',       formula:'percent', target:100, unit:'%', hib:true,  src:'HVAC Airflow Reports',          freq:'Quarterly', icon:'💨', color:'#06b6d4' },
   { id:'KPI-010', dept:'safety',      category:'Waste/Hazmat',name:'Waste Segregation Compliance',  standard:'FMS.15.1', num:'Waste bins correctly segregated',          den:'Total waste bins audited',          formula:'percent', target:95,  unit:'%', hib:true,  src:'Safety Round Audit',            freq:'Monthly',   icon:'♻', color:'#84cc16' },
   { id:'KPI-011', dept:'safety',      category:'Waste/Hazmat',name:'Waste Manifest Accuracy',       standard:'FMS.16.1', num:'Manifests with final disposal signature',   den:'Total waste shipments sent',        formula:'percent', target:100, unit:'%', hib:true,  src:'Waste Manifest Files',          freq:'Monthly',   icon:'📋', color:'#a78bfa' },
+  { id:'KPI-012', dept:'safety',      category:'Emergency',   name:'Code Drill Compliance Rate',    standard:'FMS.1.1.4',num:'Code drills conducted across all 4 code types', den:'Minimum required drills (2 per code × 4 codes = 8/year)', formula:'percent', target:100, unit:'%', hib:true, src:'Code Drill Log — Emergency Page', freq:'Semi-Annual', icon:'🚨', color:'#f43f5e' },
+  { id:'KPI-013', dept:'safety',      category:'Emergency',   name:'Code Drill Pass Rate',          standard:'FMS.1.1.5',num:'Code drills with satisfactory outcome (staff passed)', den:'Total code drills conducted',      formula:'percent', target:90,  unit:'%', hib:true,  src:'Code Drill Critique Reports',   freq:'Quarterly', icon:'✅', color:'#10b981' },
+  { id:'KPI-014', dept:'safety',      category:'Fire Safety', name:'Unit Level Fire Drill Compliance', standard:'FMS.1.1.6',num:'Units completing required fire drills per schedule', den:'Total units required to conduct drills per year', formula:'percent', target:100, unit:'%', hib:true, src:'Unit Level Fire Drill Log — Fire Safety Page', freq:'Quarterly', icon:'🔥', color:'#ef4444' },
 ];
 
 // ── State ──
@@ -8104,93 +8353,182 @@ function kpi2ShowHistory(kpiId) {
       <td><span style="background:${ss.bg};color:${ss.color};border:1px solid ${ss.border};border-radius:4px;padding:2px 8px;font-size:9px;">${ss.label}</span></td>
       <td style="font-size:10px;color:var(--mu);">${e._by||'—'}</td>
       <td style="font-size:10px;color:var(--mu);">${e.notes||'—'}</td>
-      <td><button class="btn br" style="font-size:9px;padding:2px 6px;" onclick="kpi2DeleteEntry('${kpiId}','${e._id}')">✕</button></td>
-    </tr>`;
+      <td><button class="btn br" style="font-size:9px;padding:2pfunction kpi2ExportReport() {
+  const visible  = kpi2VisibleKPIs();
+  const periodSel= document.getElementById('kpi2-month-sel');
+  const period   = periodSel?.options[periodSel.selectedIndex]?.text || new Date().toLocaleString('en-GB',{month:'long',year:'numeric'});
+
+  const met     = visible.filter(k=>kpi2Status(k,kpi2Calc(k,kpi2GetLatest(k.id)))==='met').length;
+  const partial = visible.filter(k=>kpi2Status(k,kpi2Calc(k,kpi2GetLatest(k.id)))==='partial').length;
+  const gap     = visible.filter(k=>kpi2Status(k,kpi2Calc(k,kpi2GetLatest(k.id)))==='gap').length;
+  const score   = visible.length ? Math.round((met/visible.length)*100) : 0;
+  const sc      = score>=80?'#10b981':score>=60?'#f59e0b':'#ef4444';
+
+  const rows = visible.map(k => {
+    const entry   = kpi2GetLatest(k.id);
+    const result  = kpi2Calc(k, entry);
+    const status  = kpi2Status(k, result);
+    const ss      = KPI2_STATUS_STYLES[status];
+    const history = kpi2GetEntries(k.id).slice(-6).map(e=>kpi2Calc(k,e)).filter(v=>v!==null);
+    const trend   = history.length>1
+      ? (history[history.length-1] >= history[0] ? (k.hib?'📈 Improving':'📉 Worsening') : (k.hib?'📉 Declining':'📈 Improving'))
+      : '—';
+    const numActual = entry?.num !== undefined ? entry.num : '—';
+    const denActual = entry?.den !== undefined ? entry.den : '—';
+    const pct = k.formula==='percent' && entry?.den>0 ? Math.round((entry.num/entry.den)*100) : null;
+    const barWidth = result!==null ? (k.hib ? Math.min(100,(result/Math.max(k.target,result))*100) : Math.max(0,100-Math.max(0,(result-k.target)/k.target*100))) : 0;
+    return `<div class="kpi-card" style="border:1px solid ${k.color}44;border-left:4px solid ${k.color};border-radius:10px;padding:16px;margin-bottom:16px;page-break-inside:avoid;">
+      <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span style="font-size:20px;">${k.icon}</span>
+            <span style="font-size:14px;font-weight:bold;">${k.name}</span>
+            <span style="background:${k.color}22;color:${k.color};border:1px solid ${k.color}44;border-radius:4px;padding:1px 7px;font-size:9px;font-weight:bold;">${k.standard}</span>
+            <span style="background:#f0f4f8;border-radius:4px;padding:1px 7px;font-size:9px;">${k.category}</span>
+            <span style="background:#f0f4f8;border-radius:4px;padding:1px 7px;font-size:9px;">📅 ${k.freq}</span>
+          </div>
+          <!-- Formula Box -->
+          <table style="width:100%;border-collapse:collapse;font-size:10px;background:#f8fafc;border-radius:6px;margin-bottom:8px;">
+            <tr><td style="padding:4px 8px;width:130px;color:#666;font-weight:600;border-bottom:1px solid #e2e8f0;">Numerator</td><td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;">${k.num}</td></tr>
+            <tr><td style="padding:4px 8px;color:#666;font-weight:600;border-bottom:1px solid #e2e8f0;">Denominator</td><td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;">${k.den}</td></tr>
+            <tr><td style="padding:4px 8px;color:#666;font-weight:600;border-bottom:1px solid #e2e8f0;">Formula</td><td style="padding:4px 8px;border-bottom:1px solid #e2e8f0;">(Numerator ÷ Denominator)${k.formula==='percent'?' × 100':''} = Result in ${k.unit}</td></tr>
+            <tr><td style="padding:4px 8px;color:#666;font-weight:600;">Data Source</td><td style="padding:4px 8px;">${k.src}</td></tr>
+          </table>
+        </div>
+        <!-- Result Box -->
+        <div style="text-align:center;min-width:120px;background:${ss.bg};border:1px solid ${ss.border};border-radius:8px;padding:12px;">
+          <div style="font-size:32px;font-weight:bold;color:${ss.color};">${result!==null?result+k.unit:'—'}</div>
+          <div style="font-size:10px;color:#666;">Actual ${period}</div>
+          <div style="font-size:11px;font-weight:600;color:${ss.color};margin-top:4px;">${ss.label}</div>
+          <div style="font-size:9px;color:#888;margin-top:2px;">Target: ${k.hib?'≥':'≤'}${k.target}${k.unit}</div>
+        </div>
+      </div>
+      <!-- Data + Progress -->
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:10px;margin-top:8px;font-size:10px;">
+        <div style="background:#f8fafc;border-radius:6px;padding:8px;">
+          <div><b>Actual Numerator:</b> ${numActual}</div>
+          <div><b>Actual Denominator:</b> ${denActual}</div>
+          <div><b>Trend:</b> ${trend}</div>
+          ${entry?.notes?`<div><b>Notes:</b> ${entry.notes}</div>`:''}
+        </div>
+        <div>
+          <div style="font-size:9px;color:#666;margin-bottom:4px;">Achievement vs Target</div>
+          <div style="height:12px;background:#e2e8f0;border-radius:6px;overflow:hidden;margin-bottom:4px;">
+            <div style="height:100%;width:${barWidth}%;background:${ss.color};border-radius:6px;"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:#888;">
+            <span>0</span><span>Target: ${k.target}${k.unit}</span>
+          </div>
+          ${history.length>1?`<div style="font-size:9px;color:#666;margin-top:4px;">History (last ${history.length}): ${history.map(v=>v+k.unit).join(' → ')}</div>`:''}
+        </div>
+      </div>
+    </div>`;
   }).join('');
-
-  // Reuse files modal to show history in a simple alert-style approach
-  const html = `<div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;margin-bottom:12px;">${k.icon} ${k.name} — Entry History</div>
-    <div style="overflow-x:auto;"><table class="tbl" style="min-width:600px;">
-      <thead><tr><th>Period</th><th>Numerator</th><th>Denominator</th><th>Result</th><th>Status</th><th>By</th><th>Notes</th><th></th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="8" class="em">No entries yet</td></tr>'}</tbody>
-    </table></div>`;
-
-  document.getElementById('files-modal-title').textContent = k.name + ' — History';
-  document.getElementById('files-modal-list').innerHTML = html;
-  openMod('files');
-}
-
-function kpi2DeleteEntry(kpiId, entryId) {
-  if (!confirm('Delete this KPI entry?')) return;
-  const arr = kpi2GetEntries(kpiId).filter(e => String(e._id) !== String(entryId));
-  kpi2SaveEntries(kpiId, arr);
-  kpi2ShowHistory(kpiId);
-  kpi2RenderAll();
-}
-
-// ── Export KPI Report ──
-function kpi2ExportReport() {
-  const visible = kpi2VisibleKPIs();
-  const period  = document.getElementById('kpi2-month-sel')?.options[0]?.text || new Date().toLocaleString('en-GB',{month:'long',year:'numeric'});
-
-  const rows = visible.map((k,i) => {
-    const entry  = kpi2GetLatest(k.id);
-    const result = kpi2Calc(k, entry);
-    const status = kpi2Status(k, result);
-    const ss = KPI2_STATUS_STYLES[status];
-    return `<tr>
-      <td style="font-weight:600;color:#00b4ff;">${k.id}</td>
-      <td>${k.icon} ${k.name}</td>
-      <td><span style="background:${k.color}22;color:${k.color};border:1px solid ${k.color}44;border-radius:4px;padding:2px 6px;font-size:10px;">${k.standard}</span></td>
-      <td style="font-size:10px;">${k.category}</td>
-      <td style="font-size:10px;">${k.num}</td>
-      <td style="font-size:10px;">${k.den}</td>
-      <td style="text-align:center;">${entry?.num||'—'}</td>
-      <td style="text-align:center;">${entry?.den||'—'}</td>
-      <td style="font-weight:700;font-size:15px;color:${ss.color};">${result!==null?result+k.unit:'—'}</td>
-      <td style="text-align:center;font-weight:600;">${k.hib?'≥':'≤'}${k.target}${k.unit}</td>
-      <td><span style="background:${ss.bg};color:${ss.color};border:1px solid ${ss.border};border-radius:4px;padding:2px 8px;font-size:10px;white-space:nowrap;">${ss.label}</span></td>
-      <td style="font-size:10px;color:#666;">${k.freq}</td>
-    </tr>`;
-  }).join('');
-
-  const met = visible.filter(k=>kpi2Status(k,kpi2Calc(k,kpi2GetLatest(k.id)))==='met').length;
-  const score = visible.length ? Math.round((met/visible.length)*100) : 0;
-  const sc = score>=80?'#10b981':score>=60?'#f59e0b':'#ef4444';
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
 <title>FMS KPI Report — ${period}</title>
 <style>
+  *{box-sizing:border-box;}
   body{font-family:Arial,sans-serif;margin:0;padding:24px;color:#1a1a2e;font-size:11px;}
-  .header{text-align:center;border-bottom:3px solid #00b4ff;padding-bottom:14px;margin-bottom:20px;}
-  .header h1{font-size:20px;margin:0 0 4px;color:#00b4ff;}
-  .summary{display:flex;gap:16px;margin-bottom:20px;justify-content:center;}
-  .sum-box{border:1px solid #ddd;border-radius:8px;padding:12px 20px;text-align:center;}
-  .sum-val{font-size:26px;font-weight:bold;}
-  .sum-lbl{font-size:10px;color:#888;text-transform:uppercase;}
-  table{width:100%;border-collapse:collapse;font-size:10px;}
-  th{background:#003366;color:#fff;padding:8px 6px;text-align:left;}
-  td{padding:7px 6px;border-bottom:1px solid #eee;}
-  tr:nth-child(even){background:#f8f9fa;}
-  .sig-section{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:30px;}
-  .sig-box{border-top:1px solid #333;padding-top:6px;}
-  .sig-line{height:50px;}
+  .header{text-align:center;border-bottom:3px solid #00b4ff;padding-bottom:16px;margin-bottom:20px;}
+  .header h1{font-size:20px;margin:0 0 4px;color:#003366;}
+  .summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+  .sum-box{border:1px solid #ddd;border-radius:8px;padding:12px;text-align:center;}
+  .sum-val{font-size:28px;font-weight:bold;}
+  .sum-lbl{font-size:9px;color:#888;text-transform:uppercase;margin-top:2px;}
+  .sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:30px;}
+  .sig-box{border-top:2px solid #003366;padding-top:8px;}
+  .sig-line{height:60px;}
+  .sig-label{font-size:10px;color:#666;}
+  .sig-name{font-size:10px;color:#888;margin-top:4px;}
+  .upload-box{border:2px dashed #ccc;border-radius:8px;padding:16px;text-align:center;margin-top:16px;color:#888;font-size:10px;}
   .footer{margin-top:20px;font-size:9px;color:#999;text-align:center;border-top:1px solid #eee;padding-top:8px;}
+  @media print{.no-print{display:none!important;}}
 </style></head>
 <body>
 <div class="header">
-  <div style="font-size:10px;color:#888;">OBEID SPECIALIZED HOSPITAL — RIYADH · FACILITY MANAGEMENT & SAFETY</div>
+  <div style="font-size:10px;color:#888;letter-spacing:1px;">OBEID SPECIALIZED HOSPITAL · RIYADH · FACILITY MANAGEMENT & SAFETY PROGRAM</div>
   <h1>FMS PERFORMANCE INDICATORS REPORT</h1>
-  <p style="margin:4px 0;color:#555;">Reporting Period: ${period} · CBAHI Accreditation 2026</p>
-  <p style="margin:2px 0;font-size:10px;color:#888;">Generated by: ${typeof CU!=='undefined'?CU.name:'FMS Director'} · ${new Date().toLocaleString('en-GB')}</p>
+  <div style="display:flex;justify-content:center;gap:20px;margin-top:8px;font-size:10px;color:#555;">
+    <span>📅 Reporting Period: <b>${period}</b></span>
+    <span>🏥 CBAHI Accreditation 2026</span>
+    <span>📋 Total KPIs: <b>${visible.length}</b></span>
+  </div>
+  <div style="font-size:10px;color:#888;margin-top:4px;">Generated: ${new Date().toLocaleString('en-GB')}</div>
 </div>
-<div class="summary">
-  <div class="sum-box"><div class="sum-val" style="color:${sc};">${score}%</div><div class="sum-lbl">Overall Achievement</div></div>
-  <div class="sum-box"><div class="sum-val" style="color:#10b981;">${met}</div><div class="sum-lbl">KPIs Met</div></div>
-  <div class="sum-box"><div class="sum-val" style="color:#1a1a2e;">${visible.length}</div><div class="sum-lbl">Total KPIs</div></div>
+
+<div class="summary-grid">
+  <div class="sum-box" style="border-color:${sc};"><div class="sum-val" style="color:${sc};">${score}%</div><div class="sum-lbl">Overall Achievement</div></div>
+  <div class="sum-box" style="border-color:#10b981;"><div class="sum-val" style="color:#10b981;">${met}</div><div class="sum-lbl">✅ Target Met</div></div>
+  <div class="sum-box" style="border-color:#f59e0b;"><div class="sum-val" style="color:#f59e0b;">${partial}</div><div class="sum-lbl">⚠️ Near Target</div></div>
+  <div class="sum-box" style="border-color:#ef4444;"><div class="sum-val" style="color:#ef4444;">${gap}</div><div class="sum-lbl">❌ Below Target</div></div>
 </div>
-<table>
-  <thead><tr>
+
+${rows}
+
+<!-- Signature Section -->
+<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px;margin-top:24px;">
+  <div style="font-size:12px;font-weight:bold;color:#003366;margin-bottom:16px;border-bottom:1px solid #e2e8f0;padding-bottom:8px;">REPORT AUTHORIZATION</div>
+  <div class="sig-grid">
+    <div class="sig-box">
+      <div class="sig-label"><b>Prepared by</b></div>
+      <div class="sig-line"></div>
+      <div class="sig-name">
+        Name: ___________________________<br>
+        Title: FMS Manager / Safety Officer<br>
+        Date: ___________________________
+      </div>
+    </div>
+    <div class="sig-box">
+      <div class="sig-label"><b>Reviewed &amp; Approved by — FMS Director</b></div>
+      <div class="sig-line"></div>
+      <div class="sig-name">
+        Name: ___________________________<br>
+        Title: FMS Director<br>
+        Date: ___________________________
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="upload-box no-print">
+  📎 After approval, scan and upload this signed report to the platform:<br>
+  <button onclick="document.getElementById('kpi-upload-after').click()" style="margin-top:8px;padding:6px 16px;background:#003366;color:#fff;border:none;border-radius:5px;cursor:pointer;">Upload Signed Report</button>
+  <input type="file" id="kpi-upload-after" style="display:none;" accept=".pdf,.jpg,.png" onchange="uploadSignedKPIReport(this,'${period}')">
+</div>
+
+<div class="footer">Obeid Specialized Hospital FMS Platform · CBAHI 2026 · Generated: ${new Date().toLocaleString('en-GB')}</div>
+</body></html>`;
+
+  const blob = new Blob([html],{type:'text/html'});
+  const win  = window.open(URL.createObjectURL(blob),'_blank');
+  if (win) {
+    // Inject upload function
+    setTimeout(() => {
+      try {
+        win.uploadSignedKPIReport = function(input, period) {
+          if (input.files.length && typeof fsStoreFiles !== 'undefined') {
+            fsStoreFiles('kpi_signed_report_'+period, input.files).then(()=>{
+              win.alert('✅ Signed report uploaded to the platform');
+            });
+          }
+        };
+        win.print();
+      } catch(e) {}
+    }, 800);
+  }
+  toast('✅ KPI Report opened — Print or Save as PDF · Sign and upload after approval');
+}
+
+function uploadSignedKPIReport(input, period) {
+  if (!input.files.length) return;
+  (async () => {
+    await fsStoreFiles('kpi_signed_'+period, input.files);
+    input.value='';
+    toast('✅ Signed KPI Report uploaded for ' + period);
+  })();
+}
+head><tr>
     <th>KPI ID</th><th>Indicator Name</th><th>Standard</th><th>Category</th>
     <th>Numerator</th><th>Denominator</th><th>Actual N</th><th>Actual D</th>
     <th>Result</th><th>Target</th><th>Status</th><th>Frequency</th>
@@ -8765,10 +9103,24 @@ function budgetExport() {
   <span>${sar(totalB)}</span>
 </div>
 
-<div class="sig-section">
-  <div class="sig-box"><div style="font-size:10px;color:#888;">FMS Director</div><div class="sig-line"></div><div style="font-size:9px;color:#888;">Name & Signature & Date</div></div>
-  <div class="sig-box"><div style="font-size:10px;color:#888;">Finance Director / CFO</div><div class="sig-line"></div><div style="font-size:9px;color:#888;">Name & Signature & Date</div></div>
-  <div class="sig-box"><div style="font-size:10px;color:#888;">Hospital Director / CEO</div><div class="sig-line"></div><div style="font-size:9px;color:#888;">Name & Signature & Date</div></div>
+<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px;margin-top:24px;">
+  <div style="font-size:13px;font-weight:bold;color:#003366;border-bottom:1px solid #e2e8f0;padding-bottom:8px;margin-bottom:16px;">BUDGET AUTHORIZATION</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;">
+    <div style="border-top:2px solid #003366;padding-top:8px;">
+      <div style="font-size:11px;font-weight:bold;color:#003366;">Prepared by &mdash; FMS Director</div>
+      <div style="height:60px;"></div>
+      <div style="font-size:10px;color:#555;">Name: ___________________________<br>Title: Facility Management &amp; Safety Director<br>Date: ___________________________</div>
+    </div>
+    <div style="border-top:2px solid #c0392b;padding-top:8px;">
+      <div style="font-size:11px;font-weight:bold;color:#c0392b;">Approved by &mdash; Hospital Director / CEO</div>
+      <div style="height:60px;"></div>
+      <div style="font-size:10px;color:#555;">Name: ___________________________<br>Title: Hospital Director / Chief Executive Officer<br>Date: ___________________________</div>
+    </div>
+  </div>
+  <div style="margin-top:16px;padding:12px;border:2px dashed #cbd5e1;border-radius:8px;text-align:center;font-size:10px;color:#888;">
+    \u{1F4CE} After approval, scan and upload this signed document to the FMS Platform budget records
+  </div>
+</div></div>
 </div>
 <div class="footer">Obeid Specialized Hospital FMS Platform · CBAHI FMS.1.4 Annual Budget · Generated: ${new Date().toLocaleString('en-GB')}</div>
 </body></html>`;
@@ -8949,6 +9301,259 @@ function renderDrillInfographics() {
       </div>`;
     }).join('')}
   </div>`;
+}
+
+
+// ── Unit Level Fire Drill ──
+function saveUnitDrill() {
+  const date   = document.getElementById('ufd-date')?.value;
+  const unit   = document.getElementById('ufd-unit')?.value.trim();
+  const freq   = document.getElementById('ufd-freq')?.value;
+  const period = document.getElementById('ufd-period')?.value;
+  const year   = document.getElementById('ufd-year')?.value || new Date().getFullYear();
+  const shift  = document.getElementById('ufd-shift')?.value;
+  const dur    = document.getElementById('ufd-dur')?.value;
+  const count  = document.getElementById('ufd-count')?.value;
+  const outcome= document.getElementById('ufd-outcome')?.value;
+  const byWho  = document.getElementById('ufd-by')?.value.trim();
+  const defi   = document.getElementById('ufd-deficiencies')?.value.trim();
+  const action = document.getElementById('ufd-actions')?.value.trim();
+  const fileIn = document.getElementById('ufd-files');
+
+  if (!date || !unit) { toast('Date and Unit are required','#f59e0b'); return; }
+
+  const rec = { _id:Date.now(), date, unit, freq, period, year, shift, dur, count,
+    outcome, byWho, defi, action, fileKey:'ufd_'+Date.now(),
+    _by:(typeof CU!=='undefined'?CU.name:''), _ts:new Date().toISOString() };
+
+  (async () => {
+    if (fileIn && fileIn.files.length) {
+      await fsStoreFiles(rec.fileKey, fileIn.files);
+      fileIn.value = '';
+    }
+    const arr = ld('unitFireDrills'); arr.unshift(rec); sv('unitFireDrills', arr);
+    dbWrite('unitFireDrills', rec);
+    ['ufd-unit','ufd-dur','ufd-count','ufd-by','ufd-deficiencies','ufd-actions'].forEach(id=>{
+      const e=document.getElementById(id); if(e) e.value='';
+    });
+    renderUnitDrills();
+    renderUnitDrillKPIs();
+    toast('✅ Unit Level Fire Drill logged');
+  })();
+}
+
+function renderUnitDrills() {
+  const tb = document.getElementById('ufd-tb'); if (!tb) return;
+  const data = ld('unitFireDrills').sort((a,b)=> b.date>a.date?1:-1);
+  const lbl  = document.getElementById('ufd-count-label');
+  if (lbl) lbl.textContent = data.length + ' drill' + (data.length!==1?'s':'');
+  if (!data.length) { tb.innerHTML='<tr><td colspan="11" class="em">No unit drills logged yet — add above</td></tr>'; return; }
+  const outcomeStyles = {
+    satisfactory:   {c:'#00d4aa', label:'✅ Satisfactory'},
+    needs_improvement:{c:'#f59e0b',label:'⚠️ Needs Improvement'},
+    unsatisfactory:  {c:'#ef4444', label:'❌ Unsatisfactory'},
+  };
+  tb.innerHTML = data.map(r => {
+    const os = outcomeStyles[r.outcome] || {c:'var(--mu)',label:r.outcome||'—'};
+    const files = r.fileKey ? (fsGetFiles?fsGetFiles(r.fileKey):[]) : [];
+    const fb = files.length
+      ? `<button class="btn bb" style="font-size:9px;padding:2px 6px;" onclick="showFilesModal('${r.fileKey}','${r.unit} ${r.date}')">📎 ${files.length}</button>`
+      : '<span style="font-size:9px;color:var(--mu);">—</span>';
+    return `<tr>
+      <td style="font-weight:600;">${r.date||'—'}</td>
+      <td style="font-weight:600;">${r.unit||'—'}</td>
+      <td><span style="background:rgba(0,180,255,.1);color:var(--ac);border-radius:4px;padding:1px 7px;font-size:9px;">${r.freq||'—'}</span></td>
+      <td style="font-size:10px;">${r.period||'—'}</td>
+      <td style="text-align:center;">${r.year||'—'}</td>
+      <td style="text-align:center;">${r.dur||'—'} min</td>
+      <td style="text-align:center;">${r.count||'—'}</td>
+      <td><span style="color:${os.c};font-size:10px;font-weight:600;">${os.label}</span></td>
+      <td style="font-size:10px;">${r.byWho||r._by||'—'}</td>
+      <td>${fb}</td>
+      <td><button class="btn br" style="font-size:9px;padding:2px 5px;" onclick="deleteUnitDrill('${r._id}')">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function deleteUnitDrill(id) {
+  if (!confirm('Delete this drill record?')) return;
+  sv('unitFireDrills', ld('unitFireDrills').filter(r=>String(r._id)!==String(id)));
+  renderUnitDrills(); renderUnitDrillKPIs();
+  toast('Deleted');
+}
+
+function renderUnitDrillKPIs() {
+  const el = document.getElementById('unit-drill-infographic'); if (!el) return;
+  const data = ld('unitFireDrills');
+  const now  = new Date();
+  const year = now.getFullYear();
+  const yearData = data.filter(r => String(r.year) === String(year));
+
+  // KPI: Unit Level Fire Drill Compliance
+  // Numerator: Number of units that completed their required drills this year
+  // Denominator: Total number of units/departments required to conduct drills
+  // Formula: (Numerator / Denominator) × 100
+  // CBAHI Standard: FMS.1.1.6 — each unit must conduct drills per their scheduled frequency
+  // Source: Unit Level Fire Drill Log (this register)
+  const units = [...new Set(yearData.map(r=>r.unit))];
+  // Quarterly units need 4 drills, semi need 2, annual need 1
+  const drillsPerUnit = {};
+  yearData.forEach(r => { drillsPerUnit[r.unit] = (drillsPerUnit[r.unit]||0)+1; });
+
+  const totalUnits = units.length || 0;
+  const satisfactoryUnits = units.filter(u => {
+    const drills = yearData.filter(r=>r.unit===u);
+    const freqMap = {quarterly:4, semi:2, annual:1};
+    const required = freqMap[drills[0]?.freq] || 1;
+    return drills.length >= required;
+  }).length;
+  const compliancePct = totalUnits>0 ? Math.round((satisfactoryUnits/totalUnits)*100) : 0;
+  const cc = compliancePct>=100?'#00d4aa':compliancePct>=75?'#f59e0b':'#ef4444';
+
+  // Completion by frequency type
+  const byFreq = {quarterly:{done:0,req:0},semi:{done:0,req:0},annual:{done:0,req:0}};
+  units.forEach(u => {
+    const drills = yearData.filter(r=>r.unit===u);
+    const freq   = drills[0]?.freq||'quarterly';
+    const freqMap = {quarterly:4, semi:2, annual:1};
+    const required = freqMap[freq]||1;
+    const key = freq==='quarterly'?'quarterly':freq==='semi'?'semi':'annual';
+    byFreq[key].req  += required;
+    byFreq[key].done += Math.min(drills.length, required);
+  });
+
+  el.innerHTML = `
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:16px;">
+    <!-- Overall KPI -->
+    <div style="background:var(--sf);border:1px solid ${cc}44;border-top:3px solid ${cc};border-radius:12px;padding:14px;text-align:center;">
+      <div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Overall Compliance</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:42px;font-weight:700;color:${cc};">${compliancePct}%</div>
+      <div style="font-size:9px;color:var(--mu);">${satisfactoryUnits} of ${totalUnits} units</div>
+      <div style="margin-top:8px;height:6px;background:var(--s3);border-radius:3px;overflow:hidden;">
+        <div style="height:100%;width:${compliancePct}%;background:${cc};border-radius:3px;"></div>
+      </div>
+      <div style="font-size:9px;color:var(--mu);margin-top:4px;">FMS.1.1.6 · ${year}</div>
+    </div>
+    <!-- Total Drills -->
+    <div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:14px;text-align:center;">
+      <div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Total Drills ${year}</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:42px;font-weight:700;color:var(--ac);">${yearData.length}</div>
+      <div style="font-size:9px;color:var(--mu);">${units.length} units covered</div>
+    </div>
+    <!-- Quarterly KPI -->
+    <div style="background:var(--sf);border:1px solid rgba(59,130,246,.3);border-radius:12px;padding:14px;">
+      <div style="font-size:10px;color:var(--mu);text-transform:uppercase;margin-bottom:6px;">Quarterly Drills</div>
+      <div style="font-size:10px;color:var(--mu);line-height:1.8;">
+        <b style="color:var(--tx);">Numerator:</b> Quarterly drills completed<br>
+        <b style="color:var(--tx);">Denominator:</b> Required quarterly drills (4/unit/year)<br>
+        <b style="color:var(--tx);">Formula:</b> (N ÷ D) × 100<br>
+        <b style="color:var(--tx);">Source:</b> Unit Level Fire Drill Log
+      </div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:#3b82f6;margin-top:6px;">
+        ${byFreq.quarterly.done}/${byFreq.quarterly.req}
+      </div>
+    </div>
+    <!-- Semi/Annual KPI -->
+    <div style="background:var(--sf);border:1px solid rgba(139,92,246,.3);border-radius:12px;padding:14px;">
+      <div style="font-size:10px;color:var(--mu);text-transform:uppercase;margin-bottom:6px;">Semi/Annual Drills</div>
+      <div style="font-size:10px;color:var(--mu);line-height:1.8;">
+        <b style="color:var(--tx);">Numerator:</b> Semi/Annual drills completed<br>
+        <b style="color:var(--tx);">Denominator:</b> Required drills (2 or 1/unit/year)<br>
+        <b style="color:var(--tx);">Formula:</b> (N ÷ D) × 100<br>
+        <b style="color:var(--tx);">Source:</b> Unit Level Fire Drill Log
+      </div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:#8b5cf6;margin-top:6px;">
+        ${byFreq.semi.done+byFreq.annual.done}/${byFreq.semi.req+byFreq.annual.req}
+      </div>
+    </div>
+  </div>`;
+}
+
+function saveFireSchedule(input) {
+  if (!input.files.length) return;
+  (async () => {
+    await fsStoreFiles('fire_schedule_annual', input.files);
+    input.value='';
+    toast('✅ Annual Fire Drill Schedule uploaded');
+  })();
+}
+
+function showFireSchedule() {
+  if (typeof showFilesModal==='function') showFilesModal('fire_schedule_annual','Annual Fire Drill Schedule');
+}
+
+function exportUnitDrillReport() {
+  const data = ld('unitFireDrills');
+  const year = new Date().getFullYear();
+  const yearData = data.filter(r=>String(r.year)===String(year));
+  const sar = v=>v||'—';
+  const outcomeLabels = {satisfactory:'✅ Satisfactory',needs_improvement:'⚠️ Needs Improvement',unsatisfactory:'❌ Unsatisfactory'};
+  const rows = yearData.map(r=>`<tr>
+    <td>${r.date||'—'}</td><td style="font-weight:600;">${r.unit||'—'}</td>
+    <td>${r.freq||'—'}</td><td>${r.period||'—'}</td>
+    <td style="text-align:center;">${r.dur||'—'} min</td><td style="text-align:center;">${r.count||'—'}</td>
+    <td>${outcomeLabels[r.outcome]||r.outcome||'—'}</td>
+    <td>${r.byWho||r._by||'—'}</td><td>${r.defi||'—'}</td><td>${r.action||'—'}</td>
+  </tr>`).join('');
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>Unit Level Fire Drill Report ${year}</title>
+<style>
+  body{font-family:Arial,sans-serif;margin:0;padding:24px;font-size:11px;}
+  .header{text-align:center;border-bottom:3px solid #ef4444;padding-bottom:14px;margin-bottom:20px;}
+  h1{font-size:18px;color:#ef4444;margin:0;}
+  table{width:100%;border-collapse:collapse;}
+  th{background:#c0392b;color:#fff;padding:7px 6px;text-align:left;font-size:10px;}
+  td{padding:6px;border-bottom:1px solid #eee;font-size:10px;}
+  tr:nth-child(even){background:#fdf2f2;}
+  .kpi-box{border:1px solid #e74c3c;border-radius:8px;padding:12px;margin:16px 0;background:#fdf2f2;}
+  .sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:30px;}
+  .sig-box{border-top:1px solid #333;padding-top:8px;}
+  .sig-line{height:50px;}
+  .footer{margin-top:16px;font-size:9px;color:#999;text-align:center;border-top:1px solid #eee;padding-top:8px;}
+</style></head><body>
+<div class="header">
+  <div style="font-size:10px;color:#888;">OBEID SPECIALIZED HOSPITAL — RIYADH · FACILITY MANAGEMENT & SAFETY</div>
+  <h1>🔥 UNIT LEVEL FIRE DRILL REPORT</h1>
+  <p style="margin:4px 0;color:#555;">Fiscal Year: <b>${year}</b> · CBAHI Standard: FMS.1.1.6</p>
+  <p style="font-size:10px;color:#888;">Generated by: ${typeof CU!=='undefined'?CU.name:'FMS'} · ${new Date().toLocaleString('en-GB')}</p>
+</div>
+<div class="kpi-box">
+  <b>KPI: Unit Level Fire Drill Compliance</b><br>
+  <b>Numerator:</b> Number of unit drills completed as per schedule<br>
+  <b>Denominator:</b> Total required drills per unit per year based on frequency (Quarterly=4, Semi=2, Annual=1)<br>
+  <b>Formula:</b> (Numerator ÷ Denominator) × 100<br>
+  <b>Target:</b> 100% compliance · <b>CBAHI Standard:</b> FMS.1.1.6<br>
+  <b>Source of Data:</b> Unit Level Fire Drill Log — FMS Platform
+</div>
+<table><thead><tr><th>Date</th><th>Unit</th><th>Frequency</th><th>Period</th><th>Duration</th><th>Staff</th><th>Outcome</th><th>Conducted By</th><th>Deficiencies</th><th>Actions</th></tr></thead>
+<tbody>${rows||'<tr><td colspan="10" style="text-align:center;color:#888;">No drills recorded</td></tr>'}</tbody></table>
+<div class="sig-grid">
+  <div class="sig-box">
+    <div style="font-size:10px;color:#666;">Prepared by — Safety Officer / FMS Director</div>
+    <div class="sig-line"></div>
+    <div style="font-size:9px;color:#888;">Name &amp; Signature &amp; Date</div>
+  </div>
+  <div class="sig-box">
+    <div style="font-size:10px;color:#666;">Reviewed &amp; Approved by — FMS Director</div>
+    <div class="sig-line"></div>
+    <div style="font-size:9px;color:#888;">Name &amp; Signature &amp; Date</div>
+  </div>
+</div>
+<div class="footer">Obeid Specialized Hospital FMS Platform · CBAHI FMS.1.1.6 · ${new Date().toLocaleString('en-GB')}</div>
+</body></html>`;
+  const win = window.open(URL.createObjectURL(new Blob([html],{type:'text/html'})),'_blank');
+  if(win) setTimeout(()=>win.print(),800);
+  toast('✅ Unit Drill Report opened — Print → Save as PDF');
+}
+
+function uploadSignedBudget(input) {
+  if (!input.files.length) return;
+  (async () => {
+    const yr = typeof BUDGET_YEAR!=='undefined' ? BUDGET_YEAR : new Date().getFullYear();
+    await fsStoreFiles('budget_signed_'+yr, input.files);
+    input.value='';
+    toast('✅ Signed budget uploaded for FY ' + yr);
+  })();
 }
 
 </script>
