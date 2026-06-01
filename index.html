@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260601-0900';
+  var v = '20260601-0910';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -2852,7 +2852,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260601-0900';
+const APP_VERSION = '20260601-0910';
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
@@ -4415,7 +4415,13 @@ let anPd='monthly', anDom='all';
 function setAnPd(p,btn){anPd=p;renderAnalytics();if(btn){btn.closest('.pb').querySelectorAll('.pbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}}
 function setAnDom(d,btn){anDom=d;renderAnalytics();if(btn){btn.closest('.tb').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}}
 
+let _raTimer = null;
 function renderAnalytics() {
+  if (_raTimer) clearTimeout(_raTimer);
+  _raTimer = setTimeout(_doRenderAnalytics, 80);
+}
+function _doRenderAnalytics() {
+  _raTimer = null;
   const rows   = ROWS.length ? ROWS : [];
   const total  = rows.length;
   const comp   = rows.filter(e=>isDone(e)).length;
@@ -4480,19 +4486,21 @@ function reinitAnalCharts() {
 
   // Safe chart maker: destroys old, waits one frame, then creates new
   function safeChart(id, cfg) {
+    // Destroy via CH registry
     if (CH[id]) { try { CH[id].destroy(); } catch(e){} delete CH[id]; }
     const canvas = document.getElementById(id);
     if (!canvas) return;
-    // Also destroy any chart Chart.js is tracking on this canvas
-    try {
-      const existing = Chart.getChart(canvas);
-      if (existing) existing.destroy();
-    } catch(e) {}
+    // Destroy any orphaned Chart.js instance on this canvas
+    try { const ex = Chart.getChart(canvas); if (ex) ex.destroy(); } catch(e) {}
+    // Prevent concurrent creation: mark canvas as pending
+    if (canvas._chartPending) return;
+    canvas._chartPending = true;
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        try { CH[id] = new Chart(canvas, cfg); }
-        catch(e) { console.warn('Chart error', id, e.message); }
-      });
+      canvas._chartPending = false;
+      // Destroy again in case another call snuck in during RAF
+      try { const ex2 = Chart.getChart(canvas); if (ex2) ex2.destroy(); } catch(e) {}
+      try { CH[id] = new Chart(canvas, cfg); }
+      catch(e) { console.warn('Chart error', id, e.message); }
     });
   }
 
