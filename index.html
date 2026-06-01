@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260601-0517';
+  var v = '20260601-0526';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   if (url.indexOf('?v=') === -1 && url.indexOf('&v=') === -1) {
@@ -3004,7 +3004,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260601-0517';
+const APP_VERSION = '20260601-0526';
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
@@ -8536,34 +8536,7 @@ function uploadSignedKPIReport(input, period) {
     input.value='';
     toast('✅ Signed KPI Report uploaded for ' + period);
   })();
-}
-head><tr>
-    <th>KPI ID</th><th>Indicator Name</th><th>Standard</th><th>Category</th>
-    <th>Numerator</th><th>Denominator</th><th>Actual N</th><th>Actual D</th>
-    <th>Result</th><th>Target</th><th>Status</th><th>Frequency</th>
-  </tr></thead>
-  <tbody>${rows}</tbody>
-</table>
-<div class="sig-section">
-  <div class="sig-box">
-    <div style="font-size:10px;color:#888;">FMS Director</div>
-    <div class="sig-line"></div>
-    <div style="font-size:10px;color:#888;">Name &amp; Signature &amp; Date</div>
-  </div>
-  <div class="sig-box">
-    <div style="font-size:10px;color:#888;">Quality / Accreditation Manager</div>
-    <div class="sig-line"></div>
-    <div style="font-size:10px;color:#888;">Name &amp; Signature &amp; Date</div>
-  </div>
-</div>
-<div class="footer">Obeid Specialized Hospital FMS Platform · CBAHI 2026 · Generated: ${new Date().toLocaleString('en-GB')}</div>
-</body></html>`;
 
-  const blob = new Blob([html],{type:'text/html'});
-  const win  = window.open(URL.createObjectURL(blob),'_blank');
-  if (win) setTimeout(()=>win.print(), 800);
-  toast('✅ KPI Report opened — Print → Save as PDF');
-}
 
 // ── Init on page load ──
 window.addEventListener('load', function() {
