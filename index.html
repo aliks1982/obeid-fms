@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260601-0535';
+  var v = '20260601-0547';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   if (url.indexOf('?v=') === -1 && url.indexOf('&v=') === -1) {
@@ -3004,7 +3004,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260601-0535';
+const APP_VERSION = '20260601-0547';
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
@@ -3060,6 +3060,19 @@ function setDBUrl(url) {
 }
 
 // ── Write to DB (upsert) ──
+async // Valid DB types — must match Apps Script SHEET_MAP
+const DB_VALID_TYPES = new Set([
+  'emDrill','safety_esr','safety_tr','hazmat','security_inc','security_par',
+  'fire_alarm','fire_sup','fire_exits','fireDrills_code','unitFireDrills',
+  'equip_ppm','eq_added','mg_lox','mg_o2backup','mg_n2o','mg_vacuum',
+  'mg_aircomp','mg_airbackup','mg_ambulance','mg_cylinder','mg_o2refill',
+  'mg_airrefill','radiation_tld','radiation_apron','radiation_shield',
+  'risks','contracts','customKPI','fireDrills_unit','docs',
+  'wo','lox_refill','air_refill','wo_parts','access_log',
+  'kpi2_entries','platform_settings','app_settings',
+  'fireDrills_code','unitFireDrills',
+]);
+
 async function dbWrite(type, record) {
   const url = getDBUrl();
   if (!url) { dbQueue(type, record, 'upsert'); return false; }
@@ -3072,11 +3085,17 @@ async function dbWrite(type, record) {
     });
     if (!r.ok) throw new Error('HTTP '+r.status);
     const j = await r.json();
-    if (!j.ok) throw new Error(j.error||'DB write failed');
+    if (!j.ok) {
+      // Unknown type means Apps Script needs updating — queue locally, don't crash
+      if (j.error && j.error.includes('Unknown type')) {
+        dbQueue(type, record, 'upsert');
+        return false;
+      }
+      throw new Error(j.error||'DB write failed');
+    }
     DB_ONLINE = true;
     return true;
   } catch(e) {
-    console.warn('dbWrite failed:', e.message);
     DB_ONLINE = false;
     dbQueue(type, record, 'upsert');
     return false;
@@ -3573,41 +3592,11 @@ function applyUpd(){
   sv('workorders',wos);closeMod('updWO');renderWO();woBadge();toast('✓ Updated');
 }
 
-// ===== CUSTOM KPI =====
-function saveCKPI(){
-  const nm=document.getElementById('ck-name').value.trim(),vl=document.getElementById('ck-val').value,tg=document.getElementById('ck-tgt').value,un=document.getElementById('ck-unit').value.trim(),dv=document.getElementById('ck-div').value,pd=document.getElementById('ck-period').value,nt=document.getElementById('ck-notes').value.trim();
-  if(!nm||!vl||!tg){toast('Fill name, value, target','#f59e0b');return;}
-  const arr=ld('customKPI');arr.unshift({_id:Date.now(),name:nm,val:Number(vl),target:Number(tg),unit:un,div:dv,period:pd,notes:nt,_by:CU.name,_rl:CU.rl,_ts:new Date().toISOString()});sv('customKPI',arr);
-  ['ck-name','ck-val','ck-tgt','ck-unit','ck-notes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
-  renderCKPI('all');toast('✓ Custom KPI added');
-}
-function delCKPI(id){sv('customKPI',ld('customKPI').filter(k=>k._id!==id));renderCKPI(ckpiF);}
+// ===== CUSTOM KPI =====function delCKPI(id){sv('customKPI',ld('customKPI').filter(k=>k._id!==id));renderCKPI(ckpiF);}
 let ckpiF='all';
 function fCKPI(f,btn){ckpiF=f;renderCKPI(f);if(btn){btn.closest('.tb').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}}
 const DC={safety:'var(--or)',security:'var(--rd)',biomedical:'var(--pu)',maintenance:'var(--ac)',director:'var(--gn)'};
-const DL={safety:'🛡 Safety — Moe',security:'🔒 Security — Bader',biomedical:'⚕ Biomed — Bashar',maintenance:'🔧 Maint. — Mostapha',director:'⬡ FMS Director'};
-function renderCKPI(f){
-  const e=document.getElementById('ckpiList');if(!e)return;
-  let data=ld('customKPI');if(f&&f!=='all')data=data.filter(k=>k.div===f);
-  if(!data.length){e.innerHTML='<div class="em">No custom KPIs yet — add above</div>';return;}
-  e.innerHTML=data.map(k=>{
-    const pct=Math.min(100,Math.round((k.val/k.target)*100));const c=pct>=90?'var(--gn)':pct>=60?'var(--or)':'var(--rd)';
-    return`<div class="cki">
-      <div style="width:9px;height:36px;border-radius:3px;background:${DC[k.div]||'var(--ac)'};flex-shrink:0;"></div>
-      <div style="flex:1;">
-        <div style="font-size:12px;font-weight:600;">${k.name}</div>
-        <div style="font-size:9px;color:var(--mu);">${DL[k.div]||k.div} · ${k.period} · ${k._by}</div>
-        <div style="margin-top:5px;display:flex;align-items:center;gap:7px;"><div class="pw"><div class="pf" style="width:${pct}%;background:${c};"></div></div><span style="font-size:9px;color:${c};">${pct}%</span></div>
-        ${k.notes?`<div style="font-size:9px;color:var(--mu);margin-top:2px;">${k.notes}</div>`:''}
-      </div>
-      <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:${c};">${k.val}${k.unit}</div>
-      <div style="font-size:9px;color:var(--mu);text-align:right;">/&nbsp;${k.target}<br>${k.unit}</div>
-      <button class="btn br" style="padding:3px 8px;font-size:10px;" onclick="delCKPI(${k._id})">✕</button>
-    </div>`;
-  }).join('');
-}
-
-// ===== DASHBOARD =====
+const DL={safety:'🛡 Safety — Moe',security:'🔒 Security — Bader',biomedical:'⚕ Biomed — Bashar',maintenance:'🔧 Maint. — Mostapha',director:'⬡ FMS Director'};// ===== DASHBOARD =====
 function renderDash(){
   const wos=ld('workorders'),open=wos.filter(w=>w.status==='Open'||w.status==='In Progress').length;
   const pT=ld('ppm').length,pD=ld('ppm').filter(r=>r.res==='done').length;
@@ -4472,6 +4461,8 @@ function mkChart(id, cfg) {
 }
 
 // ---- MMS CHARTS ----
+function initMMSCharts() { renderMMSCharts(); }
+
 function renderMMSCharts() {
   if (!ROWS.length) return; // Don't render empty charts
   const rows    = filteredRows();
@@ -6104,16 +6095,6 @@ function buildLoginRoles() {
   sel.innerHTML = '<option value="">— Choose your role —</option>' +
     users.map(u => `<option value="${u.role}"${u.role===current?' selected':''}>${u.label} — ${names[u.role]||u.defaultName}</option>`).join('');
 }
-
-function settingsUpdateQueueCount() {
-  const el = document.getElementById('db-queue-count');
-  if (el) el.textContent = JSON.parse(localStorage.getItem('obeid_sync_queue')||'[]').length;
-  const input = document.getElementById('db-url-input');
-  if (input) input.value = getDBUrl() || '';
-  const display = document.getElementById('db-url-display');
-  if (display) display.textContent = getDBUrl() || 'Not connected — paste URL above and click Connect';
-}
-
 function settingsRenderUsers() {
   const tb    = document.getElementById('users-tb'); if (!tb) return;
   const pins  = getDynPINs();
@@ -6143,25 +6124,7 @@ function settingsRenderUsers() {
   }
   // Also rebuild the login dropdown if it exists
   buildLoginRoles();
-}
-
-function settingsEditUser(role) {
-  document.getElementById('set-role').value = role;
-  settingsLoadUser();
-}
-
-function settingsLoadUser() {
-  const role  = document.getElementById('set-role').value;
-  const names = getDynNames();
-  const nameEl = document.getElementById('set-name');
-  if (nameEl) nameEl.value = names[role] || '';
-  const pinEl = document.getElementById('set-pin');
-  if (pinEl) pinEl.value = '';
-  const pin2El = document.getElementById('set-pin2');
-  if (pin2El) pin2El.value = '';
-}
-
-function settingsSaveUser() {
+}function settingsSaveUser() {
   const role  = document.getElementById('set-role')?.value;
   const name  = document.getElementById('set-name')?.value.trim();
   const pin   = document.getElementById('set-pin')?.value.trim();
