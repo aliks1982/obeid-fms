@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260601-0506';
+  var v = '20260601-0517';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   if (url.indexOf('?v=') === -1 && url.indexOf('&v=') === -1) {
@@ -3004,7 +3004,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260601-0506';
+const APP_VERSION = '20260601-0517';
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
@@ -8353,7 +8353,16 @@ function kpi2ShowHistory(kpiId) {
       <td><span style="background:${ss.bg};color:${ss.color};border:1px solid ${ss.border};border-radius:4px;padding:2px 8px;font-size:9px;">${ss.label}</span></td>
       <td style="font-size:10px;color:var(--mu);">${e._by||'—'}</td>
       <td style="font-size:10px;color:var(--mu);">${e.notes||'—'}</td>
-      <td><button class="btn br" style="font-size:9px;padding:2pfunction kpi2ExportReport() {
+      <td><button class="btn br" style="font-size:9px;padding:2px 5px;" onclick="kpi2DeleteEntry('${kpiId}','${e._id}')">✕</button></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('files-modal-title').textContent = k.name + ' — History';
+  document.getElementById('files-modal-list').innerHTML = '<div style="overflow-x:auto;"><table class="tbl" style="min-width:600px;"><thead><tr><th>Period</th><th>Numerator</th><th>Denominator</th><th>Result</th><th>Status</th><th>By</th><th>Notes</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  openMod('files');
+}
+
+function kpi2ExportReport() {
   const visible  = kpi2VisibleKPIs();
   const periodSel= document.getElementById('kpi2-month-sel');
   const period   = periodSel?.options[periodSel.selectedIndex]?.text || new Date().toLocaleString('en-GB',{month:'long',year:'numeric'});
