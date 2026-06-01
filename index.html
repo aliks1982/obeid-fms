@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260601-1030';
+  var v = '20260601-1100';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -2903,7 +2903,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260601-1030';
+const APP_VERSION = '20260601-1100';
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
@@ -4907,9 +4907,14 @@ const MG_ROWS = {
 function renderMGTable(type) {
   const tb = document.getElementById(type + '-tb'); if (!tb) return;
   // Sort newest first by date then timestamp
+  // Sort newest first: compare date strings (YYYY-MM-DD) then full ISO timestamp
   const data = [...ld('mg_' + type)].sort((a,b) => {
-    const da = a.date || a._ts || ''; const db = b.date || b._ts || '';
-    return da > db ? -1 : da < db ? 1 : 0;
+    const da = (a.date || a._ts || '').substring(0,10);
+    const db = (b.date || b._ts || '').substring(0,10);
+    if (db > da) return 1;   // b is newer → b comes first → b gets lower index
+    if (db < da) return -1;  // a is newer → a comes first
+    // Same date: sort by _ts descending
+    return (b._ts||'') > (a._ts||'') ? 1 : -1;
   });
   if (!data.length) { tb.innerHTML = '<tr><td colspan="12" class="em">No entries yet — submit a daily checklist above</td></tr>'; return; }
   const fn = MG_ROWS[type]; if (!fn) return;
@@ -4946,7 +4951,14 @@ function renderMGLog(filter) {
     });
   });
   // Sort by date descending
-  all.sort((a, b) => (b.date || b._ts || '') > (a.date || a._ts || '') ? 1 : -1);
+  // Sort all records newest first
+  all.sort((a,b) => {
+    const da = (a.date||a._ts||'').substring(0,10);
+    const db = (b.date||b._ts||'').substring(0,10);
+    if (db > da) return 1;
+    if (db < da) return -1;
+    return (b._ts||'') > (a._ts||'') ? 1 : -1;
+  });
   // Filter
   if (filter !== 'all') all = all.filter(r => r._stype === filter);
 
@@ -4988,6 +5000,8 @@ function renderMGLog(filter) {
         📅 ${lbl} — ${cnt} entries ${issueCount ? `<span style="color:var(--rd);font-size:11px;">· ${issueCount} issues</span>` : '<span style="color:var(--gn);font-size:11px;">· No issues</span>'}
       </td>
     </tr>`;
+    // Sort entries within month newest first
+    byMonth[m].sort((a,b)=>((b._ts||b.date||'')>(a._ts||a.date||''))?1:-1);
     byMonth[m].forEach(r => {
       const issueCell = r._hasIssue
         ? '<span class="bx br2">⚠️ Issue</span>'
