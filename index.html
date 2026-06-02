@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260601-1110';
+  var v = '20260601-1200';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -314,6 +314,7 @@ if ('caches' in window) {
     <div class="ni" onclick="gp('budget')" id="n-budget"><span class="ni-ic">💰</span>FMS Budget</div>
     <div class="ni" onclick="gp('risk')" id="n-risk"><span class="ni-ic">⚠️</span>Risk Assessment</div>
     <div class="ni" onclick="gp('contracts')" id="n-contracts"><span class="ni-ic">📃</span>Contract Review</div>
+    <div class="ni" onclick="gp('pms')" id="n-pms"><span class="ni-ic">📊</span>FMS Performance Sheet</div>
     <div class="ni" onclick="gp('settings')" id="n-settings"><span class="ni-ic">⚙</span>Settings / DB</div>
   </nav>
   <div class="sbft"><div class="cdb"><div class="cdl">CBAHI Survey In</div><div class="cdd" id="cdDays">—</div><div class="cds">days · October 2026</div></div></div>
@@ -2746,6 +2747,96 @@ if ('caches' in window) {
   </div>
 </div>
 
+<!-- ===== FMS PERFORMANCE MANAGEMENT SHEET ===== -->
+<div class="pg" id="page-pms">
+  <div class="ph">
+    <h1>📊 FMS Performance Management Sheet</h1>
+    <p>All domain KPIs with formulas · CBAHI-aligned · Managed by FMS Director</p>
+  </div>
+
+  <!-- Domain filter tabs -->
+  <div class="tb" style="flex-wrap:wrap;">
+    <button class="tbtn active" onclick="pmsTab('all',this)">🏥 All KPIs</button>
+    <button class="tbtn" onclick="pmsTab('safety',this)">🛡 Safety</button>
+    <button class="tbtn" onclick="pmsTab('security',this)">🔒 Security</button>
+    <button class="tbtn" onclick="pmsTab('biomed',this)">⚕ Biomed</button>
+    <button class="tbtn" onclick="pmsTab('maintenance',this)">🔧 Maintenance</button>
+    <button class="tbtn" onclick="pmsTab('utilities',this)">⚡ Utilities</button>
+    <button class="tbtn" onclick="pmsTab('waste',this)">♻ Waste</button>
+    <button class="tbtn" onclick="pmsTab('entry',this)">✏ Enter Values</button>
+  </div>
+
+  <!-- Header actions -->
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+    <div id="pms-period-label" style="font-size:11px;color:var(--mu);"></div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <select id="pms-year-sel" onchange="pmsRender()" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:6px 10px;color:var(--ac);font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;outline:none;"></select>
+      <select id="pms-month-sel" onchange="pmsRender()" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:6px 10px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;"></select>
+      <button class="btn bg" style="font-size:10px;padding:5px 14px;" onclick="pmsExportReport()">📥 Export Report</button>
+    </div>
+  </div>
+
+  <!-- Summary scorecard -->
+  <div id="pms-summary" style="margin-bottom:16px;"></div>
+
+  <!-- KPI Cards Grid -->
+  <div id="pms-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;margin-bottom:16px;"></div>
+
+  <!-- Entry form (hidden by default) -->
+  <div id="pms-entry-panel" style="display:none;">
+    <div class="card"><div class="ch"><div class="ct">✏ Enter KPI Values for Period</div>
+      <div style="font-size:10px;color:var(--mu);">Select a KPI and enter the numerator and denominator</div>
+    </div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>KPI</label>
+          <select id="pms-kpi-sel" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;" onchange="pmsKpiSelected()">
+            <option value="">— Select KPI —</option>
+          </select>
+        </div>
+        <div class="ff"><label>Reporting Period</label>
+          <input type="month" id="pms-entry-period" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;width:100%;">
+        </div>
+        <div class="ff">
+          <label>Numerator — <span id="pms-num-label" style="color:var(--mu);font-weight:normal;font-size:10px;"></span></label>
+          <input type="number" id="pms-num-val" placeholder="Enter value" min="0" step="0.01" oninput="pmsCalcPreview()" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:13px;outline:none;width:100%;">
+        </div>
+        <div class="ff">
+          <label>Denominator — <span id="pms-den-label" style="color:var(--mu);font-weight:normal;font-size:10px;"></span></label>
+          <input type="number" id="pms-den-val" placeholder="Enter value" min="0" step="0.01" oninput="pmsCalcPreview()" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:13px;outline:none;width:100%;">
+        </div>
+        <div class="ff" id="pms-result-preview" style="grid-column:1/-1;display:none;">
+          <div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center;">
+            <div style="font-size:10px;color:var(--mu);margin-bottom:4px;">Calculated Result</div>
+            <div id="pms-calc-result" style="font-family:'Rajdhani',sans-serif;font-size:36px;font-weight:700;"></div>
+          </div>
+        </div>
+        <div class="ff" style="grid-column:1/-1"><label>Notes / Action Taken</label>
+          <textarea id="pms-notes" placeholder="Any context, action plans, or explanations..." style="min-height:55px;"></textarea>
+        </div>
+        <div class="ff" style="grid-column:1/-1">
+          <label>📎 Upload Supporting Document (Audit sheet, log, report...)</label>
+          <input type="file" id="pms-file" multiple accept=".pdf,.doc,.docx,.xlsx,.jpg,.jpeg,.png"
+            style="font-size:10px;color:var(--mu);">
+          <div class="ht">Evidence required by CBAHI surveyor for each KPI</div>
+        </div>
+      </div>
+      <button class="btn bg" style="width:100%;margin-top:12px;" onclick="pmsSaveEntry()">✓ Save KPI Entry</button>
+    </div></div>
+
+    <!-- Entry history table -->
+    <div class="card" style="margin-top:14px;"><div class="ch"><div class="ct">Entry History</div></div>
+      <div class="cb" style="padding:0;max-height:400px;overflow-y:auto;">
+        <table class="tbl"><thead><tr>
+          <th>Period</th><th>KPI</th><th>Domain</th><th>Numerator</th><th>Denominator</th>
+          <th>Result</th><th>Status</th><th>Notes</th><th>Docs</th><th></th>
+        </tr></thead>
+        <tbody id="pms-history-tb"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
 </main>
 </div>
 </div>
@@ -2903,7 +2994,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260601-1110';
+const APP_VERSION = '20260601-1200';
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
@@ -3349,7 +3440,7 @@ function setDate(){document.getElementById('tbDate').textContent=new Date().toLo
 function prefillDates(){const t=new Date().toISOString().split('T')[0];document.querySelectorAll('input[type=date]').forEach(e=>{if(!e.value)e.value=t;});const tm=new Date().toTimeString().slice(0,5);document.querySelectorAll('input[type=time]').forEach(e=>{if(!e.value)e.value=tm;});}
 
 // ===== NAV =====
-const PTITLES={dash:'⬡ Command Center',kpi:'📊 KPI Dashboard',cbahi:'✓ CBAHI Tracker',mms:'🔩 Maintenance Analytics',reports:'📈 Reports & Analysis',safety:'🛡 Safety — FMS.1.1.1',security:'🔒 Security — FMS.1.1.2',hazmat:'☣ Hazmat — FMS.1.1.3',emergency:'🚨 Emergency — FMS.1.1.4/5',fire:'🔥 Fire Safety — FMS.1.1.6',equip:'⚕ Medical Equipment — FMS.1.1.7',utils:'⚡ Utilities — FMS.1.1.8',medgas:'🫧 Medical Gas — FMS.32',radiation:'☢ Radiation — FMS.9',wo:'🔧 Work Orders',ckpi:'⚙ Custom KPIs',docs:'📁 Documents'};
+const PTITLES={dash:'⬡ Command Center',kpi:'📊 KPI Dashboard',cbahi:'✓ CBAHI Tracker',mms:'🔩 Maintenance Analytics',reports:'📈 Reports & Analysis',safety:'🛡 Safety — FMS.1.1.1',security:'🔒 Security — FMS.1.1.2',hazmat:'☣ Hazmat — FMS.1.1.3',emergency:'🚨 Emergency — FMS.1.1.4/5',fire:'🔥 Fire Safety — FMS.1.1.6',equip:'⚕ Medical Equipment — FMS.1.1.7',utils:'⚡ Utilities — FMS.1.1.8',medgas:'🫧 Medical Gas — FMS.32',radiation:'☢ Radiation — FMS.9',wo:'🔧 Work Orders',ckpi:'⚙ Custom KPIs',docs:'📁 Documents',pms:'📊 FMS Performance Sheet'};
 function gp(id){
   document.querySelectorAll('.pg').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
@@ -5714,9 +5805,9 @@ function eqDelAdded(ts) {
 const ROLE_ACCESS = {
   director:    ['ALL'],
   // All roles include n-settings so every manager can connect to the DB
-  maintenance: ['n-dash','n-kpi','n-kpi2','n-mms','n-reports','n-wo','n-utils','n-fire','n-ckpi','n-settings','n-budget'],
-  biomedical:  ['n-dash','n-kpi','n-kpi2','n-equip','n-medgas','n-radiation','n-wo','n-ckpi','n-settings','n-budget'],
-  safety:      ['n-dash','n-kpi','n-kpi2','n-cbahi','n-safety','n-hazmat','n-emergency','n-fire','n-wo','n-ckpi','n-docs','n-settings','n-budget'],
+  maintenance: ['n-dash','n-kpi','n-kpi2','n-mms','n-reports','n-wo','n-utils','n-fire','n-ckpi','n-settings','n-budget','n-pms'],
+  biomedical:  ['n-dash','n-kpi','n-kpi2','n-equip','n-medgas','n-radiation','n-wo','n-ckpi','n-settings','n-budget','n-pms'],
+  safety:      ['n-dash','n-kpi','n-kpi2','n-cbahi','n-safety','n-hazmat','n-emergency','n-fire','n-wo','n-ckpi','n-docs','n-settings','n-budget','n-pms'],
   security:    ['n-dash','n-kpi','n-kpi2','n-security','n-wo','n-ckpi','n-settings'],
 };
 
@@ -6739,6 +6830,7 @@ function doLogin() {
     }
     if (id === 'docs')   { rebuildDocStdSelects(); renderDocs(); }
     if (id === 'budget') { budgetBuildYearSelect(); budgetRenderAll(); }
+    if (id === 'pms')    { pmsInit(); }
     if (id === 'kpi2')  { kpi2BuildMonthSelect(); kpi2BuildTrendSelect(); kpi2RenderAll(); }
   };
 })();;
@@ -9593,6 +9685,590 @@ function uploadSignedBudget(input) {
     input.value='';
     toast('✅ Signed budget uploaded for FY ' + yr);
   })();
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// FMS PERFORMANCE MANAGEMENT SHEET
+// 11 KPIs across 6 domains — CBAHI-aligned
+// ════════════════════════════════════════════════════════════════
+
+const PMS_KPIS = [
+  // ── SAFETY ──
+  { id:'PMS-S1', domain:'safety', domainLabel:'Safety', icon:'🛡',
+    name:'Fire Drill Effectiveness', standard:'FMS.7.2',
+    num:'Count of staff demonstrating RACE & PASS correctly',
+    den:'Total staff participating in drill',
+    formula:'percent', target:100, hib:true, unit:'%',
+    objective:'Measures staff readiness and knowledge during simulated fires.',
+    src:'Fire Drill Critique Reports', freq:'Quarterly', color:'#3b82f6',
+    roles:['director','safety']
+  },
+  { id:'PMS-S2', domain:'safety', domainLabel:'Safety', icon:'🛡',
+    name:'Safety Round Closure Rate', standard:'FMS.4.2',
+    num:'Number of safety deficiencies corrected on time',
+    den:'Total deficiencies identified in safety rounds',
+    formula:'percent', target:90, hib:true, unit:'%',
+    objective:'Ensures identified hazards (blocked exits, etc.) are actually resolved.',
+    src:'Facility Safety Round Logs', freq:'Monthly', color:'#3b82f6',
+    roles:['director','safety']
+  },
+  // ── SECURITY ──
+  { id:'PMS-SEC1', domain:'security', domainLabel:'Security', icon:'🔒',
+    name:'Code Response Time', standard:'FMS.5.1',
+    num:'Sum of response times (minutes) for all emergency calls',
+    den:'Total number of emergency calls',
+    formula:'average', target:3, hib:false, unit:' min',
+    objective:'Tracks agility of security for Code Gray/Silver. Target: ≤3 mins.',
+    src:'Security Command Center Log', freq:'Monthly', color:'#8b5cf6',
+    roles:['director','safety','security']
+  },
+  { id:'PMS-SEC2', domain:'security', domainLabel:'Security', icon:'🔒',
+    name:'Staff ID Compliance', standard:'FMS.5.2',
+    num:'Number of staff wearing valid ID during audit',
+    den:'Total staff observed during compliance audit',
+    formula:'percent', target:100, hib:true, unit:'%',
+    objective:"Audits the effectiveness of the hospital's access control policy.",
+    src:'Security Audit Sheets', freq:'Monthly', color:'#8b5cf6',
+    roles:['director','safety','security']
+  },
+  // ── BIOMED ──
+  { id:'PMS-B1', domain:'biomed', domainLabel:'Biomedical', icon:'⚕',
+    name:'PM Completion Rate', standard:'FMS.25.1',
+    num:'High-risk devices with completed preventive maintenance (PM)',
+    den:'Total high-risk devices due for PM this period',
+    formula:'percent', target:100, hib:true, unit:'%',
+    objective:'Ensures life-sustaining equipment is safe for patient use.',
+    src:'Biomed CMMS Records', freq:'Monthly', color:'#10b981',
+    roles:['director','biomedical']
+  },
+  { id:'PMS-B2', domain:'biomed', domainLabel:'Biomedical', icon:'⚕',
+    name:'User Error Incident Rate', standard:'FMS.27.1',
+    num:'Repair requests due to operator error',
+    den:'Total corrective maintenance requests this period',
+    formula:'percent', target:10, hib:false, unit:'%',
+    objective:'Identifies gaps in clinical staff training for medical devices.',
+    src:'Maintenance Work Orders', freq:'Monthly', color:'#10b981',
+    roles:['director','biomedical']
+  },
+  // ── MAINTENANCE ──
+  { id:'PMS-M1', domain:'maintenance', domainLabel:'Maintenance', icon:'🔧',
+    name:'Generator Reliability', standard:'ESR / FMS.31.2',
+    num:'Monthly load tests where generator started within ≤10 seconds',
+    den:'Total monthly load tests performed',
+    formula:'percent', target:100, hib:true, unit:'%',
+    objective:'Critical Zero Harm indicator for emergency power backup.',
+    src:'Generator Testing Logs', freq:'Monthly', color:'#f59e0b',
+    roles:['director','maintenance']
+  },
+  { id:'PMS-M2', domain:'maintenance', domainLabel:'Maintenance', icon:'🔧',
+    name:'Fire System Uptime', standard:'FMS.22.2',
+    num:'Number of days FM-200 & Sprinklers are confirmed functional',
+    den:'Total days in the reporting month',
+    formula:'percent', target:100, hib:true, unit:'%',
+    objective:'Monitors continuous readiness of fire suppression systems.',
+    src:'System Pressure Logs', freq:'Monthly', color:'#f59e0b',
+    roles:['director','maintenance']
+  },
+  // ── UTILITIES ──
+  { id:'PMS-U1', domain:'utilities', domainLabel:'Utilities', icon:'⚡',
+    name:'Critical Area ACH Compliance', standard:'FMS.34.5',
+    num:'Rooms meeting Air Change per Hour specification',
+    den:'Total critical rooms tested (OR, ICU, Isolation)',
+    formula:'percent', target:100, hib:true, unit:'%',
+    objective:'Validates HVAC performance in OR, ICU, and Isolation rooms.',
+    src:'HVAC Airflow Reports', freq:'Quarterly', color:'#06b6d4',
+    roles:['director','maintenance']
+  },
+  // ── WASTE ──
+  { id:'PMS-W1', domain:'waste', domainLabel:'Waste', icon:'♻',
+    name:'Waste Segregation Compliance', standard:'FMS.15.1',
+    num:'Waste bins found correctly segregated during audit',
+    den:'Total waste bins audited this period',
+    formula:'percent', target:95, hib:true, unit:'%',
+    objective:'Measures clinical adherence to hazardous waste protocols.',
+    src:'Safety Round Audit', freq:'Monthly', color:'#84cc16',
+    roles:['director','safety']
+  },
+  { id:'PMS-W2', domain:'waste', domainLabel:'Waste', icon:'♻',
+    name:'Waste Manifest Accuracy', standard:'FMS.16.1',
+    num:'Waste manifests with final disposal signature',
+    den:'Total waste shipments sent this period',
+    formula:'percent', target:100, hib:true, unit:'%',
+    objective:'Provides cradle-to-grave evidence for hazardous waste disposal.',
+    src:'Waste Manifest Files', freq:'Monthly', color:'#84cc16',
+    roles:['director','safety']
+  },
+];
+
+let PMS_DOMAIN_FILTER = 'all';
+
+// ── Init ──
+function pmsInit() {
+  // Build year selector
+  const ySel = document.getElementById('pms-year-sel');
+  if (ySel && !ySel.options.length) {
+    const yr = new Date().getFullYear();
+    for (let y = yr+1; y >= yr-2; y--) {
+      const opt = document.createElement('option');
+      opt.value = y; opt.textContent = y;
+      if (y === yr) opt.selected = true;
+      ySel.appendChild(opt);
+    }
+  }
+  // Build month selector
+  const mSel = document.getElementById('pms-month-sel');
+  if (mSel && !mSel.options.length) {
+    const months = ['January','February','March','April','May','June',
+                    'July','August','September','October','November','December'];
+    months.forEach((m,i) => {
+      const opt = document.createElement('option');
+      opt.value = i+1; opt.textContent = m;
+      if (i+1 === new Date().getMonth()+1) opt.selected = true;
+      mSel.appendChild(opt);
+    });
+  }
+  // Build KPI select
+  const kSel = document.getElementById('pms-kpi-sel');
+  if (kSel && kSel.options.length <= 1) {
+    const visibleKPIs = pmsVisibleKPIs();
+    visibleKPIs.forEach(k => {
+      const opt = document.createElement('option');
+      opt.value = k.id;
+      opt.textContent = k.icon + ' [' + k.standard + '] ' + k.name;
+      kSel.appendChild(opt);
+    });
+  }
+  // Set default entry period
+  const ep = document.getElementById('pms-entry-period');
+  if (ep && !ep.value) {
+    const now = new Date();
+    ep.value = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  }
+  pmsRender();
+}
+
+// ── Role-based KPI visibility ──
+function pmsVisibleKPIs() {
+  const role = typeof CU !== 'undefined' ? CU.role : 'director';
+  if (role === 'director') return PMS_KPIS;
+  return PMS_KPIS.filter(k => k.roles.includes(role));
+}
+
+// ── Tab switching ──
+function pmsTab(domain, btn) {
+  PMS_DOMAIN_FILTER = domain;
+  if (btn) {
+    btn.closest('.tb').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  const entryPanel = document.getElementById('pms-entry-panel');
+  const cards      = document.getElementById('pms-cards');
+  const summary    = document.getElementById('pms-summary');
+  if (domain === 'entry') {
+    if (entryPanel) entryPanel.style.display = 'block';
+    if (cards)      cards.style.display = 'none';
+    if (summary)    summary.style.display = 'none';
+    pmsRenderHistory();
+  } else {
+    if (entryPanel) entryPanel.style.display = 'none';
+    if (cards)      cards.style.display = 'grid';
+    if (summary)    summary.style.display = '';
+    pmsRender();
+  }
+}
+
+// ── Get stored entries ──
+function pmsGetEntry(kpiId, period) {
+  const all = ld('pms_entries');
+  return all.filter(e => e.kpiId === kpiId && e.period === period)
+            .sort((a,b) => b._ts > a._ts ? 1 : -1)[0] || null;
+}
+
+function pmsGetAllEntries() { return ld('pms_entries'); }
+
+// ── Calculate result ──
+function pmsCalcResult(kpi, entry) {
+  if (!entry || entry.den === undefined || entry.den === null) return null;
+  const n = parseFloat(entry.num), d = parseFloat(entry.den);
+  if (isNaN(n) || isNaN(d) || d === 0) return null;
+  if (kpi.formula === 'percent') return Math.round((n/d)*100*10)/10;
+  if (kpi.formula === 'average') return Math.round((n/d)*10)/10;
+  return null;
+}
+
+// ── Status ──
+function pmsStatus(kpi, result) {
+  if (result === null) return 'no_data';
+  const diff = kpi.hib ? result - kpi.target : kpi.target - result;
+  if (diff >= 0) return 'met';
+  if (diff >= -10) return 'near';
+  return 'gap';
+}
+
+const PMS_STATUS = {
+  met:     { label:'✅ Met',     color:'#00d4aa', bg:'rgba(0,212,170,.1)',  border:'rgba(0,212,170,.3)' },
+  near:    { label:'⚠️ Near',   color:'#f59e0b', bg:'rgba(245,158,11,.1)', border:'rgba(245,158,11,.3)' },
+  gap:     { label:'❌ Below',  color:'#ef4444', bg:'rgba(239,68,68,.1)',  border:'rgba(239,68,68,.3)'  },
+  no_data: { label:'— No Data', color:'var(--mu)',bg:'var(--s2)',           border:'var(--bd)'           },
+};
+
+// ── Main render ──
+function pmsRender() {
+  const ySel = document.getElementById('pms-year-sel');
+  const mSel = document.getElementById('pms-month-sel');
+  if (!ySel || !mSel) return;
+  const year  = ySel.value;
+  const month = String(mSel.value).padStart(2,'0');
+  const period = year + '-' + month;
+  const lbl = document.getElementById('pms-period-label');
+  if (lbl) lbl.textContent = 'Showing: ' + new Date(year, parseInt(month)-1).toLocaleString('en-GB',{month:'long',year:'numeric'});
+
+  const kpis = pmsVisibleKPIs().filter(k => PMS_DOMAIN_FILTER === 'all' || k.domain === PMS_DOMAIN_FILTER);
+  const cards = document.getElementById('pms-cards'); if (!cards) return;
+
+  // Summary scorecard
+  const allVisible  = pmsVisibleKPIs();
+  const metCount    = allVisible.filter(k => pmsStatus(k, pmsCalcResult(k, pmsGetEntry(k.id, period))) === 'met').length;
+  const nearCount   = allVisible.filter(k => pmsStatus(k, pmsCalcResult(k, pmsGetEntry(k.id, period))) === 'near').length;
+  const gapCount    = allVisible.filter(k => pmsStatus(k, pmsCalcResult(k, pmsGetEntry(k.id, period))) === 'gap').length;
+  const noDataCount = allVisible.filter(k => pmsStatus(k, pmsCalcResult(k, pmsGetEntry(k.id, period))) === 'no_data').length;
+  const score       = allVisible.length > 0 ? Math.round((metCount/allVisible.length)*100) : 0;
+  const sc          = score>=80?'#00d4aa':score>=60?'#f59e0b':'#ef4444';
+
+  const sumEl = document.getElementById('pms-summary');
+  if (sumEl) sumEl.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px;">
+      <div style="background:var(--sf);border:1px solid var(--bd);border-top:3px solid ${sc};border-radius:11px;padding:14px;text-align:center;">
+        <div style="font-size:10px;color:var(--mu);text-transform:uppercase;margin-bottom:6px;">Overall Score</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:40px;font-weight:700;color:${sc};">${score}%</div>
+        <div style="font-size:9px;color:var(--mu);">${metCount} of ${allVisible.length} KPIs met</div>
+      </div>
+      <div style="background:var(--sf);border:1px solid rgba(0,212,170,.3);border-radius:11px;padding:14px;text-align:center;">
+        <div style="font-size:10px;color:var(--mu);text-transform:uppercase;margin-bottom:6px;">✅ Target Met</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:40px;font-weight:700;color:#00d4aa;">${metCount}</div>
+      </div>
+      <div style="background:var(--sf);border:1px solid rgba(245,158,11,.3);border-radius:11px;padding:14px;text-align:center;">
+        <div style="font-size:10px;color:var(--mu);text-transform:uppercase;margin-bottom:6px;">⚠️ Near Target</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:40px;font-weight:700;color:#f59e0b;">${nearCount}</div>
+      </div>
+      <div style="background:var(--sf);border:1px solid rgba(239,68,68,.3);border-radius:11px;padding:14px;text-align:center;">
+        <div style="font-size:10px;color:var(--mu);text-transform:uppercase;margin-bottom:6px;">❌ Below Target</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:40px;font-weight:700;color:#ef4444;">${gapCount}</div>
+      </div>
+      <div style="background:var(--sf);border:1px solid var(--bd);border-radius:11px;padding:14px;text-align:center;">
+        <div style="font-size:10px;color:var(--mu);text-transform:uppercase;margin-bottom:6px;">— No Data</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:40px;font-weight:700;color:var(--mu);">${noDataCount}</div>
+      </div>
+    </div>`;
+
+  // KPI Cards
+  cards.innerHTML = kpis.map(k => {
+    const entry  = pmsGetEntry(k.id, period);
+    const result = pmsCalcResult(k, entry);
+    const status = pmsStatus(k, result);
+    const ss     = PMS_STATUS[status];
+    const barW   = result !== null
+      ? (k.hib ? Math.min(100, Math.round((result/Math.max(k.target,result))*100))
+               : Math.max(0, Math.min(100, Math.round((1 - Math.max(0,result-k.target)/k.target)*100))))
+      : 0;
+    const files  = entry?.fileKey ? (typeof fsGetFiles==='function' ? fsGetFiles(entry.fileKey) : []) : [];
+
+    return `<div style="background:var(--sf);border:1px solid ${ss.border};border-top:4px solid ${k.color};border-radius:12px;padding:16px;">
+      <!-- Header -->
+      <div style="display:flex;align-items:start;justify-content:space-between;gap:10px;margin-bottom:10px;">
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px;">
+            <span style="font-size:18px;">${k.icon}</span>
+            <span style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;">${k.name}</span>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <span style="background:${k.color}22;color:${k.color};border:1px solid ${k.color}44;border-radius:4px;padding:1px 7px;font-size:9px;font-weight:700;">${k.standard}</span>
+            <span style="background:var(--s2);color:var(--mu);border-radius:4px;padding:1px 7px;font-size:9px;">${k.domainLabel}</span>
+            <span style="background:var(--s2);color:var(--mu);border-radius:4px;padding:1px 7px;font-size:9px;">📅 ${k.freq}</span>
+          </div>
+        </div>
+        <!-- Result -->
+        <div style="text-align:center;background:${ss.bg};border:1px solid ${ss.border};border-radius:8px;padding:10px 14px;min-width:90px;">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:30px;font-weight:700;color:${ss.color};">
+            ${result !== null ? result + k.unit : '—'}
+          </div>
+          <div style="font-size:9px;color:${ss.color};font-weight:600;">${ss.label}</div>
+          <div style="font-size:9px;color:var(--mu);">Target: ${k.hib?'≥':'≤'}${k.target}${k.unit}</div>
+        </div>
+      </div>
+
+      <!-- Progress bar -->
+      <div style="height:6px;background:var(--s3);border-radius:3px;overflow:hidden;margin-bottom:10px;">
+        <div style="height:100%;width:${barW}%;background:${ss.color};border-radius:3px;transition:width .5s;"></div>
+      </div>
+
+      <!-- Formula box -->
+      <div style="background:var(--s2);border-radius:7px;padding:9px 12px;margin-bottom:10px;font-size:10px;line-height:1.8;">
+        <div><b style="color:var(--tx);">Numerator:</b> <span style="color:var(--mu);">${k.num}</span></div>
+        <div><b style="color:var(--tx);">Denominator:</b> <span style="color:var(--mu);">${k.den}</span></div>
+        <div><b style="color:var(--tx);">Formula:</b> <span style="color:var(--mu);">(N ÷ D)${k.formula==='percent'?' × 100':''} = result in ${k.unit.trim()||'value'}</span></div>
+        ${entry ? `<div><b style="color:var(--tx);">Entered:</b> <span style="color:var(--mu);">N=${entry.num||'—'} / D=${entry.den||'—'}</span></div>` : ''}
+        <div><b style="color:var(--tx);">Source:</b> <span style="color:var(--mu);">${k.src}</span></div>
+      </div>
+
+      <!-- Objective -->
+      <div style="font-size:10px;color:var(--mu);margin-bottom:10px;font-style:italic;">${k.objective}</div>
+
+      <!-- Footer actions -->
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+        <div style="display:flex;gap:6px;">
+          ${files.length ? `<button class="btn bb" style="font-size:9px;padding:2px 8px;" onclick="showFilesModal('${entry?.fileKey}','${k.name}')">📎 ${files.length} doc${files.length===1?'':'s'}</button>` : ''}
+          ${entry?.notes ? `<span style="font-size:9px;color:var(--mu);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${entry.notes}">📝 ${entry.notes}</span>` : ''}
+        </div>
+        <button class="btn bo" style="font-size:9px;padding:3px 10px;" onclick="pmsOpenEntry('${k.id}','${period}')">✏ Enter Value</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  if (!kpis.length) {
+    cards.innerHTML = '<div class="em" style="grid-column:1/-1;">No KPIs available for your role in this domain</div>';
+  }
+}
+
+// ── Quick entry from card button ──
+function pmsOpenEntry(kpiId, period) {
+  // Switch to entry tab
+  const entryBtn = document.querySelector('#page-pms .tbtn:last-of-type');
+  pmsTab('entry', entryBtn);
+  // Pre-select KPI and period
+  const sel = document.getElementById('pms-kpi-sel');
+  if (sel) { sel.value = kpiId; pmsKpiSelected(); }
+  const ep = document.getElementById('pms-entry-period');
+  if (ep) ep.value = period;
+  // Pre-fill existing entry
+  const entry = pmsGetEntry(kpiId, period);
+  if (entry) {
+    const nEl = document.getElementById('pms-num-val');
+    const dEl = document.getElementById('pms-den-val');
+    const ntEl = document.getElementById('pms-notes');
+    if (nEl) nEl.value = entry.num ?? '';
+    if (dEl) dEl.value = entry.den ?? '';
+    if (ntEl) ntEl.value = entry.notes ?? '';
+    pmsCalcPreview();
+  }
+  document.getElementById('pms-entry-panel')?.scrollIntoView({behavior:'smooth'});
+}
+
+// ── KPI selected in form ──
+function pmsKpiSelected() {
+  const sel = document.getElementById('pms-kpi-sel');
+  if (!sel?.value) return;
+  const k = PMS_KPIS.find(x=>x.id===sel.value); if (!k) return;
+  const nl = document.getElementById('pms-num-label');
+  const dl = document.getElementById('pms-den-label');
+  if (nl) nl.textContent = k.num;
+  if (dl) dl.textContent = k.den;
+  pmsCalcPreview();
+}
+
+// ── Live calculation preview ──
+function pmsCalcPreview() {
+  const sel = document.getElementById('pms-kpi-sel');
+  if (!sel?.value) return;
+  const k  = PMS_KPIS.find(x=>x.id===sel.value); if (!k) return;
+  const n  = parseFloat(document.getElementById('pms-num-val')?.value);
+  const d  = parseFloat(document.getElementById('pms-den-val')?.value);
+  const pv = document.getElementById('pms-result-preview');
+  const cr = document.getElementById('pms-calc-result');
+  if (!isNaN(n) && !isNaN(d) && d > 0) {
+    const res = k.formula==='percent' ? Math.round((n/d)*100*10)/10 : Math.round((n/d)*10)/10;
+    const st  = pmsStatus(k, res);
+    const ss  = PMS_STATUS[st];
+    if (cr) { cr.textContent = res + k.unit; cr.style.color = ss.color; }
+    if (pv) pv.style.display = 'block';
+  } else {
+    if (pv) pv.style.display = 'none';
+  }
+}
+
+// ── Save entry ──
+function pmsSaveEntry() {
+  const sel  = document.getElementById('pms-kpi-sel')?.value;
+  const per  = document.getElementById('pms-entry-period')?.value;
+  const nVal = document.getElementById('pms-num-val')?.value;
+  const dVal = document.getElementById('pms-den-val')?.value;
+  const note = document.getElementById('pms-notes')?.value.trim();
+  const fi   = document.getElementById('pms-file');
+
+  if (!sel)  { toast('Select a KPI','#f59e0b'); return; }
+  if (!per)  { toast('Select a reporting period','#f59e0b'); return; }
+  if (nVal==='' || dVal==='') { toast('Enter numerator and denominator','#f59e0b'); return; }
+
+  const k = PMS_KPIS.find(x=>x.id===sel);
+  const entry = {
+    _id: Date.now(), kpiId: sel, kpiName: k?.name||sel,
+    domain: k?.domain||'', period: per,
+    num: parseFloat(nVal), den: parseFloat(dVal),
+    notes: note, fileKey: 'pms_'+sel+'_'+per+'_'+Date.now(),
+    _by: (typeof CU!=='undefined'?CU.name:''), _ts: new Date().toISOString()
+  };
+
+  (async () => {
+    if (fi && fi.files.length) {
+      await fsStoreFiles(entry.fileKey, fi.files);
+      fi.value = '';
+    }
+    const arr = ld('pms_entries'); arr.unshift(entry); sv('pms_entries', arr);
+    dbWrite('pms_entries', entry);
+    // Clear form
+    ['pms-num-val','pms-den-val','pms-notes'].forEach(id=>{
+      const e=document.getElementById(id); if(e) e.value='';
+    });
+    document.getElementById('pms-result-preview').style.display = 'none';
+    pmsRenderHistory();
+    toast('✅ KPI entry saved — ' + (k?.name||sel) + ' for ' + per);
+  })();
+}
+
+// ── Entry history ──
+function pmsRenderHistory() {
+  const tb = document.getElementById('pms-history-tb'); if (!tb) return;
+  const role = typeof CU !== 'undefined' ? CU.role : 'director';
+  let entries = ld('pms_entries').sort((a,b)=>b._ts>a._ts?1:-1);
+  // Filter by role
+  if (role !== 'director') {
+    const visIds = pmsVisibleKPIs().map(k=>k.id);
+    entries = entries.filter(e => visIds.includes(e.kpiId));
+  }
+  if (!entries.length) { tb.innerHTML='<tr><td colspan="10" class="em">No entries yet</td></tr>'; return; }
+  tb.innerHTML = entries.map(e => {
+    const k = PMS_KPIS.find(x=>x.id===e.kpiId);
+    const result = k ? pmsCalcResult(k, e) : null;
+    const status = k ? pmsStatus(k, result) : 'no_data';
+    const ss = PMS_STATUS[status];
+    const files = e.fileKey ? (typeof fsGetFiles==='function' ? fsGetFiles(e.fileKey) : []) : [];
+    return `<tr>
+      <td style="font-weight:600;">${e.period||'—'}</td>
+      <td style="font-size:11px;">${e.kpiName||e.kpiId||'—'}</td>
+      <td><span style="background:${k?.color||'var(--mu)'}22;color:${k?.color||'var(--mu)'};border-radius:4px;padding:1px 7px;font-size:9px;">${e.domain||'—'}</span></td>
+      <td style="text-align:center;">${e.num??'—'}</td>
+      <td style="text-align:center;">${e.den??'—'}</td>
+      <td style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:${ss.color};">
+        ${result!==null ? result+(k?.unit||'') : '—'}
+      </td>
+      <td><span style="color:${ss.color};font-size:10px;font-weight:600;">${ss.label}</span></td>
+      <td style="font-size:10px;color:var(--mu);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.notes||'—'}</td>
+      <td>${files.length ? `<button class="btn bb" style="font-size:9px;padding:2px 6px;" onclick="showFilesModal('${e.fileKey}','${e.kpiName}')">📎 ${files.length}</button>` : '—'}</td>
+      <td><button class="btn br" style="font-size:9px;padding:2px 5px;" onclick="pmsDeleteEntry('${e._id}')">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function pmsDeleteEntry(id) {
+  if (!confirm('Delete this KPI entry?')) return;
+  sv('pms_entries', ld('pms_entries').filter(e=>String(e._id)!==String(id)));
+  dbDelete('pms_entries', String(id));
+  pmsRenderHistory();
+  toast('Deleted');
+}
+
+// ── Export report ──
+function pmsExportReport() {
+  const ySel = document.getElementById('pms-year-sel');
+  const mSel = document.getElementById('pms-month-sel');
+  const year = ySel?.value || new Date().getFullYear();
+  const month = String(mSel?.value||new Date().getMonth()+1).padStart(2,'0');
+  const period = year + '-' + month;
+  const periodLabel = new Date(year, parseInt(month)-1).toLocaleString('en-GB',{month:'long',year:'numeric'});
+  const allKPIs = pmsVisibleKPIs();
+
+  const rows = allKPIs.map(k => {
+    const entry  = pmsGetEntry(k.id, period);
+    const result = pmsCalcResult(k, entry);
+    const status = pmsStatus(k, result);
+    const ss     = PMS_STATUS[status];
+    const files  = entry?.fileKey ? (typeof fsGetFiles==='function' ? fsGetFiles(entry.fileKey) : []) : [];
+    return `<tr>
+      <td>${k.icon} ${k.domainLabel}</td>
+      <td style="font-weight:600;">${k.name}</td>
+      <td style="font-size:10px;">${k.standard}</td>
+      <td style="font-size:10px;">${k.num}</td>
+      <td style="font-size:10px;">${k.den}</td>
+      <td style="text-align:center;">${entry?.num??'—'}</td>
+      <td style="text-align:center;">${entry?.den??'—'}</td>
+      <td style="font-weight:bold;color:${ss.color};">${result!==null?result+k.unit:'—'}</td>
+      <td style="text-align:center;">${k.hib?'≥':'≤'}${k.target}${k.unit}</td>
+      <td style="font-weight:bold;color:${ss.color};">${ss.label}</td>
+      <td style="font-size:10px;">${k.src}</td>
+      <td style="font-size:10px;">${files.length ? files.length+' file(s)' : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  const metC = allKPIs.filter(k=>pmsStatus(k,pmsCalcResult(k,pmsGetEntry(k.id,period)))==='met').length;
+  const score = Math.round((metC/allKPIs.length)*100);
+  const sc2   = score>=80?'#10b981':score>=60?'#f59e0b':'#ef4444';
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>FMS Performance Management Sheet — ${periodLabel}</title>
+<style>
+  *{box-sizing:border-box;}
+  body{font-family:Arial,sans-serif;margin:0;padding:24px;color:#1a1a2e;font-size:11px;}
+  .header{text-align:center;border-bottom:3px solid #003366;padding-bottom:16px;margin-bottom:20px;}
+  h1{font-size:18px;margin:0 0 4px;color:#003366;}
+  .score-box{display:inline-block;background:#f8fafc;border:2px solid ${sc2};border-radius:8px;padding:8px 20px;text-align:center;margin:8px 0;}
+  .score-val{font-size:36px;font-weight:bold;color:${sc2};}
+  table{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:10px;}
+  th{background:#003366;color:#fff;padding:7px 6px;text-align:left;font-size:10px;}
+  td{padding:5px 6px;border-bottom:1px solid #eee;}
+  tr:nth-child(even){background:#f8fafc;}
+  .sig-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:30px;margin-top:30px;}
+  .sig-box{border-top:2px solid #003366;padding-top:8px;}
+  .sig-line{height:55px;}
+  .footer{margin-top:16px;font-size:9px;color:#999;text-align:center;border-top:1px solid #eee;padding-top:8px;}
+  @media print{.no-print{display:none!important;}}
+</style></head>
+<body>
+<div class="header">
+  <div style="font-size:10px;color:#888;">OBEID SPECIALIZED HOSPITAL — RIYADH · FACILITY MANAGEMENT & SAFETY PROGRAM</div>
+  <h1>📊 FMS PERFORMANCE MANAGEMENT SHEET</h1>
+  <p style="margin:4px 0;color:#555;">Reporting Period: <b>${periodLabel}</b> · CBAHI Accreditation 2026</p>
+  <div class="score-box">
+    <div style="font-size:10px;color:#888;">Overall FMS Score</div>
+    <div class="score-val">${score}%</div>
+    <div style="font-size:10px;color:#888;">${metC} of ${allKPIs.length} KPIs at target</div>
+  </div>
+  <div style="font-size:10px;color:#888;margin-top:6px;">Generated: ${new Date().toLocaleString('en-GB')} · ${typeof CU!=='undefined'?CU.name:'FMS Director'}</div>
+</div>
+
+<table>
+  <thead><tr>
+    <th>Domain</th><th>KPI Name</th><th>Standard</th>
+    <th>Numerator Definition</th><th>Denominator Definition</th>
+    <th>Actual N</th><th>Actual D</th><th>Result</th><th>Target</th><th>Status</th>
+    <th>Data Source</th><th>Evidence</th>
+  </tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+
+<div class="sig-grid">
+  <div class="sig-box">
+    <b>Prepared by</b>
+    <div class="sig-line"></div>
+    <div style="font-size:10px;color:#555;">Name: ___________________________<br>Title: FMS Manager / Safety Officer<br>Date: ___________________________</div>
+  </div>
+  <div class="sig-box">
+    <b>Reviewed by — FMS Director</b>
+    <div class="sig-line"></div>
+    <div style="font-size:10px;color:#555;">Name: ___________________________<br>Title: FMS Director<br>Date: ___________________________</div>
+  </div>
+  <div class="sig-box">
+    <b>Approved by — Hospital Director</b>
+    <div class="sig-line"></div>
+    <div style="font-size:10px;color:#555;">Name: ___________________________<br>Title: Hospital Director / CEO<br>Date: ___________________________</div>
+  </div>
+</div>
+<div class="footer">Obeid Specialized Hospital FMS Platform · CBAHI 2026 · Generated: ${new Date().toLocaleString('en-GB')}</div>
+</body></html>`;
+
+  const win = window.open(URL.createObjectURL(new Blob([html],{type:'text/html'})),'_blank');
+  if(win) setTimeout(()=>win.print(),800);
+  toast('✅ FMS Performance Sheet opened — Print → Save as PDF');
 }
 
 </script>
