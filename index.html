@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260601-1200';
+  var v = '20260601-1210';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -2994,7 +2994,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260601-1200';
+const APP_VERSION = '20260601-1210';
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
@@ -3271,26 +3271,59 @@ const FILE_STORE_KEY = 'obeid_file_store_v1';
 function fsLoad() {
   try { return JSON.parse(localStorage.getItem(FILE_STORE_KEY) || '{}'); } catch(e) { return {}; }
 }
-function fsSave(store) { localStorage.setItem(FILE_STORE_KEY, JSON.stringify(store)); }
+function fsSave(store) {
+  try {
+    localStorage.setItem(FILE_STORE_KEY, JSON.stringify(store));
+  } catch(e) {
+    if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+      // Strip file data, keep only metadata
+      const stripped = {};
+      Object.keys(store).forEach(k => {
+        stripped[k] = (store[k]||[]).map(f => ({id:f.id,name:f.name,size:f.size,type:f.type,ts:f.ts}));
+      });
+      try { localStorage.setItem(FILE_STORE_KEY, JSON.stringify(stripped)); }
+      catch(e2) { console.warn('FS metadata storage failed:', e2.message); }
+    }
+  }
+}
 
 // Save one or more files under a group key (e.g. 'eoc_2024-01-15_1705000000')
 function fsStoreFiles(groupKey, files) {
   return new Promise(resolve => {
     const store = fsLoad();
     if (!store[groupKey]) store[groupKey] = [];
-    let remaining = files.length;
+    const fileArr = Array.from(files);
+    let remaining = fileArr.length;
     if (!remaining) { resolve([]); return; }
-    Array.from(files).forEach(file => {
+
+    // Warn if localStorage is nearly full
+    let lsUsed = 0;
+    try { for (let k in localStorage) { if (localStorage.hasOwnProperty(k)) lsUsed += (localStorage[k]?.length||0)*2; } } catch(e){}
+    if (lsUsed > 4*1024*1024) toast('⚠️ Storage is nearly full. Old files may need to be deleted.','#f59e0b');
+
+    fileArr.forEach(file => {
+      // Enforce 10MB per file limit
+      if (file.size > 10*1024*1024) {
+        toast('⚠️ File "'+file.name+'" is over 10MB and was skipped.','#f59e0b');
+        remaining--;
+        if (!remaining) { fsSave(store); resolve(store[groupKey]); }
+        return;
+      }
       const reader = new FileReader();
+      const fileId = 'f_' + Date.now() + '_' + Math.random().toString(36).slice(2);
       reader.onload = e => {
         store[groupKey].push({
-          id:   Date.now() + Math.random().toString(36).slice(2),
+          id:   fileId,
           name: file.name,
           size: Math.round(file.size/1024) + 'KB',
           type: file.type,
-          data: e.target.result, // base64 data URL
+          data: e.target.result,
           ts:   new Date().toISOString()
         });
+        remaining--;
+        if (!remaining) { fsSave(store); resolve(store[groupKey]); }
+      };
+      reader.onerror = () => {
         remaining--;
         if (!remaining) { fsSave(store); resolve(store[groupKey]); }
       };
@@ -5959,6 +5992,56 @@ function dbClearAndResync() {
     if (typeof renderDash === 'function') renderDash();
     toast('✅ Resync complete');
   }), 500);
+}
+
+// ── Storage Management ──
+function fsGetStorageInfo() {
+  let used = 0;
+  try {
+    for (let k in localStorage) {
+      if (localStorage.hasOwnProperty(k)) used += ((localStorage[k]||'').length * 2);
+    }
+  } catch(e) {}
+  const usedKB  = Math.round(used / 1024);
+  const limitKB = 5120; // 5MB conservative estimate
+  const pct     = Math.min(100, Math.round(usedKB/limitKB*100));
+  return { usedKB, limitKB, pct, freeKB: Math.max(0, limitKB-usedKB) };
+}
+
+function fsClearOldData() {
+  if (!confirm('This will remove all stored file attachments from this browser to free up space.\nFile metadata (names, dates) will be kept.\nThe actual files will be lost unless you re-upload them.\n\nContinue?')) return;
+  const store = fsLoad();
+  // Strip data from all files, keep metadata only
+  const stripped = {};
+  Object.keys(store).forEach(k => {
+    stripped[k] = (store[k]||[]).map(f => ({id:f.id,name:f.name,size:f.size,type:f.type,ts:f.ts}));
+  });
+  try { localStorage.setItem(FILE_STORE_KEY, JSON.stringify(stripped)); }
+  catch(e) {
+    // If even metadata fails, clear entirely
+    localStorage.removeItem(FILE_STORE_KEY);
+  }
+  toast('✅ File data cleared — storage freed. Metadata preserved.');
+  settingsRenderStorageBar();
+}
+
+function settingsRenderStorageBar() {
+  const el = document.getElementById('settings-storage-bar'); if (!el) return;
+  const info = fsGetStorageInfo();
+  const cc = info.pct >= 90 ? '#ef4444' : info.pct >= 70 ? '#f59e0b' : '#00d4aa';
+  el.innerHTML = `
+    <div style="margin-bottom:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-size:11px;color:var(--mu);">localStorage Usage</span>
+        <span style="font-size:11px;font-weight:600;color:${cc};">${info.usedKB} KB / ~${info.limitKB} KB (${info.pct}%)</span>
+      </div>
+      <div style="height:8px;background:var(--s3);border-radius:4px;overflow:hidden;">
+        <div style="height:100%;width:${info.pct}%;background:${cc};border-radius:4px;"></div>
+      </div>
+      ${info.pct >= 70 ? `<div style="font-size:10px;color:${cc};margin-top:6px;">⚠️ Storage is ${info.pct >= 90 ? 'critically' : 'nearly'} full. Clear file data to free space.</div>` : ''}
+      <button class="btn br" style="margin-top:8px;font-size:10px;padding:5px 12px;" onclick="fsClearOldData()">🗑 Clear File Data</button>
+      <button class="btn bo" style="margin-top:8px;margin-left:6px;font-size:10px;padding:5px 12px;" onclick="settingsRenderStorageBar()">⟳ Refresh</button>
+    </div>`;
 }
 
 function settingsPushToDB() {
