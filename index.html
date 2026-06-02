@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260601-1210';
+  var v = '20260601-1215';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -2279,6 +2279,18 @@ if ('caches' in window) {
 <div class="pg" id="page-settings">
   <div class="ph"><h1>⚙ Settings</h1>
     <p id="settings-role-desc">Database connection · Platform configuration</p><p>Manage user accounts · Modify PINs · View access log · Platform version: <b style="color:var(--ac);">20260512-0818</b></p></div>
+  
+  <!-- Storage Usage Card -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="ch">
+      <div class="ct">💾 Device Storage Usage</div>
+      <div style="font-size:10px;color:var(--mu);">localStorage used for offline data and file attachments</div>
+    </div>
+    <div class="cb" id="settings-storage-bar">
+      <div class="em">Loading storage info...</div>
+    </div>
+  </div>
+
   <div class="g g2">
     <!-- Non-director DB connection notice -->
     <div id="settings-non-director-notice" style="display:none;background:rgba(0,180,255,.06);border:1px solid rgba(0,180,255,.2);border-radius:10px;padding:14px;margin-bottom:14px;">
@@ -2994,7 +3006,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260601-1210';
+const APP_VERSION = '20260601-1215';
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
@@ -6884,6 +6896,7 @@ function doLogin() {
     if (id === 'contracts') { setTimeout(() => ctrTab('list', null), 80); }
     if (id === 'settings') {
       settingsUpdateQueueCount();
+      setTimeout(settingsRenderStorageBar, 150);
       const isDirector = CU.role === 'director';
       // Show/hide director-only sections
       document.querySelectorAll('.director-settings-only').forEach(el => {
