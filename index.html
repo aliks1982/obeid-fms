@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260603-0930';
+  var v = '20260603-1000';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -3298,16 +3298,21 @@ if ('caches' in window) {
 <!-- Equipment Edit / PPM Modal -->
 <div class="mov" id="mod-eq-edit">
   <div class="mbox" style="max-width:580px;"><div class="mh">
-    <div class="mt">✏️ Edit Equipment — <span id="eq-edit-asset" style="color:var(--ac);"></span></div>
+    <div class="mt">✏️ Edit Equipment — <span id="eq-edit-asset-title" style="color:var(--ac);">—</span></div>
     <button class="mc" onclick="closeMod('eq-edit')">✕</button>
   </div>
   <div class="mb" style="max-height:75vh;overflow-y:auto;">
-    <!-- Hidden asset field used by JS -->
-    <input type="hidden" id="eq-edit-asset">
+    <input type="hidden" id="eq-edit-orig-asset">
     <div class="fg fg2" style="margin-bottom:14px;">
       <div class="ff" style="grid-column:1/-1">
         <label style="font-size:10px;color:var(--mu);">Equipment</label>
         <div id="eq-edit-name" style="font-size:13px;font-weight:600;color:var(--tx);padding:6px 0;"></div>
+      </div>
+      <div class="ff">
+        <label>Asset No. <span style="color:var(--or);font-size:9px;font-weight:400;">(tap to rename)</span></label>
+        <input type="text" id="eq-edit-asset" placeholder="Asset number"
+          style="background:var(--s2);border:1.5px solid rgba(0,112,243,.4);border-radius:7px;padding:9px 12px;color:var(--ac);font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:700;outline:none;width:100%;">
+        <div class="ht">⚠️ Changing this renames the asset across all linked PPM records</div>
       </div>
       <div class="ff">
         <label>Department</label>
@@ -3337,8 +3342,19 @@ if ('caches' in window) {
           <input type="date" id="eq-edit-next-ppm">
         </div>
         <div class="ff">
-          <label>PPM Type</label>
-          <select id="eq-edit-ppm-type" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:7px 10px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
+          <label>PPM Frequency <span style="color:var(--ac);font-size:9px;">(updates inventory table)</span></label>
+          <select id="eq-edit-ppm-freq" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:7px 10px;color:var(--tx);font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;outline:none;width:100%;">
+            <option value="">— Keep existing —</option>
+            <option value="Annual">Annual</option>
+            <option value="Semi-Annual">Semi-Annual</option>
+            <option value="Quarterly">Quarterly</option>
+            <option value="Monthly">Monthly</option>
+            <option value="2-Year">2-Year</option>
+          </select>
+        </div>
+        <div class="ff">
+          <label>PPM Type (this visit)</label>
+          <select id="eq-edit-ppm-type" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:7px 10px;color:var(--tx);font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;outline:none;width:100%;">
             <option>Annual PPM</option>
             <option>Semi-Annual PPM</option>
             <option>Corrective Maintenance</option>
@@ -3379,7 +3395,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260603-0900';
+const APP_VERSION = '20260603-1000';
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
@@ -5984,10 +6000,10 @@ function eqRender() {
     let   np = ov.nextPPM || r.nextPPM || '';
 
     // Auto-calculate Next Due from Last PPM + Frequency
-    if (!np && lp && r.ppmFreq) {
+    if (!np && lp && (ov.ppmFreq || r.ppmFreq)) {
       const d = new Date(lp);
       if (!isNaN(d)) {
-        const f = (r.ppmFreq || '').toLowerCase();
+        const f = (ov.ppmFreq || r.ppmFreq || '').toLowerCase();
         if      (/month|30d/i.test(f))                  d.setMonth(d.getMonth() + 1);
         else if (/quarter|3.?month|90/i.test(f))        d.setMonth(d.getMonth() + 3);
         else if (/6.?month|semi|bi.?ann|180/i.test(f))  d.setMonth(d.getMonth() + 6);
@@ -6051,7 +6067,8 @@ function eqRender() {
       : '<button class="btn bo" style="font-size:9px;padding:2px 5px;" onclick="openEqEdit(\'' + escA + '\')" title="Upload PPM report">+</button>';
 
     // PPM frequency display (replace 'X' with proper label)
-    const pf = r.ppmFreq && r.ppmFreq !== 'X' && r.ppmFreq !== 'x' && r.ppmFreq !== '' ? r.ppmFreq : '—';
+    const effFreq = ov.ppmFreq || r.ppmFreq || '';
+    const pf = effFreq && effFreq !== 'X' && effFreq !== 'x' ? effFreq : '—';
 
     return '<tr>'
       // Col 1: Asset No.
@@ -6139,20 +6156,21 @@ function eqCharts() {
 
 // ── Asset auto-fill for PPM log ──
 function eqBuildAssetDatalist() {
-  const dl = document.getElementById('ppm-asset-list'); if (!dl) return;
+  const dl = document.getElementById('ppm-asset-dl') || document.getElementById('ppm-asset-list'); if (!dl) return;
   dl.innerHTML = eqAll().slice(0, 500).map(r =>
     `<option value="${r.asset}">${r.asset} — ${r.desc} (${r.dept})</option>`
   ).join('');
 }
 
 function eqAutoFill(assetNo) {
-  const rec = eqAll().find(r => r.asset.toLowerCase() === assetNo.toLowerCase());
+  if (!assetNo || assetNo.length < 2) return;
+  const a = assetNo.toLowerCase();
+  const rec = eqAll().find(r => (r.asset||'').toLowerCase() === a);
   if (!rec) return;
-  const set = (id, v) => { const e=document.getElementById(id); if(e) e.value=v; };
-  set('ppm-equip', rec.desc);
-  set('ppm-dept-field', rec.dept);
-  set('ppm-model-field', rec.model);
-  set('ppm-serial-field', rec.serial);
+  const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = v || ''; };
+  set('ppm-desc',  rec.desc);  set('ppm-dept',  rec.dept);
+  set('ppm-equip', rec.desc);  set('ppm-dept-field', rec.dept);
+  set('ppm-model-field', rec.model); set('ppm-serial-field', rec.serial);
 }
 
 // ── Add new equipment ──
@@ -7954,20 +7972,23 @@ function openEqEdit(assetNo) {
   if (!rec) { toast('Record not found','#f59e0b'); return; }
   const ov = getPPMData(assetNo) || {};
 
-  document.getElementById('eq-edit-asset').value        = assetNo;
+  const _titleSp = document.getElementById('eq-edit-asset-title');
+  if (_titleSp) _titleSp.textContent = assetNo;
+  document.getElementById('eq-edit-orig-asset').value = assetNo;
+  document.getElementById('eq-edit-asset').value      = assetNo;
   const nameEl = document.getElementById('eq-edit-name');
   const deptEl = document.getElementById('eq-edit-dept');
   if (nameEl) nameEl.textContent = (rec.desc||'') + (rec.model?' — '+rec.model:'');
   if (deptEl) deptEl.textContent = (rec.dept||'') + (rec.location?' · '+rec.location:'');
-  // Also update modal title
-  const titleAsset = document.querySelector('#mod-eq-edit .mt span');
-  if (titleAsset) titleAsset.textContent = assetNo;
+  // title updated above
   document.getElementById('eq-edit-last-ppm').value    = ov.lastPPM  || rec.lastPPM  || '';
   document.getElementById('eq-edit-next-ppm').value    = ov.nextPPM  || rec.nextPPM  || '';
   document.getElementById('eq-edit-ppm-by').value      = ov.ppmBy    || 'In-house';
   document.getElementById('eq-edit-ppm-type').value    = ov.ppmType  || 'Annual PPM';
   document.getElementById('eq-edit-notes').value       = ov.notes    || rec.remarks   || '';
-  document.getElementById('eq-edit-status').value      = ov.status   || rec.status    || 'Active';
+  document.getElementById('eq-edit-status').value    = ov.status || rec.status || 'Active';
+  const _fqEl = document.getElementById('eq-edit-ppm-freq');
+  if (_fqEl) _fqEl.value = ov.ppmFreq || rec.ppmFreq || '';
 
   // Render existing files for this asset
   const fileKey = 'eq_ppm_' + assetNo;
@@ -7989,45 +8010,46 @@ function openEqEdit(assetNo) {
 }
 
 async function saveEqEdit() {
-  const asset    = document.getElementById('eq-edit-asset')?.value;
-  const lastPPM  = document.getElementById('eq-edit-last-ppm')?.value;
-  const nextPPM  = document.getElementById('eq-edit-next-ppm')?.value;
-  const ppmBy    = document.getElementById('eq-edit-ppm-by')?.value;
-  const ppmType  = document.getElementById('eq-edit-ppm-type')?.value;
-  const notes    = document.getElementById('eq-edit-notes')?.value;
-  const status   = document.getElementById('eq-edit-status')?.value;
-  const fileInput= document.getElementById('eq-edit-report');
-
-  // Save PPM report files
-  const fileKey = 'eq_ppm_' + asset;
+  const origAsset = document.getElementById('eq-edit-orig-asset')?.value;
+  const newAsset  = (document.getElementById('eq-edit-asset')?.value||'').trim();
+  const lastPPM   = document.getElementById('eq-edit-last-ppm')?.value;
+  const nextPPM   = document.getElementById('eq-edit-next-ppm')?.value;
+  const ppmBy     = document.getElementById('eq-edit-ppm-by')?.value;
+  const ppmType   = document.getElementById('eq-edit-ppm-type')?.value;
+  const ppmFreq   = document.getElementById('eq-edit-ppm-freq')?.value;
+  const notes     = document.getElementById('eq-edit-notes')?.value;
+  const status    = document.getElementById('eq-edit-status')?.value;
+  const fileInput = document.getElementById('eq-edit-report');
+  if (!origAsset) { toast('Error: original asset not found','#f59e0b'); return; }
+  if (!newAsset)  { toast('Asset number cannot be empty','#f59e0b'); return; }
+  const assetChanged = newAsset !== origAsset;
+  if (assetChanged && eqAll().find(r => r.asset === newAsset)) {
+    toast('Asset ' + newAsset + ' already exists','#ef4444'); return;
+  }
+  const fileKey = 'eq_ppm_' + (assetChanged ? newAsset : origAsset);
   if (fileInput && fileInput.files.length) {
     await fsStoreFiles(fileKey, fileInput.files);
     fileInput.value = '';
-    toast('✓ ' + fileInput.files.length + ' report(s) saved');
   }
-
-  // Save PPM override data
   const ov = getPPMOverrides();
-  ov[asset] = { lastPPM, nextPPM, ppmBy, ppmType, notes, status,
-    updatedBy: CU.name, updatedAt: new Date().toISOString(), fileKey };
+  const ovData = { lastPPM, nextPPM, ppmBy, ppmType, notes, status, fileKey,
+    updatedBy: CU.name, updatedAt: new Date().toISOString() };
+  if (ppmFreq) ovData.ppmFreq = ppmFreq;
+  if (assetChanged) delete ov[origAsset];
+  ov[assetChanged ? newAsset : origAsset] = ovData;
   savePPMOverrides(ov);
-
-  // If status changed on a manually-added record, update it
   const added = ld('eq_added');
-  const idx = added.findIndex(r => r.asset === asset);
-  if (idx >= 0) {
-    added[idx].lastPPM = lastPPM;
-    added[idx].nextPPM = nextPPM;
-    added[idx].status  = status;
-    added[idx].remarks = notes;
-    sv('eq_added', added);
-    dbWrite('eq_added', added[idx]);
-    EQ_ALL = null;
+  const aIdx  = added.findIndex(r => r.asset === origAsset);
+  if (aIdx >= 0) {
+    if (assetChanged) added[aIdx].asset = newAsset;
+    added[aIdx].lastPPM = lastPPM; added[aIdx].nextPPM = nextPPM;
+    added[aIdx].status  = status;  added[aIdx].remarks = notes;
+    if (ppmFreq) added[aIdx].ppmFreq = ppmFreq;
+    sv('eq_added', added); dbWrite('eq_added', added[aIdx]);
   }
-
-  closeMod('eq-edit');
-  eqRender();
-  toast('✓ Equipment record updated');
+  EQ_ALL = null;
+  closeMod('eq-edit'); eqRender();
+  toast(assetChanged ? 'Renamed ' + origAsset + ' to ' + newAsset : 'Equipment updated');
 }
 
 // Export department equipment list as printable HTML
