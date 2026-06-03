@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260601-1300';
+  var v = '20260603-0900';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -3102,9 +3102,13 @@ if ('caches' in window) {
               <option>Safety & Security</option><option>Housekeeping</option><option>Waste Management</option>
             </select>
           </div>
-          <div class="ff"><label>Headcount</label><input type="number" id="mp-count" placeholder="1" min="1"></div>
-          <div class="ff"><label>Monthly Salary (SAR)</label><input type="number" id="mp-salary" placeholder="0.00" step="0.01"></div>
-          <div class="ff"><label>Annual Cost (SAR)</label><input type="number" id="mp-annual" placeholder="Auto" step="0.01"></div>
+          <div class="ff"><label>Headcount</label><input type="number" id="mp-count" placeholder="1" min="1" oninput="mpUpdateAnnual()"></div>
+          <div class="ff"><label>Monthly Salary (SAR) — per person</label><input type="number" id="mp-salary" placeholder="0.00" step="0.01" oninput="mpUpdateAnnual()"></div>
+          <div class="ff"><label>Annual Cost (Auto-calculated)</label>
+            <div id="mp-annual-display" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:9px 12px;color:var(--ac);font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:700;">
+              SAR 0 &nbsp;<span style="font-size:10px;color:var(--mu);font-weight:400;">(Salary × 12 × Headcount)</span>
+            </div>
+          </div>
           <div class="ff"><label>Staff Type</label>
             <select id="mp-type" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;width:100%;">
               <option>Direct Employee</option><option>Contract Staff</option><option>Outsourced</option>
@@ -3375,7 +3379,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260601-1300';
+const APP_VERSION = '20260603-0900';
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
@@ -7294,7 +7298,7 @@ function doLogin() {
       ['tld','apron','shield'].forEach(t => renderRadTable(t));
     }
     if (id === 'docs')   { rebuildDocStdSelects(); renderDocs(); }
-    if (id === 'budget') { budgetBuildYearSelect(); budgetRenderAll(); }
+    if (id === 'budget') { budgetMigrateManpower(); budgetBuildYearSelect(); budgetRenderAll(); }
     if (id === 'pms')    { pmsInit(); }
     if (id === 'kpi2')  { kpi2BuildMonthSelect(); kpi2BuildTrendSelect(); kpi2RenderAll(); }
   };
@@ -9141,6 +9145,38 @@ function budgetSave(data, year) {
     value: JSON.stringify(data), _by: (typeof CU!=='undefined'?CU.name:''), _ts: new Date().toISOString() });
 }
 
+// ── Migrate existing manpower records to use salary×12×count ──
+function budgetMigrateManpower() {
+  const migratedKey = 'budget_mp_migrated_v2';
+  if (localStorage.getItem(migratedKey)) return; // already done
+  let migrated = 0;
+  // Check all years
+  for (let k in localStorage) {
+    if (!k.startsWith('fms_budget_')) continue;
+    try {
+      const data = JSON.parse(localStorage.getItem(k) || '{}');
+      if (!data.manpower || !data.manpower.length) continue;
+      let changed = false;
+      data.manpower = data.manpower.map(item => {
+        if (item.salary > 0 && item.count > 0) {
+          const correct = item.salary * 12 * (item.count || 1);
+          if (item.annual !== correct) {
+            item.annual = correct;
+            changed = true;
+            migrated++;
+          }
+        }
+        return item;
+      });
+      if (changed) localStorage.setItem(k, JSON.stringify(data));
+    } catch(e) {}
+  }
+  localStorage.setItem(migratedKey, '1');
+  if (migrated > 0) {
+    console.log('Budget migration: recalculated annual for ' + migrated + ' manpower records');
+  }
+}
+
 function budgetBuildYearSelect() {
   const sel = document.getElementById('budget-year'); if (!sel) return;
   const years = [];
@@ -9207,6 +9243,20 @@ function budgetDeleteItem(cat, id) {
   toast('Deleted');
 }
 
+// Live update annual cost display in manpower form
+function mpUpdateAnnual() {
+  const count   = parseFloat(document.getElementById('mp-count')?.value||1);
+  const salary  = parseFloat(document.getElementById('mp-salary')?.value||0);
+  const annual  = salary * 12 * count;
+  const display = document.getElementById('mp-annual-display');
+  if (display) {
+    const sar = annual.toLocaleString('en-SA', {maximumFractionDigits:0});
+    display.innerHTML = 'SAR ' + sar + ' &nbsp;<span style="font-size:10px;color:var(--mu);font-weight:400;">(SAR ' +
+      salary.toLocaleString('en-SA') + ' × 12 × ' + count + ' staff)</span>';
+    display.style.color = annual > 0 ? 'var(--ac)' : 'var(--mu)';
+  }
+}
+
 function budgetAddLine(cat) {
   let item = { _id: Date.now(), _by: (typeof CU!=='undefined'?CU.name:''), _ts: new Date().toISOString() };
   if (cat==='opex') {
@@ -9249,11 +9299,12 @@ function budgetAddLine(cat) {
     item.dept    = document.getElementById('mp-dept')?.value;
     item.count   = count;
     item.salary  = salary;
-    item.annual  = parseFloat(document.getElementById('mp-annual')?.value||0) || salary*12*count;
+    // Always compute annual from salary × 12 × count (correct formula)
+    item.annual  = salary * 12 * count;
     item.mtype   = document.getElementById('mp-type')?.value;
     if (!item.role) { toast('Enter position name','#f59e0b'); return; }
     ['mp-role'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
-    ['mp-count','mp-salary','mp-annual'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    ['mp-count','mp-salary'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';}); mpUpdateAnnual();
   }
   budgetSaveItem(cat, item);
   budgetRenderAll();
@@ -9336,14 +9387,14 @@ function budgetRenderTable(cat) {
   } else if (cat==='manpower') {
     const tb = document.getElementById('manpower-tb'); if (!tb) return;
     if (!items.length) { tb.innerHTML='<tr><td colspan="7" class="em">No manpower lines yet</td></tr>'; return; }
-    const totalAnnual = items.reduce((s,i)=>s+(i.annual||i.salary*12*i.count||0),0);
+    const totalAnnual = items.reduce((s,i)=>s+((i.salary>0 ? i.salary*12*(i.count||1) : (i.annual||0))),0);
     tb.innerHTML = items.map(i=>`<tr>
       <td style="font-weight:600;">${i.role||'—'}</td>
       <td style="font-size:11px;">${i.dept||'—'}</td>
       <td style="font-size:10px;">${i.mtype||'—'}</td>
       <td style="text-align:center;">${i.count||1}</td>
       <td>${sar(i.salary)}</td>
-      <td style="color:var(--ac);font-weight:600;">${sar(i.annual||i.salary*12*(i.count||1))}</td>
+      <td style="color:var(--ac);font-weight:600;">${sar((i.salary>0 ? i.salary*12*(i.count||1) : (i.annual||0)))}</td>
       <td><button class="btn br" style="font-size:9px;padding:2px 5px;" onclick="budgetDeleteItem('manpower','${i._id}')">✕</button></td>
     </tr>`).join('') + `<tr style="background:rgba(0,112,243,.05);font-weight:700;"><td colspan="5">TOTAL MANPOWER</td><td style="color:var(--ac);">${sar(totalAnnual)}</td><td></td></tr>`;
   }
@@ -9360,7 +9411,7 @@ function budgetRenderOverview() {
     opex:     { b: opex.reduce((s,i)=>s+(i.budget||0),0),     s: opex.reduce((s,i)=>s+(i.spent||0),0) },
     capex:    { b: capex.reduce((s,i)=>s+(i.approved||0),0),  s: capex.filter(i=>i.status==='Completed').reduce((s,i)=>s+(i.cost||0),0) },
     cbudget:  { b: cbudget.reduce((s,i)=>s+(i.value||0),0),   s: cbudget.reduce((s,i)=>s+(i.value||0),0) },
-    manpower: { b: manpower.reduce((s,i)=>s+(i.annual||i.salary*12*(i.count||1)||0),0), s: manpower.reduce((s,i)=>s+(i.annual||i.salary*12*(i.count||1)||0),0) },
+    manpower: { b: manpower.reduce((s,i)=>s+((i.salary>0 ? i.salary*12*(i.count||1) : (i.annual||0))),0), s: manpower.reduce((s,i)=>s+((i.salary>0 ? i.salary*12*(i.count||1) : (i.annual||0))),0) },
   };
   const totalBudget = Object.values(totals).reduce((s,t)=>s+t.b,0);
   const totalSpent  = Object.values(totals).reduce((s,t)=>s+t.s,0);
@@ -9470,7 +9521,7 @@ function budgetRenderHistory() {
   const sar = v=>'SAR '+(v||0).toLocaleString('en-SA',{maximumFractionDigits:0});
   el.innerHTML = years.map(y => {
     const data = budgetLoad(y);
-    const getTotal = cat => (data[cat]||[]).reduce((s,i)=>s+((cat==='capex'?i.approved:cat==='manpower'?(i.annual||i.salary*12*(i.count||1)):i.value||i.budget)||0),0);
+    const getTotal = cat => (data[cat]||[]).reduce((s,i)=>s+((cat==='capex'?i.approved:cat==='manpower'?((i.salary>0 ? i.salary*12*(i.count||1) : (i.annual||0))):i.value||i.budget)||0),0);
     const total = ['opex','capex','cbudget','manpower'].reduce((s,c)=>s+getTotal(c),0);
     return `<div style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
       <div>
@@ -9491,7 +9542,7 @@ function budgetExport() {
   const manpower = budgetGetItems('manpower');
   const totalB   = [...opex,...cbudget].reduce((s,i)=>s+(i.budget||i.value||0),0)
     + capex.reduce((s,i)=>s+(i.approved||0),0)
-    + manpower.reduce((s,i)=>s+(i.annual||i.salary*12*(i.count||1)||0),0);
+    + manpower.reduce((s,i)=>s+((i.salary>0 ? i.salary*12*(i.count||1) : (i.annual||0))),0);
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
 <title>FMS Annual Budget ${BUDGET_YEAR} — Obeid Specialized Hospital</title>
@@ -9551,8 +9602,8 @@ function budgetExport() {
   <div class="section-title">👥 MANPOWER COSTS</div>
   <table><thead><tr><th>Position</th><th>Department</th><th>Type</th><th>Count</th><th>Monthly</th><th>Annual</th></tr></thead>
   <tbody>
-    ${manpower.map(i=>`<tr><td>${i.role||'—'}</td><td>${i.dept||'—'}</td><td>${i.mtype||'—'}</td><td>${i.count||1}</td><td>${sar(i.salary)}</td><td>${sar(i.annual||i.salary*12*(i.count||1))}</td></tr>`).join('')}
-    <tr class="total-row"><td colspan="5">MANPOWER TOTAL</td><td>${sar(manpower.reduce((s,i)=>s+(i.annual||i.salary*12*(i.count||1)||0),0))}</td></tr>
+    ${manpower.map(i=>`<tr><td>${i.role||'—'}</td><td>${i.dept||'—'}</td><td>${i.mtype||'—'}</td><td>${i.count||1}</td><td>${sar(i.salary)}</td><td>${sar((i.salary>0 ? i.salary*12*(i.count||1) : (i.annual||0)))}</td></tr>`).join('')}
+    <tr class="total-row"><td colspan="5">MANPOWER TOTAL</td><td>${sar(manpower.reduce((s,i)=>s+((i.salary>0 ? i.salary*12*(i.count||1) : (i.annual||0))),0))}</td></tr>
   </tbody></table>
 </div>
 
