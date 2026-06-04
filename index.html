@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260603-1000';
+  var v = '20260603-1030';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -3395,7 +3395,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260603-1000';
+const APP_VERSION = '20260603-1030';
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
@@ -3562,9 +3562,35 @@ async function dbLoadAll() {
     });
     dbShowStatus('online', totalRecords);
     if(j.data&&j.data.platform_settings) settingsPullFromDB(j.data.platform_settings);
+
+    // ── Restore PPM overrides from DB (cross-device sync) ──
+    if (j.data && j.data.app_settings) {
+      const ppmRow = j.data.app_settings.find(r => r._id === 'ppm_overrides' || r.key === 'ppm_overrides');
+      if (ppmRow && ppmRow.value) {
+        try {
+          const dbOv  = JSON.parse(ppmRow.value);
+          const tsDb  = ppmRow._ts || '';
+          const localTsKey = 'obeid_ppm_overrides_ts';
+          const localTs    = localStorage.getItem(localTsKey) || '';
+          // Only overwrite local if DB version is newer (or local is empty)
+          const localOv = getPPMOverrides();
+          const localEmpty = Object.keys(localOv).length === 0;
+          if (localEmpty || tsDb >= localTs) {
+            localStorage.setItem('obeid_ppm_overrides', JSON.stringify(dbOv));
+            if (tsDb) localStorage.setItem(localTsKey, tsDb);
+            console.log('✓ PPM overrides synced from DB —', Object.keys(dbOv).length, 'records');
+          }
+          EQ_ALL = null; // force rebuild of equipment list with new overrides
+        } catch(e) { console.warn('PPM override parse error:', e.message); }
+      }
+    }
     renderAll();
     if (typeof renderDash === 'function') renderDash();
     if (typeof renderAnalytics === 'function') renderAnalytics();
+    // Re-render equipment if on equip page (PPM overrides just updated)
+    if (typeof eqRender === 'function' && document.getElementById('page-equip')?.classList.contains('active')) {
+      EQ_ALL = null; eqRender();
+    }
     // Update current visible page
     const activePage = document.querySelector('.pg[style*="block"]');
     if (activePage) {
@@ -5956,9 +5982,28 @@ function eqRender() {
 
   // Stats
   const total    = filtered.length;
-  const active   = filtered.filter(r => r.status === 'Active').length;
-  const inactive = filtered.filter(r => r.status === 'InActive').length;
-  const semiPPM  = filtered.filter(r => r.semiPPM && r.semiPPM !== 'X' && r.semiPPM !== 'x').length;
+  // Apply PPM overrides for accurate stats (override status/ppmFreq takes priority)
+  const _ov_all  = getPPMOverrides();
+  const active   = filtered.filter(r => {
+    const st = (_ov_all[r.asset]?.status) || r.status || 'Active';
+    return st === 'Active';
+  }).length;
+  const inactive = filtered.filter(r => {
+    const st = (_ov_all[r.asset]?.status) || r.status || 'Active';
+    return st === 'InActive' || st === 'OOS' || st === 'Out of Order';
+  }).length;
+  const underRepair = filtered.filter(r => {
+    const st = (_ov_all[r.asset]?.status) || r.status || '';
+    return st === 'Under Repair';
+  }).length;
+  const semiPPM  = filtered.filter(r => {
+    const freq = (_ov_all[r.asset]?.ppmFreq) || r.ppmFreq || '';
+    // Semi-annual: explicit override OR original semiPPM column has a value
+    if (/semi|6.?month|bi.?ann/i.test(freq)) return true;
+    if (freq === '' || freq === 'Annual') return false;
+    // fallback to original semiPPM column
+    return r.semiPPM && r.semiPPM !== 'X' && r.semiPPM !== 'x' && r.semiPPM !== '';
+  }).length;
 
   document.getElementById('eq-count').textContent = `${total} records`;
   document.getElementById('eq-table-label').textContent = `${total} records shown`;
@@ -5969,7 +6014,8 @@ function eqRender() {
       <div class="sc" style="--c:var(--ac)"><div class="ico">📋</div><div class="val">${total}</div><div class="lbl">Filtered Devices</div></div>
       <div class="sc" style="--c:var(--gn)"><div class="ico">✅</div><div class="val">${active}</div><div class="lbl">Active</div></div>
       <div class="sc" style="--c:var(--rd)"><div class="ico">❌</div><div class="val">${inactive}</div><div class="lbl">Out of Order</div></div>
-      <div class="sc" style="--c:var(--or)"><div class="ico">📅</div><div class="val">${semiPPM}</div><div class="lbl">With Semi-Annual PPM</div></div>`;
+      <div class="sc" style="--c:var(--or)"><div class="ico">🔧</div><div class="val">${underRepair}</div><div class="lbl">Under Repair</div></div>
+      <div class="sc" style="--c:var(--pu,#7828c8)"><div class="ico">📅</div><div class="val">${semiPPM}</div><div class="lbl">With Semi-Annual PPM</div></div>`;
   }
 
   // Table — show up to 200 rows
@@ -7906,9 +7952,11 @@ function getPPMOverrides() {
   catch(e) { return {}; }
 }
 function savePPMOverrides(obj) {
+  const ts = new Date().toISOString();
   localStorage.setItem('obeid_ppm_overrides', JSON.stringify(obj));
+  localStorage.setItem('obeid_ppm_overrides_ts', ts);
   dbWrite('app_settings', {_id:'ppm_overrides', key:'ppm_overrides',
-    value: JSON.stringify(obj), _by: CU.name, _ts: new Date().toISOString()
+    value: JSON.stringify(obj), _by: CU.name, _ts: ts
   });
 }
 
