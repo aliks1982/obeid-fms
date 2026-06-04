@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260603-1030';
+  var v = '20260603-1100';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -1471,8 +1471,15 @@ if ('caches' in window) {
 
 <!-- ===== EQUIPMENT ===== -->
 <div class="pg" id="page-equip">
-  <div class="ph">
-    <h1>⚕ Medical Equipment — FMS.1.1.7</h1>
+  <div class="ph" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+    <div>
+      <h1>⚕ Medical Equipment — FMS.1.1.7</h1>
+      <p>1,848 devices · PPM tracking · CBAHI compliance</p>
+    </div>
+    <button class="btn bb" style="font-size:11px;padding:7px 14px;" onclick="eqSyncAllOverridesToDB()" title="Push all PPM changes to shared database">
+      🔄 Sync PPM Changes to All Devices
+    </button>
+  </div>
     <p>1,848 assets · PPM tracking · CBAHI accreditation · Biomedical Engineer: Bashar</p>
   </div>
 
@@ -3395,7 +3402,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260603-1030';
+const APP_VERSION = '20260603-1100';
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
@@ -3563,25 +3570,34 @@ async function dbLoadAll() {
     dbShowStatus('online', totalRecords);
     if(j.data&&j.data.platform_settings) settingsPullFromDB(j.data.platform_settings);
 
-    // ── Restore PPM overrides from DB (cross-device sync) ──
+    // ── Restore PPM overrides from DB — per-row approach (no cell size limit) ──
     if (j.data && j.data.app_settings) {
-      const ppmRow = j.data.app_settings.find(r => r._id === 'ppm_overrides' || r.key === 'ppm_overrides');
-      if (ppmRow && ppmRow.value) {
-        try {
-          const dbOv  = JSON.parse(ppmRow.value);
-          const tsDb  = ppmRow._ts || '';
-          const localTsKey = 'obeid_ppm_overrides_ts';
-          const localTs    = localStorage.getItem(localTsKey) || '';
-          // Only overwrite local if DB version is newer (or local is empty)
-          const localOv = getPPMOverrides();
-          const localEmpty = Object.keys(localOv).length === 0;
-          if (localEmpty || tsDb >= localTs) {
-            localStorage.setItem('obeid_ppm_overrides', JSON.stringify(dbOv));
-            if (tsDb) localStorage.setItem(localTsKey, tsDb);
-            console.log('✓ PPM overrides synced from DB —', Object.keys(dbOv).length, 'records');
+      const ppmRows = j.data.app_settings.filter(r => r._id && r._id.startsWith('ppm_ov_'));
+      if (ppmRows.length > 0) {
+        const localOv = getPPMOverrides();
+        let updated = 0;
+        ppmRows.forEach(row => {
+          const assetNo = row._id.replace('ppm_ov_', '');
+          if (!assetNo) return;
+          // Build clean override object (exclude meta fields)
+          const ov = {};
+          ['lastPPM','nextPPM','ppmBy','ppmType','ppmFreq','notes','status',
+           'fileKey','updatedBy','updatedAt','_ts','_by'].forEach(k => {
+            if (row[k] !== undefined && row[k] !== '') ov[k] = row[k];
+          });
+          // Only update if DB row is newer than local
+          const dbTs    = row._ts || row.updatedAt || '';
+          const localTs = localOv[assetNo]?._ts || localOv[assetNo]?.updatedAt || '';
+          if (!localOv[assetNo] || dbTs >= localTs) {
+            localOv[assetNo] = ov;
+            updated++;
           }
-          EQ_ALL = null; // force rebuild of equipment list with new overrides
-        } catch(e) { console.warn('PPM override parse error:', e.message); }
+        });
+        if (updated > 0) {
+          localStorage.setItem('obeid_ppm_overrides', JSON.stringify(localOv));
+          EQ_ALL = null;
+          console.log('✓ PPM overrides synced from DB —', updated, 'assets updated');
+        }
       }
     }
     renderAll();
@@ -5892,6 +5908,20 @@ function eqSort(col) {
 }
 
 // ── Tab navigation ──
+// Push ALL local PPM overrides to DB (each as separate row)
+async function eqSyncAllOverridesToDB() {
+  const ov = getPPMOverrides();
+  const assets = Object.keys(ov);
+  if (!assets.length) { toast('No PPM overrides to sync','#f59e0b'); return; }
+  toast('Syncing ' + assets.length + ' PPM records to DB...');
+  let pushed = 0;
+  for (const assetNo of assets) {
+    await saveSinglePPMOverride(assetNo, ov[assetNo]);
+    pushed++;
+  }
+  toast('✅ ' + pushed + ' PPM records pushed to DB — other devices will sync on next reload');
+}
+
 function eqTab(tab, btn) {
   // IMPORTANT: Only hide the 5 top-level tab panel divs — NOT inner elements.
   // Using [id^="eq-"] would also hide eq-search, eq-dept-filter, eq-stats, etc.
@@ -7952,12 +7982,22 @@ function getPPMOverrides() {
   catch(e) { return {}; }
 }
 function savePPMOverrides(obj) {
-  const ts = new Date().toISOString();
+  // Save full object to localStorage for fast local access
   localStorage.setItem('obeid_ppm_overrides', JSON.stringify(obj));
-  localStorage.setItem('obeid_ppm_overrides_ts', ts);
-  dbWrite('app_settings', {_id:'ppm_overrides', key:'ppm_overrides',
-    value: JSON.stringify(obj), _by: CU.name, _ts: ts
+  // DO NOT write the entire blob to DB (Google Sheets 50K char cell limit)
+  // Individual asset writes are done via saveSinglePPMOverride()
+}
+
+// Write a single asset override to DB as its own row (safe cell size)
+function saveSinglePPMOverride(assetNo, data) {
+  const ts = new Date().toISOString();
+  const row = Object.assign({}, data, {
+    _id:   'ppm_ov_' + assetNo,
+    asset: assetNo,
+    _by:   CU.name,
+    _ts:   ts
   });
+  dbWrite('app_settings', row);
 }
 
 function getPPMData(assetNo) {
@@ -8084,8 +8124,10 @@ async function saveEqEdit() {
     updatedBy: CU.name, updatedAt: new Date().toISOString() };
   if (ppmFreq) ovData.ppmFreq = ppmFreq;
   if (assetChanged) delete ov[origAsset];
-  ov[assetChanged ? newAsset : origAsset] = ovData;
+  const targetAsset = assetChanged ? newAsset : origAsset;
+  ov[targetAsset] = ovData;
   savePPMOverrides(ov);
+  saveSinglePPMOverride(targetAsset, ovData);
   const added = ld('eq_added');
   const aIdx  = added.findIndex(r => r.asset === origAsset);
   if (aIdx >= 0) {
@@ -8353,7 +8395,9 @@ function invImport() {
       if (rec.lastPPM) ov[asset].lastPPM = rec.lastPPM;
       if (rec.nextPPM) ov[asset].nextPPM = rec.nextPPM;
       ov[asset].updatedBy = CU.name; ov[asset].updatedAt = new Date().toISOString();
+      ov[asset]._ts = new Date().toISOString();
       savePPMOverrides(ov);
+      saveSinglePPMOverride(asset, ov[asset]);
     }
 
     if (!existingInPayload.has(asset)) {
