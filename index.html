@@ -4251,7 +4251,7 @@ function toast(msg,color){const t=document.getElementById('toast');t.textContent
 // IMPORTANT: To connect your sheet, paste your Apps Script Web App URL below.
 // See instructions shown in the platform when sheet is not connected.
 // Once deployed, it looks like: https://script.google.com/macros/s/XXXXX/exec
-let APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwdezUpX0rs9tUfdN_nRpaFQCMuYVLol4lQ2BLl1Rc4KMbyofO9TS9uww-_NuLrwA5J/exec';
+let APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxACM4Ii0ocOsXVHilFYycNmrpyuy1KAfy6iXcIwqpnuaE2pTTs7G5qmS7TU1uphmrx/exec';
 
 const SHEET_ID  = '10qPGTtY0k9cBNAeYEwyKwpebsYMndvEFkhFB0RRO0q8';
 const SHEET_GID = '1530231215';
@@ -4287,7 +4287,7 @@ function connectAppsScript() {
 function loadSavedAppsScriptURL() {
   // Hardcoded URL takes priority — it's the correct deployment
   // If a saved URL exists and differs, override it with the hardcoded one
-  const hardcoded = 'https://script.google.com/macros/s/AKfycbwdezUpX0rs9tUfdN_nRpaFQCMuYVLol4lQ2BLl1Rc4KMbyofO9TS9uww-_NuLrwA5J/exec';
+  const hardcoded = 'https://script.google.com/macros/s/AKfycbxACM4Ii0ocOsXVHilFYycNmrpyuy1KAfy6iXcIwqpnuaE2pTTs7G5qmS7TU1uphmrx/exec';
   if (hardcoded) {
     APPS_SCRIPT_URL = hardcoded;
     localStorage.setItem('obeid_appsScriptURL', hardcoded);
