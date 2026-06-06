@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-0900';
+  var v = '20260606-1000';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -3400,7 +3400,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260606-0900';
+const APP_VERSION = '20260606-1000';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -3501,11 +3501,17 @@ function _emergencyFreeStorage() {
 }
 
 // ── DB URL management ──
+// Canonical Apps Script URL — shared across all devices
+const CANONICAL_DB_URL = 'https://script.google.com/macros/s/AKfycbxACM4Ii0ocOsXVHilFYycNmrpyuy1KAfy6iXcIwqpnuaE2pTTs7G5qmS7TU1uphmrx/exec';
+
 function getDBUrl() {
   if (DB_URL) return DB_URL;
   const saved = localStorage.getItem('obeid_db_url');
-  if (saved) { DB_URL = saved; return DB_URL; }
-  return '';
+  if (saved && saved.trim()) { DB_URL = saved.trim(); return DB_URL; }
+  // Fall back to canonical URL so all devices work out of the box
+  DB_URL = CANONICAL_DB_URL;
+  localStorage.setItem('obeid_db_url', DB_URL);
+  return DB_URL;
 }
 function setDBUrl(url) {
   DB_URL = url;
@@ -3528,8 +3534,16 @@ const DB_VALID_TYPES = new Set([
 ]);
 
 async function dbWrite(type, record) {
-  const url = getDBUrl();
+  let url = getDBUrl();
   if (!url) { dbQueue(type, record, 'upsert'); return false; }
+  // Auto-correct to canonical URL if stored URL is different (Bashar's old URL fix)
+  if (typeof CANONICAL_DB_URL !== 'undefined' && url !== CANONICAL_DB_URL) {
+    // If the stored URL returns CORS errors, switch to canonical
+    if (!window._dbUrlValidated) {
+      url = CANONICAL_DB_URL;
+      setDBUrl(CANONICAL_DB_URL);
+    }
+  }
   try {
     const r = await fetch(url, {
       method: 'POST',
@@ -3548,9 +3562,32 @@ async function dbWrite(type, record) {
       throw new Error(j.error||'DB write failed');
     }
     DB_ONLINE = true;
+    window._dbUrlValidated = true; // URL works — stop auto-correcting
     return true;
   } catch(e) {
     DB_ONLINE = false;
+    // If CORS error or network error, try canonical URL once
+    if (!window._dbUrlValidated && typeof CANONICAL_DB_URL !== 'undefined') {
+      const currentUrl = getDBUrl();
+      if (currentUrl !== CANONICAL_DB_URL) {
+        console.warn('DB write failed with stored URL — switching to canonical URL');
+        setDBUrl(CANONICAL_DB_URL);
+        window._dbUrlValidated = true;
+        // Retry with canonical URL
+        try {
+          const r2 = await fetch(CANONICAL_DB_URL, {
+            method: 'POST',
+            headers: {'Content-Type':'text/plain'},
+            body: JSON.stringify({ action:'upsert', type, record }),
+            signal: AbortSignal.timeout(8000)
+          });
+          if (r2.ok) {
+            const j2 = await r2.json();
+            if (j2.ok) { DB_ONLINE = true; return true; }
+          }
+        } catch(e2) {}
+      }
+    }
     dbQueue(type, record, 'upsert');
     return false;
   }
@@ -3585,7 +3622,9 @@ async function dbDelete(type, id) {
 
 // ── Read all from DB on load ──
 async function dbLoadAll() {
-  const url = getDBUrl();
+  // Always use canonical URL for reads (prevents CORS issues on other devices)
+  const url = typeof CANONICAL_DB_URL !== 'undefined' ? CANONICAL_DB_URL : getDBUrl();
+  if (url && url !== getDBUrl()) setDBUrl(url); // auto-correct stored URL
   if (!url) { dbShowStatus('offline'); return; }
   dbShowStatus('loading');
   try {
@@ -6693,6 +6732,7 @@ function settingsPushToDB() {
     doc_stds:    localStorage.getItem('obeid_doc_standards')|| '[]',
     esr_target:  localStorage.getItem('safety_esr_target') || '12',
     tr_target:   localStorage.getItem('safety_tr_target')  || '12',
+    db_url:      getDBUrl(),
     _by: (typeof CU!=='undefined'?CU.name:'System'),
     _ts: new Date().toISOString()
   };
@@ -6715,7 +6755,16 @@ function settingsPullFromDB(rows) {
   if (row.doc_stds&&row.doc_stds.length>2) localStorage.setItem('obeid_doc_standards',row.doc_stds);
   if (row.esr_target) localStorage.setItem('safety_esr_target',row.esr_target);
   if (row.tr_target)  localStorage.setItem('safety_tr_target', row.tr_target);
-  console.log('✓ Settings synced from DB — users/PINs updated');
+  // ── Sync DB URL to all devices — ensures everyone uses the same Apps Script ──
+  if (row.db_url && row.db_url.includes('script.google.com')) {
+    const currentUrl = localStorage.getItem('obeid_db_url') || '';
+    if (currentUrl !== row.db_url) {
+      localStorage.setItem('obeid_db_url', row.db_url);
+      DB_URL = row.db_url;
+      console.log('✓ DB URL updated from platform settings:', row.db_url.slice(-20));
+    }
+  }
+  console.log('✓ Settings synced from DB — users/PINs/URL updated');
 }
 
 function copyDBUrl() {
