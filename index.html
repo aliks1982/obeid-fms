@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260603-1200';
+  var v = '20260603-1300';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -3400,7 +3400,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260603-1200';
+const APP_VERSION = '20260603-1300';
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
@@ -6474,35 +6474,101 @@ function dbClearAndResync() {
 // ── Storage Management ──
 function fsGetStorageInfo() {
   let used = 0;
+  const breakdown = {};
   try {
     for (let k in localStorage) {
-      if (localStorage.hasOwnProperty(k)) used += ((localStorage[k]||'').length * 2);
+      if (!localStorage.hasOwnProperty(k)) continue;
+      const bytes = (localStorage[k]||'').length * 2;
+      used += bytes;
+      // Categorize large keys
+      if (bytes > 50000) breakdown[k] = Math.round(bytes/1024) + 'KB';
     }
   } catch(e) {}
   const usedKB  = Math.round(used / 1024);
-  const limitKB = 5120; // 5MB conservative estimate
+  const limitKB = 10240; // 10MB — modern browsers allow 10MB
   const pct     = Math.min(100, Math.round(usedKB/limitKB*100));
-  return { usedKB, limitKB, pct, freeKB: Math.max(0, limitKB-usedKB) };
+  return { usedKB, limitKB, pct, freeKB: Math.max(0, limitKB-usedKB), breakdown };
 }
 
 function fsClearOldData() {
-  if (!confirm('This will remove all stored file attachments from this browser to free up space.\nFile metadata (names, dates) will be kept.\nThe actual files will be lost unless you re-upload them.\n\nContinue?')) return;
-  const store = fsLoad();
-  // Strip data from all files, keep metadata only
-  const stripped = {};
-  Object.keys(store).forEach(k => {
-    stripped[k] = (store[k]||[]).map(f => ({id:f.id,name:f.name,size:f.size,type:f.type,ts:f.ts}));
-  });
-  try { localStorage.setItem(FILE_STORE_KEY, JSON.stringify(stripped)); }
-  catch(e) {
-    // If even metadata fails, clear entirely
+  if (!confirm('This will free localStorage space by:\n' +
+    '• Removing stored file binary data (file names kept)\n' +
+    '• Removing the old PPM overrides blob (will re-sync from DB)\n\n' +
+    'Your entered data (drills, logs, records) is NOT affected.\nContinue?')) return;
+
+  let freed = 0;
+
+  // 1. Strip binary data from file store (keep metadata)
+  try {
+    const store = fsLoad();
+    const stripped = {};
+    Object.keys(store).forEach(k => {
+      stripped[k] = (store[k]||[]).map(f => ({id:f.id,name:f.name,size:f.size,type:f.type,ts:f.ts}));
+    });
+    const before = (localStorage.getItem(FILE_STORE_KEY)||'').length;
+    localStorage.setItem(FILE_STORE_KEY, JSON.stringify(stripped));
+    freed += before - (localStorage.getItem(FILE_STORE_KEY)||'').length;
+  } catch(e) {
     localStorage.removeItem(FILE_STORE_KEY);
   }
-  toast('✅ File data cleared — storage freed. Metadata preserved.');
+
+  // 2. Clear old monolithic ppm_overrides blob (10MB+) — will re-sync from DB
+  const ppmSize = (localStorage.getItem('obeid_ppm_overrides')||'').length;
+  localStorage.removeItem('obeid_ppm_overrides');
+  localStorage.removeItem('obeid_ppm_overrides_ts');
+  freed += ppmSize;
+
+  // 3. Remove stale obeid3_app_settings (contains old ppm blob too)
+  const appSetSize = (localStorage.getItem('obeid3_app_settings')||'').length;
+  localStorage.removeItem('obeid3_app_settings');
+  freed += appSetSize;
+
+  const freedKB = Math.round(freed / 1024);
+  toast('✅ Freed ~' + freedKB + ' KB · Click ⟳ Sync to reload PPM data from DB');
   settingsRenderStorageBar();
 }
 
 function settingsRenderStorageBar() {
+  const el = document.getElementById('settings-storage-bar'); if (!el) return;
+  const info = fsGetStorageInfo();
+  const cc = info.pct >= 90 ? '#ef4444' : info.pct >= 70 ? '#f59e0b' : '#17c964';
+
+  // Build breakdown HTML
+  let breakdownHtml = '';
+  if (info.breakdown && Object.keys(info.breakdown).length > 0) {
+    const items = Object.entries(info.breakdown)
+      .sort((a,b) => parseInt(b[1])-parseInt(a[1]))
+      .slice(0, 6)
+      .map(([k,v]) => `<div style="display:flex;justify-content:space-between;font-size:10px;padding:2px 0;border-bottom:1px solid var(--bd);">
+        <span style="color:var(--mu);font-family:'DM Mono',monospace;font-size:9px;">${k.substring(0,35)}</span>
+        <span style="color:${cc};font-weight:700;">${v}</span>
+      </div>`).join('');
+    breakdownHtml = `<div style="margin:8px 0;background:var(--s2);border-radius:6px;padding:8px;">
+      <div style="font-size:10px;font-weight:700;color:var(--mu);margin-bottom:6px;">Largest items:</div>
+      ${items}
+    </div>`;
+  }
+
+  el.innerHTML = `
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-size:11px;color:var(--mu);">localStorage Usage</span>
+        <span style="font-size:12px;font-weight:700;color:${cc};">${info.usedKB.toLocaleString()} KB / ${info.limitKB.toLocaleString()} KB (${info.pct}%)</span>
+      </div>
+      <div style="height:8px;background:var(--s3);border-radius:4px;overflow:hidden;margin-bottom:8px;">
+        <div style="height:100%;width:${info.pct}%;background:${cc};border-radius:4px;transition:width .4s;"></div>
+      </div>
+      ${info.pct >= 70 ? `<div style="font-size:10px;color:${cc};margin-bottom:8px;padding:6px 10px;background:${cc}22;border-radius:6px;">
+        ⚠️ Storage is ${info.pct >= 90 ? '<b>critically</b>' : 'nearly'} full (${info.usedKB.toLocaleString()} KB used). Click <b>🗑 Clear & Resync</b> to free space.
+      </div>` : '<div style="font-size:10px;color:#17c964;margin-bottom:8px;">✅ Storage OK</div>'}
+      ${breakdownHtml}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn br" style="font-size:10px;padding:6px 14px;" onclick="fsClearOldData()">🗑 Clear & Resync</button>
+        <button class="btn bo" style="font-size:10px;padding:6px 14px;" onclick="settingsRenderStorageBar()">⟳ Refresh</button>
+        <button class="btn bb" style="font-size:10px;padding:6px 14px;" onclick="dbLoadAll().then(()=>settingsRenderStorageBar())">☁️ Sync from DB</button>
+      </div>
+    </div>`;
+}function settingsRenderStorageBar() {
   const el = document.getElementById('settings-storage-bar'); if (!el) return;
   const info = fsGetStorageInfo();
   const cc = info.pct >= 90 ? '#ef4444' : info.pct >= 70 ? '#f59e0b' : '#00d4aa';
@@ -7980,10 +8046,13 @@ function getPPMOverrides() {
   catch(e) { return {}; }
 }
 function savePPMOverrides(obj) {
-  // Save full object to localStorage for fast local access
-  localStorage.setItem('obeid_ppm_overrides', JSON.stringify(obj));
-  // DO NOT write the entire blob to DB (Google Sheets 50K char cell limit)
-  // Individual asset writes are done via saveSinglePPMOverride()
+  try {
+    localStorage.setItem('obeid_ppm_overrides', JSON.stringify(obj));
+  } catch(e) {
+    // Storage full — remove old blob first then retry
+    localStorage.removeItem('obeid3_app_settings');
+    try { localStorage.setItem('obeid_ppm_overrides', JSON.stringify(obj)); } catch(e2) {}
+  }
 }
 
 // Write a single asset override to DB as its own row (safe cell size)
