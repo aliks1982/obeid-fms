@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1100';
+  var v = '20260606-1200';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -3400,7 +3400,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260606-1100';
+const APP_VERSION = '20260606-1200';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -3557,91 +3557,19 @@ async function dbWrite(type, record) {
     dbQueue(type, record, 'upsert');
     return false;
   }
-}async function dbWrite(type, record) {
-  let url = getDBUrl();
-  if (!url) { dbQueue(type, record, 'upsert'); return false; }
-  // Auto-correct to canonical URL if stored URL is different (Bashar's old URL fix)
-  if (typeof CANONICAL_DB_URL !== 'undefined' && url !== CANONICAL_DB_URL) {
-    // If the stored URL returns CORS errors, switch to canonical
-    if (!window._dbUrlValidated) {
-      url = CANONICAL_DB_URL;
-      setDBUrl(CANONICAL_DB_URL);
-    }
-  }
-  try {
-    const r = await fetch(url, {
-      method: 'POST',
-      headers: {'Content-Type':'text/plain'},
-      body: JSON.stringify({ action:'upsert', type, record }),
-      signal: AbortSignal.timeout(8000)
-    });
-    if (!r.ok) throw new Error('HTTP '+r.status);
-    const j = await r.json();
-    if (!j.ok) {
-      // Unknown type means Apps Script needs updating — queue locally, don't crash
-      if (j.error && j.error.includes('Unknown type')) {
-        dbQueue(type, record, 'upsert');
-        return false;
-      }
-      throw new Error(j.error||'DB write failed');
-    }
-    DB_ONLINE = true;
-    window._dbUrlValidated = true; // URL works — stop auto-correcting
-    return true;
-  } catch(e) {
-    DB_ONLINE = false;
-    // If CORS error or network error, try canonical URL once
-    if (!window._dbUrlValidated && typeof CANONICAL_DB_URL !== 'undefined') {
-      const currentUrl = getDBUrl();
-      if (currentUrl !== CANONICAL_DB_URL) {
-        console.warn('DB write failed with stored URL — switching to canonical URL');
-        setDBUrl(CANONICAL_DB_URL);
-        window._dbUrlValidated = true;
-        // Retry with canonical URL
-        try {
-          const r2 = await fetch(CANONICAL_DB_URL, {
-            method: 'POST',
-            headers: {'Content-Type':'text/plain'},
-            body: JSON.stringify({ action:'upsert', type, record }),
-            signal: AbortSignal.timeout(8000)
-          });
-          if (r2.ok) {
-            const j2 = await r2.json();
-            if (j2.ok) { DB_ONLINE = true; return true; }
-          }
-        } catch(e2) {}
-      }
-    }
-    dbQueue(type, record, 'upsert');
-    return false;
-  }
 }
 
 // ── Delete from DB ──
 async function dbDelete(type, id) {
-  const url = getDBUrl();
-  if (!url) {
-    const q = JSON.parse(localStorage.getItem('obeid_delete_queue')||'[]');
-    q.push({ type, id, ts: new Date().toISOString() });
-    localStorage.setItem('obeid_delete_queue', JSON.stringify(q));
-    return;
-  }
+  const url = CANONICAL_DB_URL || getDBUrl();
+  if (!url) return false;
   try {
-    const r = await fetch(url, {
-      method: 'POST',
-      headers: {'Content-Type':'text/plain'},
-      body: JSON.stringify({ action:'delete', type, id: String(id) }),
-      signal: AbortSignal.timeout(8000)
-    });
+    const getUrl = url + '?action=delete&type=' + encodeURIComponent(type) + '&id=' + encodeURIComponent(id);
+    const r = await fetch(getUrl, { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
     const j = await r.json();
-    if (j.ok) { console.log('✓ Deleted from DB:', type, id); }
-    else { console.warn('DB delete response:', j.error); }
-  } catch(e) {
-    console.warn('dbDelete failed:', e.message);
-    const q = JSON.parse(localStorage.getItem('obeid_delete_queue')||'[]');
-    q.push({ type, id, ts: new Date().toISOString() });
-    localStorage.setItem('obeid_delete_queue', JSON.stringify(q));
-  }
+    return j.ok === true;
+  } catch(e) { return false; }
 }
 
 // ── Read all from DB on load ──
@@ -3779,39 +3707,6 @@ async function dbFlushQueue() {
     localStorage.setItem('obeid_sync_queue', JSON.stringify([...remaining, ...rest]));
     if (remaining.length < q.length) console.log('Flushed', q.length - remaining.length, 'queued writes');
   } catch(e) { console.warn('dbFlushQueue error:', e.message); }
-}async function dbFlushQueue() {
-  const url = getDBUrl(); if (!url) return;
-
-  // Flush write queue
-  const wq = JSON.parse(localStorage.getItem('obeid_sync_queue')||'[]');
-  const wRemaining = [];
-  for (const item of wq) {
-    const ok = await dbWrite(item.type, item.record);
-    if (!ok) wRemaining.push(item);
-  }
-  localStorage.setItem('obeid_sync_queue', JSON.stringify(wRemaining));
-  if (wRemaining.length < wq.length) {
-    console.log('✓ Synced', wq.length - wRemaining.length, 'queued writes');
-  }
-
-  // Flush delete queue
-  const dq = JSON.parse(localStorage.getItem('obeid_delete_queue')||'[]');
-  const dRemaining = [];
-  for (const item of dq) {
-    try {
-      const r = await fetch(url, {
-        method:'POST', headers:{'Content-Type':'text/plain'},
-        body: JSON.stringify({ action:'delete', type:item.type, id:String(item.id) }),
-        signal: AbortSignal.timeout(6000)
-      });
-      const j = await r.json();
-      if (!j.ok) dRemaining.push(item);
-    } catch(e) { dRemaining.push(item); }
-  }
-  localStorage.setItem('obeid_delete_queue', JSON.stringify(dRemaining));
-
-  const total = (wq.length-wRemaining.length) + (dq.length-dRemaining.length);
-  if (total > 0) toast('✓ Synced ' + total + ' queued operations');
 }
 
 // ── Status display ──
