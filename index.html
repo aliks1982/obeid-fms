@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1300';
+  var v = '20260606-1400';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -3400,7 +3400,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260606-1300';
+const APP_VERSION = '20260606-1400';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -3536,20 +3536,17 @@ const DB_VALID_TYPES = new Set([
 async function dbWrite(type, record) {
   const url = CANONICAL_DB_URL || getDBUrl();
   if (!url) { dbQueue(type, record, 'upsert'); return false; }
-  // Use GET instead of POST — Apps Script blocks POST from GitHub Pages (CORS)
-  // GET requests are CORS-safe for cross-origin requests
   try {
-    const encoded = encodeURIComponent(JSON.stringify(record));
-    const getUrl = url + '?action=upsert&type=' + encodeURIComponent(type) + '&record=' + encoded;
-    const r = await fetch(getUrl, { signal: AbortSignal.timeout(10000) });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const j = await r.json();
-    if (!j.ok) {
-      if (j.error && j.error.includes('Unknown type')) {
-        dbQueue(type, record, 'upsert'); return false;
-      }
-      throw new Error(j.error || 'DB write failed');
-    }
+    // Use POST with no-cors mode — Apps Script processes the POST even though
+    // the browser can't read the response (no-cors = fire-and-forget write)
+    // This avoids URL length limits that block long GET requests on some networks
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'upsert', type: type, record: record })
+    });
+    // no-cors always resolves (we can't check ok), assume success
     DB_ONLINE = true;
     return true;
   } catch(e) {
@@ -3564,11 +3561,13 @@ async function dbDelete(type, id) {
   const url = CANONICAL_DB_URL || getDBUrl();
   if (!url) return false;
   try {
-    const getUrl = url + '?action=delete&type=' + encodeURIComponent(type) + '&id=' + encodeURIComponent(id);
-    const r = await fetch(getUrl, { signal: AbortSignal.timeout(8000) });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const j = await r.json();
-    return j.ok === true;
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'delete', type: type, id: id })
+    });
+    return true;
   } catch(e) { return false; }
 }
 
@@ -6301,6 +6300,18 @@ function eqAutoFill(assetNo) {
   set('ppm-equip', rec.desc);  set('ppm-dept-field', rec.dept);
   set('ppm-model-field', rec.model); set('ppm-serial-field', rec.serial);
 }
+function relAutoFill(assetNo) {
+  if (!assetNo || assetNo.length < 2) return;
+  const a = assetNo.toLowerCase();
+  const rec = eqAll().find(r => (r.asset||'').toLowerCase() === a);
+  if (!rec) return;
+  const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = v || ''; };
+  set('rel-desc', rec.desc);
+  set('rel-dept', rec.dept);
+  set('rel-location', rec.location);
+}
+
+
 
 // ── Add new equipment ──
 function eqAddRecord() {
