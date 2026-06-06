@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260603-1400';
+  var v = '20260606-0900';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -3400,7 +3400,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260603-1400';
+const APP_VERSION = '20260606-0900';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -5955,10 +5955,14 @@ function eqDecode(r) {
 let EQ_ALL = null;
 function eqAll() {
   if (!EQ_ALL) {
-    EQ_ALL = EQ_PAYLOAD.r.map(eqDecode);
-    // Merge manually added records from localStorage
     const added = ld('eq_added') || [];
-    added.forEach(r => { r._manual = true; EQ_ALL.push(r); });
+    // Build a set of asset numbers in eq_added (includes overrides of base records)
+    const addedAssets = new Set(added.map(r => r.asset));
+    // Base records — skip any that have been overridden in eq_added
+    const base = EQ_PAYLOAD.r.map(eqDecode).filter(r => !addedAssets.has(r.asset));
+    // eq_added records (manual additions + overrides of base records)
+    added.forEach(r => { r._manual = true; });
+    EQ_ALL = [...base, ...added];
   }
   return EQ_ALL;
 }
@@ -8285,11 +8289,30 @@ async function saveEqEdit() {
   const added = ld('eq_added');
   const aIdx  = added.findIndex(r => r.asset === origAsset);
   if (aIdx >= 0) {
+    // Update existing eq_added record
     if (assetChanged) added[aIdx].asset = newAsset;
     added[aIdx].lastPPM = lastPPM; added[aIdx].nextPPM = nextPPM;
     added[aIdx].status  = status;  added[aIdx].remarks = notes;
     if (ppmFreq) added[aIdx].ppmFreq = ppmFreq;
-    sv('eq_added', added); dbWrite('eq_added', added[aIdx]);
+    added[aIdx]._by = CU.name; added[aIdx]._ts = new Date().toISOString();
+    sv('eq_added', added);
+    dbWrite('eq_added', added[aIdx]);
+  } else {
+    // Base EQ_PAYLOAD record — create eq_added override so ALL devices get the change
+    const baseRec = EQ_PAYLOAD.r.map(eqDecode).find(r => r.asset === origAsset) || {};
+    const overrideRec = Object.assign({}, baseRec, {
+      _id:     'eq_ov_' + targetAsset,
+      asset:   targetAsset,
+      lastPPM, nextPPM, status,
+      remarks: notes,
+      source:  'override',
+      _by:     CU.name,
+      _ts:     new Date().toISOString()
+    });
+    if (ppmFreq) overrideRec.ppmFreq = ppmFreq;
+    added.push(overrideRec);
+    sv('eq_added', added);
+    dbWrite('eq_added', overrideRec);
   }
   EQ_ALL = null;
   closeMod('eq-edit'); eqRender();
