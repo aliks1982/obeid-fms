@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260603-1300';
+  var v = '20260603-1400';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -3400,7 +3400,23 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260603-1300';
+const APP_VERSION = '20260603-1400';
+
+// ── Auto-free storage on load if critically full ──────────────
+(function() {
+  try {
+    let used = 0;
+    for (let k in localStorage) {
+      if (localStorage.hasOwnProperty(k)) used += (localStorage[k]||'').length * 2;
+    }
+    if (used > 7 * 1024 * 1024) { // > 7MB
+      // Remove biggest non-essential keys
+      ['obeid_ppm_overrides','obeid3_app_settings','obeid_file_store_v1',
+       'obeid_ppm_overrides_ts'].forEach(k => localStorage.removeItem(k));
+      console.warn('Auto-freed storage on load (' + Math.round(used/1024) + 'KB was used)');
+    }
+  } catch(e) {}
+})();
 
 // ── VERSION CHECK: auto-detect when managers have an old version ──
 function checkForUpdates() {
@@ -3439,8 +3455,49 @@ function ld(k){
   try{ return JSON.parse(localStorage.getItem(PX+k)||'[]'); }
   catch(e){ return []; }
 }
-function sv(k,v){
-  localStorage.setItem(PX+k, JSON.stringify(v));
+function sv(k, v) {
+  const data = JSON.stringify(v);
+  try {
+    localStorage.setItem(PX + k, data);
+  } catch(e) {
+    if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+      // Auto-free: remove the biggest non-critical keys and retry
+      _emergencyFreeStorage();
+      try { localStorage.setItem(PX + k, data); }
+      catch(e2) {
+        // Still full — truncate array data and retry
+        if (Array.isArray(v) && v.length > 20) {
+          try { localStorage.setItem(PX + k, JSON.stringify(v.slice(0, 20))); } catch(e3) {}
+        }
+        console.warn('sv quota error for key:', k, '— data may be partial');
+      }
+    }
+  }
+}
+
+// Remove large non-essential keys to free space
+function _emergencyFreeStorage() {
+  const toRemove = [
+    'obeid_ppm_overrides',        // 10MB blob — rebuild from DB
+    'obeid3_app_settings',        // duplicate of ppm data
+    'obeid_file_store_v1',        // file binaries
+    'obeid_ppm_overrides_ts',
+  ];
+  toRemove.forEach(k => localStorage.removeItem(k));
+  // Also truncate unbounded arrays
+  const truncKeys = ['access_log','sync_queue_log'];
+  truncKeys.forEach(k => {
+    try {
+      const arr = JSON.parse(localStorage.getItem(PX+k)||'[]');
+      if (arr.length > 20) localStorage.setItem(PX+k, JSON.stringify(arr.slice(0,20)));
+    } catch(e) { localStorage.removeItem(PX+k); }
+  });
+  // Truncate sync queue too
+  try {
+    const q = JSON.parse(localStorage.getItem('obeid_sync_queue')||'[]');
+    if (q.length > 30) localStorage.setItem('obeid_sync_queue', JSON.stringify(q.slice(0,30)));
+  } catch(e) { localStorage.removeItem('obeid_sync_queue'); }
+  console.warn('Emergency storage freed');
 }
 
 // ── DB URL management ──
@@ -3557,12 +3614,12 @@ async function dbLoadAll() {
         return;
       }
       // DB has records — use DB as authoritative source
-      // Only keep local records whose _id is in the sync queue (not yet pushed to DB)
+      // Skip app_settings — it's huge (ppm overrides) and handled separately below
+      if (key === 'app_settings') return;
       const dbIdSet = new Set(dbRows.map(r => String(r._id||'')));
       const queuedLocal = ld(key).filter(r =>
         queuedIds.has(String(r._id||'')) && !dbIdSet.has(String(r._id||''))
       );
-      // DB records first (newest from DB), then any locally-queued records not yet in DB
       sv(key, [...dbRows, ...queuedLocal]);
     });
     dbShowStatus('online', totalRecords);
@@ -3625,9 +3682,18 @@ async function dbLoadAll() {
 
 // ── Offline queue ──
 function dbQueue(type, record, action) {
-  const q = JSON.parse(localStorage.getItem('obeid_sync_queue')||'[]');
-  q.push({ type, record, action, queuedAt: new Date().toISOString() });
-  localStorage.setItem('obeid_sync_queue', JSON.stringify(q));
+  try {
+    const q = JSON.parse(localStorage.getItem('obeid_sync_queue')||'[]');
+    q.push({ type, record, action, ts: new Date().toISOString() });
+    // Keep queue bounded — max 100 items
+    const trimmed = q.slice(-100);
+    try { localStorage.setItem('obeid_sync_queue', JSON.stringify(trimmed)); }
+    catch(e) {
+      // Queue full — free space then retry with just last 20 items
+      _emergencyFreeStorage();
+      try { localStorage.setItem('obeid_sync_queue', JSON.stringify(trimmed.slice(-20))); } catch(e2) {}
+    }
+  } catch(e) { console.warn('dbQueue error:', e.message); }
 }
 
 async function dbFlushQueue() {
@@ -5383,7 +5449,10 @@ function mgSave(type) {
     if (!isNaN(c) && (c < 3.5 || c > 5.5)) toast('⚠️ Central pipeline pressure outside 3.5–5.5 BAR', '#f59e0b');
   }
 
-  const arr = ld('mg_' + type); arr.unshift(rec); sv('mg_' + type, arr);
+  const arr = ld('mg_' + type); arr.unshift(rec);
+  // Keep last 180 entries per gas system to prevent unbounded growth
+  if (arr.length > 180) arr.splice(180);
+  sv('mg_' + type, arr);
   dbWrite('mg_' + type, rec);
   // Also log to general activity
   logA('mg_' + type);
@@ -6488,6 +6557,24 @@ function fsGetStorageInfo() {
   const limitKB = 10240; // 10MB — modern browsers allow 10MB
   const pct     = Math.min(100, Math.round(usedKB/limitKB*100));
   return { usedKB, limitKB, pct, freeKB: Math.max(0, limitKB-usedKB), breakdown };
+}
+
+function nukeAndReload() {
+  if (!confirm('EMERGENCY RESET\n\nThis will clear ALL locally cached data from this browser.\n' +
+    'Your data in Google Sheets is SAFE and will reload on next sync.\n\n' +
+    'Use this when the platform is stuck due to storage being full.\nContinue?')) return;
+  // Keep only the DB URL and PIN settings — everything else goes
+  const keepKeys = [];
+  for (let k in localStorage) {
+    if (k.includes('db_url') || k.includes('PIN') || k.includes('pin') || 
+        k.includes('login') || k === 'obeid_first_visit') {
+      keepKeys.push([k, localStorage.getItem(k)]);
+    }
+  }
+  localStorage.clear();
+  keepKeys.forEach(([k,v]) => { try { localStorage.setItem(k,v); } catch(e){} });
+  toast('✅ Storage cleared — reloading...');
+  setTimeout(() => location.reload(), 1200);
 }
 
 function fsClearOldData() {
