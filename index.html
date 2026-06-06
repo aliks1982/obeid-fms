@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1200';
+  var v = '20260606-1300';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -3400,7 +3400,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260606-1200';
+const APP_VERSION = '20260606-1300';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -3502,7 +3502,7 @@ function _emergencyFreeStorage() {
 
 // ── DB URL management ──
 // Canonical Apps Script URL — shared across all devices
-const CANONICAL_DB_URL = 'https://script.google.com/macros/s/AKfycbxACM4Ii0ocOsXVHilFYycNmrpyuy1KAfy6iXcIwqpnuaE2pTTs7G5qmS7TU1uphmrx/exec';
+const CANONICAL_DB_URL = 'https://script.google.com/macros/s/AKfycbwdezUpX0rs9tUfdN_nRpaFQCMuYVLol4lQ2BLl1Rc4KMbyofO9TS9uww-_NuLrwA5J/exec';
 
 function getDBUrl() {
   if (DB_URL) return DB_URL;
@@ -4252,7 +4252,7 @@ function toast(msg,color){const t=document.getElementById('toast');t.textContent
 // IMPORTANT: To connect your sheet, paste your Apps Script Web App URL below.
 // See instructions shown in the platform when sheet is not connected.
 // Once deployed, it looks like: https://script.google.com/macros/s/XXXXX/exec
-let APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxACM4Ii0ocOsXVHilFYycNmrpyuy1KAfy6iXcIwqpnuaE2pTTs7G5qmS7TU1uphmrx/exec';
+let APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwdezUpX0rs9tUfdN_nRpaFQCMuYVLol4lQ2BLl1Rc4KMbyofO9TS9uww-_NuLrwA5J/exec';
 
 const SHEET_ID  = '10qPGTtY0k9cBNAeYEwyKwpebsYMndvEFkhFB0RRO0q8';
 const SHEET_GID = '1530231215';
@@ -4288,7 +4288,7 @@ function connectAppsScript() {
 function loadSavedAppsScriptURL() {
   // Hardcoded URL takes priority — it's the correct deployment
   // If a saved URL exists and differs, override it with the hardcoded one
-  const hardcoded = 'https://script.google.com/macros/s/AKfycbxACM4Ii0ocOsXVHilFYycNmrpyuy1KAfy6iXcIwqpnuaE2pTTs7G5qmS7TU1uphmrx/exec';
+  const hardcoded = 'https://script.google.com/macros/s/AKfycbwdezUpX0rs9tUfdN_nRpaFQCMuYVLol4lQ2BLl1Rc4KMbyofO9TS9uww-_NuLrwA5J/exec';
   if (hardcoded) {
     APPS_SCRIPT_URL = hardcoded;
     localStorage.setItem('obeid_appsScriptURL', hardcoded);
