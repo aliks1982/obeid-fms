@@ -1476,8 +1476,8 @@ if ('caches' in window) {
       <h1>⚕ Medical Equipment — FMS.1.1.7</h1>
       <p>1,848 devices · PPM tracking · CBAHI compliance</p>
     </div>
-    <button class="btn bb" style="font-size:11px;padding:7px 14px;" onclick="eqSyncAllOverridesToDB()" title="Push all PPM changes to shared database">
-      🔄 Sync PPM Changes to All Devices
+    <button class="btn bb" id="eq-sync-btn" style="font-size:11px;padding:7px 14px;" onclick="eqSyncAllOverridesToDB()" title="Push all your PPM changes so other devices can see them">
+      🔄 Sync My Changes
     </button>
   </div>
 
@@ -3659,8 +3659,10 @@ async function dbLoadAll() {
     if (typeof renderDash === 'function') renderDash();
     if (typeof renderAnalytics === 'function') renderAnalytics();
     // Re-render equipment if on equip page (PPM overrides just updated)
+    // Always rebuild EQ_ALL after sync (overrides may have changed)
+    EQ_ALL = null;
     if (typeof eqRender === 'function' && document.getElementById('page-equip')?.classList.contains('active')) {
-      EQ_ALL = null; eqRender();
+      eqRender();
     }
     // Update current visible page
     const activePage = document.querySelector('.pg[style*="block"]');
@@ -5980,17 +5982,21 @@ function eqSort(col) {
 
 // ── Tab navigation ──
 // Push ALL local PPM overrides to DB (each as separate row)
-async function eqSyncAllOverridesToDB() {
+async function eqSyncAllOverridesToDB(silent) {
   const ov = getPPMOverrides();
   const assets = Object.keys(ov);
-  if (!assets.length) { toast('No PPM overrides to sync','#f59e0b'); return; }
-  toast('Syncing ' + assets.length + ' PPM records to DB...');
+  if (!assets.length) {
+    if (!silent) toast('No PPM overrides to sync','#f59e0b');
+    return;
+  }
+  if (!silent) toast('Syncing ' + assets.length + ' PPM records to DB...');
   let pushed = 0;
   for (const assetNo of assets) {
     await saveSinglePPMOverride(assetNo, ov[assetNo]);
     pushed++;
   }
-  toast('✅ ' + pushed + ' PPM records pushed to DB — other devices will sync on next reload');
+  if (!silent) toast('✅ ' + pushed + ' PPM records synced to DB');
+  else if (pushed > 0) console.log('✓ Auto-synced', pushed, 'PPM overrides to DB');
 }
 
 function eqTab(tab, btn) {
@@ -7490,6 +7496,11 @@ function doLogin() {
   logAccessEvent('Login');
   init();
 
+  // Auto-push any pending equipment PPM overrides to DB (background, silent)
+  if (CU.role === 'biomedical' || CU.role === 'director') {
+    setTimeout(() => eqSyncAllOverridesToDB(true), 3000);
+  }
+
   // Show DB connection reminder if not connected
   setTimeout(() => {
     if (!getDBUrl()) {
@@ -7512,6 +7523,8 @@ function doLogin() {
     _baseGp(id);
     if (id === 'equip') {
       setTimeout(() => eqTab('inv', document.querySelector('#page-equip .tbtn')), 60);
+      // Auto-push any pending PPM overrides to DB in background (no button needed)
+      setTimeout(() => eqSyncAllOverridesToDB(true), 2000);
     }
     if (id === 'medgas')    { renderAllMGTables(); renderMGLog('all'); setTimeout(loadLOXRange, 100); }
     if (id === 'risk')      { setTimeout(() => riskTab('heatmap', null), 80); }
