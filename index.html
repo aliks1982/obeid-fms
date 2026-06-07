@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1502';
+  var v = '20260606-1503';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -4834,7 +4834,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260606-1502';
+const APP_VERSION = '20260606-1503';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -7454,6 +7454,36 @@ function eqInitFilters() {
 }
 
 // ── Main filter + render ──
+
+// ── Fix corrupted PPM override data (status field got wrong value) ──
+function fixCorruptedOverrides() {
+  const VALID = new Set(['Active','InActive','Under Repair','Condemned','OOS','outoforder']);
+  const ov = getPPMOverrides();
+  let fixed = 0;
+  Object.entries(ov).forEach(([asset, data]) => {
+    if (!data || typeof data !== 'object') return;
+    const st = data.status || '';
+    if (st && !VALID.has(st)) {
+      // Status has an invalid value (e.g. a person's name)
+      // Check ppmType for the real status
+      const pt = data.ppmType || '';
+      if (VALID.has(pt)) {
+        data.status = pt;
+        fixed++;
+      } else {
+        // Can't recover — remove the corrupted status so base record status is used
+        delete data.status;
+        fixed++;
+      }
+    }
+  });
+  if (fixed > 0) {
+    savePPMOverrides(ov);
+    console.log('✓ Fixed ' + fixed + ' corrupted PPM override status values');
+    EQ_ALL = null;
+  }
+}
+
 function eqRender() {
   // Update sort indicators in static thead
   document.querySelectorAll('.sort-th').forEach(th => {
@@ -7499,8 +7529,18 @@ function eqRender() {
   // Stats — read effective status from merged eq_added + PPM overrides
   const total    = filtered.length;
   const _ov_all  = getPPMOverrides();
+  const VALID_STATUSES = ['active','inactive','underrepair','repair','oos','outoforder','outofservice','condemned','decommissioned','undermaintenance','inrepair',''];
   const effSt = r => {
-    const raw = (_ov_all[r.asset]?.status || r.status || 'Active').trim().toLowerCase().replace(/[\s_\-]/g,'');
+    const ov = _ov_all[r.asset] || {};
+    // Get status from override or base record
+    let raw = (ov.status || r.status || 'Active').trim().toLowerCase().replace(/[\s_\-]/g,'');
+    // If status is not a recognized value (e.g. a person's name from corrupted data),
+    // fall back to ppmType which sometimes correctly captured InActive
+    if (!VALID_STATUSES.includes(raw)) {
+      const ptRaw = (ov.ppmType || '').trim().toLowerCase().replace(/[\s_\-]/g,'');
+      if (VALID_STATUSES.includes(ptRaw) && ptRaw !== '') raw = ptRaw;
+      else raw = 'active'; // unknown = treat as active
+    }
     return raw;
   };
   const active      = filtered.filter(r => { const s = effSt(r); return s === 'active' || s === ''; }).length;
