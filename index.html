@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1503';
+  var v = '20260606-1504';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -7529,19 +7529,19 @@ function eqRender() {
   // Stats — read effective status from merged eq_added + PPM overrides
   const total    = filtered.length;
   const _ov_all  = getPPMOverrides();
-  const VALID_STATUSES = ['active','inactive','underrepair','repair','oos','outoforder','outofservice','condemned','decommissioned','undermaintenance','inrepair',''];
   const effSt = r => {
     const ov = _ov_all[r.asset] || {};
-    // Get status from override or base record
-    let raw = (ov.status || r.status || 'Active').trim().toLowerCase().replace(/[\s_\-]/g,'');
-    // If status is not a recognized value (e.g. a person's name from corrupted data),
-    // fall back to ppmType which sometimes correctly captured InActive
-    if (!VALID_STATUSES.includes(raw)) {
-      const ptRaw = (ov.ppmType || '').trim().toLowerCase().replace(/[\s_\-]/g,'');
-      if (VALID_STATUSES.includes(ptRaw) && ptRaw !== '') raw = ptRaw;
-      else raw = 'active'; // unknown = treat as active
-    }
-    return raw;
+    const rawStatus = ov.status || r.status || 'Active';
+    // Match EXACTLY what the table does:
+    // 'Active' → active, 'Under Repair' → underrepair, 'Condemned' → condemned
+    // ANYTHING ELSE (including corrupted values like 'Bashar') → oos
+    // This makes stats match the table display 1:1
+    const s = rawStatus.trim();
+    if (s === 'Active' || s === '') return 'active';
+    if (s === 'Under Repair' || s === 'underrepair') return 'underrepair';
+    if (s === 'Condemned' || s === 'condemned') return 'condemned';
+    // Everything else — 'InActive', 'OOS', 'outoforder', 'Bashar', etc. → OOS
+    return 'inactive';
   };
   const active      = filtered.filter(r => { const s = effSt(r); return s === 'active' || s === ''; }).length;
   const inactive    = filtered.filter(r => { const s = effSt(r); return s === 'inactive' || s === 'oos' || s === 'outoforder' || s === 'outofservice' || s === 'condemned' || s === 'decommissioned'; }).length;
