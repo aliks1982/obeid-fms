@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1501';
+  var v = '20260606-1502';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -4834,7 +4834,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260606-1501';
+const APP_VERSION = '20260606-1502';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -7496,28 +7496,20 @@ function eqRender() {
     return av < bv ? -sd : av > bv ? sd : 0;
   });
 
-  // Stats
+  // Stats — read effective status from merged eq_added + PPM overrides
   const total    = filtered.length;
-  // Apply PPM overrides for accurate stats (override status/ppmFreq takes priority)
   const _ov_all  = getPPMOverrides();
-  const active   = filtered.filter(r => {
-    const st = (_ov_all[r.asset]?.status) || r.status || 'Active';
-    return st === 'Active';
-  }).length;
-  const inactive = filtered.filter(r => {
-    const st = ((_ov_all[r.asset]?.status) || r.status || 'Active').toLowerCase().replace(/[\s_-]/g,'');
-    return st === 'inactive' || st === 'oos' || st === 'outoforder' || st === 'outofservice' || st === 'condemned';
-  }).length;
-  const underRepair = filtered.filter(r => {
-    const st = ((_ov_all[r.asset]?.status) || r.status || '').toLowerCase().replace(/[\s_-]/g,'');
-    return st === 'underrepair' || st === 'repair' || st === 'undermaintenance';
-  }).length;
-  const semiPPM  = filtered.filter(r => {
+  const effSt = r => {
+    const raw = (_ov_all[r.asset]?.status || r.status || 'Active').trim().toLowerCase().replace(/[\s_\-]/g,'');
+    return raw;
+  };
+  const active      = filtered.filter(r => { const s = effSt(r); return s === 'active' || s === ''; }).length;
+  const inactive    = filtered.filter(r => { const s = effSt(r); return s === 'inactive' || s === 'oos' || s === 'outoforder' || s === 'outofservice' || s === 'condemned' || s === 'decommissioned'; }).length;
+  const underRepair = filtered.filter(r => { const s = effSt(r); return s === 'underrepair' || s === 'repair' || s === 'undermaintenance' || s === 'inrepair'; }).length;
+  const semiPPM     = filtered.filter(r => {
     const freq = (_ov_all[r.asset]?.ppmFreq) || r.ppmFreq || '';
-    // Semi-annual: explicit override OR original semiPPM column has a value
     if (/semi|6.?month|bi.?ann/i.test(freq)) return true;
     if (freq === '' || freq === 'Annual') return false;
-    // fallback to original semiPPM column
     return r.semiPPM && r.semiPPM !== 'X' && r.semiPPM !== 'x' && r.semiPPM !== '';
   }).length;
 
@@ -9581,6 +9573,7 @@ function getPPMOverrides() {
   catch(e) { return {}; }
 }
 function savePPMOverrides(obj) {
+  EQ_ALL = null; // Clear cache so stats recalculate
   try {
     localStorage.setItem('obeid_ppm_overrides', JSON.stringify(obj));
   } catch(e) {
