@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1500';
+  var v = '20260606-1501';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -4834,7 +4834,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260606-1500';
+const APP_VERSION = '20260606-1501';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -7505,12 +7505,12 @@ function eqRender() {
     return st === 'Active';
   }).length;
   const inactive = filtered.filter(r => {
-    const st = (_ov_all[r.asset]?.status) || r.status || 'Active';
-    return st === 'InActive' || st === 'OOS' || st === 'Out of Order';
+    const st = ((_ov_all[r.asset]?.status) || r.status || 'Active').toLowerCase().replace(/[\s_-]/g,'');
+    return st === 'inactive' || st === 'oos' || st === 'outoforder' || st === 'outofservice' || st === 'condemned';
   }).length;
   const underRepair = filtered.filter(r => {
-    const st = (_ov_all[r.asset]?.status) || r.status || '';
-    return st === 'Under Repair';
+    const st = ((_ov_all[r.asset]?.status) || r.status || '').toLowerCase().replace(/[\s_-]/g,'');
+    return st === 'underrepair' || st === 'repair' || st === 'undermaintenance';
   }).length;
   const semiPPM  = filtered.filter(r => {
     const freq = (_ov_all[r.asset]?.ppmFreq) || r.ppmFreq || '';
