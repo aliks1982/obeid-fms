@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1400';
+  var v = '20260606-1500';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -754,14 +754,1448 @@ if ('caches' in window) {
 
 <!-- ===== CBAHI ===== -->
 <div class="pg" id="page-cbahi">
-  <div class="ph"><h1>✓ CBAHI Standards Tracker</h1><p>Evidence-driven status · October 2026 target</p></div>
-  <div class="g g3">
-    <div class="sc" style="--c:var(--gn)"><div class="ico">✅</div><div class="val" id="cb-met">—</div><div class="lbl">Standards Met</div></div>
-    <div class="sc" style="--c:var(--or)"><div class="ico">⚠️</div><div class="val" id="cb-par">—</div><div class="lbl">Partial</div></div>
-    <div class="sc" style="--c:var(--rd)"><div class="ico">❌</div><div class="val" id="cb-gap">—</div><div class="lbl">Gaps</div></div>
+  <div class="ph">
+    <h1>✓ CBAHI FMS Compliance</h1>
+    <p>FMS 21–32 · Evidence-based · Surveyor-ready</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+      <button class="btn bp" onclick="cbahiExportSection('maintenance')">⬇ Export Maintenance Report</button>
+      <button class="btn bp" onclick="cbahiExportSection('safety')">⬇ Export Safety Report</button>
+      <button class="btn bp" onclick="cbahiExportSection('biomedical')">⬇ Export Biomedical Report</button>
+      <button class="btn bo" onclick="cbahiExportFull()">⬇ Full CBAHI FMS Report</button>
+    </div>
   </div>
-  <div class="card"><div class="cb" style="padding:0;"><div id="cbRows"></div></div></div>
-</div>
+
+  <!-- Score Summary -->
+  <div class="g g4" style="margin-bottom:16px;">
+    <div class="sc" style="--c:var(--gn)"><div class="ico">✅</div><div class="val" id="cbfms-met">—</div><div class="lbl">Met</div></div>
+    <div class="sc" style="--c:var(--or)"><div class="ico">⚠️</div><div class="val" id="cbfms-par">—</div><div class="lbl">Partial</div></div>
+    <div class="sc" style="--c:var(--rd)"><div class="ico">❌</div><div class="val" id="cbfms-gap">—</div><div class="lbl">Not Met</div></div>
+    <div class="sc" style="--c:var(--mu)"><div class="ico">➖</div><div class="val" id="cbfms-na">—</div><div class="lbl">N/A</div></div>
+  </div>
+
+  <!-- Tab Navigation -->
+  <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--bd);padding-bottom:0;">
+    <button id="cbTab-maintenance" class="cbahi-tab active" onclick="cbahiShowTab('maintenance')">🔧 Maintenance (FMS 21–22)</button>
+    <button id="cbTab-safety" class="cbahi-tab" onclick="cbahiShowTab('safety')">🛡 Safety (FMS 23–24)</button>
+    <button id="cbTab-biomedical" class="cbahi-tab" onclick="cbahiShowTab('biomedical')">⚕ Biomedical (FMS 32)</button>
+  </div>
+
+  <!-- ═══════════════ MAINTENANCE SECTION: FMS 21–22 ═══════════════ -->
+  <div id="cbSection-maintenance" class="cbahi-section">
+    <div class="card" style="margin-bottom:12px;background:linear-gradient(135deg,#1a3a5c11,transparent);border-left:4px solid var(--ac);">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="font-size:28px;">🔧</div>
+        <div>
+          <div style="font-weight:700;font-size:15px;">Maintenance Manager — Mostapha</div>
+          <div style="font-size:11px;color:var(--mu);">FMS 21.1–22.4 · Fire Alarm & Suppression Systems</div>
+        </div>
+        <div style="margin-left:auto;text-align:right;">
+          <div style="font-size:11px;color:var(--mu);">Section Score</div>
+          <div id="score-maintenance" style="font-size:20px;font-weight:700;color:var(--ac);">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 21 Header -->
+    <div style="background:var(--ac);color:#fff;padding:10px 16px;border-radius:8px 8px 0 0;font-weight:700;font-size:13px;margin-bottom:2px;">
+      FMS.21 — The hospital has an effective fire alarm system
+    </div>
+
+    <!-- FMS 21.1 -->
+    <div class="cbahi-std-card" id="std-FMS21.1">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 21.1</div>
+        <div class="cbahi-std-title">Fire Alarm Inspection Schedule & Reports</div>
+        <div class="cbahi-badges"><span class="badge-doc">Document Evidence</span><span class="badge-obs">Observation</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS21.1',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option>
+          <option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option>
+          <option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">📋 Surveyor checks: Inspection schedule exists · Checklist includes zones/devices · Technician name & signature · Comments resolved · Linked to FMS 21.3 (score cannot exceed 21.3)</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>Last Inspection Date</label>
+          <input type="date" onchange="cbahiSave('FMS21.1','lastInspDate',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Next Inspection Due</label>
+          <input type="date" onchange="cbahiSave('FMS21.1','nextInspDate',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Inspection Frequency</label>
+          <select onchange="cbahiSave('FMS21.1','inspFreq',this.value)">
+            <option value="">Select</option>
+            <option>Monthly</option><option>Quarterly</option><option>Semi-Annual</option><option>Annual</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Technician Name</label>
+          <input type="text" placeholder="Inspector name" onchange="cbahiSave('FMS21.1','techName',this.value)">
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Zones / Devices Inspected (list)</label>
+          <textarea rows="2" placeholder="e.g. Zone 1 - Lobby, Zone 2 - ICU, Zone 3 - OR..." onchange="cbahiSave('FMS21.1','zones',this.value)"></textarea>
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Control Panel Status (Observation findings)</label>
+          <textarea rows="2" placeholder="Control panels working / no faults / smoke detectors tagged and unobstructed..." onchange="cbahiSave('FMS21.1','panelStatus',this.value)"></textarea>
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Open Findings / Corrective Actions</label>
+          <textarea rows="2" placeholder="List any findings and corrective actions with target dates..." onchange="cbahiSave('FMS21.1','findings',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 21.2 -->
+    <div class="cbahi-std-card" id="std-FMS21.2">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 21.2</div>
+        <div class="cbahi-std-title">Fire Alarm Testing Schedule & Reports</div>
+        <div class="cbahi-badges"><span class="badge-doc">Document Evidence</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS21.2',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">📋 Surveyor checks: Weekly/monthly testing records · Testing checklist per zone · Technician signed · Linked to FMS 21.3</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>Last Test Date</label>
+          <input type="date" onchange="cbahiSave('FMS21.2','lastTestDate',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Test Frequency</label>
+          <select onchange="cbahiSave('FMS21.2','testFreq',this.value)">
+            <option value="">Select</option>
+            <option>Weekly</option><option>Monthly</option><option>Quarterly</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Devices Tested This Cycle</label>
+          <input type="number" placeholder="Count" onchange="cbahiSave('FMS21.2','deviceCount',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Pass / Fail</label>
+          <select onchange="cbahiSave('FMS21.2','testResult',this.value)">
+            <option value="">Select</option><option>All Pass</option><option>Partial Fail</option><option>Fail</option>
+          </select>
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Corrective Actions for Failed Devices</label>
+          <textarea rows="2" placeholder="Device ID, fault, corrective action, completion date..." onchange="cbahiSave('FMS21.2','corrections',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 21.3 -->
+    <div class="cbahi-std-card" id="std-FMS21.3">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 21.3</div>
+        <div class="cbahi-std-title">Fire Alarm Preventive Maintenance (Certified Contractor)</div>
+        <div class="cbahi-badges"><span class="badge-doc">Document Evidence</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS21.3',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">⚠️ CRITICAL: PPM must be by Civil Defense certified company — hospital staff cannot score this. This standard gates FMS 21.1 and 21.2.</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>PPM Contractor Name</label>
+          <input type="text" placeholder="Company name" onchange="cbahiSave('FMS21.3','contractor',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Civil Defense Certificate No.</label>
+          <input type="text" placeholder="Certificate number" onchange="cbahiSave('FMS21.3','certNo',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Last PPM Date</label>
+          <input type="date" onchange="cbahiSave('FMS21.3','lastPPM',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Next PPM Due</label>
+          <input type="date" onchange="cbahiSave('FMS21.3','nextPPM',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>PPM Work Order Number</label>
+          <input type="text" placeholder="WO number" onchange="cbahiSave('FMS21.3','woNo',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Corrective Actions Closed?</label>
+          <select onchange="cbahiSave('FMS21.3','caStatus',this.value)">
+            <option value="">Select</option><option>Yes — All Closed</option><option>Partial — In Progress</option><option>No — Open</option>
+          </select>
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Outstanding Corrective Actions</label>
+          <textarea rows="2" placeholder="List open items with target dates..." onchange="cbahiSave('FMS21.3','openCA',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 21.4 -->
+    <div class="cbahi-std-card" id="std-FMS21.4">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 21.4</div>
+        <div class="cbahi-std-title">Fire Alarm Connected to Elevators</div>
+        <div class="cbahi-badges"><span class="badge-doc">Document Review</span><span class="badge-obs">Observation</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS21.4',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">📋 Surveyor will: Check fire alarm distribution drawing showing elevator connection · Test one elevator to confirm it returns to ground floor on alarm activation</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>Elevators Connected to Fire Alarm?</label>
+          <select onchange="cbahiSave('FMS21.4','elevConnected',this.value)">
+            <option value="">Select</option><option>Yes — All Elevators</option><option>Partial</option><option>No</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Distribution Drawing Available?</label>
+          <select onchange="cbahiSave('FMS21.4','drawingAvail',this.value)">
+            <option value="">Select</option><option>Yes</option><option>No</option><option>Certificate from contractor</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Last Elevator Test Date</label>
+          <input type="date" onchange="cbahiSave('FMS21.4','elevTestDate',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Elevator Test Result</label>
+          <select onchange="cbahiSave('FMS21.4','elevTestResult',this.value)">
+            <option value="">Select</option><option>Returns to Ground — Pass</option><option>Fail</option>
+          </select>
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Notes / Corrective Actions</label>
+          <textarea rows="2" onchange="cbahiSave('FMS21.4','notes',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 22 Header -->
+    <div style="background:var(--ac);color:#fff;padding:10px 16px;border-radius:8px 8px 0 0;font-weight:700;font-size:13px;margin-bottom:2px;margin-top:16px;">
+      FMS.22 — The hospital has a fire suppression system available in required areas
+    </div>
+
+    <!-- FMS 22.1 -->
+    <div class="cbahi-std-card" id="std-FMS22.1">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 22.1</div>
+        <div class="cbahi-std-title">Sprinkler System — Inspection, PPM & Fire Pump</div>
+        <div class="cbahi-badges"><span class="badge-obs">Observation</span><span class="badge-doc">Document Evidence</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS22.1',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">📋 Surveyor will visit fire pump room: jockey/electrical/diesel pumps on AUTO · Sprinkler heads not obstructed/painted · Spacing ≤5m in ordinary risk · Quarterly PPM must be by Civil Defense certified company</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>Jockey Pump Mode</label>
+          <select onchange="cbahiSave('FMS22.1','jockeyMode',this.value)">
+            <option value="">Select</option><option>AUTO ✅</option><option>MANUAL ❌</option><option>OFF ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Electric Pump Mode</label>
+          <select onchange="cbahiSave('FMS22.1','elecMode',this.value)">
+            <option value="">Select</option><option>AUTO ✅</option><option>MANUAL ❌</option><option>OFF ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Diesel Pump Mode</label>
+          <select onchange="cbahiSave('FMS22.1','dieselMode',this.value)">
+            <option value="">Select</option><option>AUTO ✅</option><option>MANUAL ❌</option><option>OFF ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Sprinkler Heads Condition</label>
+          <select onchange="cbahiSave('FMS22.1','sprinklerCond',this.value)">
+            <option value="">Select</option><option>All Clear — No obstruction/paint</option><option>Some Obstructed</option><option>Some Painted</option><option>Multiple Issues</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Last Monthly Inspection Date</label>
+          <input type="date" onchange="cbahiSave('FMS22.1','lastMonthlyInsp',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Last Quarterly PPM Date</label>
+          <input type="date" onchange="cbahiSave('FMS22.1','lastQPPM',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>PPM Contractor</label>
+          <input type="text" placeholder="Civil Defense certified company" onchange="cbahiSave('FMS22.1','contractor',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Fire Water Tank Available?</label>
+          <select onchange="cbahiSave('FMS22.1','waterTank',this.value)">
+            <option value="">Select</option><option>Yes — Dedicated Fire Tank</option><option>Yes — 2-Level General Tank</option><option>No</option>
+          </select>
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Corrective Actions</label>
+          <textarea rows="2" onchange="cbahiSave('FMS22.1','ca',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 22.2 -->
+    <div class="cbahi-std-card" id="std-FMS22.2">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 22.2</div>
+        <div class="cbahi-std-title">Clean Agent Suppression System (Server Rooms, Electrical, Generators)</div>
+        <div class="cbahi-badges"><span class="badge-obs">Observation</span><span class="badge-doc">Document Evidence</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS22.2',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">📋 Required locations: Medical records · Server/Data center · Electrical rooms · Generator rooms. Inspection tag must be current. CO2 acceptable in unoccupied areas only.</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>Medical Records Room</label>
+          <select onchange="cbahiSave('FMS22.2','medRecords',this.value)">
+            <option value="">Select</option><option>Clean Agent Installed ✅</option><option>Not Installed ❌</option><option>N/A</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Server / Data Center</label>
+          <select onchange="cbahiSave('FMS22.2','server',this.value)">
+            <option value="">Select</option><option>Clean Agent Installed ✅</option><option>Not Installed ❌</option><option>N/A</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Electrical Rooms</label>
+          <select onchange="cbahiSave('FMS22.2','elec',this.value)">
+            <option value="">Select</option><option>Clean Agent Installed ✅</option><option>CO2 (Unoccupied) ✅</option><option>Not Installed ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Generator Rooms</label>
+          <select onchange="cbahiSave('FMS22.2','gen',this.value)">
+            <option value="">Select</option><option>Clean Agent Installed ✅</option><option>CO2 (Unoccupied) ✅</option><option>Not Installed ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>System Type</label>
+          <select onchange="cbahiSave('FMS22.2','sysType',this.value)">
+            <option value="">Select</option><option>FM200</option><option>Novec 1230</option><option>Fire Pro</option><option>CO2</option><option>Other</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Last Inspection Tag Date</label>
+          <input type="date" onchange="cbahiSave('FMS22.2','tagDate',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Last Quarterly PPM Date</label>
+          <input type="date" onchange="cbahiSave('FMS22.2','lastPPM',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>PPM Contractor</label>
+          <input type="text" onchange="cbahiSave('FMS22.2','contractor',this.value)">
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Corrective Actions</label>
+          <textarea rows="2" onchange="cbahiSave('FMS22.2','ca',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 22.3 -->
+    <div class="cbahi-std-card" id="std-FMS22.3">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 22.3</div>
+        <div class="cbahi-std-title">Wet Chemical System — Kitchen Hood</div>
+        <div class="cbahi-badges"><span class="badge-obs">Observation</span><span class="badge-doc">Document Evidence</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS22.3',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">📋 Surveyor will visit kitchen · Check inspection tag is current · Ensure function not blocked by adjacent installations · Quarterly PPM by Civil Defense certified company required</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>Inspection Tag Date</label>
+          <input type="date" onchange="cbahiSave('FMS22.3','tagDate',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>System Clear of Obstructions?</label>
+          <select onchange="cbahiSave('FMS22.3','clear',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Last Monthly Inspection</label>
+          <input type="date" onchange="cbahiSave('FMS22.3','lastMonthly',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Last Quarterly PPM</label>
+          <input type="date" onchange="cbahiSave('FMS22.3','lastPPM',this.value)">
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Corrective Actions</label>
+          <textarea rows="2" onchange="cbahiSave('FMS22.3','ca',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 22.4 -->
+    <div class="cbahi-std-card" id="std-FMS22.4">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 22.4</div>
+        <div class="cbahi-std-title">Stand Pipes & Hose Reel System</div>
+        <div class="cbahi-badges"><span class="badge-obs">Observation</span><span class="badge-doc">Document Evidence</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS22.4',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">📋 Surveyor will physically check at least one hose reel pressure (automatic activation) · Ensure no adjacent installations blocking stand pipes · Quarterly PPM by Civil Defense certified company</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>Hose Reel Pressure Test Result</label>
+          <select onchange="cbahiSave('FMS22.4','pressTest',this.value)">
+            <option value="">Select</option><option>Adequate — Auto Activation ✅</option><option>Low Pressure ❌</option><option>Manual Only ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Pressure Reading (bar)</label>
+          <input type="number" step="0.1" placeholder="e.g. 3.5" onchange="cbahiSave('FMS22.4','pressure',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Stand Pipes Clear of Obstructions?</label>
+          <select onchange="cbahiSave('FMS22.4','clear',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Last Monthly Inspection</label>
+          <input type="date" onchange="cbahiSave('FMS22.4','lastMonthly',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Last Quarterly PPM</label>
+          <input type="date" onchange="cbahiSave('FMS22.4','lastPPM',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>PPM Contractor</label>
+          <input type="text" onchange="cbahiSave('FMS22.4','contractor',this.value)">
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Corrective Actions</label>
+          <textarea rows="2" onchange="cbahiSave('FMS22.4','ca',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+  </div><!-- end maintenance section -->
+
+  <!-- ═══════════════ SAFETY SECTION: FMS 23–24 ═══════════════ -->
+  <div id="cbSection-safety" class="cbahi-section" style="display:none;">
+    <div class="card" style="margin-bottom:12px;background:linear-gradient(135deg,#22c55e11,transparent);border-left:4px solid var(--gn);">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="font-size:28px;">🛡</div>
+        <div>
+          <div style="font-weight:700;font-size:15px;">Safety Manager — Moe</div>
+          <div style="font-size:11px;color:var(--mu);">FMS 23.1–24.5 · Fire Exits, Evacuation & Fire Safety</div>
+        </div>
+        <div style="margin-left:auto;text-align:right;">
+          <div style="font-size:11px;color:var(--mu);">Section Score</div>
+          <div id="score-safety" style="font-size:20px;font-weight:700;color:var(--gn);">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 23 Header -->
+    <div style="background:var(--gn);color:#fff;padding:10px 16px;border-radius:8px 8px 0 0;font-weight:700;font-size:13px;margin-bottom:2px;">
+      FMS.23 — The hospital ensures safe fire exits and evacuation routes
+    </div>
+
+    <!-- FMS 23.1 -->
+    <div class="cbahi-std-card" id="std-FMS23.1">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 23.1</div>
+        <div class="cbahi-std-title">Fire Exits — Availability & Location</div>
+        <div class="cbahi-badges"><span class="badge-obs">Observation</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS23.1',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">⚠️ CRITICAL GATE: Score of FMS 23.1 limits FMS 23.2, 23.3, 23.4, 23.6 — none can score higher than this. Not mandatory to have 2 exits per room — depends on occupants, travel distance, area type (refer to SBC).</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>Total Fire Exit Count (hospital-wide)</label>
+          <input type="number" onchange="cbahiSave('FMS23.1','exitCount',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Exits Properly Located per SBC?</label>
+          <select onchange="cbahiSave('FMS23.1','located',this.value)">
+            <option value="">Select</option><option>Yes — All ✅</option><option>Partially ⚠️</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Areas Inspected During Walk-Through</label>
+          <textarea rows="2" placeholder="e.g. ICU, OR, ER, Wards 1-3, Basement..." onchange="cbahiSave('FMS23.1','areas',this.value)"></textarea>
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Findings & Corrective Actions</label>
+          <textarea rows="2" onchange="cbahiSave('FMS23.1','findings',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 23.2 -->
+    <div class="cbahi-std-card" id="std-FMS23.2">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 23.2</div>
+        <div class="cbahi-std-title">Fire Exits — Not Locked</div>
+        <div class="cbahi-badges"><span class="badge-obs">Observation</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS23.2',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">📋 Surveyor will TEST 3–5 fire exits. If access control/keys used → must have key boxes, manual press buttons, and clear signage. Score cannot exceed FMS 23.1.</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>Exits Tested by Surveyor (plan for 3–5)</label>
+          <input type="number" placeholder="Number" onchange="cbahiSave('FMS23.2','tested',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Locking Mechanism Used</label>
+          <select onchange="cbahiSave('FMS23.2','lockType',this.value)">
+            <option value="">Select</option><option>None — Push to Open</option><option>Access Control</option><option>Key Lock</option><option>Chain ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Key Boxes / Breakglass Available?</label>
+          <select onchange="cbahiSave('FMS23.2','keyBox',this.value)">
+            <option value="">Select</option><option>Yes — All Exits</option><option>Partial</option><option>No</option><option>N/A — No Locks</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Result</label>
+          <select onchange="cbahiSave('FMS23.2','result',this.value)">
+            <option value="">Select</option><option>All Open Freely ✅</option><option>Some Issues ⚠️</option><option>Locked ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Corrective Actions</label>
+          <textarea rows="2" onchange="cbahiSave('FMS23.2','ca',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 23.3 -->
+    <div class="cbahi-std-card" id="std-FMS23.3">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 23.3</div>
+        <div class="cbahi-std-title">Fire Exits — No Obstructions (Both Ends)</div>
+        <div class="cbahi-badges"><span class="badge-obs">Observation</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS23.3',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">📋 Surveyor checks BOTH ends of exit route (inside and outside). Common failures: furniture, project debris, cardboard boxes. Score cannot exceed FMS 23.1.</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>Exit Routes Clear?</label>
+          <select onchange="cbahiSave('FMS23.3','clear',this.value)">
+            <option value="">Select</option><option>All Clear ✅</option><option>Minor Issues ⚠️</option><option>Blocked ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Last Walk-Through Date</label>
+          <input type="date" onchange="cbahiSave('FMS23.3','walkDate',this.value)">
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Obstructions Found & Actions Taken</label>
+          <textarea rows="2" placeholder="Location, obstruction type, corrective action, date resolved..." onchange="cbahiSave('FMS23.3','obs',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 23.4 -->
+    <div class="cbahi-std-card" id="std-FMS23.4">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 23.4</div>
+        <div class="cbahi-std-title">Fire Exits — Panic Hardware (Direction of Evacuation)</div>
+        <div class="cbahi-badges"><span class="badge-obs">Observation</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS23.4',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">📋 Exit doors must open in the direction of evacuation (outward) with panic/crash bar hardware. Score cannot exceed FMS 23.1.</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>Panic Hardware Present?</label>
+          <select onchange="cbahiSave('FMS23.4','panicHW',this.value)">
+            <option value="">Select</option><option>Yes — All Required Exits ✅</option><option>Partial ⚠️</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Doors Open in Evacuation Direction?</label>
+          <select onchange="cbahiSave('FMS23.4','direction',this.value)">
+            <option value="">Select</option><option>Yes — All ✅</option><option>Some Incorrect ⚠️</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Non-Compliant Exits & Actions</label>
+          <textarea rows="2" onchange="cbahiSave('FMS23.4','ca',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 23.6 -->
+    <div class="cbahi-std-card" id="std-FMS23.6">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 23.6</div>
+        <div class="cbahi-std-title">Fire Exits — Illuminated Exit Signs</div>
+        <div class="cbahi-badges"><span class="badge-obs">Observation</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS23.6',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">📋 All fire exits must have illuminated (lit) exit signs. Non-illuminated or missing signs = Not Met. Score cannot exceed FMS 23.1.</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>All Exits Have Illuminated Signs?</label>
+          <select onchange="cbahiSave('FMS23.6','signs',this.value)">
+            <option value="">Select</option><option>Yes — All Illuminated ✅</option><option>Some Not Lit ⚠️</option><option>Missing Signs ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Non-Compliant Signs Count</label>
+          <input type="number" placeholder="0" onchange="cbahiSave('FMS23.6','nonCompliant',this.value)">
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Locations & Actions</label>
+          <textarea rows="2" onchange="cbahiSave('FMS23.6','ca',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 24 Header -->
+    <div style="background:var(--gn);color:#fff;padding:10px 16px;border-radius:8px 8px 0 0;font-weight:700;font-size:13px;margin-bottom:2px;margin-top:16px;">
+      FMS.24 — The hospital and its occupants are safe from fire and smoke
+    </div>
+
+    <!-- FMS 24.1 -->
+    <div class="cbahi-std-card" id="std-FMS24.1">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 24.1</div>
+        <div class="cbahi-std-title">No-Smoking Policy</div>
+        <div class="cbahi-badges"><span class="badge-doc">Document Review</span><span class="badge-obs">Observation</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS24.1',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">📋 Policy must cover: cigarettes, e-cigarettes, pipe, water pipe, incense. Must include disciplinary actions. Surveyor will check roof, mechanical rooms, entrances for cigarette butts.</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>Policy Available & Current?</label>
+          <select onchange="cbahiSave('FMS24.1','policyAvail',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>Outdated ⚠️</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Policy Covers All Smoking Types?</label>
+          <select onchange="cbahiSave('FMS24.1','allTypes',this.value)">
+            <option value="">Select</option><option>Yes — All Types ✅</option><option>Partial ⚠️</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Disciplinary Actions Included?</label>
+          <select onchange="cbahiSave('FMS24.1','disciplinary',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Observation — Cigarette Butts Found?</label>
+          <select onchange="cbahiSave('FMS24.1','butts',this.value)">
+            <option value="">Select</option><option>None Found ✅</option><option>Some Found ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Corrective Actions</label>
+          <textarea rows="2" onchange="cbahiSave('FMS24.1','ca',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 24.2 -->
+    <div class="cbahi-std-card" id="std-FMS24.2">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 24.2</div>
+        <div class="cbahi-std-title">Access to Fire Extinguishers, Alarm Boxes & Fire Blankets</div>
+        <div class="cbahi-badges"><span class="badge-obs">Observation</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS24.2',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">📋 No obstructions to fire extinguishers, alarm boxes, or fire blankets. Surveyor checks during building tour.</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>Fire Extinguishers — All Accessible?</label>
+          <select onchange="cbahiSave('FMS24.2','extAccess',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>Some Blocked ⚠️</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Alarm Boxes — All Accessible?</label>
+          <select onchange="cbahiSave('FMS24.2','alarmAccess',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>Some Blocked ⚠️</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Fire Blankets — All Accessible?</label>
+          <select onchange="cbahiSave('FMS24.2','blanketAccess',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>Some Blocked ⚠️</option><option>No ❌</option><option>N/A</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Last Extinguisher Inspection Date</label>
+          <input type="date" onchange="cbahiSave('FMS24.2','extInspDate',this.value)">
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Issues Found & Actions</label>
+          <textarea rows="2" onchange="cbahiSave('FMS24.2','ca',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 24.3 -->
+    <div class="cbahi-std-card" id="std-FMS24.3">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 24.3</div>
+        <div class="cbahi-std-title">Emergency Evacuation Lighting</div>
+        <div class="cbahi-badges"><span class="badge-obs">Observation</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS24.3',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">📋 Surveyor will FUNCTIONALLY TEST emergency lights (cut power / press test button). Battery backup mandatory in OR and generator room only. Must be adequate for safe evacuation.</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>Emergency Lighting Coverage Adequate?</label>
+          <select onchange="cbahiSave('FMS24.3','coverage',this.value)">
+            <option value="">Select</option><option>Yes — All Areas ✅</option><option>Partial ⚠️</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Functional Test Result</label>
+          <select onchange="cbahiSave('FMS24.3','testResult',this.value)">
+            <option value="">Select</option><option>All Working ✅</option><option>Some Failed ⚠️</option><option>Not Tested ⚠️</option><option>Most Failed ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>OR Battery Backup Available?</label>
+          <select onchange="cbahiSave('FMS24.3','orBattery',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>No ❌</option><option>N/A — No OR</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Generator Room Battery Backup?</label>
+          <select onchange="cbahiSave('FMS24.3','genBattery',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Last Test Date</label>
+          <input type="date" onchange="cbahiSave('FMS24.3','lastTest',this.value)">
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Failed Units & Corrective Actions</label>
+          <textarea rows="2" onchange="cbahiSave('FMS24.3','ca',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 24.4 -->
+    <div class="cbahi-std-card" id="std-FMS24.4">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 24.4</div>
+        <div class="cbahi-std-title">Storage Areas — Safe & Organized (incl. Central Supply)</div>
+        <div class="cbahi-badges"><span class="badge-obs">Observation</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS24.4',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">⚠️ Pay special attention to CENTRAL SUPPLY STORE. Surveyor will: test emergency doors, check exit signage, inspect fire extinguishers, verify access control, assess safe storage protocol.</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>Central Supply — Emergency Doors Working?</label>
+          <select onchange="cbahiSave('FMS24.4','csDoors',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Central Supply — Exit Signs OK?</label>
+          <select onchange="cbahiSave('FMS24.4','csSigns',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Central Supply — Extinguishers OK?</label>
+          <select onchange="cbahiSave('FMS24.4','csExt',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>General Storage — Properly Organized?</label>
+          <select onchange="cbahiSave('FMS24.4','genStorage',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>Partial ⚠️</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Issues & Corrective Actions</label>
+          <textarea rows="2" onchange="cbahiSave('FMS24.4','ca',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 24.5 -->
+    <div class="cbahi-std-card" id="std-FMS24.5">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 24.5</div>
+        <div class="cbahi-std-title">Fire Rated Doors & No Fire Wall Penetrations</div>
+        <div class="cbahi-badges"><span class="badge-obs">Observation</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS24.5',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">⚠️ CRITICAL: Surveyor will REMOVE CEILING TILES in 3 different locations to check fire wall integrity. Fire rated doors must be per hospital zones with no gaps to ceiling. Penetrations between zones = Not Met.</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>Fire Rated Doors Per Zones?</label>
+          <select onchange="cbahiSave('FMS24.5','ratedDoors',this.value)">
+            <option value="">Select</option><option>Yes — All Zones ✅</option><option>Partial ⚠️</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Fire Wall Penetrations Found?</label>
+          <select onchange="cbahiSave('FMS24.5','penetrations',this.value)">
+            <option value="">Select</option><option>None Found ✅</option><option>Minor — Sealed ⚠️</option><option>Open Penetrations ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Ceiling Checks Performed?</label>
+          <select onchange="cbahiSave('FMS24.5','ceilingChecks',this.value)">
+            <option value="">Select</option><option>Yes — 3+ Locations ✅</option><option>Partial ⚠️</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Hospital Zone Map Available?</label>
+          <select onchange="cbahiSave('FMS24.5','zoneMap',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Penetrations Found & Remediation Plan</label>
+          <textarea rows="2" onchange="cbahiSave('FMS24.5','ca',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+  </div><!-- end safety section -->
+
+  <!-- ═══════════════ BIOMEDICAL SECTION: FMS 32 ═══════════════ -->
+  <div id="cbSection-biomedical" class="cbahi-section" style="display:none;">
+    <div class="card" style="margin-bottom:12px;background:linear-gradient(135deg,#7c3aed11,transparent);border-left:4px solid #7c3aed;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="font-size:28px;">⚕</div>
+        <div>
+          <div style="font-weight:700;font-size:15px;">Biomedical Engineering — Bashar & Robert</div>
+          <div style="font-size:11px;color:var(--mu);">FMS 32.1–32.12 · Medical Gas System</div>
+        </div>
+        <div style="margin-left:auto;text-align:right;">
+          <div style="font-size:11px;color:var(--mu);">Section Score</div>
+          <div id="score-biomedical" style="font-size:20px;font-weight:700;color:#7c3aed;">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 32 Header -->
+    <div style="background:#7c3aed;color:#fff;padding:10px 16px;border-radius:8px 8px 0 0;font-weight:700;font-size:13px;margin-bottom:2px;">
+      FMS.32 — The hospital ensures proper maintenance of the medical gas system
+    </div>
+
+    <!-- FMS 32.1 -->
+    <div class="cbahi-std-card" id="std-FMS32.1">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 32.1</div>
+        <div class="cbahi-std-title">PMG Preventive Maintenance Schedule & Reports</div>
+        <div class="cbahi-badges"><span class="badge-doc">Document Evidence</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS32.1',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">📋 Must cover ALL PMG components: manifolds, air compressor, liquid oxygen (LOX), and suction system. Schedule and completed maintenance reports required.</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>LOX System — Last PPM Date</label>
+          <input type="date" onchange="cbahiSave('FMS32.1','loxPPM',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Manifolds — Last PPM Date</label>
+          <input type="date" onchange="cbahiSave('FMS32.1','manifoldPPM',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Air Compressor — Last PPM Date</label>
+          <input type="date" onchange="cbahiSave('FMS32.1','compPPM',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Suction System — Last PPM Date</label>
+          <input type="date" onchange="cbahiSave('FMS32.1','suctionPPM',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>PPM Schedule Available?</label>
+          <select onchange="cbahiSave('FMS32.1','schedAvail',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Completed Reports Available?</label>
+          <select onchange="cbahiSave('FMS32.1','reportsAvail',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>Partial ⚠️</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Gaps / Corrective Actions</label>
+          <textarea rows="2" onchange="cbahiSave('FMS32.1','ca',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 32.2 -->
+    <div class="cbahi-std-card" id="std-FMS32.2">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 32.2</div>
+        <div class="cbahi-std-title">Medical Gas Policy & Procedures</div>
+        <div class="cbahi-badges"><span class="badge-doc">Document Review</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS32.2',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">📋 Policy must include ALL 4 elements: 1) Taking system offline 2) Modifying/testing PMG 3) Ordering/refilling LOX 4) Documenting repairs/alterations/tests/filling logs/consumption</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>Procedure — Taking System Offline</label>
+          <select onchange="cbahiSave('FMS32.2','offline',this.value)">
+            <option value="">Select</option><option>Included ✅</option><option>Missing ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Procedure — Modifying/Testing PMG</label>
+          <select onchange="cbahiSave('FMS32.2','modify',this.value)">
+            <option value="">Select</option><option>Included ✅</option><option>Missing ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Procedure — LOX Ordering/Refilling</label>
+          <select onchange="cbahiSave('FMS32.2','loxOrder',this.value)">
+            <option value="">Select</option><option>Included ✅</option><option>Missing ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Documentation — Repairs/Logs/Consumption</label>
+          <select onchange="cbahiSave('FMS32.2','docs',this.value)">
+            <option value="">Select</option><option>Included ✅</option><option>Missing ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Policy Last Review Date</label>
+          <input type="date" onchange="cbahiSave('FMS32.2','policyDate',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Policy Signed by Process Owner?</label>
+          <select onchange="cbahiSave('FMS32.2','signed',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>No ❌</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 32.3 -->
+    <div class="cbahi-std-card" id="std-FMS32.3">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 32.3</div>
+        <div class="cbahi-std-title">Compressed Medical Air — Purity Testing (with Exact Values)</div>
+        <div class="cbahi-badges"><span class="badge-doc">Document Evidence</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS32.3',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">⚠️ CRITICAL: Test report must include EXACT measured values vs limits — Humidity/Dewpoint ≤-46°C · CO ≤5ppm · CO₂ ≤500ppm · SO₂ ≤1ppm · Water ≤0.05mg/L · Particles</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>Last Test Date</label>
+          <input type="date" onchange="cbahiSave('FMS32.3','testDate',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Testing Lab / Company</label>
+          <input type="text" placeholder="Lab name" onchange="cbahiSave('FMS32.3','lab',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Dewpoint Measured (°C) — Limit: ≤-46°C</label>
+          <input type="number" step="0.1" placeholder="e.g. -52" onchange="cbahiSave('FMS32.3','dewpoint',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Dewpoint Result</label>
+          <select onchange="cbahiSave('FMS32.3','dewpointRes',this.value)">
+            <option value="">Select</option><option>PASS ✅</option><option>FAIL ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>CO Measured (ppm) — Limit: ≤5ppm</label>
+          <input type="number" step="0.1" placeholder="e.g. 2.1" onchange="cbahiSave('FMS32.3','co',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>CO Result</label>
+          <select onchange="cbahiSave('FMS32.3','coRes',this.value)">
+            <option value="">Select</option><option>PASS ✅</option><option>FAIL ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>CO₂ Measured (ppm) — Limit: ≤500ppm</label>
+          <input type="number" placeholder="e.g. 350" onchange="cbahiSave('FMS32.3','co2',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>CO₂ Result</label>
+          <select onchange="cbahiSave('FMS32.3','co2Res',this.value)">
+            <option value="">Select</option><option>PASS ✅</option><option>FAIL ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>SO₂ Measured (ppm) — Limit: ≤1ppm</label>
+          <input type="number" step="0.01" placeholder="e.g. 0.3" onchange="cbahiSave('FMS32.3','so2',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>SO₂ Result</label>
+          <select onchange="cbahiSave('FMS32.3','so2Res',this.value)">
+            <option value="">Select</option><option>PASS ✅</option><option>FAIL ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Water Content (mg/L) — Limit: ≤0.05</label>
+          <input type="number" step="0.001" placeholder="e.g. 0.02" onchange="cbahiSave('FMS32.3','water',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Water Result</label>
+          <select onchange="cbahiSave('FMS32.3','waterRes',this.value)">
+            <option value="">Select</option><option>PASS ✅</option><option>FAIL ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Overall Test Conclusion & Actions if Any Failed</label>
+          <textarea rows="2" onchange="cbahiSave('FMS32.3','conclusion',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 32.4 -->
+    <div class="cbahi-std-card" id="std-FMS32.4">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 32.4</div>
+        <div class="cbahi-std-title">Medical Gas Rooms — Safe & Secure</div>
+        <div class="cbahi-badges"><span class="badge-obs">Observation</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS32.4',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">📋 Surveyor will physically inspect manifold room + compressor room: locked · proper signage · clean · no oil · no exposed wiring. Applicable to ALL hospitals including those using only cylinders.</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>Manifold Room — Locked?</label>
+          <select onchange="cbahiSave('FMS32.4','manifoldLocked',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Manifold Room — Proper Signage?</label>
+          <select onchange="cbahiSave('FMS32.4','manifoldSign',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Manifold Room — Clean, No Oil, No Wiring?</label>
+          <select onchange="cbahiSave('FMS32.4','manifoldClean',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>Issues Found ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Compressor Room — Locked?</label>
+          <select onchange="cbahiSave('FMS32.4','compLocked',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>No ❌</option><option>N/A</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Compressor Room — Clean & Safe?</label>
+          <select onchange="cbahiSave('FMS32.4','compClean',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>Issues ❌</option><option>N/A</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Cylinder Storage Area — Safe?</label>
+          <select onchange="cbahiSave('FMS32.4','cylSafe',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Issues Found & Corrective Actions</label>
+          <textarea rows="2" onchange="cbahiSave('FMS32.4','ca',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 32.5 -->
+    <div class="cbahi-std-card" id="std-FMS32.5">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 32.5</div>
+        <div class="cbahi-std-title">PMG Outlets — Functioning, Unified Label & Connection Type</div>
+        <div class="cbahi-badges"><span class="badge-obs">Observation</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS32.5',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">📋 Each gas type must have same label and same connector type throughout hospital. Mix of connector types for same gas = Not Met (patient safety risk).</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>All Outlets Functioning?</label>
+          <select onchange="cbahiSave('FMS32.5','functioning',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>Some Non-Functional ⚠️</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Labels Unified Per Gas Type?</label>
+          <select onchange="cbahiSave('FMS32.5','labels',this.value)">
+            <option value="">Select</option><option>Yes — Consistent ✅</option><option>Mixed ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Connector Types Unified?</label>
+          <select onchange="cbahiSave('FMS32.5','connectors',this.value)">
+            <option value="">Select</option><option>Yes — All Same ✅</option><option>Mixed ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Areas Inspected</label>
+          <input type="text" placeholder="OR, ICU, ER, Wards..." onchange="cbahiSave('FMS32.5','areas',this.value)">
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Non-Compliant Outlets & Actions</label>
+          <textarea rows="2" onchange="cbahiSave('FMS32.5','ca',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 32.6 -->
+    <div class="cbahi-std-card" id="std-FMS32.6">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 32.6</div>
+        <div class="cbahi-std-title">Medical Gas Pipes — Clearly Identified (Type & Direction per SBC)</div>
+        <div class="cbahi-badges"><span class="badge-obs">Observation</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS32.6',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">📋 Pipes must be color-coded and labeled with gas type and flow direction as per Saudi Building Code (SBC). Surveyor checks accessible pipe runs.</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>Pipes Color-Coded by Gas Type?</label>
+          <select onchange="cbahiSave('FMS32.6','colorCoded',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>Partial ⚠️</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Direction Arrows on Pipes?</label>
+          <select onchange="cbahiSave('FMS32.6','arrows',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>Partial ⚠️</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Non-Compliant Areas & Corrective Actions</label>
+          <textarea rows="2" onchange="cbahiSave('FMS32.6','ca',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 32.8 -->
+    <div class="cbahi-std-card" id="std-FMS32.8">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 32.8</div>
+        <div class="cbahi-std-title">O₂ Standby Supply — 48-Hour Sufficiency & No Active Alarms</div>
+        <div class="cbahi-badges"><span class="badge-obs">Observation</span><span class="badge-int">Staff Interview</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS32.8',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">⚠️ Surveyor will INTERVIEW utility manager on daily O₂/air consumption rate. Will check no active alarms at manifold. Formula: 1L LOX ≈ 855L gas @20°C · 1 K-cylinder ≈ 6800L @2000psi</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>Daily O₂ Consumption (L/day)</label>
+          <input type="number" placeholder="e.g. 50000" onchange="cbahiSave('FMS32.8','o2Daily',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>LOX Current Level (L liquid)</label>
+          <input type="number" placeholder="e.g. 2000" onchange="cbahiSave('FMS32.8','loxLevel',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Standby Cylinders (K-size count)</label>
+          <input type="number" placeholder="e.g. 20" onchange="cbahiSave('FMS32.8','cylCount',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Calculated Backup Duration (hours)</label>
+          <input type="text" placeholder="Auto or manual calc" id="fms328-calc" readonly style="background:var(--s2);">
+        </div>
+        <div class="cbahi-field">
+          <label>48-Hour Sufficiency Met?</label>
+          <select onchange="cbahiSave('FMS32.8','sufficient',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Active Low-Pressure Alarms?</label>
+          <select onchange="cbahiSave('FMS32.8','alarms',this.value)">
+            <option value="">Select</option><option>No Alarms ✅</option><option>Active Alarms ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Staff Interview — Aware of Daily Consumption?</label>
+          <select onchange="cbahiSave('FMS32.8','staffAware',this.value)">
+            <option value="">Select</option><option>Yes — Can State Rate ✅</option><option>Partial ⚠️</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Interview — Staff Name</label>
+          <input type="text" onchange="cbahiSave('FMS32.8','interviewee',this.value)">
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Actions if Insufficient</label>
+          <textarea rows="2" onchange="cbahiSave('FMS32.8','ca',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 32.9 -->
+    <div class="cbahi-std-card" id="std-FMS32.9">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 32.9</div>
+        <div class="cbahi-std-title">Gas Cylinders — Regularly Tested (Type, Amount, Leaks)</div>
+        <div class="cbahi-badges"><span class="badge-obs">Observation</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS32.9',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">📋 Surveyor observes cylinder testing records and may physically check cylinders for labeling, amount gauge, and leak detection.</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>Gas Type Labels on All Cylinders?</label>
+          <select onchange="cbahiSave('FMS32.9','typeLabels',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>Partial ⚠️</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Amount/Pressure Gauges Checked?</label>
+          <select onchange="cbahiSave('FMS32.9','gauges',this.value)">
+            <option value="">Select</option><option>Yes — Regularly ✅</option><option>Occasionally ⚠️</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Leak Testing Performed?</label>
+          <select onchange="cbahiSave('FMS32.9','leakTest',this.value)">
+            <option value="">Select</option><option>Yes — Regularly ✅</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Last Cylinder Check Date</label>
+          <input type="date" onchange="cbahiSave('FMS32.9','lastCheck',this.value)">
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Findings & Actions</label>
+          <textarea rows="2" onchange="cbahiSave('FMS32.9','ca',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 32.10 -->
+    <div class="cbahi-std-card" id="std-FMS32.10">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 32.10</div>
+        <div class="cbahi-std-title">Valve Box Labels & Staff Awareness of PMG Shutoff Valves</div>
+        <div class="cbahi-badges"><span class="badge-obs">Observation</span><span class="badge-int">Staff Interview</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS32.10',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">📋 Surveyor will INTERVIEW clinical staff: Do they know shutoff valve locations? Can they demonstrate how to close safely? Labels must show room numbers served by each valve box.</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>Valve Boxes Have Room Labels?</label>
+          <select onchange="cbahiSave('FMS32.10','roomLabels',this.value)">
+            <option value="">Select</option><option>Yes — All ✅</option><option>Partial ⚠️</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Staff Interview — Know Valve Locations?</label>
+          <select onchange="cbahiSave('FMS32.10','knowLocation',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>Partial ⚠️</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Staff Can Demonstrate Shutoff?</label>
+          <select onchange="cbahiSave('FMS32.10','canDemo',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>Partial ⚠️</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Staff Interviewed (Name/Dept)</label>
+          <input type="text" placeholder="Name, Department" onchange="cbahiSave('FMS32.10','staffName',this.value)">
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Training Actions Required</label>
+          <textarea rows="2" onchange="cbahiSave('FMS32.10','ca',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 32.11 -->
+    <div class="cbahi-std-card" id="std-FMS32.11">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 32.11</div>
+        <div class="cbahi-std-title">Valve Shutoff Responsible Staff — Risk Awareness</div>
+        <div class="cbahi-badges"><span class="badge-int">Staff Interview</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS32.11',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">📋 Specifically the staff RESPONSIBLE for valve shutoff must know: 1) Risk associated with shutting off valves 2) Risk of breaking valve box cover 3) Which rooms/areas are affected by closing each valve</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>Responsible Staff Identified?</label>
+          <select onchange="cbahiSave('FMS32.11','staffId',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Aware of Shutoff Risks?</label>
+          <select onchange="cbahiSave('FMS32.11','riskAware',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>Partial ⚠️</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Knows Affected Rooms?</label>
+          <select onchange="cbahiSave('FMS32.11','roomsAware',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>Partial ⚠️</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Staff Name & Role</label>
+          <input type="text" onchange="cbahiSave('FMS32.11','staffName',this.value)">
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Training Gap & Action Plan</label>
+          <textarea rows="2" onchange="cbahiSave('FMS32.11','ca',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FMS 32.12 -->
+    <div class="cbahi-std-card" id="std-FMS32.12">
+      <div class="cbahi-std-header">
+        <div class="cbahi-std-code">FMS 32.12</div>
+        <div class="cbahi-std-title">PMG Outlets — Adequate in Patient Care Areas & Error-Proof</div>
+        <div class="cbahi-badges"><span class="badge-obs">Observation</span></div>
+        <select class="cbahi-status-sel" onchange="cbahiSetStatus('FMS32.12',this.value)">
+          <option value="">— Status —</option>
+          <option value="met">✅ Met</option><option value="partial">⚠️ Partial</option>
+          <option value="not-met">❌ Not Met</option><option value="na">➖ N/A</option>
+        </select>
+      </div>
+      <div class="cbahi-surveyor-note">📋 Outlets must be adequate in number for patient care needs AND error-proof (DISS/NIST fittings — each gas connector physically incompatible with other gases, preventing wrong gas connection).</div>
+      <div class="cbahi-evidence-grid">
+        <div class="cbahi-field">
+          <label>Outlets Adequate per Patient Care Area?</label>
+          <select onchange="cbahiSave('FMS32.12','adequate',this.value)">
+            <option value="">Select</option><option>Yes ✅</option><option>Insufficient ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Error-Proof Connectors (DISS/NIST)?</label>
+          <select onchange="cbahiSave('FMS32.12','errorProof',this.value)">
+            <option value="">Select</option><option>Yes — All ✅</option><option>Partial ⚠️</option><option>No ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field">
+          <label>Areas with Insufficient Outlets</label>
+          <input type="text" placeholder="e.g. Ward 3, Room 12..." onchange="cbahiSave('FMS32.12','insufAreas',this.value)">
+        </div>
+        <div class="cbahi-field">
+          <label>Connector Type Used</label>
+          <select onchange="cbahiSave('FMS32.12','connType',this.value)">
+            <option value="">Select</option><option>DISS</option><option>NIST</option><option>Mixed ⚠️</option><option>Non-Standard ❌</option>
+          </select>
+        </div>
+        <div class="cbahi-field" style="grid-column:1/-1;">
+          <label>Corrective Actions</label>
+          <textarea rows="2" onchange="cbahiSave('FMS32.12','ca',this.value)"></textarea>
+        </div>
+      </div>
+    </div>
+  </div><!-- end biomedical section -->
+</div><!-- end page-cbahi -->
+
 
 <!-- ===== MMS ANALYTICS ===== -->
 <div class="pg" id="page-mms">
@@ -3400,7 +4834,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260606-1400';
+const APP_VERSION = '20260606-1500';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -11039,6 +12473,68 @@ function pmsExportReport() {
   .sig-line{height:55px;}
   .footer{margin-top:16px;font-size:9px;color:#999;text-align:center;border-top:1px solid #eee;padding-top:8px;}
   @media print{.no-print{display:none!important;}}
+
+/* ── CBAHI FMS Module ── */
+.cbahi-tab {
+  padding: 8px 16px; border: none; background: var(--s2);
+  border-bottom: 3px solid transparent; cursor: pointer;
+  font-size: 12px; font-weight: 600; color: var(--mu);
+  border-radius: 6px 6px 0 0; transition: all .2s;
+}
+.cbahi-tab.active {
+  background: var(--ac); color: #fff; border-bottom-color: var(--ac);
+}
+.cbahi-tab:hover:not(.active) { background: var(--s3); color: var(--tx); }
+.cbahi-std-card {
+  background: var(--s2); border: 1px solid var(--bd);
+  border-radius: 0 0 8px 8px; margin-bottom: 3px; padding: 14px 16px;
+  border-left: 4px solid var(--bd); transition: border-color .2s;
+}
+.cbahi-std-card.status-met { border-left-color: var(--gn); }
+.cbahi-std-card.status-partial { border-left-color: var(--or); }
+.cbahi-std-card.status-not-met { border-left-color: var(--rd); }
+.cbahi-std-card.status-na { border-left-color: var(--mu); }
+.cbahi-std-header {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.cbahi-std-code {
+  font-weight: 800; font-size: 13px; color: var(--ac);
+  background: rgba(0,112,243,.1); padding: 3px 8px; border-radius: 5px;
+  white-space: nowrap;
+}
+.cbahi-std-title {
+  font-weight: 600; font-size: 13px; color: var(--tx); flex: 1;
+}
+.cbahi-badges { display: flex; gap: 4px; flex-wrap: wrap; }
+.badge-doc { background: rgba(59,130,246,.15); color: #3b82f6; font-size: 9px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+.badge-obs { background: rgba(245,158,11,.15); color: #d97706; font-size: 9px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+.badge-int { background: rgba(139,92,246,.15); color: #7c3aed; font-size: 9px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+.cbahi-status-sel {
+  padding: 4px 8px; border: 1px solid var(--bd); border-radius: 6px;
+  background: var(--s1); font-size: 11px; margin-left: auto;
+  min-width: 120px; cursor: pointer;
+}
+.cbahi-surveyor-note {
+  background: rgba(234,179,8,.08); border: 1px solid rgba(234,179,8,.25);
+  border-radius: 6px; padding: 8px 12px; font-size: 11px;
+  color: var(--tx); margin-bottom: 10px; line-height: 1.6;
+}
+.cbahi-evidence-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+.cbahi-field label {
+  display: block; font-size: 10px; font-weight: 600;
+  color: var(--mu); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .4px;
+}
+.cbahi-field input, .cbahi-field select, .cbahi-field textarea {
+  width: 100%; padding: 6px 8px; border: 1px solid var(--bd);
+  border-radius: 6px; background: var(--s1); font-size: 11px;
+  color: var(--tx); box-sizing: border-box;
+}
+.cbahi-field textarea { resize: vertical; min-height: 56px; }
+
 </style></head>
 <body>
 <div class="header">
@@ -11086,6 +12582,214 @@ function pmsExportReport() {
   const win = window.open(URL.createObjectURL(new Blob([html],{type:'text/html'})),'_blank');
   if(win) setTimeout(()=>win.print(),800);
   toast('✅ FMS Performance Sheet opened — Print → Save as PDF');
+}
+
+
+// ══════════════════════════════════════════════════════
+// CBAHI FMS COMPLIANCE MODULE
+// ══════════════════════════════════════════════════════
+
+const CBAHI_STANDARDS = [
+  'FMS21.1','FMS21.2','FMS21.3','FMS21.4',
+  'FMS22.1','FMS22.2','FMS22.3','FMS22.4',
+  'FMS23.1','FMS23.2','FMS23.3','FMS23.4','FMS23.6',
+  'FMS24.1','FMS24.2','FMS24.3','FMS24.4','FMS24.5',
+  'FMS32.1','FMS32.2','FMS32.3','FMS32.4','FMS32.5',
+  'FMS32.6','FMS32.8','FMS32.9','FMS32.10','FMS32.11','FMS32.12'
+];
+
+const CBAHI_SECTIONS = {
+  maintenance: ['FMS21.1','FMS21.2','FMS21.3','FMS21.4','FMS22.1','FMS22.2','FMS22.3','FMS22.4'],
+  safety:      ['FMS23.1','FMS23.2','FMS23.3','FMS23.4','FMS23.6','FMS24.1','FMS24.2','FMS24.3','FMS24.4','FMS24.5'],
+  biomedical:  ['FMS32.1','FMS32.2','FMS32.3','FMS32.4','FMS32.5','FMS32.6','FMS32.8','FMS32.9','FMS32.10','FMS32.11','FMS32.12']
+};
+
+const CBAHI_OWNERS = {
+  maintenance: 'Mostapha — Maintenance Manager',
+  safety:      'Moe — Safety Manager',
+  biomedical:  'Bashar & Robert — Biomedical Engineering'
+};
+
+function cbahiKey(stdCode, field) {
+  return 'obeid3_cbahi_' + stdCode + '_' + field;
+}
+
+function cbahiSave(stdCode, field, value) {
+  try {
+    localStorage.setItem(cbahiKey(stdCode, field), value);
+    // Auto-save to DB
+    const rec = { _id: 'cbahi_' + stdCode, _ts: new Date().toISOString(), _by: (window._user || 'director'), std: stdCode };
+    rec[field] = value;
+    dbWrite('app_settings', rec);
+  } catch(e) {}
+}
+
+function cbahiLoad(stdCode, field) {
+  return localStorage.getItem(cbahiKey(stdCode, field)) || '';
+}
+
+function cbahiSetStatus(stdCode, status) {
+  cbahiSave(stdCode, 'status', status);
+  const card = document.getElementById('std-' + stdCode);
+  if (card) {
+    card.className = 'cbahi-std-card' + (status ? ' status-' + status : '');
+  }
+  cbahiUpdateScores();
+}
+
+function cbahiGetStatus(stdCode) {
+  return cbahiLoad(stdCode, 'status') || '';
+}
+
+function cbahiUpdateScores() {
+  let met=0, par=0, gap=0, na=0;
+  
+  Object.entries(CBAHI_SECTIONS).forEach(([section, stds]) => {
+    let sm=0, sp=0, sg=0, sn=0;
+    stds.forEach(s => {
+      const st = cbahiGetStatus(s);
+      if (st==='met') { sm++; met++; }
+      else if (st==='partial') { sp++; par++; }
+      else if (st==='not-met') { sg++; gap++; }
+      else if (st==='na') { sn++; na++; }
+    });
+    const total = sm+sp+sg; // exclude NA
+    const pct = total > 0 ? Math.round((sm + sp*0.5) / total * 100) : '—';
+    const el = document.getElementById('score-' + section);
+    if (el) el.textContent = total > 0 ? pct + '%' : '—';
+  });
+  
+  const setEl = (id, v) => { const e = document.getElementById(id); if(e) e.textContent = v; };
+  setEl('cbfms-met', met);
+  setEl('cbfms-par', par);
+  setEl('cbfms-gap', gap);
+  setEl('cbfms-na', na);
+}
+
+function cbahiShowTab(section) {
+  ['maintenance','safety','biomedical'].forEach(s => {
+    const sec = document.getElementById('cbSection-' + s);
+    const tab = document.getElementById('cbTab-' + s);
+    if (sec) sec.style.display = s === section ? '' : 'none';
+    if (tab) tab.className = 'cbahi-tab' + (s === section ? ' active' : '');
+  });
+}
+
+function cbahiRestoreAll() {
+  // Restore all status selects and card classes
+  CBAHI_STANDARDS.forEach(std => {
+    const status = cbahiGetStatus(std);
+    if (status) {
+      const sel = document.querySelector('#std-' + std + ' .cbahi-status-sel');
+      if (sel) sel.value = status;
+      const card = document.getElementById('std-' + std);
+      if (card) card.className = 'cbahi-std-card status-' + status;
+    }
+    // Restore all text fields, dates, selects
+    const card = document.getElementById('std-' + std);
+    if (!card) return;
+    card.querySelectorAll('input, select, textarea').forEach(el => {
+      if (el.classList.contains('cbahi-status-sel')) return;
+      // Find field name from onchange attribute
+      const oc = el.getAttribute('onchange') || '';
+      const m = oc.match(/cbahiSave\('[^']+','([^']+)'/);
+      if (m) {
+        const val = cbahiLoad(std, m[1]);
+        if (val) el.value = val;
+      }
+    });
+  });
+  cbahiUpdateScores();
+}
+
+// Export section as printable report
+function cbahiExportSection(section) {
+  const stds = CBAHI_SECTIONS[section];
+  const owner = CBAHI_OWNERS[section];
+  const sectionNames = { maintenance: 'Fire Alarm & Suppression (FMS 21–22)', safety: 'Fire Safety & Exits (FMS 23–24)', biomedical: 'Medical Gas System (FMS 32)' };
+  
+  let rows = '';
+  stds.forEach(std => {
+    const status = cbahiGetStatus(std) || 'pending';
+    const statusLabel = { met:'✅ Met', partial:'⚠️ Partial', 'not-met':'❌ Not Met', na:'➖ N/A', pending:'⬜ Pending' }[status] || status;
+    const statusColor = { met:'#16a34a', partial:'#d97706', 'not-met':'#dc2626', na:'#6b7280', pending:'#6b7280' }[status] || '#6b7280';
+    const ca = cbahiLoad(std, 'ca') || cbahiLoad(std, 'findings') || cbahiLoad(std, 'notes') || '';
+    
+    rows += `<tr>
+      <td style="font-weight:700;color:#0070f3;white-space:nowrap;">${std.replace('FMS','FMS ')}</td>
+      <td style="font-weight:600;color:${statusColor};">${statusLabel}</td>
+      <td style="font-size:11px;">${ca || '—'}</td>
+    </tr>`;
+  });
+  
+  const totalStds = stds.length;
+  const metCount = stds.filter(s => cbahiGetStatus(s) === 'met').length;
+  const partCount = stds.filter(s => cbahiGetStatus(s) === 'partial').length;
+  const gapCount = stds.filter(s => cbahiGetStatus(s) === 'not-met').length;
+  const naCount  = stds.filter(s => cbahiGetStatus(s) === 'na').length;
+  const scored   = totalStds - naCount;
+  const score    = scored > 0 ? Math.round((metCount + partCount*0.5)/scored*100) : 0;
+  
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>CBAHI FMS Compliance — ${sectionNames[section]}</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 24px; font-size: 12px; color: #1a1a1a; }
+    .header { background: #0070f3; color: #fff; padding: 20px 24px; border-radius: 8px; margin-bottom: 20px; }
+    .header h1 { margin: 0; font-size: 18px; }
+    .header p { margin: 4px 0 0; opacity: .85; font-size: 12px; }
+    .summary { display: flex; gap: 12px; margin-bottom: 20px; }
+    .sum-box { flex: 1; padding: 12px; border-radius: 8px; text-align: center; }
+    .sum-box .val { font-size: 22px; font-weight: 800; }
+    .sum-box .lbl { font-size: 10px; color: #6b7280; margin-top: 2px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #f1f5f9; padding: 8px 10px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+    td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+    tr:hover td { background: #f8fafc; }
+    .sig { margin-top: 40px; display: flex; gap: 60px; }
+    .sig-line { flex: 1; border-top: 1px solid #6b7280; padding-top: 6px; font-size: 10px; color: #6b7280; }
+    .score-circle { display: inline-block; width: 60px; height: 60px; border-radius: 50%; background: ${score>=80?'#16a34a':score>=60?'#d97706':'#dc2626'}; color: #fff; text-align: center; line-height: 60px; font-size: 18px; font-weight: 800; vertical-align: middle; margin-right: 12px; }
+    @media print { body { padding: 0; } }
+  </style>
+  </head><body>
+  <div class="header">
+    <h1>CBAHI FMS Compliance Report — ${sectionNames[section]}</h1>
+    <p>Responsible: ${owner} &nbsp;|&nbsp; Generated: ${new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'})} &nbsp;|&nbsp; Hospital: Obeid Specialized Hospital, Riyadh</p>
+  </div>
+  <div class="summary">
+    <div class="sum-box" style="background:#f0fdf4;"><div class="val" style="color:#16a34a;">${metCount}</div><div class="lbl">Met</div></div>
+    <div class="sum-box" style="background:#fffbeb;"><div class="val" style="color:#d97706;">${partCount}</div><div class="lbl">Partial</div></div>
+    <div class="sum-box" style="background:#fef2f2;"><div class="val" style="color:#dc2626;">${gapCount}</div><div class="lbl">Not Met</div></div>
+    <div class="sum-box" style="background:#f8fafc;"><div class="val" style="color:#6b7280;">${naCount}</div><div class="lbl">N/A</div></div>
+    <div class="sum-box" style="background:#eff6ff;"><div class="val" style="color:#0070f3;">${score}%</div><div class="lbl">Compliance Score</div></div>
+  </div>
+  <table>
+    <thead><tr><th style="width:80px;">Standard</th><th style="width:120px;">Status</th><th>Corrective Actions / Notes</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="sig">
+    <div class="sig-line">Prepared by: ${owner}<br>&nbsp;<br>Signature: ___________________ &nbsp;&nbsp; Date: _______________</div>
+    <div class="sig-line">Reviewed by: FMS Director — Aliks<br>&nbsp;<br>Signature: ___________________ &nbsp;&nbsp; Date: _______________</div>
+  </div>
+  </body></html>`;
+  
+  const b = new Blob([html], { type: 'text/html' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(b);
+  a.download = 'CBAHI_FMS_' + section + '_' + new Date().toISOString().slice(0,10) + '.html';
+  a.click();
+  toast('✅ ' + section.charAt(0).toUpperCase()+section.slice(1) + ' report exported');
+}
+
+function cbahiExportFull() {
+  cbahiExportSection('maintenance');
+  setTimeout(() => cbahiExportSection('safety'), 500);
+  setTimeout(() => cbahiExportSection('biomedical'), 1000);
+  toast('✅ All 3 section reports exported', '#10b981');
+}
+
+// Init CBAHI module when page loads
+function renderCbahi() {
+  cbahiRestoreAll();
 }
 
 </script>
