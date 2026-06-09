@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1508';
+  var v = '20260606-1509';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -2231,29 +2231,39 @@ if ('caches' in window) {
     </div>
 
     <!-- Floor Results -->
-    <div class="rep-section-title">Floor-by-Floor Inspection Results</div>
-    <div id="fa-insp-summary" style="font-size:11px;padding:8px 12px;background:var(--s2);border-radius:6px;margin-bottom:8px;border:1px solid var(--bd);">—</div>
-    <div style="overflow-x:auto;max-height:450px;overflow-y:auto;">
-      <table class="rep-table" id="fa-floors-table" style="font-size:10px;">
+    <div class="rep-section-title">Floor / Area Inspection Results</div>
+
+    <!-- Floor selector + summary -->
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+      <div class="rep-field" style="min-width:220px;margin:0;">
+        <label>Select Floor to Inspect</label>
+        <select id="fa-floor-selector" onchange="repFilterFloor(this.value)" style="font-weight:700;">
+          <option value="all">📋 All Floors (Overview)</option>
+          <option value="Basement">🏗 Basement — Loop 1 (188 det.)</option>
+          <option value="Ground Floor">🏥 Ground Floor — Loop 2 (204 det.)</option>
+          <option value="1st Floor">🏥 1st Floor — Loop 3 (180 det.)</option>
+          <option value="2nd Floor">🏥 2nd Floor — Loop 4 (135 det.)</option>
+          <option value="3rd Floor">🏥 3rd Floor — Loop 4 (53 det.)</option>
+        </select>
+      </div>
+      <div id="fa-insp-summary" style="font-size:11px;padding:8px 14px;background:var(--s2);border-radius:7px;border:1px solid var(--bd);flex:1;">—</div>
+    </div>
+
+    <!-- Scrollable inspection table -->
+    <div style="overflow-x:auto;max-height:500px;overflow-y:auto;border:1px solid var(--bd);border-radius:8px;">
+      <table class="rep-table" id="fa-floors-table" style="font-size:10px;margin-bottom:0;">
         <thead>
           <tr style="position:sticky;top:0;z-index:2;">
-            <th style="min-width:180px;">Location</th>
-            <th>Det.
-Count</th>
-            <th>1. Cleaning</th>
-            <th>2. Panel
-Check</th>
-            <th>3. Battery
-Load Test</th>
-            <th>4. Audible
-Devices</th>
-            <th>5. Two-Way
-Comm.</th>
-            <th>6. Functional
-Test</th>
-            <th>Faults
-Found</th>
-            <th style="min-width:120px;">Status</th>
+            <th style="min-width:180px;text-align:left;padding-left:10px;">Location</th>
+            <th style="min-width:40px;">Det.</th>
+            <th style="min-width:110px;">1. Cleaning<br><span style="font-weight:400;font-size:8px;">Smoke detector heads</span></th>
+            <th style="min-width:110px;">2. Panel Check<br><span style="font-weight:400;font-size:8px;">Visual inspection FACP</span></th>
+            <th style="min-width:110px;">3. Battery Test<br><span style="font-weight:400;font-size:8px;">Load test remote supply</span></th>
+            <th style="min-width:110px;">4. Audible Test<br><span style="font-weight:400;font-size:8px;">Sounders &amp; horns</span></th>
+            <th style="min-width:110px;">5. Two-Way Comm.<br><span style="font-weight:400;font-size:8px;">Emergency intercom</span></th>
+            <th style="min-width:110px;">6. Functional Test<br><span style="font-weight:400;font-size:8px;">End-to-end alarm test</span></th>
+            <th style="min-width:50px;">Faults</th>
+            <th style="min-width:130px;">Status</th>
           </tr>
         </thead>
         <tbody id="fa-floors-body"></tbody>
@@ -13245,6 +13255,28 @@ function repBuildFM200Table() {
       <td style="padding:2px 3px;border:1px solid var(--bd);">${_repSel(['','✅ Pass','⚠️ Action Req.','❌ OOS'])}</td>
     </tr>`;
   }).join('');
+}
+
+
+function repFilterFloor(floor) {
+  const tbody = document.getElementById('fa-floors-body');
+  if (!tbody) return;
+  const rows = tbody.querySelectorAll('tr');
+  rows.forEach(tr => {
+    if (tr.classList.contains('rep-floor-hdr')) {
+      // Show floor header only if it matches or showing all
+      if (floor === 'all') {
+        tr.style.display = '';
+      } else {
+        // Check if this header is for the selected floor
+        const txt = tr.querySelector('td')?.textContent || '';
+        tr.style.display = txt.includes(floor) ? '' : 'none';
+      }
+    } else if (tr.dataset.floor) {
+      tr.style.display = (floor === 'all' || tr.dataset.floor === floor) ? '' : 'none';
+    }
+  });
+  repUpdateSummary();
 }
 
 function repUpdateSummary(el) {
