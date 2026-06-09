@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1504';
+  var v = '20260606-1505';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -4834,7 +4834,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260606-1503';
+const APP_VERSION = '20260606-1505';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -5399,7 +5399,8 @@ function gp(id){
   document.getElementById('n-'+id)?.classList.add('active');
   document.getElementById('tbTitle').textContent=PTITLES[id]||id;
   if(id==='kpi')renderKPI();
-  if(id==='cbahi')renderCBAHI();
+  if(id==='equip')setTimeout(fixCorruptedOverrides,200);
+  if(id==='cbahi'){if(typeof renderCBAHI==='function')renderCBAHI();setTimeout(renderCbahi,50);setTimeout(fixCorruptedOverrides,100);}
   if(id==='dash')renderDash();
   if(id==='ckpi')renderCKPI('all');
   if(id==='reports'){renderAnalytics();setTimeout(reinitAnalCharts,150);}
