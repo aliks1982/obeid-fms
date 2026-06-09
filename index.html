@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1506';
+  var v = '20260606-1508';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -778,6 +778,7 @@ if ('caches' in window) {
     <button id="cbTab-maintenance" class="cbahi-tab active" onclick="cbahiShowTab('maintenance')">🔧 Maintenance (FMS 21–22)</button>
     <button id="cbTab-safety" class="cbahi-tab" onclick="cbahiShowTab('safety')">🛡 Safety (FMS 23–24)</button>
     <button id="cbTab-biomedical" class="cbahi-tab" onclick="cbahiShowTab('biomedical')">⚕ Biomedical (FMS 32)</button>
+    <button id="cbTab-reports" class="cbahi-tab" onclick="cbahiShowTab('reports')">📋 Fire Safety Reports</button>
   </div>
 
   <!-- ═══════════════ MAINTENANCE SECTION: FMS 21–22 ═══════════════ -->
@@ -2194,6 +2195,313 @@ if ('caches' in window) {
       </div>
     </div>
   </div><!-- end biomedical section -->
+
+<!-- ══════════════════════════════════════════════════════
+     CBAHI REPORTS TAB — Inline fire safety reports
+     ══════════════════════════════════════════════════════ -->
+<div id="cbSection-reports" class="cbahi-section" style="display:none;">
+
+  <!-- Report Type Selector -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;padding:12px;background:var(--s2);border-radius:10px;border:1px solid var(--bd);">
+    <div style="font-weight:700;font-size:12px;color:var(--mu);width:100%;margin-bottom:6px;">📋 SELECT REPORT TYPE</div>
+    <button class="rep-type-btn active" id="repBtn-fa-inspection" onclick="repShowType('fa-inspection',this)">🔥 FA Monthly Inspection</button>
+    <button class="rep-type-btn" id="repBtn-fa-testing" onclick="repShowType('fa-testing',this)">🔔 FA Testing Log</button>
+    <button class="rep-type-btn" id="repBtn-fm200" onclick="repShowType('fm200',this)">🧯 FM-200 Inspection</button>
+    <button class="rep-type-btn" id="repBtn-fire-pump" onclick="repShowType('fire-pump',this)">💧 Fire Pump Weekly</button>
+    <button class="rep-type-btn" id="repBtn-wet-chem" onclick="repShowType('wet-chem',this)">🍳 Wet Chemical Check</button>
+  </div>
+
+  <!-- ══ REPORT 1: FA Monthly Inspection ══ -->
+  <div id="repForm-fa-inspection" class="rep-form-section">
+    <div class="rep-form-header">🔥 Fire Alarm Monthly Inspection Report — FMS 21.1 / 21.2</div>
+    <div class="rep-meta-grid">
+      <div class="rep-field"><label>Month / Year</label><input type="month" id="fa-insp-month" value="2026-06"></div>
+      <div class="rep-field"><label>Inspection Date</label><input type="date" id="fa-insp-date"></div>
+      <div class="rep-field"><label>Inspected By</label><input type="text" id="fa-insp-by" placeholder="Technician name"></div>
+      <div class="rep-field"><label>Work Order No.</label><input type="text" id="fa-insp-wo" placeholder="WO-XXXX"></div>
+      <div class="rep-field"><label>FACP Status</label>
+        <select id="fa-insp-panel">
+          <option value="">Select</option>
+          <option>✅ Normal — No Faults</option>
+          <option>⚠️ Minor Fault — Under Investigation</option>
+          <option>❌ Fault — System Impaired</option>
+        </select>
+      </div>
+      <div class="rep-field"><label>Battery Voltage (V DC)</label><input type="number" step="0.1" id="fa-insp-battery" placeholder="e.g. 24.6"></div>
+    </div>
+
+    <!-- Floor Results -->
+    <div class="rep-section-title">Floor-by-Floor Inspection Results</div>
+    <div id="fa-insp-summary" style="font-size:11px;padding:8px 12px;background:var(--s2);border-radius:6px;margin-bottom:8px;border:1px solid var(--bd);">—</div>
+    <div style="overflow-x:auto;max-height:450px;overflow-y:auto;">
+      <table class="rep-table" id="fa-floors-table" style="font-size:10px;">
+        <thead>
+          <tr style="position:sticky;top:0;z-index:2;">
+            <th style="min-width:180px;">Location</th>
+            <th>Det.
+Count</th>
+            <th>1. Cleaning</th>
+            <th>2. Panel
+Check</th>
+            <th>3. Battery
+Load Test</th>
+            <th>4. Audible
+Devices</th>
+            <th>5. Two-Way
+Comm.</th>
+            <th>6. Functional
+Test</th>
+            <th>Faults
+Found</th>
+            <th style="min-width:120px;">Status</th>
+          </tr>
+        </thead>
+        <tbody id="fa-floors-body"></tbody>
+      </table>
+    </div>
+
+    <div class="rep-meta-grid" style="margin-top:12px;">
+      <div class="rep-field" style="grid-column:1/-1;"><label>Findings / Corrective Actions</label><textarea id="fa-insp-findings" rows="3" placeholder="List any faults, corrective actions taken, pending items..."></textarea></div>
+      <div class="rep-field"><label>Overall Result</label>
+        <select id="fa-insp-result">
+          <option value="">Select</option>
+          <option value="pass">✅ SATISFACTORY — System Fully Operational</option>
+          <option value="partial">⚠️ CONDITIONAL — Minor Issues Noted</option>
+          <option value="fail">❌ UNSATISFACTORY — Immediate Action Required</option>
+        </select>
+      </div>
+      <div class="rep-field"><label>Next Inspection Due</label><input type="date" id="fa-insp-next"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="btn bp" onclick="repSave('fa-inspection')">💾 Save Report</button>
+      <button class="btn bo" onclick="repExport('fa-inspection')">⬇ Export PDF-Ready Report</button>
+    </div>
+
+    <!-- Saved Reports Log -->
+    <div class="rep-log-header">📁 Saved FA Inspection Reports</div>
+    <div id="repLog-fa-inspection" class="rep-log"></div>
+  </div>
+
+  <!-- ══ REPORT 2: FA Testing Log ══ -->
+  <div id="repForm-fa-testing" class="rep-form-section" style="display:none;">
+    <div class="rep-form-header">🔔 Fire Alarm Testing Log — FMS 21.2</div>
+    <div class="rep-meta-grid">
+      <div class="rep-field"><label>Test Date</label><input type="date" id="fa-test-date"></div>
+      <div class="rep-field"><label>Tested By</label><input type="text" id="fa-test-by" placeholder="Technician name"></div>
+      <div class="rep-field"><label>Test Type</label>
+        <select id="fa-test-type">
+          <option value="">Select</option>
+          <option>Monthly In-House Test</option>
+          <option>Quarterly Contractor Test</option>
+          <option>Annual Full Test</option>
+          <option>Post-Maintenance Test</option>
+        </select>
+      </div>
+      <div class="rep-field"><label>Work Order No.</label><input type="text" id="fa-test-wo" placeholder="WO-XXXX"></div>
+    </div>
+    <div class="rep-section-title">Test Items</div>
+    <div id="fa-test-items">
+      <!-- Dynamic test items -->
+    </div>
+    <div class="rep-meta-grid" style="margin-top:10px;">
+      <div class="rep-field" style="grid-column:1/-1;"><label>Test Findings & Actions</label><textarea id="fa-test-findings" rows="3" placeholder="Devices tested, results, faults, corrective actions..."></textarea></div>
+      <div class="rep-field"><label>Devices Tested (count)</label><input type="number" id="fa-test-count" placeholder="e.g. 760"></div>
+      <div class="rep-field"><label>Devices Failed</label><input type="number" id="fa-test-failed" placeholder="0"></div>
+      <div class="rep-field"><label>Overall Result</label>
+        <select id="fa-test-result">
+          <option value="">Select</option>
+          <option value="pass">✅ All Pass</option>
+          <option value="partial">⚠️ Partial Fail — CA Issued</option>
+          <option value="fail">❌ Major Failure — System Impaired</option>
+        </select>
+      </div>
+      <div class="rep-field"><label>Next Test Due</label><input type="date" id="fa-test-next"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="btn bp" onclick="repSave('fa-testing')">💾 Save Test Record</button>
+      <button class="btn bo" onclick="repExport('fa-testing')">⬇ Export Report</button>
+    </div>
+    <div class="rep-log-header">📁 Saved FA Testing Records</div>
+    <div id="repLog-fa-testing" class="rep-log"></div>
+  </div>
+
+  <!-- ══ REPORT 3: FM-200 Inspection ══ -->
+  <div id="repForm-fm200" class="rep-form-section" style="display:none;">
+    <div class="rep-form-header">🧯 FM-200 Clean Agent System — Monthly Inspection — FMS 22.2</div>
+    <div class="rep-meta-grid">
+      <div class="rep-field"><label>Inspection Date</label><input type="date" id="fm200-date"></div>
+      <div class="rep-field"><label>Inspected By</label><input type="text" id="fm200-by" placeholder="Technician name"></div>
+      <div class="rep-field"><label>Month / Year</label><input type="month" id="fm200-month" value="2026-06"></div>
+      <div class="rep-field"><label>Contractor (Quarterly)</label><input type="text" id="fm200-contractor" placeholder="Company name"></div>
+    </div>
+    <div class="rep-section-title">FM-200 Units Inspection (17 Units)</div>
+    <div style="overflow-x:auto;">
+      <table class="rep-table">
+        <thead>
+          <tr><th>Floor</th><th>Location</th><th>Loop</th><th>Battery OK?</th><th>Cylinder Pressure</th><th>Weight Check</th><th>Piping & Nozzles</th><th>Cabinet Clean</th><th>Detectors Clean</th><th>Tag Valid?</th><th>Status</th></tr>
+        </thead>
+        <tbody id="fm200-body"></tbody>
+      </table>
+    </div>
+    <div class="rep-meta-grid" style="margin-top:10px;">
+      <div class="rep-field" style="grid-column:1/-1;"><label>Issues Found & Corrective Actions</label><textarea id="fm200-findings" rows="3" placeholder="List any deficiencies..."></textarea></div>
+      <div class="rep-field"><label>Overall Result</label>
+        <select id="fm200-result">
+          <option value="">Select</option>
+          <option value="pass">✅ All Units Satisfactory</option>
+          <option value="partial">⚠️ Issues Found — CA Issued</option>
+          <option value="fail">❌ Critical Issue — Immediate Action</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="btn bp" onclick="repSave('fm200')">💾 Save Inspection</button>
+      <button class="btn bo" onclick="repExport('fm200')">⬇ Export Report</button>
+    </div>
+    <div class="rep-log-header">📁 Saved FM-200 Inspection Records</div>
+    <div id="repLog-fm200" class="rep-log"></div>
+  </div>
+
+  <!-- ══ REPORT 4: Fire Pump Weekly ══ -->
+  <div id="repForm-fire-pump" class="rep-form-section" style="display:none;">
+    <div class="rep-form-header">💧 Fire Pump Weekly Inspection & Testing — FMS 22.1</div>
+    <div class="rep-meta-grid">
+      <div class="rep-field"><label>Week Ending Date</label><input type="date" id="pump-date"></div>
+      <div class="rep-field"><label>Inspected By</label><input type="text" id="pump-by" placeholder="Technician name"></div>
+      <div class="rep-field"><label>Month / Year</label><input type="month" id="pump-month" value="2026-06"></div>
+      <div class="rep-field"><label>Week Number</label>
+        <select id="pump-week">
+          <option>Week 1</option><option>Week 2</option><option>Week 3</option><option>Week 4</option><option>Week 5</option>
+        </select>
+      </div>
+    </div>
+    <div class="rep-section-title">Pump Status & Mode</div>
+    <div class="rep-meta-grid">
+      <div class="rep-field"><label>Jockey Pump Mode</label>
+        <select id="pump-jockey-mode">
+          <option value="">Select</option><option value="auto">✅ AUTO</option><option value="manual">⚠️ MANUAL</option><option value="off">❌ OFF</option>
+        </select>
+      </div>
+      <div class="rep-field"><label>Electric Pump Mode</label>
+        <select id="pump-elec-mode">
+          <option value="">Select</option><option value="auto">✅ AUTO</option><option value="manual">⚠️ MANUAL</option><option value="off">❌ OFF</option>
+        </select>
+      </div>
+      <div class="rep-field"><label>Diesel Pump Mode</label>
+        <select id="pump-diesel-mode">
+          <option value="">Select</option><option value="auto">✅ AUTO</option><option value="manual">⚠️ MANUAL</option><option value="off">❌ OFF</option>
+        </select>
+      </div>
+      <div class="rep-field"><label>System Pressure (bar)</label>
+        <input type="number" step="0.1" id="pump-pressure" placeholder="e.g. 8.5">
+      </div>
+    </div>
+    <div class="rep-section-title">Diesel Engine Checks</div>
+    <div class="rep-meta-grid">
+      <div class="rep-field"><label>Engine Run Test (30 min min.)</label>
+        <select id="pump-run-test"><option value="">Select</option><option value="pass">✅ Done — Ran Smoothly</option><option value="fail">❌ Not Done / Issues</option></select>
+      </div>
+      <div class="rep-field"><label>Fuel Tank Level</label>
+        <select id="pump-fuel"><option value="">Select</option><option>Full ✅</option><option>¾ Full ✅</option><option>½ Full ⚠️ — Refill Soon</option><option>Below ¾ ❌ — Refill Now</option></select>
+      </div>
+      <div class="rep-field"><label>Oil Level</label>
+        <select id="pump-oil"><option value="">Select</option><option>✅ Normal</option><option>⚠️ Low — Top Up</option><option>❌ Very Low</option></select>
+      </div>
+      <div class="rep-field"><label>Engine Condition</label>
+        <select id="pump-engine"><option value="">Select</option><option>✅ Clean, Dry, No Leaks</option><option>⚠️ Minor Issues</option><option>❌ Oil Leak / Damage</option></select>
+      </div>
+    </div>
+    <div class="rep-section-title">Electric Motor Checks</div>
+    <div class="rep-meta-grid">
+      <div class="rep-field"><label>Electric Pump Run Test (10 min)</label>
+        <select id="pump-elec-run"><option value="">Select</option><option value="pass">✅ Done — Normal</option><option value="fail">❌ Issues Found</option></select>
+      </div>
+      <div class="rep-field"><label>Controller — Automatic Mode?</label>
+        <select id="pump-controller"><option value="">Select</option><option>✅ AUTO</option><option>❌ Not AUTO</option></select>
+      </div>
+      <div class="rep-field"><label>Alarm Conditions?</label>
+        <select id="pump-alarms"><option value="">Select</option><option>✅ No Alarms</option><option>❌ Active Alarm</option></select>
+      </div>
+      <div class="rep-field"><label>Discharge Valve Clear?</label>
+        <select id="pump-valve"><option value="">Select</option><option>✅ Open, No Leaks</option><option>❌ Issue Found</option></select>
+      </div>
+    </div>
+    <div class="rep-meta-grid" style="margin-top:10px;">
+      <div class="rep-field" style="grid-column:1/-1;"><label>Remarks / Issues / Actions</label><textarea id="pump-remarks" rows="3" placeholder="Note any findings, actions taken, parts needed..."></textarea></div>
+      <div class="rep-field"><label>Weekly Result</label>
+        <select id="pump-result">
+          <option value="">Select</option>
+          <option value="pass">✅ Satisfactory</option>
+          <option value="partial">⚠️ Conditional — Minor Issues</option>
+          <option value="fail">❌ Unsatisfactory — Action Required</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="btn bp" onclick="repSave('fire-pump')">💾 Save Weekly Check</button>
+      <button class="btn bo" onclick="repExport('fire-pump')">⬇ Export Monthly Summary</button>
+    </div>
+    <div class="rep-log-header">📁 Saved Fire Pump Inspection Records</div>
+    <div id="repLog-fire-pump" class="rep-log"></div>
+  </div>
+
+  <!-- ══ REPORT 5: Wet Chemical ══ -->
+  <div id="repForm-wet-chem" class="rep-form-section" style="display:none;">
+    <div class="rep-form-header">🍳 Wet Chemical System — Monthly Visual Check — FMS 22.3</div>
+    <div class="rep-meta-grid">
+      <div class="rep-field"><label>Check Date</label><input type="date" id="wc-date"></div>
+      <div class="rep-field"><label>Checked By</label><input type="text" id="wc-by" placeholder="Technician name"></div>
+      <div class="rep-field"><label>Month / Year</label><input type="month" id="wc-month" value="2026-06"></div>
+      <div class="rep-field"><label>Location</label><input type="text" id="wc-location" value="Kitchen — Main Cooking Area"></div>
+    </div>
+    <div class="rep-section-title">Visual Check Items</div>
+    <div class="rep-meta-grid">
+      <div class="rep-field"><label>Pressure Gauge — Green Zone?</label>
+        <select id="wc-pressure"><option value="">Select</option><option value="pass">✅ Green (Normal)</option><option value="fail">❌ Red (Low) — Action Required</option></select>
+      </div>
+      <div class="rep-field"><label>Manual Pull Station Condition</label>
+        <select id="wc-pull"><option value="">Select</option><option value="pass">✅ Good — Pin Intact</option><option value="fail">❌ Damaged / Pin Missing</option></select>
+      </div>
+      <div class="rep-field"><label>Spray Nozzles — Clear of Grease?</label>
+        <select id="wc-nozzles"><option value="">Select</option><option value="pass">✅ Clear</option><option value="partial">⚠️ Minor Grease — Cleaned</option><option value="fail">❌ Blocked</option></select>
+      </div>
+      <div class="rep-field"><label>Cylinder — No Damage/Corrosion?</label>
+        <select id="wc-cylinder"><option value="">Select</option><option value="pass">✅ Good Condition</option><option value="fail">❌ Damage Found</option></select>
+      </div>
+      <div class="rep-field"><label>Tamper Seal / Locking Pin Intact?</label>
+        <select id="wc-seal"><option value="">Select</option><option value="pass">✅ Intact — No Unauthorized Discharge</option><option value="fail">❌ Broken / Missing</option></select>
+      </div>
+      <div class="rep-field"><label>Area Around Unit — Clean?</label>
+        <select id="wc-area"><option value="">Select</option><option value="pass">✅ Clean</option><option value="fail">❌ Combustibles Present</option></select>
+      </div>
+      <div class="rep-field"><label>Hood & Duct — Grease Level?</label>
+        <select id="wc-hood"><option value="">Select</option><option value="pass">✅ Acceptable</option><option value="partial">⚠️ Moderate — Kitchen to Clean</option><option value="fail">❌ Excessive — Immediate Cleaning</option></select>
+      </div>
+      <div class="rep-field"><label>Inspection Tag — Valid?</label>
+        <select id="wc-tag"><option value="">Select</option><option value="pass">✅ Valid</option><option value="fail">❌ Expired / Missing</option></select>
+      </div>
+      <div class="rep-field" style="grid-column:1/-1;"><label>Remarks / Corrective Actions</label><textarea id="wc-remarks" rows="3" placeholder="Any deficiencies found and actions taken..."></textarea></div>
+      <div class="rep-field"><label>Overall Result</label>
+        <select id="wc-result">
+          <option value="">Select</option>
+          <option value="pass">✅ Satisfactory</option>
+          <option value="partial">⚠️ Action Required</option>
+          <option value="fail">❌ System Taken Out of Service</option>
+        </select>
+      </div>
+      <div class="rep-field"><label>Next Quarterly PPM Due</label><input type="date" id="wc-next-ppm"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="btn bp" onclick="repSave('wet-chem')">💾 Save Check Record</button>
+      <button class="btn bo" onclick="repExport('wet-chem')">⬇ Export Report</button>
+    </div>
+    <div class="rep-log-header">📁 Saved Wet Chemical Check Records</div>
+    <div id="repLog-wet-chem" class="rep-log"></div>
+  </div>
+
+</div><!-- end reports section -->
+
+
 </div><!-- end page-cbahi -->
 
 
@@ -12685,7 +12993,7 @@ function cbahiUpdateScores() {
 }
 
 function cbahiShowTab(section) {
-  ['maintenance','safety','biomedical'].forEach(s => {
+  ['maintenance','safety','biomedical','reports'].forEach(s => {
     const sec = document.getElementById('cbSection-' + s);
     const tab = document.getElementById('cbTab-' + s);
     if (sec) sec.style.display = s === section ? '' : 'none';
@@ -12767,7 +13075,74 @@ function cbahiExportSection(section) {
     .sig-line { flex: 1; border-top: 1px solid #6b7280; padding-top: 6px; font-size: 10px; color: #6b7280; }
     .score-circle { display: inline-block; width: 60px; height: 60px; border-radius: 50%; background: ${score>=80?'#16a34a':score>=60?'#d97706':'#dc2626'}; color: #fff; text-align: center; line-height: 60px; font-size: 18px; font-weight: 800; vertical-align: middle; margin-right: 12px; }
     @media print { body { padding: 0; } }
-  </style>
+  
+/* ── Reports Tab ── */
+.rep-type-btn {
+  padding: 7px 14px; border: 1px solid var(--bd); background: var(--s2);
+  border-radius: 7px; cursor: pointer; font-size: 11px; font-weight: 600;
+  color: var(--mu); transition: all .2s;
+}
+.rep-type-btn.active, .rep-type-btn:hover {
+  background: var(--ac); color: #fff; border-color: var(--ac);
+}
+.rep-form-section { animation: fadeIn .2s; }
+.rep-form-header {
+  background: linear-gradient(135deg, var(--ac), #0050b3);
+  color: #fff; padding: 12px 16px; border-radius: 8px 8px 0 0;
+  font-weight: 700; font-size: 13px; margin-bottom: 0;
+}
+.rep-meta-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr));
+  gap: 10px; padding: 14px; background: var(--s2); border: 1px solid var(--bd);
+  border-radius: 0 0 8px 8px; margin-bottom: 12px;
+}
+.rep-field label {
+  display: block; font-size: 10px; font-weight: 700; color: var(--mu);
+  margin-bottom: 4px; text-transform: uppercase; letter-spacing: .4px;
+}
+.rep-field input, .rep-field select, .rep-field textarea {
+  width: 100%; padding: 6px 8px; border: 1px solid var(--bd);
+  border-radius: 6px; background: var(--s1); font-size: 11px;
+  color: var(--tx); box-sizing: border-box;
+}
+.rep-field textarea { resize: vertical; min-height: 60px; }
+.rep-section-title {
+  font-weight: 700; font-size: 11px; color: var(--ac);
+  background: var(--s2); padding: 8px 12px; border-radius: 6px;
+  margin: 10px 0 6px; border-left: 3px solid var(--ac);
+  text-transform: uppercase; letter-spacing: .5px;
+}
+.rep-table { width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 12px; }
+.rep-table th {
+  background: var(--ac); color: #fff; padding: 7px 8px; text-align: center;
+  font-weight: 700; font-size: 9px; white-space: nowrap; border: 1px solid rgba(255,255,255,.2);
+}
+.rep-table td { padding: 5px 6px; border: 1px solid var(--bd); vertical-align: middle; }
+.rep-table tr:nth-child(even) td { background: var(--s2); }
+.rep-sel { padding: 3px 5px; border: 1px solid var(--bd); border-radius: 5px;
+           background: var(--s1); font-size: 10px; color: var(--tx); width: 100%; }
+.rep-num { padding: 3px 5px; border: 1px solid var(--bd); border-radius: 5px;
+           background: var(--s1); font-size: 10px; color: var(--tx); }
+.rep-log-header {
+  font-weight: 700; font-size: 12px; color: var(--tx); padding: 10px 0 6px;
+  border-bottom: 2px solid var(--bd); margin-top: 16px;
+}
+.rep-log { margin-top: 8px; }
+.rep-log-entry {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  background: var(--s2); border: 1px solid var(--bd); border-radius: 8px;
+  margin-bottom: 6px; transition: all .2s;
+}
+.rep-log-entry:hover { border-color: var(--ac); }
+.rep-log-badge { font-size: 18px; }
+.rep-log-info { flex: 1; }
+.rep-log-title { font-weight: 700; font-size: 11px; color: var(--tx); }
+.rep-log-meta { font-size: 10px; color: var(--mu); margin-top: 2px; }
+.rep-log-result-pass { color: #16a34a; font-weight: 700; font-size: 10px; }
+.rep-log-result-partial { color: #d97706; font-weight: 700; font-size: 10px; }
+.rep-log-result-fail { color: #dc2626; font-weight: 700; font-size: 10px; }
+
+</style>
   </head><body>
   <div class="header">
     <h1>CBAHI FMS Compliance Report — ${sectionNames[section]}</h1>
@@ -12808,6 +13183,617 @@ function cbahiExportFull() {
 // Init CBAHI module when page loads
 function renderCbahi() {
   cbahiRestoreAll();
+  repLoadAll();
+}
+
+
+
+// ── Fire Safety Report Data (from hospital Fire Alarm distribution) ──
+const FA_FLOORS_DATA = [["Basement",1,[["Billing Office",9],["Quality Dept.",7],["CSSD Decontamination Room",2],["CSSD Clean Room",4],["CSSD Sterile Room",3],["Marketing Dept.",2],["Electrical Room",1],["Physiotherapy",25],["Javy Office",1],["Inpatient Approval Office",1],["Medical Record",16],["Communication Room",7],["Blood Bank",14],["Auditorium",4],["InPatient Pharmacy",6],["Kitchen",13],["Lithrotripsy",2],["Laboratory",21],["Electrical Rm. (Elev.)",1],["Radiology",38],["MRI New",4],["Old X-Ray Room",3],["Dr. Office 1",1],["Dr. Office 2",1],["Communication Dept. Server",2]]],["Ground Floor",2,[["Generator Room",2],["Oxygen Room",4],["Medical Gas Room",4],["Kitchen Gas Room",1],["Electrical Room Gate 4",1],["MOH Office",1],["Security Office",1],["Emergency Room",22],["Tawuniya Office",1],["Electrical Rm. (Tawuniya)",1],["VIP Approval",6],["VIP Pharmacy",2],["Server Room",1],["VIP Clinic",11],["ENT Department",39],["File Opening",7],["Admission for Female",2],["Dental",16],["Orthopedic",15],["Pediatric",14],["Internal Medicine",26],["Surgery",23],["Out Patient Pharmacy",4]]],["1st Floor",3,[["Station E",8],["Room 139",2],["Room 140",2],["Room 141",2],["Room 142",2],["Room 143",2],["Room 144",2],["Room 145",2],["Room 146",2],["Room 147",2],["Room 148",2],["Room 149",2],["Room 150",2],["Station G",12],["Room 121",2],["Room 122",2],["Room 123",2],["Room 124",2],["Room 125",2],["Room 126",2],["Room 127",2],["Room 128",2],["Room 129",2],["Room 130",2],["Room 131",2],["Room 132",2],["Room 133",2],["Room 134",2],["Room 135",2],["Room 136",2],["Room 137",2],["Room 138",2],["Medication Rm.(G)",2],["Stock Rm.(G)",2],["Housekeeping Rm.(G)",2],["Dr. Office (G)",2],["NICU-PICU",2],["Station B",7],["Room 111",2],["Room 112",2],["Room 113",2],["Room 114",2],["Room 115",2],["Room 116",2],["Room 117",2],["Room 118",2],["Room 119",2],["Suite 20",2],["Medication Rm.(B)",1],["Stock Rm.(B)",1],["Electrical Rm.(B)",1],["Suite 10",2],["UPS Room (B)",1],["Station A",7],["Isolation Room",1],["Room 101",2],["Room 102",2],["Room 103",2],["Room 104",2],["Room 105",2],["Room 106",2],["Room 107",2],["Room 108",2],["Room 109",2],["Room 110",2],["Nursing Dept.",1],["Medication Rm.(A)",1],["Delivery Room",14],["ICU A",4],["ICU B",4],["ICU C",4],["ICU Stock Rm.",1]]],["2nd Floor",4,[["Station C",8],["Room 208 (Isolation)",2],["Room 209 (Isolation)",2],["Room 210 (Isolation)",2],["Room 211 (Isolation)",2],["Room 201",2],["Room 202",2],["Room 203",2],["Room 204",2],["Room 205",2],["Room 206",2],["Room 207",2],["UPS Room (C)",1],["Electrical Rm.(C)",1],["Operating Room",18],["Station D",7],["Room 212",2],["Room 213",2],["Room 214",2],["Room 215",2],["Room 216",2],["Room 217",2],["Room 218",2],["Room 219",2],["Medication Rm.(2F)",1],["Station H",8],["Room 220",2],["Room 221",2],["Room 222",2],["Room 223",2],["Room 224",2],["Room 225",2],["Room 226",2],["Room 227",2],["Room 228",2],["Room 229",2],["Room 230",2],["Room 231",2],["Room 232",2],["Room 233",2],["Room 234",2],["Room 235",2],["Room 236",2],["Room 237",2],["Room 238",2],["Stock Rm.(H)",1],["Cathlab",7],["Cathlab Recovery/CCU",3],["Female Waiting Area",1],["Male Waiting Area",1],["Housekeeping Rm.(H)",1]]],["3rd Floor",4,[["Station F",7],["Medication Rm.(F)",1],["Social Worker",1],["Room 239",2],["Room 240",2],["Room 241",2],["Room 242",2],["Room 243",2],["Room 244",2],["Room 245",2],["Room 246",2],["Room 247",2],["Room 248",2],["Room 249",2],["Room 250",2],["Housekeeping Stock Rm.",1],["Oncology Dept.",7],["Medication Rm.(Onco)",1],["Housekeeping Rm.(Onco)",1],["VIP Room",6],["Waiting Area",1],["Hallway",3]]]];
+const FM200_DATA = [["Basement","Medical Record","1"],["Basement","X-Ray Department","1"],["Basement","Electrical Room (Elev 2&3)","1"],["Ground Floor","Air Compressor Room","2"],["Ground Floor","Admission Dept. Gate 1","2"],["Ground Floor","Medical Gas Room","2"],["Ground Floor","X-Ray Department","2"],["Ground Floor","Elec. Rm. (Tawuniya)","2"],["Ground Floor","Electrical Room Gate 4","2"],["Ground Floor","Generator Room Door #4","2"],["Ground Floor","Generator Room Door #2","2"],["1st Floor","Electrical Room (NICU)","3"],["1st Floor","Electrical Room ST-B","3"],["2nd Floor","ST-C CCTV Room","4"],["2nd Floor","ST-D Electrical Room","4"],["2nd Floor","ST-F Electrical Room","4"],["2nd Floor","Elevator Room","4"]];
+
+const _repSel = (opts) => '<select class="rep-sel">' + opts.map(o => `<option value="${o}">${o}</option>`).join('') + '</select>';
+const _repStatusSel = () => '<select class="rep-sel" onchange="repUpdateSummary(this)"><option value="">—</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option><option value="partial">⚠️ Partial</option></select>';
+const _checkSel = () => _repSel(['','✅ Pass','❌ Fail','N/A']);
+const _cleanSel = () => _repSel(['','✅ Done','⚠️ Partial','❌ Not Done']);
+
+function repBuildFATable() {
+  const body = document.getElementById('fa-floors-body');
+  if (!body) return;
+  let html = '';
+  let sn = 0;
+  FA_FLOORS_DATA.forEach(([floor, loop, rooms]) => {
+    const total = rooms.reduce((a,[,c])=>a+c,0);
+    html += `<tr class="rep-floor-hdr"><td colspan="10" style="background:var(--ac);color:#fff;font-weight:700;font-size:10px;padding:6px 10px;letter-spacing:.3px;">${floor} &nbsp;·&nbsp; Loop ${loop} &nbsp;·&nbsp; ${rooms.length} locations &nbsp;·&nbsp; ${total} detectors</td></tr>`;
+    rooms.forEach(([loc, count]) => {
+      sn++;
+      const bg = sn%2===0 ? 'background:var(--s2);' : '';
+      html += `<tr data-floor="${floor}" data-loop="${loop}" data-count="${count}" style="${bg}">
+        <td style="padding:4px 8px;border:1px solid var(--bd);font-size:10px;white-space:nowrap;">${loc}</td>
+        <td style="padding:4px 6px;border:1px solid var(--bd);font-size:10px;text-align:center;font-weight:700;">${count}</td>
+        <td style="padding:2px 3px;border:1px solid var(--bd);">${_cleanSel()}</td>
+        <td style="padding:2px 3px;border:1px solid var(--bd);">${_checkSel()}</td>
+        <td style="padding:2px 3px;border:1px solid var(--bd);">${_checkSel()}</td>
+        <td style="padding:2px 3px;border:1px solid var(--bd);">${_checkSel()}</td>
+        <td style="padding:2px 3px;border:1px solid var(--bd);">${_checkSel()}</td>
+        <td style="padding:2px 3px;border:1px solid var(--bd);">${_checkSel()}</td>
+        <td style="padding:2px 3px;border:1px solid var(--bd);"><input type="number" min="0" value="0" class="rep-num" style="width:38px;padding:3px 4px;border:1px solid var(--bd);border-radius:4px;background:var(--s1);font-size:10px;"></td>
+        <td style="padding:2px 3px;border:1px solid var(--bd);">${_repStatusSel()}</td>
+      </tr>`;
+    });
+  });
+  body.innerHTML = html;
+  repUpdateSummary();
+}
+
+function repBuildFM200Table() {
+  const body = document.getElementById('fm200-body');
+  if (!body) return;
+  body.innerHTML = FM200_DATA.map(([fl,loc,loop],i) => {
+    const bg = i%2===0 ? 'background:var(--s2);' : '';
+    return `<tr style="${bg}">
+      <td style="padding:5px 8px;border:1px solid var(--bd);font-size:10px;font-weight:700;">${fl}</td>
+      <td style="padding:5px 8px;border:1px solid var(--bd);font-size:10px;">${loc}</td>
+      <td style="padding:5px 8px;border:1px solid var(--bd);font-size:10px;text-align:center;">Loop ${loop}</td>
+      <td style="padding:2px 3px;border:1px solid var(--bd);">${_repSel(['','✅ OK','❌ Fail'])}</td>
+      <td style="padding:2px 3px;border:1px solid var(--bd);">${_repSel(['','✅ Normal','⚠️ Low — Recharge','❌ Empty'])}</td>
+      <td style="padding:2px 3px;border:1px solid var(--bd);">${_repSel(['','✅ Within Spec','⚠️ Below Min','❌ Empty'])}</td>
+      <td style="padding:2px 3px;border:1px solid var(--bd);">${_repSel(['','✅ Clear','⚠️ Minor Issue','❌ Blocked'])}</td>
+      <td style="padding:2px 3px;border:1px solid var(--bd);">${_repSel(['','✅ Done','❌ Not Done'])}</td>
+      <td style="padding:2px 3px;border:1px solid var(--bd);">${_repSel(['','✅ Done','❌ Not Done'])}</td>
+      <td style="padding:2px 3px;border:1px solid var(--bd);">${_repSel(['','✅ Valid','❌ Expired'])}</td>
+      <td style="padding:2px 3px;border:1px solid var(--bd);">${_repSel(['','✅ Pass','⚠️ Action Req.','❌ OOS'])}</td>
+    </tr>`;
+  }).join('');
+}
+
+function repUpdateSummary(el) {
+  // Update live summary badges above the table
+  const rows = document.querySelectorAll('#fa-floors-body tr[data-floor]');
+  let pass=0, fail=0, partial=0, pending=0;
+  rows.forEach(tr => {
+    const s = tr.querySelector('.rep-sel:last-of-type')?.value || '';
+    if(s==='pass') pass++; else if(s==='fail') fail++;
+    else if(s==='partial') partial++; else pending++;
+  });
+  const su = document.getElementById('fa-insp-summary');
+  if(su) su.innerHTML = `<span style="color:#16a34a;font-weight:700;">${pass} Pass</span> &nbsp;·&nbsp; <span style="color:#d97706;font-weight:700;">${partial} Partial</span> &nbsp;·&nbsp; <span style="color:#dc2626;font-weight:700;">${fail} Fail</span> &nbsp;·&nbsp; <span style="color:var(--mu);">${pending} Pending</span>`;
+}
+
+// ══════════════════════════════════════════════════════
+// FIRE SAFETY REPORTS MODULE
+// ══════════════════════════════════════════════════════
+
+const REP_TITLES = {
+  'fa-inspection': 'Fire Alarm Monthly Inspection',
+  'fa-testing':    'Fire Alarm Testing Log',
+  'fm200':         'FM-200 Clean Agent Inspection',
+  'fire-pump':     'Fire Pump Weekly Check',
+  'wet-chem':      'Wet Chemical Monthly Check'
+};
+
+const REP_ICONS = {
+  'fa-inspection': '🔥', 'fa-testing': '🔔', 'fm200': '🧯',
+  'fire-pump': '💧', 'wet-chem': '🍳'
+};
+
+function repShowType(type, btn) {
+  document.querySelectorAll('.rep-form-section').forEach(s => s.style.display = 'none');
+  document.querySelectorAll('.rep-type-btn').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('repForm-' + type);
+  if (el) el.style.display = '';
+  if (btn) btn.classList.add('active');
+}
+
+// repInitFM200: handled by repBuildFM200Table()
+function repInitFM200() {
+  const body = document.getElementById('fm200-body');
+  if (body && false) { // Pre-populated in HTML
+    body.innerHTML = `<tr>
+      <td><b>Basement</b></td><td>Medical Record</td><td style="text-align:center">1</td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>❌ Fail</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Normal</option><option>❌ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>⚠️ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Clear</option><option>❌ Blocked</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Valid</option><option>❌ Expired</option></select></td>
+      <td><select class="rep-sel rep-status-sel"><option value="">—</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option></select></td>
+    </tr><tr>
+      <td><b>Basement</b></td><td>X-Ray Department</td><td style="text-align:center">1</td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>❌ Fail</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Normal</option><option>❌ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>⚠️ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Clear</option><option>❌ Blocked</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Valid</option><option>❌ Expired</option></select></td>
+      <td><select class="rep-sel rep-status-sel"><option value="">—</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option></select></td>
+    </tr><tr>
+      <td><b>Basement</b></td><td>Electrical Room (Elev 2&3)</td><td style="text-align:center">1</td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>❌ Fail</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Normal</option><option>❌ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>⚠️ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Clear</option><option>❌ Blocked</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Valid</option><option>❌ Expired</option></select></td>
+      <td><select class="rep-sel rep-status-sel"><option value="">—</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option></select></td>
+    </tr><tr>
+      <td><b>Ground Floor</b></td><td>Air Compressor Room</td><td style="text-align:center">2</td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>❌ Fail</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Normal</option><option>❌ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>⚠️ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Clear</option><option>❌ Blocked</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Valid</option><option>❌ Expired</option></select></td>
+      <td><select class="rep-sel rep-status-sel"><option value="">—</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option></select></td>
+    </tr><tr>
+      <td><b>Ground Floor</b></td><td>Admission Dept. Gate 1</td><td style="text-align:center">2</td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>❌ Fail</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Normal</option><option>❌ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>⚠️ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Clear</option><option>❌ Blocked</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Valid</option><option>❌ Expired</option></select></td>
+      <td><select class="rep-sel rep-status-sel"><option value="">—</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option></select></td>
+    </tr><tr>
+      <td><b>Ground Floor</b></td><td>Medical Gas Room</td><td style="text-align:center">2</td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>❌ Fail</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Normal</option><option>❌ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>⚠️ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Clear</option><option>❌ Blocked</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Valid</option><option>❌ Expired</option></select></td>
+      <td><select class="rep-sel rep-status-sel"><option value="">—</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option></select></td>
+    </tr><tr>
+      <td><b>Ground Floor</b></td><td>X-Ray Department</td><td style="text-align:center">2</td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>❌ Fail</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Normal</option><option>❌ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>⚠️ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Clear</option><option>❌ Blocked</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Valid</option><option>❌ Expired</option></select></td>
+      <td><select class="rep-sel rep-status-sel"><option value="">—</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option></select></td>
+    </tr><tr>
+      <td><b>Ground Floor</b></td><td>Elec. Rm (Tawuniya)</td><td style="text-align:center">2</td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>❌ Fail</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Normal</option><option>❌ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>⚠️ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Clear</option><option>❌ Blocked</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Valid</option><option>❌ Expired</option></select></td>
+      <td><select class="rep-sel rep-status-sel"><option value="">—</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option></select></td>
+    </tr><tr>
+      <td><b>Ground Floor</b></td><td>Electrical Room Gate 4</td><td style="text-align:center">2</td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>❌ Fail</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Normal</option><option>❌ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>⚠️ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Clear</option><option>❌ Blocked</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Valid</option><option>❌ Expired</option></select></td>
+      <td><select class="rep-sel rep-status-sel"><option value="">—</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option></select></td>
+    </tr><tr>
+      <td><b>Ground Floor</b></td><td>Generator Door #4</td><td style="text-align:center">2</td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>❌ Fail</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Normal</option><option>❌ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>⚠️ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Clear</option><option>❌ Blocked</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Valid</option><option>❌ Expired</option></select></td>
+      <td><select class="rep-sel rep-status-sel"><option value="">—</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option></select></td>
+    </tr><tr>
+      <td><b>Ground Floor</b></td><td>Generator Door #2</td><td style="text-align:center">2</td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>❌ Fail</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Normal</option><option>❌ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>⚠️ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Clear</option><option>❌ Blocked</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Valid</option><option>❌ Expired</option></select></td>
+      <td><select class="rep-sel rep-status-sel"><option value="">—</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option></select></td>
+    </tr><tr>
+      <td><b>1st Floor</b></td><td>Electrical Room (NICU)</td><td style="text-align:center">3</td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>❌ Fail</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Normal</option><option>❌ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>⚠️ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Clear</option><option>❌ Blocked</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Valid</option><option>❌ Expired</option></select></td>
+      <td><select class="rep-sel rep-status-sel"><option value="">—</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option></select></td>
+    </tr><tr>
+      <td><b>1st Floor</b></td><td>Electrical Room ST-B</td><td style="text-align:center">3</td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>❌ Fail</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Normal</option><option>❌ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>⚠️ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Clear</option><option>❌ Blocked</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Valid</option><option>❌ Expired</option></select></td>
+      <td><select class="rep-sel rep-status-sel"><option value="">—</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option></select></td>
+    </tr><tr>
+      <td><b>2nd Floor</b></td><td>ST-C CCTV Room</td><td style="text-align:center">4</td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>❌ Fail</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Normal</option><option>❌ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>⚠️ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Clear</option><option>❌ Blocked</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Valid</option><option>❌ Expired</option></select></td>
+      <td><select class="rep-sel rep-status-sel"><option value="">—</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option></select></td>
+    </tr><tr>
+      <td><b>2nd Floor</b></td><td>ST-D Electrical</td><td style="text-align:center">4</td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>❌ Fail</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Normal</option><option>❌ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>⚠️ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Clear</option><option>❌ Blocked</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Valid</option><option>❌ Expired</option></select></td>
+      <td><select class="rep-sel rep-status-sel"><option value="">—</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option></select></td>
+    </tr><tr>
+      <td><b>2nd Floor</b></td><td>ST-F Electrical Room</td><td style="text-align:center">4</td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>❌ Fail</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Normal</option><option>❌ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>⚠️ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Clear</option><option>❌ Blocked</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Valid</option><option>❌ Expired</option></select></td>
+      <td><select class="rep-sel rep-status-sel"><option value="">—</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option></select></td>
+    </tr><tr>
+      <td><b>2nd Floor</b></td><td>Elevator Room</td><td style="text-align:center">4</td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>❌ Fail</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Normal</option><option>❌ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ OK</option><option>⚠️ Low</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Clear</option><option>❌ Blocked</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Done</option><option>❌ Not Done</option></select></td>
+      <td><select class="rep-sel"><option>—</option><option>✅ Valid</option><option>❌ Expired</option></select></td>
+      <td><select class="rep-sel rep-status-sel"><option value="">—</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option></select></td>
+    </tr>`;
+  }
+}
+
+function repInitFATest() {
+  const el = document.getElementById('fa-test-items');
+  if (el && !el.innerHTML.trim()) { // keep this one - builds dynamically
+    el.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd);">
+      <span style="font-size:9px;color:var(--mu);width:20px;text-align:right;">1.</span>
+      <span style="flex:1;font-size:11px;">Control Panel — Visual Inspection & Annunciator Check</span>
+      <select class="rep-sel" style="width:160px;">
+        <option value="">—</option>
+        <option value="pass">✅ Pass</option>
+        <option value="fail">❌ Fail</option>
+        <option value="na">N/A</option>
+      </select>
+    </div><div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd);">
+      <span style="font-size:9px;color:var(--mu);width:20px;text-align:right;">2.</span>
+      <span style="flex:1;font-size:11px;">Smoke Detectors — Functional Test (sampling)</span>
+      <select class="rep-sel" style="width:160px;">
+        <option value="">—</option>
+        <option value="pass">✅ Pass</option>
+        <option value="fail">❌ Fail</option>
+        <option value="na">N/A</option>
+      </select>
+    </div><div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd);">
+      <span style="font-size:9px;color:var(--mu);width:20px;text-align:right;">3.</span>
+      <span style="flex:1;font-size:11px;">Manual Call Points — Test 2 per floor</span>
+      <select class="rep-sel" style="width:160px;">
+        <option value="">—</option>
+        <option value="pass">✅ Pass</option>
+        <option value="fail">❌ Fail</option>
+        <option value="na">N/A</option>
+      </select>
+    </div><div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd);">
+      <span style="font-size:9px;color:var(--mu);width:20px;text-align:right;">4.</span>
+      <span style="flex:1;font-size:11px;">Audible Devices — All sounders/horns verified</span>
+      <select class="rep-sel" style="width:160px;">
+        <option value="">—</option>
+        <option value="pass">✅ Pass</option>
+        <option value="fail">❌ Fail</option>
+        <option value="na">N/A</option>
+      </select>
+    </div><div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd);">
+      <span style="font-size:9px;color:var(--mu);width:20px;text-align:right;">5.</span>
+      <span style="flex:1;font-size:11px;">Visual Devices — Strobes functional</span>
+      <select class="rep-sel" style="width:160px;">
+        <option value="">—</option>
+        <option value="pass">✅ Pass</option>
+        <option value="fail">❌ Fail</option>
+        <option value="na">N/A</option>
+      </select>
+    </div><div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd);">
+      <span style="font-size:9px;color:var(--mu);width:20px;text-align:right;">6.</span>
+      <span style="flex:1;font-size:11px;">Battery Backup — Load test</span>
+      <select class="rep-sel" style="width:160px;">
+        <option value="">—</option>
+        <option value="pass">✅ Pass</option>
+        <option value="fail">❌ Fail</option>
+        <option value="na">N/A</option>
+      </select>
+    </div><div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd);">
+      <span style="font-size:9px;color:var(--mu);width:20px;text-align:right;">7.</span>
+      <span style="flex:1;font-size:11px;">Elevator Recall Integration</span>
+      <select class="rep-sel" style="width:160px;">
+        <option value="">—</option>
+        <option value="pass">✅ Pass</option>
+        <option value="fail">❌ Fail</option>
+        <option value="na">N/A</option>
+      </select>
+    </div><div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd);">
+      <span style="font-size:9px;color:var(--mu);width:20px;text-align:right;">8.</span>
+      <span style="flex:1;font-size:11px;">HVAC Shutdown Integration</span>
+      <select class="rep-sel" style="width:160px;">
+        <option value="">—</option>
+        <option value="pass">✅ Pass</option>
+        <option value="fail">❌ Fail</option>
+        <option value="na">N/A</option>
+      </select>
+    </div><div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd);">
+      <span style="font-size:9px;color:var(--mu);width:20px;text-align:right;">9.</span>
+      <span style="flex:1;font-size:11px;">Two-Way Emergency Communication</span>
+      <select class="rep-sel" style="width:160px;">
+        <option value="">—</option>
+        <option value="pass">✅ Pass</option>
+        <option value="fail">❌ Fail</option>
+        <option value="na">N/A</option>
+      </select>
+    </div><div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd);">
+      <span style="font-size:9px;color:var(--mu);width:20px;text-align:right;">10.</span>
+      <span style="flex:1;font-size:11px;">External Monitoring Signal Transmission</span>
+      <select class="rep-sel" style="width:160px;">
+        <option value="">—</option>
+        <option value="pass">✅ Pass</option>
+        <option value="fail">❌ Fail</option>
+        <option value="na">N/A</option>
+      </select>
+    </div>`;
+  }
+}
+
+function repGetFormData(type) {
+  const d = { type, _id: 'fms_rep_' + type + '_' + Date.now(), _ts: new Date().toISOString(), _by: (window._user || 'director') };
+  const get = id => { const e = document.getElementById(id); return e ? e.value : ''; };
+
+  if (type === 'fa-inspection') {
+    d.month = get('fa-insp-month'); d.date = get('fa-insp-date');
+    d.by = get('fa-insp-by'); d.wo = get('fa-insp-wo');
+    d.panel = get('fa-insp-panel'); d.battery = get('fa-insp-battery');
+    d.findings = get('fa-insp-findings'); d.result = get('fa-insp-result');
+    d.next = get('fa-insp-next');
+    d.floors = Array.from(document.querySelectorAll('#fa-floors-body tr[data-floor]')).map(tr => {
+      const sels = tr.querySelectorAll('select');
+      const inp = tr.querySelector('input[type=number]');
+      return { floor: tr.dataset.floor, loop: tr.dataset.loop, count: tr.dataset.count,
+               loc: tr.querySelector('td')?.textContent?.trim() || '',
+               cleaned: sels[0]?.value, panel: sels[1]?.value,
+               battery: sels[2]?.value, audible: sels[3]?.value,
+               comm: sels[4]?.value, functional: sels[5]?.value,
+               faults: inp?.value || '0',
+               status: sels[6]?.value };
+    });
+  } else if (type === 'fa-testing') {
+    d.date = get('fa-test-date'); d.by = get('fa-test-by');
+    d.testType = get('fa-test-type'); d.wo = get('fa-test-wo');
+    d.count = get('fa-test-count'); d.failed = get('fa-test-failed');
+    d.findings = get('fa-test-findings'); d.result = get('fa-test-result');
+    d.next = get('fa-test-next');
+    d.items = Array.from(document.querySelectorAll('#fa-test-items select')).map((s,i) => ({ item: i+1, result: s.value }));
+  } else if (type === 'fm200') {
+    d.date = get('fm200-date'); d.by = get('fm200-by');
+    d.month = get('fm200-month'); d.contractor = get('fm200-contractor');
+    d.findings = get('fm200-findings'); d.result = get('fm200-result');
+    d.units = Array.from(document.querySelectorAll('#fm200-body tr')).map(tr => {
+      const cells = tr.querySelectorAll('td');
+      const sels = tr.querySelectorAll('select');
+      return { floor: cells[0]?.textContent, loc: cells[1]?.textContent,
+               battery: sels[0]?.value, pressure: sels[1]?.value,
+               weight: sels[2]?.value, piping: sels[3]?.value,
+               cabinet: sels[4]?.value, detectors: sels[5]?.value,
+               tag: sels[6]?.value, status: sels[7]?.value };
+    });
+  } else if (type === 'fire-pump') {
+    d.date = get('pump-date'); d.by = get('pump-by');
+    d.month = get('pump-month'); d.week = get('pump-week');
+    d.jockeyMode = get('pump-jockey-mode'); d.elecMode = get('pump-elec-mode');
+    d.dieselMode = get('pump-diesel-mode'); d.pressure = get('pump-pressure');
+    d.runTest = get('pump-run-test'); d.fuel = get('pump-fuel');
+    d.oil = get('pump-oil'); d.engine = get('pump-engine');
+    d.elecRun = get('pump-elec-run'); d.controller = get('pump-controller');
+    d.alarms = get('pump-alarms'); d.valve = get('pump-valve');
+    d.remarks = get('pump-remarks'); d.result = get('pump-result');
+  } else if (type === 'wet-chem') {
+    d.date = get('wc-date'); d.by = get('wc-by');
+    d.month = get('wc-month'); d.location = get('wc-location');
+    d.pressure = get('wc-pressure'); d.pull = get('wc-pull');
+    d.nozzles = get('wc-nozzles'); d.cylinder = get('wc-cylinder');
+    d.seal = get('wc-seal'); d.area = get('wc-area');
+    d.hood = get('wc-hood'); d.tag = get('wc-tag');
+    d.remarks = get('wc-remarks'); d.result = get('wc-result');
+    d.nextPPM = get('wc-next-ppm');
+  }
+  return d;
+}
+
+function repSave(type) {
+  const data = repGetFormData(type);
+  if (!data.date && !data.month) { toast('Please enter a date first', '#f59e0b'); return; }
+  
+  // Save to localStorage
+  const allReps = JSON.parse(localStorage.getItem('obeid3_fms_reports') || '[]');
+  allReps.unshift(data);
+  localStorage.setItem('obeid3_fms_reports', JSON.stringify(allReps));
+  
+  // Save to DB
+  dbWrite('app_settings', data);
+  
+  toast('✅ Report saved', '#10b981');
+  repRenderLog(type);
+}
+
+function repDelete(id) {
+  if (!confirm('Delete this report?')) return;
+  const all = JSON.parse(localStorage.getItem('obeid3_fms_reports') || '[]');
+  const updated = all.filter(r => r._id !== id);
+  localStorage.setItem('obeid3_fms_reports', JSON.stringify(updated));
+  // Delete from DB
+  dbDelete('app_settings', id);
+  // Re-render all logs
+  ['fa-inspection','fa-testing','fm200','fire-pump','wet-chem'].forEach(repRenderLog);
+  toast('🗑 Report deleted');
+}
+
+function repRenderLog(type) {
+  const el = document.getElementById('repLog-' + type);
+  if (!el) return;
+  const all = JSON.parse(localStorage.getItem('obeid3_fms_reports') || '[]');
+  const reps = all.filter(r => r.type === type);
+  if (!reps.length) { el.innerHTML = '<div style="font-size:11px;color:var(--mu);padding:12px;">No records saved yet</div>'; return; }
+  
+  el.innerHTML = reps.map(r => {
+    const resultClass = r.result === 'pass' ? 'rep-log-result-pass' : r.result === 'fail' ? 'rep-log-result-fail' : 'rep-log-result-partial';
+    const resultLabel = r.result === 'pass' ? '✅ Pass' : r.result === 'fail' ? '❌ Fail' : r.result === 'partial' ? '⚠️ Partial' : '—';
+    const dateStr = r.date || r.month || '—';
+    return `<div class="rep-log-entry">
+      <div class="rep-log-badge">${REP_ICONS[type] || '📋'}</div>
+      <div class="rep-log-info">
+        <div class="rep-log-title">${REP_TITLES[type]} — ${dateStr}</div>
+        <div class="rep-log-meta">By: ${r.by || r._by || '—'} · Saved: ${new Date(r._ts).toLocaleDateString('en-GB')}</div>
+      </div>
+      <span class="${resultClass}">${resultLabel}</span>
+      <button class="btn bo" style="font-size:10px;padding:4px 10px;" onclick="repExportById('${r._id}')">⬇ Export</button>
+      <button class="btn br" style="font-size:10px;padding:4px 8px;" onclick="repDelete('${r._id}')">🗑</button>
+    </div>`;
+  }).join('');
+}
+
+function repLoadAll() {
+  repBuildFATable();
+  repBuildFM200Table();
+  // Load reports from DB into localStorage
+  const dbReps = ld('fms_rep_') || [];  // will work if dbLoadAll loaded them
+  if (dbReps.length) {
+    const existing = JSON.parse(localStorage.getItem('obeid3_fms_reports') || '[]');
+    const existingIds = new Set(existing.map(r => r._id));
+    dbReps.forEach(r => { if (!existingIds.has(r._id)) existing.push(r); });
+    localStorage.setItem('obeid3_fms_reports', JSON.stringify(existing));
+  }
+  ['fa-inspection','fa-testing','fm200','fire-pump','wet-chem'].forEach(repRenderLog);
+  repInitFM200();
+  repInitFATest();
+}
+
+function repExport(type) {
+  const all = JSON.parse(localStorage.getItem('obeid3_fms_reports') || '[]');
+  const reps = all.filter(r => r.type === type);
+  const latest = reps[0];
+  if (!latest) { toast('No saved records to export', '#f59e0b'); return; }
+  repExportById(latest._id);
+}
+
+function repExportById(id) {
+  const all = JSON.parse(localStorage.getItem('obeid3_fms_reports') || '[]');
+  const r = all.find(x => x._id === id);
+  if (!r) { toast('Record not found', '#f59e0b'); return; }
+  
+  let body = '';
+  const row = (label, val, highlight) => `<tr${highlight?' style="background:#fff7ed;"':''}>
+    <td style="font-weight:700;padding:8px 12px;background:#f1f5f9;border:1px solid #e2e8f0;font-size:11px;white-space:nowrap;color:#1e3a5c;">${label}</td>
+    <td style="padding:8px 12px;border:1px solid #e2e8f0;font-size:11px;">${val||'—'}</td>
+  </tr>`;
+  const resultColor = r.result==='pass'?'#16a34a':r.result==='fail'?'#dc2626':'#d97706';
+  const resultLabel = r.result==='pass'?'✅ SATISFACTORY':r.result==='fail'?'❌ UNSATISFACTORY':'⚠️ CONDITIONAL';
+  
+  if (r.type === 'fa-inspection') {
+    body += '<h3 style="color:#1e3a5c;margin:16px 0 8px;">General Information</h3><table style="width:100%;border-collapse:collapse;">';
+    body += row('Month / Year', r.month) + row('Inspection Date', r.date) + row('Inspected By', r.by) + row('Work Order', r.wo);
+    body += row('FACP Status', r.panel) + row('Battery Voltage', r.battery ? r.battery + ' V DC' : '—') + '</table>';
+    if (r.floors) {
+      body += '<h3 style="color:#1e3a5c;margin:16px 0 8px;">Room-by-Room Inspection Results ('+r.floors.length+' locations — 760 total detectors)</h3><table style="width:100%;border-collapse:collapse;">';
+      body += '<tr style="background:#1e3a5c;color:#fff;"><th style="padding:6px 10px;">Location</th><th>Det.</th><th>Cleaned</th><th>Panel</th><th>Battery</th><th>Audible</th><th>Functional</th><th>Faults</th><th colspan="2">Status</th></tr>';
+      // Group by floor
+      const floorGroups = {};
+      r.floors.forEach(f => { if(!floorGroups[f.floor]) floorGroups[f.floor]={rows:[],loop:f.loop}; floorGroups[f.floor].rows.push(f); });
+      Object.entries(floorGroups).forEach(([floorName, fg]) => {
+        body += `<tr style="background:#1e3a5c;color:#fff;"><td colspan="5" style="padding:6px 12px;font-weight:700;font-size:11px;">${floorName} — Loop ${fg.loop}</td><td colspan="5" style="padding:6px 12px;text-align:right;font-size:10px;">Rooms: ${fg.rows.length} | Total Detectors: ${fg.rows.reduce((a,x)=>a+parseInt(x.count||0),0)}</td></tr>`;
+        fg.rows.forEach(f => {
+          const sc = f.status==='pass'?'#dcfce7':f.status==='fail'?'#fee2e2':f.status==='partial'?'#fef9c3':'#fff';
+          body += `<tr style="background:${sc};"><td style="padding:5px 10px;border:1px solid #e2e8f0;font-size:10px;">${f.loc||f.floor}</td><td style="padding:5px 10px;border:1px solid #e2e8f0;text-align:center;font-size:10px;">${f.count||'—'}</td><td style="padding:5px 10px;border:1px solid #e2e8f0;font-size:10px;">${f.cleaned||'—'}</td><td style="padding:5px 10px;border:1px solid #e2e8f0;font-size:10px;">${f.panel||'—'}</td><td style="padding:5px 10px;border:1px solid #e2e8f0;font-size:10px;">${f.battery||'—'}</td><td style="padding:5px 10px;border:1px solid #e2e8f0;font-size:10px;">${f.audible||'—'}</td><td style="padding:5px 10px;border:1px solid #e2e8f0;font-size:10px;">${f.functional||'—'}</td><td style="padding:5px 10px;border:1px solid #e2e8f0;text-align:center;font-size:10px;">${f.faults||'0'}</td><td colspan="2" style="padding:5px 10px;border:1px solid #e2e8f0;font-weight:700;font-size:10px;">${f.status==='pass'?'✅ Pass':f.status==='fail'?'❌ Fail':f.status==='partial'?'⚠️ Partial':'—'}</td></tr>`;
+        });
+      });
+      body += '</table>';
+    }
+    if (r.findings) body += '<h3 style="color:#1e3a5c;margin:16px 0 8px;">Findings & Corrective Actions</h3><div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px;font-size:11px;">'+r.findings+'</div>';
+  } else if (r.type === 'fire-pump') {
+    body += '<table style="width:100%;border-collapse:collapse;">';
+    body += row('Date',r.date) + row('Inspected By',r.by) + row('Month',r.month) + row('Week',r.week);
+    body += row('Jockey Pump Mode',r.jockeyMode,r.jockeyMode&&!r.jockeyMode.includes('AUTO')) + row('Electric Pump Mode',r.elecMode,r.elecMode&&!r.elecMode.includes('AUTO')) + row('Diesel Pump Mode',r.dieselMode,r.dieselMode&&!r.dieselMode.includes('AUTO'));
+    body += row('System Pressure',r.pressure?r.pressure+' bar':'—') + row('Diesel Run Test',r.runTest) + row('Fuel Level',r.fuel) + row('Oil Level',r.oil) + row('Engine Condition',r.engine) + row('Electric Run Test',r.elecRun) + row('Controller Mode',r.controller) + row('Alarms',r.alarms) + row('Discharge Valve',r.valve);
+    body += '</table>';
+    if (r.remarks) body += '<h3 style="color:#1e3a5c;margin:16px 0 8px;">Remarks</h3><div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px;font-size:11px;">'+r.remarks+'</div>';
+  } else if (r.type === 'wet-chem') {
+    body += '<table style="width:100%;border-collapse:collapse;">';
+    body += row('Date',r.date)+row('Checked By',r.by)+row('Month',r.month)+row('Location',r.location);
+    body += row('Pressure Gauge',r.pressure)+row('Pull Station',r.pull)+row('Nozzles',r.nozzles)+row('Cylinder',r.cylinder)+row('Tamper Seal',r.seal)+row('Area Clean',r.area)+row('Hood Grease',r.hood)+row('Inspection Tag',r.tag);
+    body += '</table>';
+    if (r.remarks) body += '<h3 style="color:#1e3a5c;margin:16px 0 8px;">Remarks</h3><div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px;font-size:11px;">'+r.remarks+'</div>';
+    if (r.nextPPM) body += '<p style="font-size:11px;color:#1e3a5c;font-weight:700;margin-top:12px;">Next Quarterly PPM Due: '+r.nextPPM+'</p>';
+  } else if (r.type === 'fm200') {
+    body += '<table style="width:100%;border-collapse:collapse;">';
+    body += row('Date',r.date)+row('Inspected By',r.by)+row('Month',r.month)+row('Contractor',r.contractor)+'</table>';
+    if (r.units) {
+      body += '<h3 style="color:#1e3a5c;margin:16px 0 8px;">FM-200 Units ('+r.units.length+')</h3><table style="width:100%;border-collapse:collapse;font-size:10px;"><tr style="background:#1e3a5c;color:#fff;"><th style="padding:6px;">Floor</th><th>Location</th><th>Battery</th><th>Pressure</th><th>Piping</th><th>Tag</th><th>Status</th></tr>';
+      r.units.forEach(u => {
+        const sc = u.status==='pass'?'#dcfce7':u.status==='fail'?'#fee2e2':'#fff';
+        body += `<tr style="background:${sc};"><td style="padding:5px 8px;border:1px solid #e2e8f0;">${u.floor||''}</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">${u.loc||''}</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">${u.battery||'—'}</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">${u.pressure||'—'}</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">${u.piping||'—'}</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">${u.tag||'—'}</td><td style="padding:5px 8px;border:1px solid #e2e8f0;font-weight:700;">${u.status==='pass'?'✅ Pass':u.status==='fail'?'❌ Fail':'—'}</td></tr>`;
+      });
+      body += '</table>';
+    }
+    if (r.findings) body += '<h3 style="color:#1e3a5c;margin:16px 0 8px;">Findings</h3><div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px;font-size:11px;">'+r.findings+'</div>';
+  } else if (r.type === 'fa-testing') {
+    body += '<table style="width:100%;border-collapse:collapse;">';
+    body += row('Date',r.date)+row('Tested By',r.by)+row('Test Type',r.testType)+row('WO',r.wo)+row('Devices Tested',r.count)+row('Devices Failed',r.failed)+'</table>';
+    if (r.findings) body += '<h3 style="color:#1e3a5c;margin:16px 0 8px;">Findings</h3><div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px;font-size:11px;">'+r.findings+'</div>';
+  }
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Obeid Hospital — ${REP_TITLES[r.type]} — ${r.date||r.month||''}</title>
+  <style>
+    body{font-family:Arial,sans-serif;margin:0;padding:24px;font-size:12px;color:#1a1a1a;}
+    .hdr{background:#1a3a5c;color:#fff;padding:18px 24px;border-radius:8px;margin-bottom:16px;}
+    .hdr h1{margin:0;font-size:16px;}
+    .hdr p{margin:4px 0 0;font-size:11px;opacity:.8;}
+    .result-badge{display:inline-block;background:${resultColor};color:#fff;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:700;margin:16px 0;}
+    .sig{display:flex;gap:40px;margin-top:40px;}
+    .sig-line{flex:1;border-top:1px solid #999;padding-top:8px;font-size:10px;color:#666;}
+    @media print{body{padding:0;}}
+  </style></head><body>
+  <div class="hdr"><h1>Obeid Specialized Hospital — Facilities Management</h1>
+  <p>${REP_TITLES[r.type]} &nbsp;|&nbsp; Date: ${r.date||r.month||'—'} &nbsp;|&nbsp; Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}</p></div>
+  ${body}
+  <div class="result-badge">${resultLabel}</div>
+  <div class="sig">
+    <div class="sig-line">Prepared by: ${r.by||r._by||'—'}<br>&nbsp;<br>Signature: _____________________ &nbsp;&nbsp; Date: _______</div>
+    <div class="sig-line">Reviewed by: Mostapha Zahid — Maintenance Manager<br>&nbsp;<br>Signature: _____________________ &nbsp;&nbsp; Date: _______</div>
+    <div class="sig-line">Approved by: Aliks — FMS Director<br>&nbsp;<br>Signature: _____________________ &nbsp;&nbsp; Date: _______</div>
+  </div>
+  </body></html>`;
+  
+  const blob = new Blob([html], {type:'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'FMS_Report_' + r.type + '_' + (r.date||r.month||'').replace(/[^0-9\-]/g,'') + '.html';
+  a.click();
+  toast('✅ Report exported — open in browser and print to PDF', '#10b981', 4000);
 }
 
 </script>
