@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1510';
+  var v = '20260606-1511';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -740,13 +740,13 @@ if ('caches' in window) {
     </div>
     <div class="tb" style="margin:0;">
       <button class="tbtn active" onclick="showKT('all',this)">All KPIs</button>
-      <button class="tbtn" onclick="showKT('111',this)">FMS.1.1.1</button>
-      <button class="tbtn" onclick="showKT('112',this)">FMS.1.1.2</button>
-      <button class="tbtn" onclick="showKT('113',this)">FMS.1.1.3</button>
-      <button class="tbtn" onclick="showKT('1145',this)">FMS.1.1.4/5</button>
-      <button class="tbtn" onclick="showKT('116',this)">FMS.1.1.6</button>
-      <button class="tbtn" onclick="showKT('117',this)">FMS.1.1.7</button>
-      <button class="tbtn" onclick="showKT('118',this)">FMS.1.1.8</button>
+      <button id="kT-safety" class="tbtn" onclick="showKT('111',this)">FMS.1.1.1</button>
+      <button id="kT-security" class="tbtn" onclick="showKT('112',this)">FMS.1.1.2</button>
+      <button id="kT-hazmat" class="tbtn" onclick="showKT('113',this)">FMS.1.1.3</button>
+      <button id="kT-emergency" class="tbtn" onclick="showKT('1145',this)">FMS.1.1.4/5</button>
+      <button id="kT-fire" class="tbtn" onclick="showKT('116',this)">FMS.1.1.6</button>
+      <button id="kT-equip" class="tbtn" onclick="showKT('117',this)">FMS.1.1.7</button>
+      <button id="kT-utils" class="tbtn" onclick="showKT('118',this)">FMS.1.1.8</button>
     </div>
   </div>
   <div id="kpiOut"></div>
@@ -5716,7 +5716,7 @@ function gp(id){
   document.getElementById('page-'+id)?.classList.add('active');
   document.getElementById('n-'+id)?.classList.add('active');
   document.getElementById('tbTitle').textContent=PTITLES[id]||id;
-  if(id==='kpi')renderKPI();
+  if(id==='kpi'){renderKPI();setTimeout(applyKpiRoleFilter,100);}
   if(id==='equip')setTimeout(fixCorruptedOverrides,200);
   if(id==='cbahi'){if(typeof renderCBAHI==='function')renderCBAHI();setTimeout(renderCbahi,50);setTimeout(fixCorruptedOverrides,100);}
   if(id==='dash')renderDash();
@@ -5939,9 +5939,56 @@ function fpd(data,pd){
   const[s,en]=qr[pd]||['',''];
   return data.filter(r=>{const d=r.date||r._ts?.slice(0,10)||'';return d>=s&&d<=en;});
 }
+
+// KPI domains each role can VIEW and ENTER data for
+const ROLE_KPI_DOMAINS = {
+  director:    ['111','112','113','1145','116','117','118'],  // all
+  maintenance: ['116','118'],   // Fire Safety + Utilities
+  safety:      ['111','113','1145','116'],  // Safety + Hazmat + Emergency + Fire
+  biomedical:  ['117'],         // Equipment only
+  security:    ['112'],         // Security only
+};
+
+function getRoleKpiDomains() {
+  if (!CU.role || CU.role === 'director') return null; // null = all
+  const effectiveRole = getEffectiveRole(CU.role);
+  return ROLE_KPI_DOMAINS[effectiveRole] || null;
+}
+
+function applyKpiRoleFilter() {
+  const roleDomains = getRoleKpiDomains();
+  if (!roleDomains) return; // director sees all
+  // Map KGS keys to button IDs
+  const domainBtnMap = {
+    '111':'kT-safety','112':'kT-security','113':'kT-hazmat',
+    '1145':'kT-emergency','116':'kT-fire','117':'kT-equip','118':'kT-utils'
+  };
+  // Hide all domain tabs not in role
+  Object.entries(domainBtnMap).forEach(([key, btnId]) => {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.style.display = roleDomains.includes(key) ? '' : 'none';
+  });
+  // Auto-select first allowed tab
+  const firstKey = roleDomains[0];
+  const firstBtn = document.getElementById(domainBtnMap[firstKey]);
+  if (firstBtn && firstBtn.style.display !== 'none') {
+    renderKPI(firstKey);
+    // Mark active
+    document.querySelectorAll('[id^="kT-"]').forEach(b => b.classList.remove('active'));
+    firstBtn.classList.add('active');
+  }
+}
+
 function renderKPI(tab){
   const el=document.getElementById('kpiOut');if(!el)return;
-  const groups=(!tab||tab==='all')?Object.values(KGS):[KGS[tab]].filter(Boolean);
+  const roleDomains = getRoleKpiDomains();
+  const allGroups = (!tab||tab==='all') ? Object.values(KGS) : [KGS[tab]].filter(Boolean);
+  const groups = roleDomains ? allGroups.filter(g => {
+    // Find this group's key to check against roleDomains
+    const key = Object.keys(KGS).find(k => KGS[k] === g);
+    return roleDomains.includes(key);
+  }) : allGroups;
   const pdl={ytd:'Year-to-Date',q1:'Q1 Jan–Mar',q2:'Q2 Apr–Jun',q3:'Q3 Jul–Sep',q4:'Q4 Oct–Dec'}[kpiPd]||kpiPd;
   el.innerHTML=`<div style="font-size:10px;color:var(--or);margin-bottom:12px;">📅 Period: ${pdl}</div>`+groups.map(g=>`<div style="margin-bottom:20px;"><div class="st">${g.lbl}</div>${g.kpis.map(k=>{
     const actual=k.c(fpd(ld(k.k),kpiPd));
@@ -8149,20 +8196,21 @@ function eqDelAdded(ts) {
 // Define which nav items each role can see
 const ROLE_ACCESS = {
   director:    ['ALL'],
-  // All roles include n-settings so every manager can connect to the DB
-  maintenance: ['n-dash','n-kpi','n-kpi2','n-mms','n-reports','n-wo','n-utils','n-fire','n-ckpi','n-settings','n-budget','n-pms'],
-  biomedical:  ['n-dash','n-kpi','n-kpi2','n-equip','n-medgas','n-radiation','n-wo','n-ckpi','n-settings','n-budget','n-pms'],
-  safety:      ['n-dash','n-kpi','n-kpi2','n-cbahi','n-safety','n-hazmat','n-emergency','n-fire','n-wo','n-ckpi','n-docs','n-settings','n-budget','n-pms'],
-  security:    ['n-dash','n-kpi','n-kpi2','n-security','n-wo','n-ckpi','n-settings'],
+  // Maintenance (Mostapha): fire systems, utilities, CBAHI reports — NO analytics/reports pages
+  maintenance: ['n-dash','n-kpi','n-wo','n-utils','n-fire','n-cbahi','n-ckpi','n-settings','n-budget','n-pms'],
+  biomedical:  ['n-dash','n-kpi','n-equip','n-medgas','n-radiation','n-wo','n-ckpi','n-settings','n-budget','n-pms'],
+  // Safety (Moe): CBAHI, safety, hazmat, emergency, fire — NO analytics/reports pages
+  safety:      ['n-dash','n-kpi','n-cbahi','n-safety','n-hazmat','n-emergency','n-fire','n-wo','n-ckpi','n-docs','n-settings','n-budget','n-pms'],
+  security:    ['n-dash','n-kpi','n-security','n-wo','n-ckpi','n-settings'],
 };
 
 // Page access — which pages each role can open
 const PAGE_ACCESS = {
   director:    ['ALL'],
-  maintenance: ['dash','kpi','kpi2','mms','reports','wo','utils','fire','ckpi','settings'],
-  biomedical:  ['dash','kpi','kpi2','equip','medgas','radiation','wo','ckpi','settings'],
-  safety:      ['dash','kpi','kpi2','cbahi','safety','hazmat','emergency','fire','wo','ckpi','docs','settings'],
-  security:    ['dash','kpi','kpi2','security','wo','ckpi','settings'],
+  maintenance: ['dash','kpi','wo','utils','fire','cbahi','ckpi','settings','budget','pms'],
+  biomedical:  ['dash','kpi','equip','medgas','radiation','wo','ckpi','settings','budget','pms'],
+  safety:      ['dash','kpi','cbahi','safety','hazmat','emergency','fire','wo','ckpi','docs','settings','budget','pms'],
+  security:    ['dash','kpi','security','wo','ckpi','settings'],
 };
 
 // Page access — which page IDs each role can visit
