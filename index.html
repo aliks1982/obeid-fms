@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1511';
+  var v = '20260606-1512';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -8198,7 +8198,7 @@ const ROLE_ACCESS = {
   director:    ['ALL'],
   // Maintenance (Mostapha): fire systems, utilities, CBAHI reports — NO analytics/reports pages
   maintenance: ['n-dash','n-kpi','n-wo','n-utils','n-fire','n-cbahi','n-ckpi','n-settings','n-budget','n-pms'],
-  biomedical:  ['n-dash','n-kpi','n-equip','n-medgas','n-radiation','n-wo','n-ckpi','n-settings','n-budget','n-pms'],
+  biomedical:  ['n-dash','n-kpi','n-equip','n-medgas','n-radiation','n-wo','n-cbahi','n-ckpi','n-settings','n-budget','n-pms'],
   // Safety (Moe): CBAHI, safety, hazmat, emergency, fire — NO analytics/reports pages
   safety:      ['n-dash','n-kpi','n-cbahi','n-safety','n-hazmat','n-emergency','n-fire','n-wo','n-ckpi','n-docs','n-settings','n-budget','n-pms'],
   security:    ['n-dash','n-kpi','n-security','n-wo','n-ckpi','n-settings'],
@@ -8208,7 +8208,7 @@ const ROLE_ACCESS = {
 const PAGE_ACCESS = {
   director:    ['ALL'],
   maintenance: ['dash','kpi','wo','utils','fire','cbahi','ckpi','settings','budget','pms'],
-  biomedical:  ['dash','kpi','equip','medgas','radiation','wo','ckpi','settings','budget','pms'],
+  biomedical:  ['dash','kpi','equip','medgas','radiation','wo','cbahi','ckpi','settings','budget','pms'],
   safety:      ['dash','kpi','cbahi','safety','hazmat','emergency','fire','wo','ckpi','docs','settings','budget','pms'],
   security:    ['dash','kpi','security','wo','ckpi','settings'],
 };
