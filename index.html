@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1509';
+  var v = '20260606-1510';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -13003,6 +13003,9 @@ function cbahiUpdateScores() {
 }
 
 function cbahiShowTab(section) {
+  if (section === 'reports') {
+    setTimeout(() => { repBuildFATable(); repBuildFM200Table(); repLoadAll(); }, 50);
+  }
   ['maintenance','safety','biomedical','reports'].forEach(s => {
     const sec = document.getElementById('cbSection-' + s);
     const tab = document.getElementById('cbTab-' + s);
@@ -13203,13 +13206,15 @@ const FA_FLOORS_DATA = [["Basement",1,[["Billing Office",9],["Quality Dept.",7],
 const FM200_DATA = [["Basement","Medical Record","1"],["Basement","X-Ray Department","1"],["Basement","Electrical Room (Elev 2&3)","1"],["Ground Floor","Air Compressor Room","2"],["Ground Floor","Admission Dept. Gate 1","2"],["Ground Floor","Medical Gas Room","2"],["Ground Floor","X-Ray Department","2"],["Ground Floor","Elec. Rm. (Tawuniya)","2"],["Ground Floor","Electrical Room Gate 4","2"],["Ground Floor","Generator Room Door #4","2"],["Ground Floor","Generator Room Door #2","2"],["1st Floor","Electrical Room (NICU)","3"],["1st Floor","Electrical Room ST-B","3"],["2nd Floor","ST-C CCTV Room","4"],["2nd Floor","ST-D Electrical Room","4"],["2nd Floor","ST-F Electrical Room","4"],["2nd Floor","Elevator Room","4"]];
 
 const _repSel = (opts) => '<select class="rep-sel">' + opts.map(o => `<option value="${o}">${o}</option>`).join('') + '</select>';
-const _repStatusSel = () => '<select class="rep-sel" onchange="repUpdateSummary(this)"><option value="">—</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option><option value="partial">⚠️ Partial</option></select>';
+const _repStatusSel = () => '<select class="rep-sel" style="font-weight:700;" onchange="repUpdateSummary(this)"><option value="">— Select —</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option><option value="partial">⚠️ Partial</option></select>';
 const _checkSel = () => _repSel(['','✅ Pass','❌ Fail','N/A']);
 const _cleanSel = () => _repSel(['','✅ Done','⚠️ Partial','❌ Not Done']);
 
 function repBuildFATable() {
   const body = document.getElementById('fa-floors-body');
   if (!body) return;
+  if (body._built) return; // Already built — preserve entered values
+  body._built = true;
   let html = '';
   let sn = 0;
   FA_FLOORS_DATA.forEach(([floor, loop, rooms]) => {
@@ -13239,6 +13244,8 @@ function repBuildFATable() {
 function repBuildFM200Table() {
   const body = document.getElementById('fm200-body');
   if (!body) return;
+  if (body._built) return;
+  body._built = true;
   body.innerHTML = FM200_DATA.map(([fl,loc,loop],i) => {
     const bg = i%2===0 ? 'background:var(--s2);' : '';
     return `<tr style="${bg}">
@@ -13264,13 +13271,11 @@ function repFilterFloor(floor) {
   const rows = tbody.querySelectorAll('tr');
   rows.forEach(tr => {
     if (tr.classList.contains('rep-floor-hdr')) {
-      // Show floor header only if it matches or showing all
       if (floor === 'all') {
         tr.style.display = '';
       } else {
-        // Check if this header is for the selected floor
         const txt = tr.querySelector('td')?.textContent || '';
-        tr.style.display = txt.includes(floor) ? '' : 'none';
+        tr.style.display = txt.startsWith(floor) ? '' : 'none';
       }
     } else if (tr.dataset.floor) {
       tr.style.display = (floor === 'all' || tr.dataset.floor === floor) ? '' : 'none';
@@ -13279,17 +13284,22 @@ function repFilterFloor(floor) {
   repUpdateSummary();
 }
 
-function repUpdateSummary(el) {
-  // Update live summary badges above the table
+function repUpdateSummary(triggerEl) {
+  const floorSel = document.getElementById('fa-floor-selector');
+  const activeFloor = floorSel ? floorSel.value : 'all';
   const rows = document.querySelectorAll('#fa-floors-body tr[data-floor]');
-  let pass=0, fail=0, partial=0, pending=0;
+  let pass=0, fail=0, partial=0, pending=0, visible=0;
   rows.forEach(tr => {
-    const s = tr.querySelector('.rep-sel:last-of-type')?.value || '';
+    if (activeFloor !== 'all' && tr.dataset.floor !== activeFloor) return;
+    visible++;
+    const allSels = tr.querySelectorAll('select');
+    const statusSel = allSels[allSels.length - 1];
+    const s = statusSel ? statusSel.value : '';
     if(s==='pass') pass++; else if(s==='fail') fail++;
     else if(s==='partial') partial++; else pending++;
   });
   const su = document.getElementById('fa-insp-summary');
-  if(su) su.innerHTML = `<span style="color:#16a34a;font-weight:700;">${pass} Pass</span> &nbsp;·&nbsp; <span style="color:#d97706;font-weight:700;">${partial} Partial</span> &nbsp;·&nbsp; <span style="color:#dc2626;font-weight:700;">${fail} Fail</span> &nbsp;·&nbsp; <span style="color:var(--mu);">${pending} Pending</span>`;
+  if(su) su.innerHTML = '<b>' + (activeFloor==='all'?'All Floors':activeFloor) + '</b> &nbsp;·&nbsp; ' + visible + ' locations &nbsp;|&nbsp; <span style="color:#16a34a;font-weight:700;">✅ ' + pass + ' Pass</span> &nbsp;·&nbsp; <span style="color:#d97706;font-weight:700;">⚠️ ' + partial + ' Partial</span> &nbsp;·&nbsp; <span style="color:#dc2626;font-weight:700;">❌ ' + fail + ' Fail</span> &nbsp;·&nbsp; <span style="color:var(--mu);">' + pending + ' Pending</span>';
 }
 
 // ══════════════════════════════════════════════════════
