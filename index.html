@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1505';
+  var v = '20260606-1506';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -5597,24 +5597,8 @@ const CBD=[
 ];
 function cbStats(){let met=0,par=0,gap=0;CBD.forEach(def=>{const d=ld(def.k),p=Math.min(100,Math.round((d.length/def.tgt)*100));if(def.chk(d))met++;else if(p>=40)par++;else gap++;});return{met,par,gap};}
 function renderCBAHI(){
-  const{met,par,gap}=cbStats();
-  document.getElementById('cb-met').textContent=met;
-  document.getElementById('cb-par').textContent=par;
-  document.getElementById('cb-gap').textContent=gap;
-  const e=document.getElementById('cbRows');if(!e)return;
-  const hdr=`<div style="display:grid;grid-template-columns:100px 1fr 100px 90px 70px;gap:8px;padding:6px 13px;border-bottom:1px solid var(--bd);"><span style="font-size:8px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;">Standard</span><span style="font-size:8px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;">Description</span><span style="font-size:8px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;">Evidence</span><span style="font-size:8px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;">Progress</span><span style="font-size:8px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;">Status</span></div>`;
-  e.innerHTML=hdr+CBD.map(def=>{
-    const d=ld(def.k),cnt=d.length,pct=Math.min(100,Math.round((cnt/def.tgt)*100));
-    const ok=def.chk(d),fl=ok?'var(--gn)':pct>=40?'var(--or)':'var(--rd)';
-    const bd=ok?'<span class="bx bg2">✅Met</span>':pct>=40?'<span class="bx bo2">⚠️Part</span>':'<span class="bx br2">❌Gap</span>';
-    return`<div style="display:grid;grid-template-columns:100px 1fr 100px 90px 70px;gap:8px;padding:8px 13px;border-bottom:1px solid rgba(0,180,255,.04);">
-      <span style="font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--ac);font-size:11px;">${def.code}</span>
-      <span style="font-size:10px;">${def.title}</span>
-      <span style="font-size:10px;color:var(--mu);">${cnt}/${def.tgt}</span>
-      <div style="display:flex;align-items:center;gap:4px;"><div class="pw" style="height:5px;"><div class="pf" style="width:${pct}%;background:${fl};"></div></div><span style="font-size:9px;color:var(--mu);">${pct}%</span></div>
-      ${bd}
-    </div>`;
-  }).join('');
+  // New CBAHI FMS module — delegate to renderCbahi()
+  setTimeout(renderCbahi, 50);
 }
 
 // ===== KPI =====
