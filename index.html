@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1512';
+  var v = '20260606-1513';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -10961,6 +10961,17 @@ function kpi2ShowHistory(kpiId) {
   openMod('files');
 }
 
+
+function kpi2DeleteEntry(kpiId, entryId) {
+  if (!confirm('Delete this KPI entry?')) return;
+  const allData = ld('kpi2_data');
+  const updated = allData.filter(r => r._id !== entryId);
+  sv('kpi2_data', updated);
+  dbDelete('app_settings', entryId);
+  // Re-render history if modal is open
+  kpi2ShowHistory(kpiId);
+  toast('🗑 Entry deleted');
+}
 function kpi2ExportReport() {
   const visible  = kpi2VisibleKPIs();
   const periodSel= document.getElementById('kpi2-month-sel');
@@ -13063,21 +13074,17 @@ function cbahiShowTab(section) {
 }
 
 function cbahiRestoreAll() {
-  // Restore all status selects and card classes
   CBAHI_STANDARDS.forEach(std => {
-    const status = cbahiGetStatus(std);
-    if (status) {
-      const sel = document.querySelector('#std-' + std + ' .cbahi-status-sel');
-      if (sel) sel.value = status;
-      const card = document.getElementById('std-' + std);
-      if (card) card.className = 'cbahi-std-card status-' + status;
-    }
-    // Restore all text fields, dates, selects
     const card = document.getElementById('std-' + std);
     if (!card) return;
+    const status = cbahiGetStatus(std);
+    if (status) {
+      const sel = card.querySelector('.cbahi-status-sel');
+      if (sel) sel.value = status;
+      card.className = 'cbahi-std-card status-' + status;
+    }
     card.querySelectorAll('input, select, textarea').forEach(el => {
       if (el.classList.contains('cbahi-status-sel')) return;
-      // Find field name from onchange attribute
       const oc = el.getAttribute('onchange') || '';
       const m = oc.match(/cbahiSave\('[^']+','([^']+)'/);
       if (m) {
