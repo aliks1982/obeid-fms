@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1513';
+  var v = '20260606-1514';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -10444,7 +10444,7 @@ const FMS_KPIS = [
   { id:'KPI-009', dept:'maintenance', category:'Utilities',   name:'Critical Area ACH Compliance',  standard:'FMS.34.5', num:'Rooms meeting Air Change per Hour specs',  den:'Total critical rooms tested',       formula:'percent', target:100, unit:'%', hib:true,  src:'HVAC Airflow Reports',          freq:'Quarterly', icon:'💨', color:'#06b6d4' },
   { id:'KPI-010', dept:'safety',      category:'Waste/Hazmat',name:'Waste Segregation Compliance',  standard:'FMS.15.1', num:'Waste bins correctly segregated',          den:'Total waste bins audited',          formula:'percent', target:95,  unit:'%', hib:true,  src:'Safety Round Audit',            freq:'Monthly',   icon:'♻', color:'#84cc16' },
   { id:'KPI-011', dept:'safety',      category:'Waste/Hazmat',name:'Waste Manifest Accuracy',       standard:'FMS.16.1', num:'Manifests with final disposal signature',   den:'Total waste shipments sent',        formula:'percent', target:100, unit:'%', hib:true,  src:'Waste Manifest Files',          freq:'Monthly',   icon:'📋', color:'#a78bfa' },
-  { id:'KPI-012', dept:'safety',      category:'Emergency',   name:'Code Drill Compliance Rate',    standard:'FMS.1.1.4',num:'Code drills conducted across all 4 code types', den:'Minimum required drills (2 per code × 4 codes = 8/year)', formula:'percent', target:100, unit:'%', hib:true, src:'Code Drill Log — Emergency Page', freq:'Semi-Annual', icon:'🚨', color:'#f43f5e' },
+  { id:'KPI-012', dept:'safety',      category:'Emergency',   name:'Code Drill Compliance Rate',    standard:'FMS.1.1.4',num:'Code drills conducted across all 4 code types', den:'Minimum required drills (1 per code × 4 codes = 4/year)', formula:'percent', target:100, unit:'%', hib:true, src:'Code Drill Log — Emergency Page', freq:'Semi-Annual', icon:'🚨', color:'#f43f5e' },
   { id:'KPI-013', dept:'safety',      category:'Emergency',   name:'Code Drill Pass Rate',          standard:'FMS.1.1.5',num:'Code drills with satisfactory outcome (staff passed)', den:'Total code drills conducted',      formula:'percent', target:90,  unit:'%', hib:true,  src:'Code Drill Critique Reports',   freq:'Quarterly', icon:'✅', color:'#10b981' },
   { id:'KPI-014', dept:'safety',      category:'Fire Safety', name:'Unit Level Fire Drill Compliance', standard:'FMS.1.1.6',num:'Units completing required fire drills per schedule', den:'Total units required to conduct drills per year', formula:'percent', target:100, unit:'%', hib:true, src:'Unit Level Fire Drill Log — Fire Safety Page', freq:'Quarterly', icon:'🔥', color:'#ef4444' },
 ];
@@ -10456,11 +10456,18 @@ let KPI2_CHART  = null;
 
 // ── Storage ──
 function kpi2GetEntries(kpiId) {
-  try { return JSON.parse(localStorage.getItem('kpi2_entries_' + kpiId) || '[]'); }
-  catch(e) { return []; }
+  // Try PX key first (new), fallback to non-PX (legacy)
+  const PXkey = (typeof PX !== 'undefined' ? PX : 'obeid3_') + 'kpi2_entries_' + kpiId;
+  const legKey = 'kpi2_entries_' + kpiId;
+  try {
+    const v = localStorage.getItem(PXkey) || localStorage.getItem(legKey);
+    return JSON.parse(v || '[]');
+  } catch(e) { return []; }
 }
 function kpi2SaveEntries(kpiId, arr) {
-  localStorage.setItem('kpi2_entries_' + kpiId, JSON.stringify(arr));
+  const PXkey = (typeof PX !== 'undefined' ? PX : 'obeid3_') + 'kpi2_entries_' + kpiId;
+  localStorage.setItem(PXkey, JSON.stringify(arr));
+  // Also write to DB for cross-device sync
   dbWrite('kpi2_entries', { _id: kpiId, kpiId, entries: arr, _ts: new Date().toISOString() });
 }
 
@@ -10964,12 +10971,13 @@ function kpi2ShowHistory(kpiId) {
 
 function kpi2DeleteEntry(kpiId, entryId) {
   if (!confirm('Delete this KPI entry?')) return;
-  const allData = ld('kpi2_data');
-  const updated = allData.filter(r => r._id !== entryId);
-  sv('kpi2_data', updated);
-  dbDelete('app_settings', entryId);
-  // Re-render history if modal is open
+  // Entries stored per-KPI in 'kpi2_entries_KPIID'
+  const arr = kpi2GetEntries(kpiId);
+  const updated = arr.filter(r => String(r._id) !== String(entryId));
+  kpi2SaveEntries(kpiId, updated);
+  // Re-render
   kpi2ShowHistory(kpiId);
+  kpi2RenderAll();
   toast('🗑 Entry deleted');
 }
 function kpi2ExportReport() {
