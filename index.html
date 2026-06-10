@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1514';
+  var v = '20260606-1515';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -10456,18 +10456,27 @@ let KPI2_CHART  = null;
 
 // ── Storage ──
 function kpi2GetEntries(kpiId) {
-  // Try PX key first (new), fallback to non-PX (legacy)
   const PXkey = (typeof PX !== 'undefined' ? PX : 'obeid3_') + 'kpi2_entries_' + kpiId;
   const legKey = 'kpi2_entries_' + kpiId;
   try {
-    const v = localStorage.getItem(PXkey) || localStorage.getItem(legKey);
-    return JSON.parse(v || '[]');
+    // Merge both keys — deduplicate by _id (handles migration from old key)
+    const px  = JSON.parse(localStorage.getItem(PXkey) || '[]');
+    const leg = JSON.parse(localStorage.getItem(legKey) || '[]');
+    if (!leg.length) return px;
+    if (!px.length) return leg;
+    // Merge: union by _id, prefer PX version
+    const map = {};
+    leg.forEach(e => { map[String(e._id)] = e; });
+    px.forEach(e  => { map[String(e._id)] = e; });
+    return Object.values(map).sort((a,b) => (a._ts||'') < (b._ts||'') ? 1 : -1);
   } catch(e) { return []; }
 }
 function kpi2SaveEntries(kpiId, arr) {
   const PXkey = (typeof PX !== 'undefined' ? PX : 'obeid3_') + 'kpi2_entries_' + kpiId;
+  const legKey = 'kpi2_entries_' + kpiId;
   localStorage.setItem(PXkey, JSON.stringify(arr));
-  // Also write to DB for cross-device sync
+  // Clear legacy key to avoid ghost entries after delete
+  localStorage.removeItem(legKey);
   dbWrite('kpi2_entries', { _id: kpiId, kpiId, entries: arr, _ts: new Date().toISOString() });
 }
 
