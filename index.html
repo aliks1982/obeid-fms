@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1515';
+  var v = '20260606-1517';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -5415,7 +5415,7 @@ async function dbLoadAll() {
         if (typeof renderLog === 'function') renderLog(pageId);
       }
     }
-    console.log('✅ DB sync complete —', totalRecords, 'records loaded');
+    sanitizeEqAdded(); console.log('✅ DB sync complete —', totalRecords, 'records loaded');
     return true;
   } catch(e) {
     console.warn('dbLoadAll failed:', e.message);
@@ -7712,10 +7712,67 @@ function eqDecode(r) {
   };
 }
 
+
+// ── CRITICAL: Sanitize eq_added records with corrupted asset numbers ──
+// Asset numbers must be in format like "07-17", "04-128", "00-46" etc.
+// If asset looks like a full date string (Mon Jul 07 2026...) it's corrupted
+function isValidAssetNo(a) {
+  if (!a || typeof a !== 'string') return false;
+  // Valid: short codes like "07-17", "04-128", "00-46", "38-16", "—"
+  // Invalid: date strings like "Fri Jul 17 2026 00:00:00..."
+  if (a.length > 20) return false;  // asset numbers are never this long
+  if (/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/.test(a)) return false;  // day name prefix
+  if (/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/.test(a)) return false;
+  if (/\d{4}.*GMT/.test(a)) return false;  // contains year + GMT
+  return true;
+}
+
+function sanitizeEqAdded() {
+  const added = ld('eq_added');
+  if (!added || !added.length) return 0;
+  let fixed = 0;
+  const clean = [];
+  // Build base asset set for validation
+  const dd = EQ_PAYLOAD.d;
+  const decF = v => (typeof v === 'number') ? dd[v] : (v || '');
+  const baseAssets = new Set(EQ_PAYLOAD.r.map(r => decF(r[0])));
+
+  added.forEach(rec => {
+    if (isValidAssetNo(rec.asset)) { clean.push(rec); return; }
+    // CORRUPTED: asset is a date string like "Fri Jul 17 2026 00:00:00 GMT+0300..."
+    // The corruption is deterministic: "07-17" was parsed as July 17.
+    // REVERSE IT: parse the date, reconstruct MM-DD.
+    // Extract month/day from the STRING directly (timezone-immune, no Date parsing)
+    const dm = String(rec.asset).match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})/);
+    if (dm) {
+      const MONTHS = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+      const candidate = MONTHS[dm[1]] + '-' + String(dm[2]).padStart(2, '0');
+      if (baseAssets.has(candidate)) {
+        rec.asset = candidate;
+        if (rec._id && String(rec._id).startsWith('eq_ov_')) rec._id = 'eq_ov_' + candidate;
+        clean.push(rec);
+        fixed++;
+        console.warn('✓ Recovered asset from date string: → ' + candidate);
+        return;
+      }
+    }
+    // Unrecoverable — drop the override (base record will display correctly)
+    fixed++;
+    console.warn('✗ Dropped unrecoverable eq_added record: ' + String(rec.asset).slice(0,40));
+  });
+  if (fixed > 0) {
+    sv('eq_added', clean);
+    console.log('✓ sanitizeEqAdded: fixed/removed ' + fixed + ' corrupted records');
+    EQ_ALL = null;
+  }
+  return fixed;
+}
+
 // All decoded records (cached on first access)
 let EQ_ALL = null;
 function eqAll() {
   if (!EQ_ALL) {
+    sanitizeEqAdded();  // Fix any corrupted asset numbers before building cache
     const added = ld('eq_added') || [];
     // Build a set of asset numbers in eq_added (includes overrides of base records)
     const addedAssets = new Set(added.map(r => r.asset));
@@ -7810,26 +7867,44 @@ function fixCorruptedOverrides() {
   const VALID = new Set(['Active','InActive','Under Repair','Condemned','OOS','outoforder']);
   const ov = getPPMOverrides();
   let fixed = 0;
+  const dd = EQ_PAYLOAD.d;
+  const decF = v => (typeof v === 'number') ? dd[v] : (v || '');
+  const baseAssets = new Set(EQ_PAYLOAD.r.map(r => decF(r[0])));
+
+  // 1. Fix corrupted asset KEYS (date strings as keys)
+  Object.keys(ov).forEach(assetKey => {
+    if (isValidAssetNo(assetKey)) return;
+    const dm = String(assetKey).match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})/);
+    if (dm) {
+      const MONTHS = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+      const candidate = MONTHS[dm[1]] + '-' + String(dm[2]).padStart(2, '0');
+      if (baseAssets.has(candidate) && !ov[candidate]) {
+        ov[candidate] = ov[assetKey];
+        delete ov[assetKey];
+        fixed++;
+        console.warn('✓ Recovered PPM override key from date string: → ' + candidate);
+        return;
+      }
+    }
+    // Unrecoverable key — remove it
+    delete ov[assetKey];
+    fixed++;
+  });
+
+  // 2. Fix corrupted status VALUES (names in status field)
   Object.entries(ov).forEach(([asset, data]) => {
     if (!data || typeof data !== 'object') return;
     const st = data.status || '';
     if (st && !VALID.has(st)) {
-      // Status has an invalid value (e.g. a person's name)
-      // Check ppmType for the real status
       const pt = data.ppmType || '';
-      if (VALID.has(pt)) {
-        data.status = pt;
-        fixed++;
-      } else {
-        // Can't recover — remove the corrupted status so base record status is used
-        delete data.status;
-        fixed++;
-      }
+      if (VALID.has(pt)) { data.status = pt; fixed++; }
+      else { delete data.status; fixed++; }
     }
   });
+
   if (fixed > 0) {
     savePPMOverrides(ov);
-    console.log('✓ Fixed ' + fixed + ' corrupted PPM override status values');
+    console.log('✓ Fixed ' + fixed + ' corrupted PPM override entries');
     EQ_ALL = null;
   }
 }
@@ -10096,6 +10171,7 @@ async function saveEqEdit() {
   const fileInput = document.getElementById('eq-edit-report');
   if (!origAsset) { toast('Error: original asset not found','#f59e0b'); return; }
   if (!newAsset)  { toast('Asset number cannot be empty','#f59e0b'); return; }
+  if (!isValidAssetNo(newAsset)) { toast('⚠️ Invalid asset number: looks like a date. Check the Asset No. field.','#ef4444'); return; }
   const assetChanged = newAsset !== origAsset;
   if (assetChanged && eqAll().find(r => r.asset === newAsset)) {
     toast('Asset ' + newAsset + ' already exists','#ef4444'); return;
