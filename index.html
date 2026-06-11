@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1517';
+  var v = '20260606-1518';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -5368,6 +5368,35 @@ async function dbLoadAll() {
     dbShowStatus('online', totalRecords);
     if(j.data&&j.data.platform_settings) settingsPullFromDB(j.data.platform_settings);
 
+    // ── Restore KPI entries from DB into per-KPI localStorage keys ──
+    if (j.data && j.data.kpi2_entries && j.data.kpi2_entries.length) {
+      let kpiRestored = 0;
+      j.data.kpi2_entries.forEach(row => {
+        if (!row.kpiId) return;
+        let entries = row.entries;
+        // entries may arrive as JSON string from the sheet
+        if (typeof entries === 'string') {
+          try { entries = JSON.parse(entries); } catch(e) { entries = null; }
+        }
+        if (!Array.isArray(entries)) return;
+        const PXkey = PX + 'kpi2_entries_' + row.kpiId;
+        // Merge with local: union by _id, prefer the newer _ts per entry
+        let local = [];
+        try { local = JSON.parse(localStorage.getItem(PXkey) || '[]'); } catch(e) {}
+        const map = {};
+        entries.forEach(e => { if (e && e._id != null) map[String(e._id)] = e; });
+        local.forEach(e => {
+          if (!e || e._id == null) return;
+          const k = String(e._id);
+          if (!map[k] || (e._ts || '') > (map[k]._ts || '')) map[k] = e;
+        });
+        const merged = Object.values(map).sort((a,b) => (a._ts||'') < (b._ts||'') ? 1 : -1);
+        localStorage.setItem(PXkey, JSON.stringify(merged));
+        kpiRestored++;
+      });
+      if (kpiRestored) console.log('✓ KPI entries synced from DB — ' + kpiRestored + ' KPIs restored');
+    }
+
     // ── Restore PPM overrides from DB — per-row approach (no cell size limit) ──
     if (j.data && j.data.app_settings) {
       const ppmRows = j.data.app_settings.filter(r => r._id && r._id.startsWith('ppm_ov_'));
@@ -5415,7 +5444,7 @@ async function dbLoadAll() {
         if (typeof renderLog === 'function') renderLog(pageId);
       }
     }
-    sanitizeEqAdded(); console.log('✅ DB sync complete —', totalRecords, 'records loaded');
+    sanitizeEqAdded(); if (typeof kpi2RenderAll==='function' && document.getElementById('page-kpi2') && document.getElementById('page-kpi2').classList.contains('active')) { try{kpi2RenderAll();}catch(e){} } console.log('✅ DB sync complete —', totalRecords, 'records loaded');
     return true;
   } catch(e) {
     console.warn('dbLoadAll failed:', e.message);
