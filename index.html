@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1520';
+  var v = '20260606-1521';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -5609,6 +5609,11 @@ async function dbLoadAll() {
       if (pageId && pageId !== 'dash') {
         if (typeof renderLog === 'function') renderLog(pageId);
       }
+    }
+    // Re-render LOX dashboard if it's visible
+    if (typeof loxRenderDashboard === 'function') {
+      const loxTab = document.getElementById('mg-o2calc');
+      if (loxTab && loxTab.style.display !== 'none') setTimeout(loxRenderDashboard, 100);
     }
     sanitizeEqAdded(); if (typeof kpi2RenderAll==='function' && document.getElementById('page-kpi2') && document.getElementById('page-kpi2').classList.contains('active')) { try{kpi2RenderAll();}catch(e){} } console.log('✅ DB sync complete —', totalRecords, 'records loaded');
     return true;
@@ -14223,9 +14228,24 @@ function loxCalcTotal() {
 }
 
 function loxGetReadings() {
-  try { return JSON.parse(localStorage.getItem(PX+'lox_daily_readings')||'[]'); } catch(e) { return []; }
+  // Merge both storage keys: our primary key + the key dbLoadAll writes to
+  try {
+    const primary = JSON.parse(localStorage.getItem(PX+'lox_daily_readings')||'[]');
+    const synced  = JSON.parse(localStorage.getItem(PX+'mg_lox')||'[]');
+    if (!synced.length) return primary;
+    if (!primary.length) return synced;
+    // Merge by date, prefer newer _ts
+    const map = {};
+    synced.forEach(r  => { if (r.date) map[r.date] = r; });
+    primary.forEach(r => { if (r.date && (!map[r.date] || (r._ts||'') >= (map[r.date]._ts||''))) map[r.date] = r; });
+    return Object.values(map).sort((a,b) => a.date < b.date ? 1 : -1);
+  } catch(e) { return []; }
 }
-function loxSaveReadings(arr) { localStorage.setItem(PX+'lox_daily_readings', JSON.stringify(arr)); }
+function loxSaveReadings(arr) {
+  localStorage.setItem(PX+'lox_daily_readings', JSON.stringify(arr));
+  // Also keep mg_lox in sync so other devices reading via dbLoadAll see the data
+  localStorage.setItem(PX+'mg_lox', JSON.stringify(arr));
+}
 
 function loxSaveReading() {
   const date  = document.getElementById('lox-read-date')?.value;
