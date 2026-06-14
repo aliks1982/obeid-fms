@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1519';
+  var v = '20260606-1520';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -3894,27 +3894,193 @@ if ('caches' in window) {
 
   <!-- ═══ 11. O2 RESERVE CALCULATOR ═══ -->
   <div id="mg-o2calc" style="display:none;">
-    <div class="g g2">
-      <div class="card"><div class="ch"><div class="ct">🧮 O₂ Reserve Calculator (FMS.32.8)</div></div><div class="cb">
-        <div style="font-size:10px;color:var(--mu);margin-bottom:14px;">CBAHI minimum: 48 hours reserve at all times. Formula: (LOX liters × level% × 855) + (backup cylinders × 6,800L) ÷ daily consumption × 24</div>
-        <div class="fg fg2">
-          <div class="ff"><label>LOX Tank Capacity (Liters)</label><input type="number" id="calc-size" placeholder="10000" oninput="calcO2Reserve()"></div>
-          <div class="ff"><label>Current LOX Level (%)</label><input type="number" id="calc-level" placeholder="70" min="0" max="100" oninput="calcO2Reserve()"></div>
-          <div class="ff"><label>O₂ Backup Cylinders (K/H size)</label><input type="number" id="calc-cyls" placeholder="5" min="0" oninput="calcO2Reserve()"></div>
-          <div class="ff"><label>Daily O₂ Consumption (Liters gas)</label><input type="number" id="calc-cons" placeholder="120000" oninput="calcO2Reserve()"></div>
+
+  <!-- ── LOX Level Reading Entry ── -->
+  <div class="card" style="margin-bottom:14px;border-left:4px solid #3b82f6;">
+    <div class="ch"><div class="ct">📥 Daily LOX Level Reading — Physical Gauge Entry</div>
+      <button class="btn bp" style="font-size:10px;" onclick="loxExportReport()">⬇ Export O₂ Report</button>
+    </div>
+    <div class="cb">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+
+        <div class="ff" style="min-width:130px;">
+          <label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;">Date</label>
+          <input type="date" id="lox-read-date" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--s1);font-size:13px;color:var(--tx);">
         </div>
-        <div style="margin-top:18px;background:var(--s2);border-radius:11px;padding:20px;text-align:center;">
-          <div style="font-size:9px;color:var(--mu);text-transform:uppercase;letter-spacing:2px;">Estimated Reserve</div>
-          <div id="calc-result" style="font-family:'Rajdhani',sans-serif;font-size:60px;font-weight:700;color:var(--gn);line-height:1.1;margin:8px 0;">—</div>
-          <div style="font-size:11px;color:var(--mu);">hours · Minimum required: <b style="color:var(--or);">48 hours</b> (FMS.32.8)</div>
-          <div id="calc-status" style="margin-top:8px;font-size:12px;font-weight:600;"></div>
+
+        <div class="ff" style="min-width:140px;">
+          <label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;">Reading (Inch H₂O)</label>
+          <input type="number" id="lox-read-inch" min="2" max="84" step="2" placeholder="e.g. 48"
+            style="width:100%;padding:8px;border:2px solid #3b82f6;border-radius:8px;background:var(--s1);font-size:16px;font-weight:700;color:#3b82f6;"
+            oninput="loxLookup(this.value)">
         </div>
-      </div></div>
-      <div class="card"><div class="ch"><div class="ct">📊 LOX Level Trend (from LOX Daily Log)</div></div>
-        <div class="cb" style="padding:12px;min-height:200px;"><canvas id="lox-trend-chart"></canvas></div>
+
+        <!-- Auto-filled results -->
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <div style="text-align:center;background:var(--s2);border-radius:8px;padding:8px 14px;min-width:90px;">
+            <div style="font-size:9px;color:var(--mu);font-weight:700;text-transform:uppercase;">Gallons</div>
+            <div id="lox-gallons" style="font-size:20px;font-weight:700;color:#3b82f6;">—</div>
+          </div>
+          <div style="text-align:center;background:var(--s2);border-radius:8px;padding:8px 14px;min-width:90px;">
+            <div style="font-size:9px;color:var(--mu);font-weight:700;text-transform:uppercase;">Litres LOX</div>
+            <div id="lox-litres" style="font-size:20px;font-weight:700;color:#3b82f6;">—</div>
+          </div>
+          <div style="text-align:center;background:rgba(59,130,246,.1);border-radius:8px;padding:8px 14px;min-width:110px;">
+            <div style="font-size:9px;color:var(--mu);font-weight:700;text-transform:uppercase;">Gas O₂ (×860)</div>
+            <div id="lox-gas" style="font-size:20px;font-weight:700;color:#1d4ed8;">—</div>
+          </div>
+        </div>
+
+        <!-- Inpatient Counts -->
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;border-left:2px solid var(--bd);padding-left:12px;">
+          <div class="ff" style="min-width:90px;">
+            <label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;">Ward Pts</label>
+            <input type="number" id="lox-pt-ward" min="0" placeholder="0"
+              style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:7px;background:var(--s1);font-size:14px;"
+              oninput="loxCalcTotal()">
+          </div>
+          <div class="ff" style="min-width:80px;">
+            <label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;">ICU Pts</label>
+            <input type="number" id="lox-pt-icu" min="0" placeholder="0"
+              style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:7px;background:var(--s1);font-size:14px;"
+              oninput="loxCalcTotal()">
+          </div>
+          <div class="ff" style="min-width:80px;">
+            <label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;">CCU Pts</label>
+            <input type="number" id="lox-pt-ccu" min="0" placeholder="0"
+              style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:7px;background:var(--s1);font-size:14px;"
+              oninput="loxCalcTotal()">
+          </div>
+          <div style="text-align:center;background:rgba(16,185,129,.1);border-radius:8px;padding:7px 12px;min-width:70px;">
+            <div style="font-size:9px;color:var(--mu);font-weight:700;text-transform:uppercase;">Total</div>
+            <div id="lox-pt-total" style="font-size:18px;font-weight:700;color:#10b981;">0</div>
+          </div>
+        </div>
+
+        <div class="ff" style="min-width:160px;">
+          <label style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;">Notes</label>
+          <input type="text" id="lox-read-notes" placeholder="Refill, alarm, abnormality..."
+            style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:7px;background:var(--s1);font-size:12px;">
+        </div>
+
+        <button class="btn bp" style="padding:9px 20px;font-size:13px;font-weight:700;white-space:nowrap;" onclick="loxSaveReading()">💾 Save Reading</button>
       </div>
     </div>
   </div>
+
+  <!-- ── KPI Summary Cards ── -->
+  <div class="g g4" style="margin-bottom:14px;">
+    <div class="sc" style="--c:#3b82f6;">
+      <div class="ico">🫧</div>
+      <div class="val" id="lox-kpi-level">—</div>
+      <div class="lbl">LOX Level (L)</div>
+    </div>
+    <div class="sc" style="--c:#f59e0b;" id="lox-kpi-cons-card">
+      <div class="ico">📉</div>
+      <div class="val" id="lox-kpi-cons">—</div>
+      <div class="lbl">Yesterday's Consumption (L gas)</div>
+    </div>
+    <div class="sc" style="--c:#10b981;" id="lox-kpi-reserve-card">
+      <div class="ico">⏱</div>
+      <div class="val" id="lox-kpi-reserve">—</div>
+      <div class="lbl">Reserve (hours) · FMS 32.8</div>
+    </div>
+    <div class="sc" style="--c:#8b5cf6;">
+      <div class="ico">👥</div>
+      <div class="val" id="lox-kpi-perpt">—</div>
+      <div class="lbl">Avg L gas / patient / day</div>
+    </div>
+  </div>
+
+  <!-- ── 48-Hour FMS 32.8 Compliance Badge ── -->
+  <div id="lox-48hr-badge" style="border-radius:12px;padding:16px 20px;margin-bottom:14px;display:flex;align-items:center;gap:16px;background:var(--s2);border:2px solid var(--bd);">
+    <div style="font-size:40px;" id="lox-48hr-icon">⏳</div>
+    <div style="flex:1;">
+      <div style="font-weight:700;font-size:14px;" id="lox-48hr-title">FMS 32.8 — 48-Hour O₂ Reserve</div>
+      <div style="font-size:11px;color:var(--mu);" id="lox-48hr-sub">Calculating...</div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:28px;font-weight:800;" id="lox-48hr-val">—</div>
+      <div style="font-size:10px;color:var(--mu);">hours available</div>
+    </div>
+  </div>
+
+  <!-- ── Charts Row ── -->
+  <div class="g g2" style="margin-bottom:14px;">
+
+    <!-- LOX Tank Visual -->
+    <div class="card">
+      <div class="ch"><div class="ct">🫧 LOX Tank Level</div></div>
+      <div class="cb" style="display:flex;flex-direction:column;align-items:center;padding:16px;">
+        <div style="position:relative;width:100px;height:220px;border:3px solid #3b82f6;border-radius:0 0 16px 16px;overflow:hidden;background:#f0f9ff;">
+          <div id="lox-tank-fill" style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(180deg,#60a5fa,#1d4ed8);transition:height 1s;height:0%;"></div>
+          <div id="lox-tank-pct" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:18px;font-weight:800;color:#1d4ed8;z-index:2;">—</div>
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:var(--mu);text-align:center;" id="lox-tank-label">Enter a reading above</div>
+        <!-- Threshold markers -->
+        <div style="margin-top:12px;display:flex;gap:12px;font-size:10px;">
+          <span style="color:#16a34a;">● ≥50% Safe</span>
+          <span style="color:#d97706;">● 25–50% Low</span>
+          <span style="color:#dc2626;">● &lt;25% Critical</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 30-Day Consumption Chart -->
+    <div class="card">
+      <div class="ch"><div class="ct">📊 Daily O₂ Consumption (L gas) — Last 30 Days</div></div>
+      <div class="cb" style="padding:12px;"><canvas id="lox-cons-chart" height="200"></canvas></div>
+    </div>
+
+  </div>
+
+  <!-- Patient Correlation Chart -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="ch">
+      <div class="ct">👥 O₂ Consumption vs Inpatient Census</div>
+      <div style="font-size:10px;color:var(--mu);">Correlation between patient load and O₂ demand</div>
+    </div>
+    <div class="cb" style="padding:12px;"><canvas id="lox-patient-chart" height="160"></canvas></div>
+  </div>
+
+  <!-- Weekly Summary Table -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="ch">
+      <div class="ct">📋 Weekly Summary</div>
+      <div style="font-size:10px;color:var(--mu);">7-day rolling averages</div>
+    </div>
+    <div class="cb" style="padding:0;">
+      <table class="tbl" id="lox-weekly-table">
+        <thead><tr>
+          <th>Week</th><th>Avg Daily Cons (L gas)</th><th>Peak Day</th><th>Avg Inpatients</th><th>L gas/Patient/Day</th><th>Min Reserve (hrs)</th>
+        </tr></thead>
+        <tbody id="lox-weekly-body"><tr><td colspan="6" style="text-align:center;color:var(--mu);padding:20px;">No data yet — start entering daily readings</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Daily Reading History Log -->
+  <div class="card">
+    <div class="ch">
+      <div class="ct">📅 Daily Reading History</div>
+      <button class="btn bo" style="font-size:10px;" onclick="loxExportHistory()">⬇ Export</button>
+    </div>
+    <div class="cb" style="padding:0;">
+      <table class="tbl" id="lox-history-table">
+        <thead><tr>
+          <th>Date</th><th>Inch H₂O</th><th>Gallons</th><th>Litres LOX</th><th>Gas O₂ (L)</th>
+          <th>Consumption (L gas)</th><th>Ward</th><th>ICU</th><th>CCU</th><th>Total Pts</th>
+          <th>L/Pt/Day</th><th>Notes</th><th>By</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="lox-history-body">
+          <tr><td colspan="14" style="text-align:center;color:var(--mu);padding:20px;">No readings saved yet</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
 
   <!-- ═══ 12. ALL RECORDS ═══ -->
   <div id="mg-log" style="display:none;">
@@ -14013,6 +14179,213 @@ function repExportById(id) {
   a.download = 'FMS_Report_' + r.type + '_' + (r.date||r.month||'').replace(/[^0-9\-]/g,'') + '.html';
   a.click();
   toast('✅ Report exported — open in browser and print to PDF', '#10b981', 4000);
+}
+
+
+// ═══════════════════════════════════════════════════
+// LOX DAILY MONITORING MODULE — FMS 32.8
+// ═══════════════════════════════════════════════════
+
+const LOX_TABLE = [[2, 10, 36], [4, 25, 94], [6, 44, 165], [8, 54, 205], [10, 71, 270], [12, 99, 375], [14, 116, 440], [16, 136, 515], [18, 157, 595], [20, 177, 670], [22, 198, 750], [24, 219, 830], [26, 243, 920], [28, 264, 1000], [30, 285, 1080], [32, 306, 1160], [34, 322, 1220], [36, 338, 1280], [38, 359, 1360], [40, 375, 1420], [42, 396, 1500], [44, 412, 1560], [46, 433, 1640], [48, 449, 1700], [50, 470, 1780], [52, 486, 1840], [54, 502, 1900], [56, 523, 1980], [58, 539, 2040], [60, 554, 2100], [62, 576, 2180], [64, 597, 2260], [66, 618, 2340], [68, 634, 2400], [70, 655, 2480], [72, 671, 2540], [74, 692, 2620], [76, 713, 2700], [78, 734, 2780], [80, 750, 2840], [82, 771, 2920], [84, 792, 3000]];
+const LOX_GAS_FACTOR = 860;
+const LOX_TANK_MAX_L = 3000;
+
+function loxTableLookup(inch) {
+  const i = Math.round(inch / 2) * 2;
+  const row = LOX_TABLE.find(r => r[0] === i);
+  if (row) return { gallons: row[1], litres: row[2] };
+  const lower = [...LOX_TABLE].reverse().find(r => r[0] <= inch);
+  const upper = LOX_TABLE.find(r => r[0] > inch);
+  if (!lower) return { gallons: LOX_TABLE[0][1], litres: LOX_TABLE[0][2] };
+  if (!upper) return { gallons: LOX_TABLE[LOX_TABLE.length-1][1], litres: LOX_TABLE[LOX_TABLE.length-1][2] };
+  const frac = (inch - lower[0]) / (upper[0] - lower[0]);
+  return { gallons: Math.round(lower[1] + frac*(upper[1]-lower[1])), litres: Math.round(lower[2] + frac*(upper[2]-lower[2])) };
+}
+
+function loxLookup(inch) {
+  if (!inch || inch < 2) {
+    ['lox-gallons','lox-litres','lox-gas'].forEach(id => { const e=document.getElementById(id); if(e) e.textContent='--'; });
+    return;
+  }
+  const v = loxTableLookup(parseFloat(inch));
+  const gas = Math.round(v.litres * LOX_GAS_FACTOR);
+  const se = (id,val) => { const e=document.getElementById(id); if(e) e.textContent=val; };
+  se('lox-gallons', v.gallons.toLocaleString());
+  se('lox-litres',  v.litres.toLocaleString());
+  se('lox-gas',     (gas/1000).toFixed(1)+'K');
+}
+
+function loxCalcTotal() {
+  const w = parseInt(document.getElementById('lox-pt-ward')?.value)||0;
+  const i = parseInt(document.getElementById('lox-pt-icu')?.value)||0;
+  const c = parseInt(document.getElementById('lox-pt-ccu')?.value)||0;
+  const el = document.getElementById('lox-pt-total'); if(el) el.textContent=w+i+c;
+}
+
+function loxGetReadings() {
+  try { return JSON.parse(localStorage.getItem(PX+'lox_daily_readings')||'[]'); } catch(e) { return []; }
+}
+function loxSaveReadings(arr) { localStorage.setItem(PX+'lox_daily_readings', JSON.stringify(arr)); }
+
+function loxSaveReading() {
+  const date  = document.getElementById('lox-read-date')?.value;
+  const inch  = parseFloat(document.getElementById('lox-read-inch')?.value);
+  const notes = document.getElementById('lox-read-notes')?.value||'';
+  const ward  = parseInt(document.getElementById('lox-pt-ward')?.value)||0;
+  const icu   = parseInt(document.getElementById('lox-pt-icu')?.value)||0;
+  const ccu   = parseInt(document.getElementById('lox-pt-ccu')?.value)||0;
+  if (!date)  { toast('Please select a date','#f59e0b'); return; }
+  if (!inch||inch<2||inch>84) { toast('Enter a valid reading (2-84 inch H2O)','#f59e0b'); return; }
+  const v = loxTableLookup(inch);
+  const gasL = Math.round(v.litres * LOX_GAS_FACTOR);
+  const totalPt = ward+icu+ccu;
+  const readings = loxGetReadings();
+  const prev = [...readings].sort((a,b)=>a.date<b.date?1:-1).find(r=>r.date<date);
+  const consumption = prev ? Math.max(0,(prev.gasL||0)-gasL) : null;
+  const perPt = (consumption&&totalPt>0) ? Math.round(consumption/totalPt) : null;
+  const rec = { _id:'lox_'+date, date, inch, gallons:v.gallons, litres:v.litres, gasL, ward, icu, ccu, totalPt, consumption, perPt, notes, _ts:new Date().toISOString(), _by:(window.CU?.name||'Biomedical') };
+  const idx = readings.findIndex(r=>r.date===date);
+  if (idx>=0) readings[idx]=rec; else readings.push(rec);
+  loxSaveReadings(readings);
+  dbWrite('mg_lox', rec);
+  ['lox-read-inch','lox-read-notes','lox-pt-ward','lox-pt-icu','lox-pt-ccu'].forEach(id=>{ const e=document.getElementById(id); if(e) e.value=''; });
+  ['lox-gallons','lox-litres','lox-gas'].forEach(id=>{ const e=document.getElementById(id); if(e) e.textContent='--'; });
+  const tot=document.getElementById('lox-pt-total'); if(tot) tot.textContent='0';
+  toast('LOX reading saved for '+date, '#10b981');
+  loxRenderDashboard();
+}
+
+function loxDeleteReading(date) {
+  if (!confirm('Delete reading for '+date+'?')) return;
+  loxSaveReadings(loxGetReadings().filter(r=>r.date!==date));
+  dbDelete('mg_lox','lox_'+date);
+  loxRenderDashboard();
+  toast('Reading deleted');
+}
+
+function loxRenderDashboard() {
+  const readings = loxGetReadings().sort((a,b)=>a.date<b.date?1:-1);
+  if (!readings.length) { loxRenderHistory([]); return; }
+  const latest = readings[0];
+  const consR  = readings.filter(r=>r.consumption!=null).slice(0,7);
+  const avgCons = consR.length ? Math.round(consR.reduce((s,r)=>s+r.consumption,0)/consR.length) : null;
+  const reserveHrs = (avgCons&&latest.gasL) ? Math.round((latest.gasL/avgCons)*24) : null;
+  const pct = latest.litres ? Math.min(100,Math.round((latest.litres/LOX_TANK_MAX_L)*100)) : 0;
+  const se = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
+  se('lox-kpi-level',   latest.litres?latest.litres.toLocaleString()+' L':'--');
+  se('lox-kpi-cons',    latest.consumption!=null?(latest.consumption/1000).toFixed(1)+'K L':'--');
+  se('lox-kpi-reserve', reserveHrs!=null?reserveHrs+' hrs':'--');
+  const ppArr = readings.filter(r=>r.perPt).slice(0,7);
+  const avgPP = ppArr.length?Math.round(ppArr.reduce((s,r)=>s+r.perPt,0)/ppArr.length):null;
+  se('lox-kpi-perpt', avgPP?avgPP.toLocaleString()+' L':'--');
+  const rc=document.getElementById('lox-kpi-reserve-card');
+  if(rc&&reserveHrs!=null) rc.style.setProperty('--c',reserveHrs>=72?'#10b981':reserveHrs>=48?'#f59e0b':'#dc2626');
+  const badge=document.getElementById('lox-48hr-badge');
+  if(badge&&reserveHrs!=null) {
+    const ok=reserveHrs>=48, warn=ok&&reserveHrs<72;
+    badge.style.background=ok?(warn?'rgba(245,158,11,.1)':'rgba(16,185,129,.1)'):'rgba(220,38,38,.1)';
+    badge.style.borderColor=ok?(warn?'#f59e0b':'#10b981'):'#dc2626';
+    const e=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+    e('lox-48hr-icon', ok?(warn?'warning':'check_circle'):'cancel');
+    const icons={'warning':'⚠️','check_circle':'✅','cancel':'❌'};
+    const ic=document.getElementById('lox-48hr-icon'); if(ic) ic.textContent=icons[ic.textContent]||ic.textContent;
+    e('lox-48hr-sub', ok?(warn?'Adequate but approaching minimum — plan refill soon':'Exceeds 48hr CBAHI requirement — Compliant'):'CRITICAL: Below 48-hour minimum — refill immediately!');
+    const vEl=document.getElementById('lox-48hr-val');
+    if(vEl){vEl.textContent=reserveHrs;vEl.style.color=ok?(warn?'#d97706':'#10b981'):'#dc2626';}
+    const tEl=document.getElementById('lox-48hr-icon'); if(tEl) tEl.textContent=ok?(warn?'⚠️':'✅'):'❌';
+  }
+  const fill=document.getElementById('lox-tank-fill');
+  if(fill){fill.style.height=pct+'%';fill.style.background=pct>=50?'linear-gradient(180deg,#60a5fa,#1d4ed8)':pct>=25?'linear-gradient(180deg,#fbbf24,#d97706)':'linear-gradient(180deg,#f87171,#dc2626)';}
+  se('lox-tank-pct',   pct+'%');
+  se('lox-tank-label', latest.litres.toLocaleString()+' L  '+latest.date);
+  const last30=[...readings].reverse().slice(-30);
+  const consData=last30.filter(r=>r.consumption!=null);
+  const ctx1=document.getElementById('lox-cons-chart');
+  if(ctx1&&typeof Chart!=='undefined'&&consData.length){
+    if(window._loxConsChart){try{window._loxConsChart.destroy();}catch(e){}}
+    window._loxConsChart=new Chart(ctx1,{type:'bar',data:{labels:consData.map(r=>r.date.slice(5)),datasets:[{label:'Daily O2 Consumption (L gas)',data:consData.map(r=>r.consumption),backgroundColor:consData.map(r=>r.consumption>50000?'#dc2626':r.consumption>30000?'#f59e0b':'#3b82f6'),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:v=>(v/1000).toFixed(0)+'K'}},x:{ticks:{font:{size:9}}}}}});
+  }
+  const ptData=last30.filter(r=>r.consumption!=null&&r.totalPt>0);
+  const ctx2=document.getElementById('lox-patient-chart');
+  if(ctx2&&typeof Chart!=='undefined'&&ptData.length){
+    if(window._loxPtChart){try{window._loxPtChart.destroy();}catch(e){}}
+    window._loxPtChart=new Chart(ctx2,{type:'bar',data:{labels:ptData.map(r=>r.date.slice(5)),datasets:[{type:'bar',label:'O2 Consumption (L gas)',data:ptData.map(r=>r.consumption),backgroundColor:'rgba(59,130,246,.5)',yAxisID:'y'},{type:'line',label:'Total Inpatients',data:ptData.map(r=>r.totalPt),borderColor:'#10b981',backgroundColor:'transparent',tension:0.4,pointRadius:3,yAxisID:'y2'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10}}}},scales:{y:{position:'left',beginAtZero:true,ticks:{callback:v=>(v/1000).toFixed(0)+'K'}},y2:{position:'right',beginAtZero:true,grid:{drawOnChartArea:false}}}}});
+  }
+  const wBody=document.getElementById('lox-weekly-body');
+  if(wBody){
+    const wm={};
+    readings.forEach(r=>{const d=new Date(r.date);const wk=new Date(d);wk.setDate(d.getDate()-d.getDay());const key=wk.toISOString().slice(0,10);if(!wm[key])wm[key]=[];wm[key].push(r);});
+    const weeks=Object.entries(wm).sort((a,b)=>a[0]<b[0]?1:-1).slice(0,8);
+    wBody.innerHTML=weeks.map(([wk,days])=>{
+      const cR=days.filter(r=>r.consumption!=null);
+      const aC=cR.length?Math.round(cR.reduce((s,r)=>s+r.consumption,0)/cR.length):null;
+      const pk=cR.length?Math.max(...cR.map(r=>r.consumption)):null;
+      const pR=days.filter(r=>r.totalPt>0);
+      const aP=pR.length?Math.round(pR.reduce((s,r)=>s+r.totalPt,0)/pR.length):null;
+      const pp=aC&&aP?Math.round(aC/aP):null;
+      const gl=days.filter(r=>r.gasL);
+      const mr=gl.length&&aC?Math.round((Math.min(...gl.map(r=>r.gasL))/aC)*24):null;
+      const rc2=mr==null?'':mr>=48?'color:#16a34a;':mr>=24?'color:#d97706;':'color:#dc2626;';
+      return '<tr><td style="font-weight:700;">W/E '+wk.slice(5)+'</td><td>'+(aC!=null?(aC/1000).toFixed(1)+'K':'--')+'</td><td>'+(pk!=null?(pk/1000).toFixed(1)+'K':'--')+'</td><td>'+(aP||'--')+'</td><td>'+(pp?pp.toLocaleString():'--')+'</td><td style="'+rc2+'">'+(mr!=null?mr+' hrs':'--')+'</td></tr>';
+    }).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--mu);padding:12px;">No weekly data yet</td></tr>';
+  }
+  loxRenderHistory(readings);
+}
+
+function loxRenderHistory(readings) {
+  const body=document.getElementById('lox-history-body'); if(!body) return;
+  if(!readings||!readings.length){body.innerHTML='<tr><td colspan="14" style="text-align:center;color:var(--mu);padding:20px;">No readings saved yet</td></tr>';return;}
+  body.innerHTML=readings.map((r,i)=>{
+    const cStr=r.consumption!=null?(r.consumption/1000).toFixed(1)+'K':'--';
+    const cc=r.consumption>50000?'#dc2626':r.consumption>30000?'#d97706':'#3b82f6';
+    return '<tr>'
+      +'<td style="font-weight:700;white-space:nowrap;">'+r.date+'</td>'
+      +'<td style="text-align:center;font-weight:700;color:#3b82f6;">'+r.inch+'"</td>'
+      +'<td style="text-align:center;">'+(r.gallons!=null?r.gallons.toLocaleString():'--')+'</td>'
+      +'<td style="text-align:center;font-weight:600;">'+(r.litres!=null?r.litres.toLocaleString():'--')+'</td>'
+      +'<td style="text-align:center;">'+(r.gasL?(r.gasL/1000).toFixed(1)+'K':'--')+'</td>'
+      +'<td style="text-align:center;font-weight:600;color:'+cc+';">'+cStr+'</td>'
+      +'<td style="text-align:center;">'+(r.ward||0)+'</td>'
+      +'<td style="text-align:center;">'+(r.icu||0)+'</td>'
+      +'<td style="text-align:center;">'+(r.ccu||0)+'</td>'
+      +'<td style="text-align:center;font-weight:700;">'+(r.totalPt||0)+'</td>'
+      +'<td style="text-align:center;">'+(r.perPt||'--')+'</td>'
+      +'<td style="font-size:10px;color:var(--mu);">'+(r.notes||'--')+'</td>'
+      +'<td style="font-size:10px;color:var(--mu);">'+(r._by||'--')+'</td>'
+      +'<td><button class="btn br" style="font-size:9px;padding:2px 6px;" data-d="'+r.date+'" onclick="loxDeleteReading(this.dataset.d)">del</button></td>'
+      +'</tr>';
+  }).join('');
+}
+
+function loxExportHistory() {
+  const readings=loxGetReadings().sort((a,b)=>a.date<b.date?1:-1);
+  if(!readings.length){toast('No data to export','#f59e0b');return;}
+  const rows=readings.map(r=>'<tr><td>'+r.date+'</td><td>'+r.inch+'"</td><td>'+r.gallons+'</td><td>'+r.litres+'</td><td>'+r.gasL+'</td><td>'+(r.consumption!=null?r.consumption:'--')+'</td><td>'+(r.ward||0)+'</td><td>'+(r.icu||0)+'</td><td>'+(r.ccu||0)+'</td><td>'+(r.totalPt||0)+'</td><td>'+(r.perPt||'--')+'</td><td>'+(r.notes||'')+'</td><td>'+(r._by||'')+'</td></tr>').join('');
+  const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>LOX Daily Log</title><style>body{font-family:Arial;font-size:11px;}table{border-collapse:collapse;width:100%;}th{background:#1a3a5c;color:#fff;padding:6px;}td{border:1px solid #ddd;padding:5px;}</style></head><body><h2>LOX Daily Reading Log - Obeid Specialized Hospital</h2><table><thead><tr><th>Date</th><th>Inch H2O</th><th>Gallons</th><th>Litres LOX</th><th>Gas O2 (L)</th><th>Consumption</th><th>Ward</th><th>ICU</th><th>CCU</th><th>Total Pts</th><th>L/Pt/Day</th><th>Notes</th><th>By</th></tr></thead><tbody>'+rows+'</tbody></table></body></html>';
+  const b=new Blob([html],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='LOX_Daily_Log_'+new Date().toISOString().slice(0,10)+'.html';a.click();toast('Exported','#10b981');
+}
+
+function loxExportReport() {
+  const readings=loxGetReadings().sort((a,b)=>a.date<b.date?1:-1);
+  if(!readings.length){toast('No data to export','#f59e0b');return;}
+  const latest=readings[0];
+  const consR=readings.filter(r=>r.consumption!=null).slice(0,7);
+  const avgCons=consR.length?Math.round(consR.reduce((s,r)=>s+r.consumption,0)/consR.length):0;
+  const reserveHrs=avgCons&&latest.gasL?Math.round((latest.gasL/avgCons)*24):0;
+  const ok=reserveHrs>=48;
+  const rows7=readings.slice(0,7).map(r=>'<tr><td>'+r.date+'</td><td>'+r.inch+'"</td><td>'+(r.litres!=null?r.litres.toLocaleString():'--')+'</td><td>'+(r.gasL?(r.gasL/1000).toFixed(1)+'K':'--')+'</td><td>'+(r.consumption!=null?(r.consumption/1000).toFixed(1)+'K':'--')+'</td><td>'+(r.totalPt||'--')+'</td><td>'+(r.perPt||'--')+'</td></tr>').join('');
+  const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>O2 Reserve Report FMS 32.8</title><style>body{font-family:Arial;margin:24px;font-size:12px;}.hdr{background:#1a3a5c;color:#fff;padding:16px;border-radius:8px;}.row{display:flex;gap:16px;margin:12px 0;}.box{flex:1;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;text-align:center;}.big{font-size:28px;font-weight:800;}.lbl{font-size:10px;color:#6b7280;margin-top:4px;}.badge{padding:12px 24px;border-radius:8px;font-size:16px;font-weight:700;display:inline-block;margin:12px 0;}.sig{display:flex;gap:40px;margin-top:40px;}.sig-line{flex:1;border-top:1px solid #999;padding-top:8px;font-size:10px;color:#666;}table{width:100%;border-collapse:collapse;margin-top:12px;}th{background:#1a3a5c;color:#fff;padding:7px;font-size:11px;}td{border:1px solid #e2e8f0;padding:6px;font-size:11px;}</style></head><body>'
+    +'<div class="hdr"><h2 style="margin:0;">O2 Reserve Assessment Report - FMS 32.8</h2><p style="margin:4px 0 0;opacity:.8;">Obeid Specialized Hospital - Medical Gas Dept - '+new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})+'</p></div>'
+    +'<div class="row" style="margin-top:16px;"><div class="box"><div class="big" style="color:#3b82f6;">'+(latest.litres!=null?latest.litres.toLocaleString():'--')+'</div><div class="lbl">Current LOX Level (L)</div></div><div class="box"><div class="big" style="color:#1d4ed8;">'+(latest.gasL?(latest.gasL/1000).toFixed(0)+'K':'--')+'</div><div class="lbl">Gaseous O2 Equiv. (L)</div></div><div class="box"><div class="big" style="color:#d97706;">'+(avgCons?(avgCons/1000).toFixed(1)+'K':'--')+'</div><div class="lbl">7-Day Avg Daily Consumption</div></div><div class="box"><div class="big" style="color:'+(ok?'#16a34a':'#dc2626')+';">'+reserveHrs+'</div><div class="lbl">Reserve Hours (Min: 48)</div></div></div>'
+    +'<div class="badge" style="background:'+(ok?'#dcfce7':'#fee2e2')+';color:'+(ok?'#15803d':'#dc2626')+';border:2px solid '+(ok?'#16a34a':'#dc2626')+';">'+(ok?'COMPLIANT':'NON-COMPLIANT')+' - FMS 32.8 48-Hour O2 Reserve</div>'
+    +'<h3>Last 7 Days Readings</h3><table><thead><tr><th>Date</th><th>Inch H2O</th><th>LOX (L)</th><th>Gas O2</th><th>Consumption</th><th>Total Pts</th><th>L/Pt/Day</th></tr></thead><tbody>'+rows7+'</tbody></table>'
+    +'<div class="sig"><div class="sig-line">Prepared by: Bashar / Robert - Biomedical Eng.<br>&nbsp;<br>Signature: _________________________ Date: ___________</div><div class="sig-line">Reviewed by: Aliks - FMS Director<br>&nbsp;<br>Signature: _________________________ Date: ___________</div></div></body></html>';
+  const b=new Blob([html],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='O2_Reserve_FMS32.8_'+new Date().toISOString().slice(0,10)+'.html';a.click();toast('FMS 32.8 Report exported','#10b981');
+}
+
+function loxInit() {
+  const di=document.getElementById('lox-read-date'); if(di&&!di.value) di.value=new Date().toISOString().slice(0,10);
+  loxRenderDashboard();
 }
 
 </script>
