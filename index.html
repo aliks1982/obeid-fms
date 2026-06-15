@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1521';
+  var v = '20260606-1522';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -7284,7 +7284,7 @@ function mgTab(tab, btn) {
   // Per-tab init
   if (tab === 'log')    { renderMGLog('all'); }
   if (tab === 'kpi')    { renderMGKPIs(); }
-  if (tab === 'o2calc') { calcO2Reserve(); renderLOXTrend(); }
+  if (tab === 'o2calc') { setTimeout(loxInit, 80); }
   // Re-render the specific table if it's a checklist tab
   const checklistTabs = ['lox','o2backup','n2o','vacuum','aircomp','airbackup','ambulance','cylinder','o2refill','airrefill'];
   if (checklistTabs.includes(tab)) renderMGTable(tab);
@@ -14188,176 +14188,223 @@ function repExportById(id) {
 
 
 // ═══════════════════════════════════════════════════
-// LOX DAILY MONITORING MODULE — FMS 32.8
-// ═══════════════════════════════════════════════════
 
+// LOX DAILY MONITORING MODULE v3 - FMS 32.8
 const LOX_TABLE = [[2, 10, 36], [4, 25, 94], [6, 44, 165], [8, 54, 205], [10, 71, 270], [12, 99, 375], [14, 116, 440], [16, 136, 515], [18, 157, 595], [20, 177, 670], [22, 198, 750], [24, 219, 830], [26, 243, 920], [28, 264, 1000], [30, 285, 1080], [32, 306, 1160], [34, 322, 1220], [36, 338, 1280], [38, 359, 1360], [40, 375, 1420], [42, 396, 1500], [44, 412, 1560], [46, 433, 1640], [48, 449, 1700], [50, 470, 1780], [52, 486, 1840], [54, 502, 1900], [56, 523, 1980], [58, 539, 2040], [60, 554, 2100], [62, 576, 2180], [64, 597, 2260], [66, 618, 2340], [68, 634, 2400], [70, 655, 2480], [72, 671, 2540], [74, 692, 2620], [76, 713, 2700], [78, 734, 2780], [80, 750, 2840], [82, 771, 2920], [84, 792, 3000]];
 const LOX_GAS_FACTOR = 860;
-const LOX_TANK_MAX_L = 3000;
+const LOX_MAX_LITRES = 3000;
 
 function loxTableLookup(inch) {
-  const i = Math.round(inch / 2) * 2;
-  const row = LOX_TABLE.find(r => r[0] === i);
-  if (row) return { gallons: row[1], litres: row[2] };
-  const lower = [...LOX_TABLE].reverse().find(r => r[0] <= inch);
-  const upper = LOX_TABLE.find(r => r[0] > inch);
-  if (!lower) return { gallons: LOX_TABLE[0][1], litres: LOX_TABLE[0][2] };
-  if (!upper) return { gallons: LOX_TABLE[LOX_TABLE.length-1][1], litres: LOX_TABLE[LOX_TABLE.length-1][2] };
-  const frac = (inch - lower[0]) / (upper[0] - lower[0]);
-  return { gallons: Math.round(lower[1] + frac*(upper[1]-lower[1])), litres: Math.round(lower[2] + frac*(upper[2]-lower[2])) };
+  var i = Math.round(parseFloat(inch) / 2) * 2;
+  var found = LOX_TABLE.filter(function(r){return r[0]===i;})[0];
+  if (found) return {gallons:found[1], litres:found[2]};
+  var lower = null, upper = null;
+  for (var x=0; x<LOX_TABLE.length; x++) {
+    if (LOX_TABLE[x][0] <= i) lower = LOX_TABLE[x];
+    if (!upper && LOX_TABLE[x][0] > i) upper = LOX_TABLE[x];
+  }
+  if (!lower) return {gallons:LOX_TABLE[0][1], litres:LOX_TABLE[0][2]};
+  if (!upper) return {gallons:LOX_TABLE[LOX_TABLE.length-1][1], litres:LOX_TABLE[LOX_TABLE.length-1][2]};
+  var f = (i-lower[0])/(upper[0]-lower[0]);
+  return {gallons:Math.round(lower[1]+f*(upper[1]-lower[1])), litres:Math.round(lower[2]+f*(upper[2]-lower[2]))};
 }
 
 function loxLookup(inch) {
-  if (!inch || inch < 2) {
-    ['lox-gallons','lox-litres','lox-gas'].forEach(id => { const e=document.getElementById(id); if(e) e.textContent='--'; });
-    return;
-  }
-  const v = loxTableLookup(parseFloat(inch));
-  const gas = Math.round(v.litres * LOX_GAS_FACTOR);
-  const se = (id,val) => { const e=document.getElementById(id); if(e) e.textContent=val; };
-  se('lox-gallons', v.gallons.toLocaleString());
-  se('lox-litres',  v.litres.toLocaleString());
-  se('lox-gas',     (gas/1000).toFixed(1)+'K');
+  function se(id,v){var e=document.getElementById(id);if(e)e.textContent=v;}
+  if (!inch||parseFloat(inch)<2) {se('lox-gallons','--');se('lox-litres','--');se('lox-gas','--');return;}
+  var v=loxTableLookup(inch), gas=Math.round(v.litres*LOX_GAS_FACTOR);
+  se('lox-gallons',v.gallons.toLocaleString());
+  se('lox-litres',v.litres.toLocaleString());
+  se('lox-gas',(gas/1000).toFixed(1)+'K');
 }
 
 function loxCalcTotal() {
-  const w = parseInt(document.getElementById('lox-pt-ward')?.value)||0;
-  const i = parseInt(document.getElementById('lox-pt-icu')?.value)||0;
-  const c = parseInt(document.getElementById('lox-pt-ccu')?.value)||0;
-  const el = document.getElementById('lox-pt-total'); if(el) el.textContent=w+i+c;
+  var w=parseInt((document.getElementById('lox-pt-ward')||{}).value)||0;
+  var i=parseInt((document.getElementById('lox-pt-icu')||{}).value)||0;
+  var c=parseInt((document.getElementById('lox-pt-ccu')||{}).value)||0;
+  var el=document.getElementById('lox-pt-total'); if(el)el.textContent=w+i+c;
 }
 
 function loxGetReadings() {
-  // Merge both storage keys: our primary key + the key dbLoadAll writes to
   try {
-    const primary = JSON.parse(localStorage.getItem(PX+'lox_daily_readings')||'[]');
-    const synced  = JSON.parse(localStorage.getItem(PX+'mg_lox')||'[]');
-    if (!synced.length) return primary;
-    if (!primary.length) return synced;
-    // Merge by date, prefer newer _ts
-    const map = {};
-    synced.forEach(r  => { if (r.date) map[r.date] = r; });
-    primary.forEach(r => { if (r.date && (!map[r.date] || (r._ts||'') >= (map[r.date]._ts||''))) map[r.date] = r; });
-    return Object.values(map).sort((a,b) => a.date < b.date ? 1 : -1);
-  } catch(e) { return []; }
+    var a=JSON.parse(localStorage.getItem(PX+'mg_lox')||'[]');
+    var b=JSON.parse(localStorage.getItem(PX+'lox_daily_readings')||'[]');
+    var map={};
+    a.forEach(function(r){if(r&&r.date)map[r.date]=r;});
+    b.forEach(function(r){if(r&&r.date&&(!map[r.date]||(r._ts||'')>(map[r.date]._ts||'')))map[r.date]=r;});
+    return Object.values(map).sort(function(a,b){return a.date<b.date?1:-1;});
+  } catch(e){return [];}
 }
+
 function loxSaveReadings(arr) {
-  localStorage.setItem(PX+'lox_daily_readings', JSON.stringify(arr));
-  // Also keep mg_lox in sync so other devices reading via dbLoadAll see the data
   localStorage.setItem(PX+'mg_lox', JSON.stringify(arr));
+  localStorage.setItem(PX+'lox_daily_readings', JSON.stringify(arr));
 }
 
 function loxSaveReading() {
-  const date  = document.getElementById('lox-read-date')?.value;
-  const inch  = parseFloat(document.getElementById('lox-read-inch')?.value);
-  const notes = document.getElementById('lox-read-notes')?.value||'';
-  const ward  = parseInt(document.getElementById('lox-pt-ward')?.value)||0;
-  const icu   = parseInt(document.getElementById('lox-pt-icu')?.value)||0;
-  const ccu   = parseInt(document.getElementById('lox-pt-ccu')?.value)||0;
-  if (!date)  { toast('Please select a date','#f59e0b'); return; }
-  if (!inch||inch<2||inch>84) { toast('Enter a valid reading (2-84 inch H2O)','#f59e0b'); return; }
-  const v = loxTableLookup(inch);
-  const gasL = Math.round(v.litres * LOX_GAS_FACTOR);
-  const totalPt = ward+icu+ccu;
-  const readings = loxGetReadings();
-  const prev = [...readings].sort((a,b)=>a.date<b.date?1:-1).find(r=>r.date<date);
-  const consumption = prev ? Math.max(0,(prev.gasL||0)-gasL) : null;
-  const perPt = (consumption&&totalPt>0) ? Math.round(consumption/totalPt) : null;
-  const rec = { _id:'lox_'+date, date, inch, gallons:v.gallons, litres:v.litres, gasL, ward, icu, ccu, totalPt, consumption, perPt, notes, _ts:new Date().toISOString(), _by:(window.CU?.name||'Biomedical') };
-  const idx = readings.findIndex(r=>r.date===date);
-  if (idx>=0) readings[idx]=rec; else readings.push(rec);
+  var date=(document.getElementById('lox-read-date')||{}).value;
+  var inch=parseFloat((document.getElementById('lox-read-inch')||{}).value);
+  var notes=((document.getElementById('lox-read-notes')||{}).value)||'';
+  var ward=parseInt(((document.getElementById('lox-pt-ward')||{}).value))||0;
+  var icu=parseInt(((document.getElementById('lox-pt-icu')||{}).value))||0;
+  var ccu=parseInt(((document.getElementById('lox-pt-ccu')||{}).value))||0;
+  if(!date){toast('Select a date','#f59e0b');return;}
+  if(!inch||inch<2||inch>84){toast('Enter 2-84 inch H2O','#f59e0b');return;}
+  var v=loxTableLookup(inch);
+  var gasL=Math.round(v.litres*LOX_GAS_FACTOR);
+  var totalPt=ward+icu+ccu;
+  var readings=loxGetReadings();
+  var prev=null;
+  for(var x=0;x<readings.length;x++){if(readings[x].date<date){prev=readings[x];break;}}
+  var consumption=prev?Math.max(0,(prev.gasL||0)-gasL):null;
+  var perPt=(consumption!=null&&totalPt>0)?Math.round(consumption/totalPt):null;
+  var rec={_id:'lox_'+date,date:date,inch:inch,gallons:v.gallons,litres:v.litres,gasL:gasL,
+    ward:ward,icu:icu,ccu:ccu,totalPt:totalPt,consumption:consumption,perPt:perPt,notes:notes,
+    _ts:new Date().toISOString(),_by:(window.CU&&window.CU.name)||'Biomedical'};
+  var found=false;
+  for(var x=0;x<readings.length;x++){if(readings[x].date===date){readings[x]=rec;found=true;break;}}
+  if(!found)readings.push(rec);
   loxSaveReadings(readings);
-  dbWrite('mg_lox', rec);
-  ['lox-read-inch','lox-read-notes','lox-pt-ward','lox-pt-icu','lox-pt-ccu'].forEach(id=>{ const e=document.getElementById(id); if(e) e.value=''; });
-  ['lox-gallons','lox-litres','lox-gas'].forEach(id=>{ const e=document.getElementById(id); if(e) e.textContent='--'; });
-  const tot=document.getElementById('lox-pt-total'); if(tot) tot.textContent='0';
-  toast('LOX reading saved for '+date, '#10b981');
+  dbWrite('mg_lox',rec);
+  ['lox-read-inch','lox-read-notes','lox-pt-ward','lox-pt-icu','lox-pt-ccu'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  function se(id,v){var e=document.getElementById(id);if(e)e.textContent=v;}
+  se('lox-gallons','--');se('lox-litres','--');se('lox-gas','--');se('lox-pt-total','0');
+  toast('LOX reading saved - '+date,'#10b981');
   loxRenderDashboard();
 }
 
 function loxDeleteReading(date) {
-  if (!confirm('Delete reading for '+date+'?')) return;
-  loxSaveReadings(loxGetReadings().filter(r=>r.date!==date));
+  if(!confirm('Delete reading for '+date+'?'))return;
+  loxSaveReadings(loxGetReadings().filter(function(r){return r.date!==date;}));
   dbDelete('mg_lox','lox_'+date);
   loxRenderDashboard();
-  toast('Reading deleted');
+  toast('Deleted');
 }
 
-function loxRenderDashboard() {
-  const readings = loxGetReadings().sort((a,b)=>a.date<b.date?1:-1);
-  if (!readings.length) { loxRenderHistory([]); return; }
-  const latest = readings[0];
-  const consR  = readings.filter(r=>r.consumption!=null).slice(0,7);
-  const avgCons = consR.length ? Math.round(consR.reduce((s,r)=>s+r.consumption,0)/consR.length) : null;
-  const reserveHrs = (avgCons&&latest.gasL) ? Math.round((latest.gasL/avgCons)*24) : null;
-  const pct = latest.litres ? Math.min(100,Math.round((latest.litres/LOX_TANK_MAX_L)*100)) : 0;
-  const se = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
-  se('lox-kpi-level',   latest.litres?latest.litres.toLocaleString()+' L':'--');
-  se('lox-kpi-cons',    latest.consumption!=null?(latest.consumption/1000).toFixed(1)+'K L':'--');
-  se('lox-kpi-reserve', reserveHrs!=null?reserveHrs+' hrs':'--');
-  const ppArr = readings.filter(r=>r.perPt).slice(0,7);
-  const avgPP = ppArr.length?Math.round(ppArr.reduce((s,r)=>s+r.perPt,0)/ppArr.length):null;
-  se('lox-kpi-perpt', avgPP?avgPP.toLocaleString()+' L':'--');
-  const rc=document.getElementById('lox-kpi-reserve-card');
-  if(rc&&reserveHrs!=null) rc.style.setProperty('--c',reserveHrs>=72?'#10b981':reserveHrs>=48?'#f59e0b':'#dc2626');
-  const badge=document.getElementById('lox-48hr-badge');
-  if(badge&&reserveHrs!=null) {
-    const ok=reserveHrs>=48, warn=ok&&reserveHrs<72;
-    badge.style.background=ok?(warn?'rgba(245,158,11,.1)':'rgba(16,185,129,.1)'):'rgba(220,38,38,.1)';
-    badge.style.borderColor=ok?(warn?'#f59e0b':'#10b981'):'#dc2626';
-    const e=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
-    e('lox-48hr-icon', ok?(warn?'warning':'check_circle'):'cancel');
-    const icons={'warning':'⚠️','check_circle':'✅','cancel':'❌'};
-    const ic=document.getElementById('lox-48hr-icon'); if(ic) ic.textContent=icons[ic.textContent]||ic.textContent;
-    e('lox-48hr-sub', ok?(warn?'Adequate but approaching minimum — plan refill soon':'Exceeds 48hr CBAHI requirement — Compliant'):'CRITICAL: Below 48-hour minimum — refill immediately!');
-    const vEl=document.getElementById('lox-48hr-val');
-    if(vEl){vEl.textContent=reserveHrs;vEl.style.color=ok?(warn?'#d97706':'#10b981'):'#dc2626';}
-    const tEl=document.getElementById('lox-48hr-icon'); if(tEl) tEl.textContent=ok?(warn?'⚠️':'✅'):'❌';
+function loxUpdateTank(pct, latest) {
+  var fill=document.getElementById('lox-tank-fill');
+  var pEl=document.getElementById('lox-tank-pct');
+  var lEl=document.getElementById('lox-tank-label');
+  if(!fill)return;
+  fill.style.height=pct+'%';
+  fill.style.background=pct>=50?'linear-gradient(180deg,#60a5fa,#1d4ed8)':pct>=25?'linear-gradient(180deg,#fbbf24,#d97706)':'linear-gradient(180deg,#f87171,#dc2626)';
+  if(pEl)pEl.textContent=pct+'%';
+  if(lEl)lEl.textContent=latest?latest.litres.toLocaleString()+' L - '+latest.date:'No readings yet';
+}
+
+function loxUpdate48hr(hrs) {
+  var badge=document.getElementById('lox-48hr-badge');
+  var icon=document.getElementById('lox-48hr-icon');
+  var sub=document.getElementById('lox-48hr-sub');
+  var val=document.getElementById('lox-48hr-val');
+  if(!badge)return;
+  if(hrs==null){
+    badge.style.background='var(--s2)';badge.style.borderColor='var(--bd)';
+    if(icon)icon.textContent='?';
+    if(sub)sub.textContent='Enter at least 2 daily readings to calculate reserve';
+    if(val)val.textContent='--';
+    return;
   }
-  const fill=document.getElementById('lox-tank-fill');
-  if(fill){fill.style.height=pct+'%';fill.style.background=pct>=50?'linear-gradient(180deg,#60a5fa,#1d4ed8)':pct>=25?'linear-gradient(180deg,#fbbf24,#d97706)':'linear-gradient(180deg,#f87171,#dc2626)';}
-  se('lox-tank-pct',   pct+'%');
-  se('lox-tank-label', latest.litres.toLocaleString()+' L  '+latest.date);
-  const last30=[...readings].reverse().slice(-30);
-  const consData=last30.filter(r=>r.consumption!=null);
-  const ctx1=document.getElementById('lox-cons-chart');
-  if(ctx1&&typeof Chart!=='undefined'&&consData.length){
-    if(window._loxConsChart){try{window._loxConsChart.destroy();}catch(e){}}
-    window._loxConsChart=new Chart(ctx1,{type:'bar',data:{labels:consData.map(r=>r.date.slice(5)),datasets:[{label:'Daily O2 Consumption (L gas)',data:consData.map(r=>r.consumption),backgroundColor:consData.map(r=>r.consumption>50000?'#dc2626':r.consumption>30000?'#f59e0b':'#3b82f6'),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:v=>(v/1000).toFixed(0)+'K'}},x:{ticks:{font:{size:9}}}}}});
+  var ok=hrs>=48,warn=ok&&hrs<72;
+  badge.style.background=ok?(warn?'rgba(245,158,11,.1)':'rgba(16,185,129,.1)'):'rgba(220,38,38,.1)';
+  badge.style.borderColor=ok?(warn?'#f59e0b':'#10b981'):'#dc2626';
+  if(icon)icon.textContent=ok?(warn?'!':'OK'):'!!';
+  if(sub)sub.textContent=ok?(warn?'Adequate but approaching minimum - plan refill soon':'Exceeds 48hr CBAHI requirement - Compliant'):'CRITICAL: Below 48-hour minimum - arrange refill immediately!';
+  if(val){val.textContent=hrs;val.style.color=ok?(warn?'#d97706':'#10b981'):'#dc2626';}
+}
+
+function loxUpdateKPIs(readings) {
+  function se(id,v){var e=document.getElementById(id);if(e)e.textContent=v;}
+  if(!readings.length){
+    se('lox-kpi-level','--');se('lox-kpi-cons','--');se('lox-kpi-reserve','--');se('lox-kpi-perpt','--');
+    loxUpdateTank(0,null);loxUpdate48hr(null);return;
   }
-  const ptData=last30.filter(r=>r.consumption!=null&&r.totalPt>0);
-  const ctx2=document.getElementById('lox-patient-chart');
-  if(ctx2&&typeof Chart!=='undefined'&&ptData.length){
-    if(window._loxPtChart){try{window._loxPtChart.destroy();}catch(e){}}
-    window._loxPtChart=new Chart(ctx2,{type:'bar',data:{labels:ptData.map(r=>r.date.slice(5)),datasets:[{type:'bar',label:'O2 Consumption (L gas)',data:ptData.map(r=>r.consumption),backgroundColor:'rgba(59,130,246,.5)',yAxisID:'y'},{type:'line',label:'Total Inpatients',data:ptData.map(r=>r.totalPt),borderColor:'#10b981',backgroundColor:'transparent',tension:0.4,pointRadius:3,yAxisID:'y2'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10}}}},scales:{y:{position:'left',beginAtZero:true,ticks:{callback:v=>(v/1000).toFixed(0)+'K'}},y2:{position:'right',beginAtZero:true,grid:{drawOnChartArea:false}}}}});
+  var latest=readings[0];
+  var cArr=readings.filter(function(r){return r.consumption!=null;}).slice(0,7);
+  var avgC=cArr.length?Math.round(cArr.reduce(function(s,r){return s+r.consumption;},0)/cArr.length):null;
+  var hrs=(avgC&&latest.gasL)?Math.round((latest.gasL/avgC)*24):null;
+  var ppArr=readings.filter(function(r){return r.perPt!=null;}).slice(0,7);
+  var avgPP=ppArr.length?Math.round(ppArr.reduce(function(s,r){return s+r.perPt;},0)/ppArr.length):null;
+  se('lox-kpi-level',latest.litres?latest.litres.toLocaleString()+' L':'--');
+  se('lox-kpi-cons',latest.consumption!=null?(latest.consumption/1000).toFixed(1)+'K L':'--');
+  se('lox-kpi-reserve',hrs!=null?hrs+' hrs':'--');
+  se('lox-kpi-perpt',avgPP?avgPP.toLocaleString()+' L':'--');
+  var rc=document.getElementById('lox-kpi-reserve-card');
+  if(rc&&hrs!=null)rc.style.setProperty('--c',hrs>=72?'#10b981':hrs>=48?'#f59e0b':'#dc2626');
+  var pct=latest.litres?Math.min(100,Math.round((latest.litres/LOX_MAX_LITRES)*100)):0;
+  loxUpdateTank(pct,latest);
+  loxUpdate48hr(hrs);
+}
+
+function loxRenderCharts(readings) {
+  if(typeof Chart==='undefined')return;
+  var last30=readings.slice().reverse().slice(-30);
+  var cData=last30.filter(function(r){return r.consumption!=null;});
+  var ctx1=document.getElementById('lox-cons-chart');
+  if(ctx1&&cData.length){
+    if(window._loxCC){try{window._loxCC.destroy();}catch(e){}}
+    window._loxCC=new Chart(ctx1,{type:'bar',data:{
+      labels:cData.map(function(r){return r.date.slice(5);}),
+      datasets:[{label:'Daily O2 Consumption (L gas)',borderRadius:4,
+        data:cData.map(function(r){return r.consumption;}),
+        backgroundColor:cData.map(function(r){return r.consumption>50000?'#dc2626':r.consumption>30000?'#f59e0b':'#3b82f6';})}]
+    },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{y:{beginAtZero:true,ticks:{callback:function(v){return(v/1000).toFixed(0)+'K';}}},x:{ticks:{font:{size:9}}}}}});
   }
-  const wBody=document.getElementById('lox-weekly-body');
-  if(wBody){
-    const wm={};
-    readings.forEach(r=>{const d=new Date(r.date);const wk=new Date(d);wk.setDate(d.getDate()-d.getDay());const key=wk.toISOString().slice(0,10);if(!wm[key])wm[key]=[];wm[key].push(r);});
-    const weeks=Object.entries(wm).sort((a,b)=>a[0]<b[0]?1:-1).slice(0,8);
-    wBody.innerHTML=weeks.map(([wk,days])=>{
-      const cR=days.filter(r=>r.consumption!=null);
-      const aC=cR.length?Math.round(cR.reduce((s,r)=>s+r.consumption,0)/cR.length):null;
-      const pk=cR.length?Math.max(...cR.map(r=>r.consumption)):null;
-      const pR=days.filter(r=>r.totalPt>0);
-      const aP=pR.length?Math.round(pR.reduce((s,r)=>s+r.totalPt,0)/pR.length):null;
-      const pp=aC&&aP?Math.round(aC/aP):null;
-      const gl=days.filter(r=>r.gasL);
-      const mr=gl.length&&aC?Math.round((Math.min(...gl.map(r=>r.gasL))/aC)*24):null;
-      const rc2=mr==null?'':mr>=48?'color:#16a34a;':mr>=24?'color:#d97706;':'color:#dc2626;';
-      return '<tr><td style="font-weight:700;">W/E '+wk.slice(5)+'</td><td>'+(aC!=null?(aC/1000).toFixed(1)+'K':'--')+'</td><td>'+(pk!=null?(pk/1000).toFixed(1)+'K':'--')+'</td><td>'+(aP||'--')+'</td><td>'+(pp?pp.toLocaleString():'--')+'</td><td style="'+rc2+'">'+(mr!=null?mr+' hrs':'--')+'</td></tr>';
-    }).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--mu);padding:12px;">No weekly data yet</td></tr>';
+  var pData=last30.filter(function(r){return r.consumption!=null&&r.totalPt>0;});
+  var ctx2=document.getElementById('lox-patient-chart');
+  if(ctx2&&pData.length){
+    if(window._loxPC){try{window._loxPC.destroy();}catch(e){}}
+    window._loxPC=new Chart(ctx2,{type:'bar',data:{
+      labels:pData.map(function(r){return r.date.slice(5);}),
+      datasets:[
+        {type:'bar',label:'O2 Consumption (L gas)',yAxisID:'y',backgroundColor:'rgba(59,130,246,.5)',data:pData.map(function(r){return r.consumption;})},
+        {type:'line',label:'Total Inpatients',yAxisID:'y2',borderColor:'#10b981',backgroundColor:'transparent',tension:0.4,pointRadius:3,data:pData.map(function(r){return r.totalPt;})}
+      ]
+    },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10}}}},
+      scales:{y:{position:'left',beginAtZero:true,ticks:{callback:function(v){return(v/1000).toFixed(0)+'K';}}},
+              y2:{position:'right',beginAtZero:true,grid:{drawOnChartArea:false}}}}});
   }
-  loxRenderHistory(readings);
+}
+
+function loxRenderWeekly(readings) {
+  var body=document.getElementById('lox-weekly-body');if(!body)return;
+  var wm={};
+  readings.forEach(function(r){
+    var d=new Date(r.date),wk=new Date(d);wk.setDate(d.getDate()-d.getDay());
+    var key=wk.toISOString().slice(0,10);if(!wm[key])wm[key]=[];wm[key].push(r);
+  });
+  var weeks=Object.entries(wm).sort(function(a,b){return a[0]<b[0]?1:-1;}).slice(0,8);
+  if(!weeks.length){body.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--mu);padding:12px;">No data yet</td></tr>';return;}
+  body.innerHTML=weeks.map(function(wArr){
+    var wk=wArr[0],days=wArr[1];
+    var cR=days.filter(function(r){return r.consumption!=null;});
+    var aC=cR.length?Math.round(cR.reduce(function(s,r){return s+r.consumption;},0)/cR.length):null;
+    var pk=cR.length?Math.max.apply(null,cR.map(function(r){return r.consumption;})):null;
+    var pR=days.filter(function(r){return r.totalPt>0;});
+    var aP=pR.length?Math.round(pR.reduce(function(s,r){return s+r.totalPt;},0)/pR.length):null;
+    var pp=aC&&aP?Math.round(aC/aP):null;
+    var gl=days.filter(function(r){return r.gasL;});
+    var mr=gl.length&&aC?Math.round((Math.min.apply(null,gl.map(function(r){return r.gasL;}))/aC)*24):null;
+    var mc=mr==null?'':mr>=48?'color:#16a34a;':mr>=24?'color:#d97706;':'color:#dc2626;';
+    return '<tr><td style="font-weight:700;">W/E '+wk.slice(5)+'</td>'
+      +'<td>'+(aC!=null?(aC/1000).toFixed(1)+'K':'--')+'</td>'
+      +'<td>'+(pk!=null?(pk/1000).toFixed(1)+'K':'--')+'</td>'
+      +'<td>'+(aP||'--')+'</td>'
+      +'<td>'+(pp?pp.toLocaleString():'--')+'</td>'
+      +'<td style="'+mc+'">'+(mr!=null?mr+' hrs':'--')+'</td></tr>';
+  }).join('');
 }
 
 function loxRenderHistory(readings) {
-  const body=document.getElementById('lox-history-body'); if(!body) return;
-  if(!readings||!readings.length){body.innerHTML='<tr><td colspan="14" style="text-align:center;color:var(--mu);padding:20px;">No readings saved yet</td></tr>';return;}
-  body.innerHTML=readings.map((r,i)=>{
-    const cStr=r.consumption!=null?(r.consumption/1000).toFixed(1)+'K':'--';
-    const cc=r.consumption>50000?'#dc2626':r.consumption>30000?'#d97706':'#3b82f6';
+  var body=document.getElementById('lox-history-body');if(!body)return;
+  if(!readings.length){
+    body.innerHTML='<tr><td colspan="14" style="text-align:center;color:var(--mu);padding:20px;">No readings yet - enter your first reading above</td></tr>';
+    return;
+  }
+  body.innerHTML=readings.map(function(r){
+    var cStr=r.consumption!=null?(r.consumption/1000).toFixed(1)+'K':'--';
+    var cc=r.consumption!=null?(r.consumption>50000?'#dc2626':r.consumption>30000?'#d97706':'#3b82f6'):'var(--mu)';
     return '<tr>'
       +'<td style="font-weight:700;white-space:nowrap;">'+r.date+'</td>'
       +'<td style="text-align:center;font-weight:700;color:#3b82f6;">'+r.inch+'"</td>'
@@ -14372,39 +14419,53 @@ function loxRenderHistory(readings) {
       +'<td style="text-align:center;">'+(r.perPt||'--')+'</td>'
       +'<td style="font-size:10px;color:var(--mu);">'+(r.notes||'--')+'</td>'
       +'<td style="font-size:10px;color:var(--mu);">'+(r._by||'--')+'</td>'
-      +'<td><button class="btn br" style="font-size:9px;padding:2px 6px;" data-d="'+r.date+'" onclick="loxDeleteReading(this.dataset.d)">del</button></td>'
+      +'<td><button class="btn br" style="font-size:9px;padding:2px 6px;" data-dt="'+r.date+'" onclick="loxDeleteReading(this.dataset.dt)">del</button></td>'
       +'</tr>';
   }).join('');
 }
 
 function loxExportHistory() {
-  const readings=loxGetReadings().sort((a,b)=>a.date<b.date?1:-1);
-  if(!readings.length){toast('No data to export','#f59e0b');return;}
-  const rows=readings.map(r=>'<tr><td>'+r.date+'</td><td>'+r.inch+'"</td><td>'+r.gallons+'</td><td>'+r.litres+'</td><td>'+r.gasL+'</td><td>'+(r.consumption!=null?r.consumption:'--')+'</td><td>'+(r.ward||0)+'</td><td>'+(r.icu||0)+'</td><td>'+(r.ccu||0)+'</td><td>'+(r.totalPt||0)+'</td><td>'+(r.perPt||'--')+'</td><td>'+(r.notes||'')+'</td><td>'+(r._by||'')+'</td></tr>').join('');
-  const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>LOX Daily Log</title><style>body{font-family:Arial;font-size:11px;}table{border-collapse:collapse;width:100%;}th{background:#1a3a5c;color:#fff;padding:6px;}td{border:1px solid #ddd;padding:5px;}</style></head><body><h2>LOX Daily Reading Log - Obeid Specialized Hospital</h2><table><thead><tr><th>Date</th><th>Inch H2O</th><th>Gallons</th><th>Litres LOX</th><th>Gas O2 (L)</th><th>Consumption</th><th>Ward</th><th>ICU</th><th>CCU</th><th>Total Pts</th><th>L/Pt/Day</th><th>Notes</th><th>By</th></tr></thead><tbody>'+rows+'</tbody></table></body></html>';
-  const b=new Blob([html],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='LOX_Daily_Log_'+new Date().toISOString().slice(0,10)+'.html';a.click();toast('Exported','#10b981');
+  var readings=loxGetReadings();
+  if(!readings.length){toast('No data','#f59e0b');return;}
+  var rows=readings.map(function(r){return '<tr><td>'+r.date+'</td><td>'+r.inch+'"</td><td>'+(r.gallons||'')+'</td><td>'+(r.litres||'')+'</td><td>'+(r.gasL||'')+'</td><td>'+(r.consumption!=null?r.consumption:'--')+'</td><td>'+(r.ward||0)+'</td><td>'+(r.icu||0)+'</td><td>'+(r.ccu||0)+'</td><td>'+(r.totalPt||0)+'</td><td>'+(r.perPt||'--')+'</td><td>'+(r.notes||'')+'</td><td>'+(r._by||'')+'</td></tr>';}).join('');
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>LOX Daily Log</title><style>body{font-family:Arial;font-size:11px;}table{border-collapse:collapse;width:100%;}th{background:#1a3a5c;color:#fff;padding:6px;}td{border:1px solid #ddd;padding:5px;}</style></head><body><h2>LOX Daily Reading Log - Obeid Specialized Hospital</h2><table><thead><tr><th>Date</th><th>Inch H2O</th><th>Gallons</th><th>Litres LOX</th><th>Gas O2 (L)</th><th>Consumption</th><th>Ward</th><th>ICU</th><th>CCU</th><th>Total Pts</th><th>L/Pt/Day</th><th>Notes</th><th>By</th></tr></thead><tbody>'+rows+'</tbody></table></body></html>';
+  var b=new Blob([html],{type:'text/html'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='LOX_Log_'+new Date().toISOString().slice(0,10)+'.html';a.click();toast('Exported','#10b981');
 }
 
 function loxExportReport() {
-  const readings=loxGetReadings().sort((a,b)=>a.date<b.date?1:-1);
-  if(!readings.length){toast('No data to export','#f59e0b');return;}
-  const latest=readings[0];
-  const consR=readings.filter(r=>r.consumption!=null).slice(0,7);
-  const avgCons=consR.length?Math.round(consR.reduce((s,r)=>s+r.consumption,0)/consR.length):0;
-  const reserveHrs=avgCons&&latest.gasL?Math.round((latest.gasL/avgCons)*24):0;
-  const ok=reserveHrs>=48;
-  const rows7=readings.slice(0,7).map(r=>'<tr><td>'+r.date+'</td><td>'+r.inch+'"</td><td>'+(r.litres!=null?r.litres.toLocaleString():'--')+'</td><td>'+(r.gasL?(r.gasL/1000).toFixed(1)+'K':'--')+'</td><td>'+(r.consumption!=null?(r.consumption/1000).toFixed(1)+'K':'--')+'</td><td>'+(r.totalPt||'--')+'</td><td>'+(r.perPt||'--')+'</td></tr>').join('');
-  const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>O2 Reserve Report FMS 32.8</title><style>body{font-family:Arial;margin:24px;font-size:12px;}.hdr{background:#1a3a5c;color:#fff;padding:16px;border-radius:8px;}.row{display:flex;gap:16px;margin:12px 0;}.box{flex:1;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;text-align:center;}.big{font-size:28px;font-weight:800;}.lbl{font-size:10px;color:#6b7280;margin-top:4px;}.badge{padding:12px 24px;border-radius:8px;font-size:16px;font-weight:700;display:inline-block;margin:12px 0;}.sig{display:flex;gap:40px;margin-top:40px;}.sig-line{flex:1;border-top:1px solid #999;padding-top:8px;font-size:10px;color:#666;}table{width:100%;border-collapse:collapse;margin-top:12px;}th{background:#1a3a5c;color:#fff;padding:7px;font-size:11px;}td{border:1px solid #e2e8f0;padding:6px;font-size:11px;}</style></head><body>'
-    +'<div class="hdr"><h2 style="margin:0;">O2 Reserve Assessment Report - FMS 32.8</h2><p style="margin:4px 0 0;opacity:.8;">Obeid Specialized Hospital - Medical Gas Dept - '+new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})+'</p></div>'
-    +'<div class="row" style="margin-top:16px;"><div class="box"><div class="big" style="color:#3b82f6;">'+(latest.litres!=null?latest.litres.toLocaleString():'--')+'</div><div class="lbl">Current LOX Level (L)</div></div><div class="box"><div class="big" style="color:#1d4ed8;">'+(latest.gasL?(latest.gasL/1000).toFixed(0)+'K':'--')+'</div><div class="lbl">Gaseous O2 Equiv. (L)</div></div><div class="box"><div class="big" style="color:#d97706;">'+(avgCons?(avgCons/1000).toFixed(1)+'K':'--')+'</div><div class="lbl">7-Day Avg Daily Consumption</div></div><div class="box"><div class="big" style="color:'+(ok?'#16a34a':'#dc2626')+';">'+reserveHrs+'</div><div class="lbl">Reserve Hours (Min: 48)</div></div></div>'
-    +'<div class="badge" style="background:'+(ok?'#dcfce7':'#fee2e2')+';color:'+(ok?'#15803d':'#dc2626')+';border:2px solid '+(ok?'#16a34a':'#dc2626')+';">'+(ok?'COMPLIANT':'NON-COMPLIANT')+' - FMS 32.8 48-Hour O2 Reserve</div>'
-    +'<h3>Last 7 Days Readings</h3><table><thead><tr><th>Date</th><th>Inch H2O</th><th>LOX (L)</th><th>Gas O2</th><th>Consumption</th><th>Total Pts</th><th>L/Pt/Day</th></tr></thead><tbody>'+rows7+'</tbody></table>'
-    +'<div class="sig"><div class="sig-line">Prepared by: Bashar / Robert - Biomedical Eng.<br>&nbsp;<br>Signature: _________________________ Date: ___________</div><div class="sig-line">Reviewed by: Aliks - FMS Director<br>&nbsp;<br>Signature: _________________________ Date: ___________</div></div></body></html>';
-  const b=new Blob([html],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='O2_Reserve_FMS32.8_'+new Date().toISOString().slice(0,10)+'.html';a.click();toast('FMS 32.8 Report exported','#10b981');
+  var readings=loxGetReadings();
+  if(!readings.length){toast('No data','#f59e0b');return;}
+  var latest=readings[0];
+  var cArr=readings.filter(function(r){return r.consumption!=null;}).slice(0,7);
+  var avgC=cArr.length?Math.round(cArr.reduce(function(s,r){return s+r.consumption;},0)/cArr.length):0;
+  var hrs=avgC&&latest.gasL?Math.round((latest.gasL/avgC)*24):0;
+  var ok=hrs>=48;
+  var rows7=readings.slice(0,7).map(function(r){return '<tr><td>'+r.date+'</td><td>'+r.inch+'"</td><td>'+(r.litres!=null?r.litres.toLocaleString():'--')+'</td><td>'+(r.gasL?(r.gasL/1000).toFixed(1)+'K':'--')+'</td><td>'+(r.consumption!=null?(r.consumption/1000).toFixed(1)+'K':'--')+'</td><td>'+(r.totalPt||'--')+'</td><td>'+(r.perPt||'--')+'</td></tr>';}).join('');
+  var bg=ok?'#dcfce7':'#fee2e2',fc=ok?'#15803d':'#dc2626';
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>O2 Reserve FMS 32.8</title><style>body{font-family:Arial;margin:24px;font-size:12px;}.hdr{background:#1a3a5c;color:#fff;padding:16px;border-radius:8px;}.cards{display:flex;gap:12px;margin:16px 0;}.card{flex:1;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;text-align:center;}.big{font-size:26px;font-weight:800;}.lbl{font-size:10px;color:#6b7280;margin-top:4px;}.badge{padding:10px 20px;border-radius:8px;font-size:15px;font-weight:700;display:inline-block;margin:12px 0;}table{width:100%;border-collapse:collapse;margin-top:12px;}th{background:#1a3a5c;color:#fff;padding:7px;}td{border:1px solid #e2e8f0;padding:6px;}.sig{display:flex;gap:40px;margin-top:40px;}.sl{flex:1;border-top:1px solid #999;padding-top:8px;font-size:10px;color:#666;}</style></head><body>'
+    +'<div class="hdr"><h2 style="margin:0">O2 Reserve Assessment - FMS 32.8</h2><p style="margin:4px 0 0;opacity:.8">Obeid Specialized Hospital - '+new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})+'</p></div>'
+    +'<div class="cards"><div class="card"><div class="big" style="color:#3b82f6">'+(latest.litres!=null?latest.litres.toLocaleString():'--')+'</div><div class="lbl">LOX (L)</div></div>'
+    +'<div class="card"><div class="big" style="color:#1d4ed8">'+(latest.gasL?(latest.gasL/1000).toFixed(0)+'K':'--')+'</div><div class="lbl">Gas O2 (L)</div></div>'
+    +'<div class="card"><div class="big" style="color:#d97706">'+(avgC?(avgC/1000).toFixed(1)+'K':'--')+'</div><div class="lbl">Avg Daily Cons.</div></div>'
+    +'<div class="card"><div class="big" style="color:'+(ok?'#16a34a':'#dc2626')+'">'+hrs+'</div><div class="lbl">Reserve Hrs</div></div></div>'
+    +'<div class="badge" style="background:'+bg+';color:'+fc+';border:2px solid '+fc+'">'+(ok?'COMPLIANT':'NON-COMPLIANT')+' - FMS 32.8 48-Hour O2 Reserve</div>'
+    +'<table><thead><tr><th>Date</th><th>Inch</th><th>LOX (L)</th><th>Gas O2</th><th>Consumption</th><th>Pts</th><th>L/Pt</th></tr></thead><tbody>'+rows7+'</tbody></table>'
+    +'<div class="sig"><div class="sl">Prepared by: Bashar/Robert - Biomedical<br><br>Signature: ___________  Date: _______</div><div class="sl">Approved by: Aliks - FMS Director<br><br>Signature: ___________  Date: _______</div></div>'
+    +'</body></html>';
+  var b=new Blob([html],{type:'text/html'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='O2_Reserve_'+new Date().toISOString().slice(0,10)+'.html';a.click();toast('Report exported','#10b981');
+}
+
+function loxRenderDashboard() {
+  var readings=loxGetReadings();
+  loxRenderHistory(readings);
+  loxUpdateKPIs(readings);
+  loxRenderCharts(readings);
+  loxRenderWeekly(readings);
 }
 
 function loxInit() {
-  const di=document.getElementById('lox-read-date'); if(di&&!di.value) di.value=new Date().toISOString().slice(0,10);
+  var di=document.getElementById('lox-read-date');
+  if(di&&!di.value) di.value=new Date().toISOString().slice(0,10);
   loxRenderDashboard();
 }
 
