@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1522';
+  var v = '20260606-1523';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -5534,6 +5534,24 @@ async function dbLoadAll() {
     dbShowStatus('online', totalRecords);
     if(j.data&&j.data.platform_settings) settingsPullFromDB(j.data.platform_settings);
 
+    // ── Restore LOX gauge readings from DB (lox_gauge table) ──
+    if (j.data && j.data.lox_gauge && j.data.lox_gauge.length) {
+      const lgKey = PX + 'lox_gauge_readings';
+      let lgLocal = [];
+      try { lgLocal = JSON.parse(localStorage.getItem(lgKey) || '[]'); } catch(e) {}
+      const lgMap = {};
+      lgLocal.forEach(r => { if(r.date) lgMap[r.date] = r; });
+      j.data.lox_gauge.forEach(r => {
+        if (r.date && (!lgMap[r.date] || (r._ts||'') > (lgMap[r.date]._ts||''))) lgMap[r.date] = r;
+      });
+      const lgMerged = Object.values(lgMap).sort((a,b) => a.date < b.date ? 1 : -1);
+      if (lgMerged.length) localStorage.setItem(lgKey, JSON.stringify(lgMerged));
+      if (typeof loxRenderDashboard === 'function') {
+        const loxEl = document.getElementById('mg-o2calc');
+        if (loxEl && loxEl.style.display !== 'none') setTimeout(loxRenderDashboard, 200);
+      }
+    }
+
     // ── Restore KPI entries from DB into per-KPI localStorage keys ──
     if (j.data && j.data.kpi2_entries && j.data.kpi2_entries.length) {
       let kpiRestored = 0;
@@ -6081,7 +6099,7 @@ function renderDash(){
 }
 function buildAlerts(){
   const a=[],now=new Date(),today=now.toISOString().split('T')[0];
-  if(!ld('pmgCheck').find(r=>r.date===today))a.push({c:'alc',i:'🔴',t:'PMG checklist not submitted today',s:'Bashar — Biomedical'});
+  const todayLOX=ld('mg_lox').find(r=>r.date===today&&r._type==='lox'); if(!todayLOX)a.push({c:'alc',i:'🔴',t:'LOX Daily Checklist not submitted today',s:'Bashar — Biomedical'});
   const fd=ld('fireDrill').length;if(fd<4)a.push({c:'alw',i:'🟡',t:`Fire drills: ${fd}/4 this year`,s:'Moe — FMS.1.1.6'});
   const ec=ld('eoc').length;if(ec<12)a.push({c:'alw',i:'🟡',t:`EOC rounds: ${ec}/12 this year`,s:'Moe — FMS.1.1.1'});
   const td=ld('tldReview').length;if(td<4)a.push({c:'alw',i:'🟡',t:`TLD reviews: ${td}/4 this year`,s:'Bashar — FMS.9.7'});
@@ -7388,10 +7406,15 @@ function mgSave(type) {
       ? (el.files[0] ? { n: el.files[0].name } : null)
       : el.value;
   });
-  // Normalize date to YYYY-MM-DD regardless of what the input returns
+  // Normalize date to YYYY-MM-DD (timezone-safe regex extraction)
   if (rec.date && rec.date.length > 10) {
-    const pd = new Date(rec.date);
-    if (!isNaN(pd)) rec.date = pd.getFullYear()+'-'+String(pd.getMonth()+1).padStart(2,'0')+'-'+String(pd.getDate()).padStart(2,'0');
+    const dm = String(rec.date).match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (dm) rec.date = dm[1]+'-'+dm[2]+'-'+dm[3];
+    else { // try month name format: "Mon Jun 15 2026..."
+      const mn = String(rec.date).match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\s+(\d{4})/);
+      const MMAP = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+      if (mn) rec.date = mn[3]+'-'+MMAP[mn[1]]+'-'+String(mn[2]).padStart(2,'0');
+    }
   }
   const miss = def.req.filter(r => !rec[r] || rec[r] === '');
   if (miss.length) { toast('⚠️ Fill required: ' + miss.join(', '), '#f59e0b'); return; }
@@ -7433,7 +7456,8 @@ const MG_ROWS = {
     const ppmOk = !isNaN(ppm) && ppm >= minP && ppm <= maxP;
     const pamC  = isNaN(pam) ? 'var(--mu)' : pamOk ? 'var(--gn)' : 'var(--rd)';
     const ppmC  = isNaN(ppm) ? 'var(--mu)' : ppmOk ? 'var(--gn)' : 'var(--rd)';
-    return `<td>${r.date||'—'}</td><td>${r.shift||'—'}</td>
+    const dispDate = r.date ? (r.date.length > 10 ? r.date.slice(0,10) : r.date) : '—';
+    return `<td>${dispDate}</td><td>${r.shift||'—'}</td>
     <td>${r.o2am!==undefined&&r.o2am!==''?r.o2am+'%':'—'}</td>
     <td style="color:${pamC};font-weight:600;">${r.pam||'—'} BAR</td>
     <td style="color:${ppmC};font-weight:600;">${r.ppm||'—'} BAR</td>
@@ -14226,19 +14250,26 @@ function loxCalcTotal() {
 }
 
 function loxGetReadings() {
+  // 'lox_gauge_readings' = our inch H2O physical gauge readings (separate from LOX checklist)
+  // Also check 'mg_lox' but ONLY for records that have .inch field (gauge readings)
+  // and 'lox_daily_readings' (legacy key from earlier versions)
   try {
-    var a=JSON.parse(localStorage.getItem(PX+'mg_lox')||'[]');
+    var a=JSON.parse(localStorage.getItem(PX+'lox_gauge_readings')||'[]');
     var b=JSON.parse(localStorage.getItem(PX+'lox_daily_readings')||'[]');
+    // From mg_lox, only take records that are gauge readings (have .inch field)
+    var c=JSON.parse(localStorage.getItem(PX+'mg_lox')||'[]').filter(function(r){return r&&r.inch;});
     var map={};
-    a.forEach(function(r){if(r&&r.date)map[r.date]=r;});
-    b.forEach(function(r){if(r&&r.date&&(!map[r.date]||(r._ts||'')>(map[r.date]._ts||'')))map[r.date]=r;});
+    c.forEach(function(r){if(r.date)map[r.date]=r;});
+    b.forEach(function(r){if(r&&r.date&&r.inch&&(!map[r.date]||(r._ts||'')>(map[r.date]._ts||'')))map[r.date]=r;});
+    a.forEach(function(r){if(r&&r.date&&(!map[r.date]||(r._ts||'')>(map[r.date]._ts||'')))map[r.date]=r;});
     return Object.values(map).sort(function(a,b){return a.date<b.date?1:-1;});
   } catch(e){return [];}
 }
 
 function loxSaveReadings(arr) {
-  localStorage.setItem(PX+'mg_lox', JSON.stringify(arr));
-  localStorage.setItem(PX+'lox_daily_readings', JSON.stringify(arr));
+  // Use dedicated key to avoid collision with LOX daily checklist (mg_lox)
+  localStorage.setItem(PX+'lox_gauge_readings', JSON.stringify(arr));
+  localStorage.setItem(PX+'lox_daily_readings', JSON.stringify(arr)); // legacy compat
 }
 
 function loxSaveReading() {
@@ -14265,7 +14296,7 @@ function loxSaveReading() {
   for(var x=0;x<readings.length;x++){if(readings[x].date===date){readings[x]=rec;found=true;break;}}
   if(!found)readings.push(rec);
   loxSaveReadings(readings);
-  dbWrite('mg_lox',rec);
+  dbWrite('lox_gauge',rec); // dedicated table, avoids collision with LOX daily checklist
   ['lox-read-inch','lox-read-notes','lox-pt-ward','lox-pt-icu','lox-pt-ccu'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
   function se(id,v){var e=document.getElementById(id);if(e)e.textContent=v;}
   se('lox-gallons','--');se('lox-litres','--');se('lox-gas','--');se('lox-pt-total','0');
@@ -14276,7 +14307,7 @@ function loxSaveReading() {
 function loxDeleteReading(date) {
   if(!confirm('Delete reading for '+date+'?'))return;
   loxSaveReadings(loxGetReadings().filter(function(r){return r.date!==date;}));
-  dbDelete('mg_lox','lox_'+date);
+  dbDelete('lox_gauge','lox_'+date);
   loxRenderDashboard();
   toast('Deleted');
 }
