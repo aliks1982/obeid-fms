@@ -674,6 +674,7 @@ if ('caches' in window) {
     <div class="ni" onclick="gp('utils')" id="n-utils"><span class="ni-ic">⚡</span>Utilities (FMS.1.1.8)</div>
     <div class="nsc">FMS Standards</div>
     <div class="ni" onclick="gp('medgas')" id="n-medgas"><span class="ni-ic">🫧</span>Medical Gas (FMS.32)</div>
+    <div class="ni" onclick="gp('pmg')" id="n-pmg"><span class="ni-ic">📋</span>PMG PPM (FMS.32.1)</div>
     <div class="ni" onclick="gp('radiation')" id="n-radiation"><span class="ni-ic">☢</span>Radiation (FMS.9)</div>
     <div class="nsc">Operations</div>
     <div class="ni" onclick="gp('wo')" id="n-wo"><span class="ni-ic">🔧</span>Work Orders<span class="nb" id="woBadge">0</span></div>
@@ -3517,7 +3518,8 @@ if ('caches' in window) {
     <button class="tbtn" onclick="mgTab('airrefill',this)">🔄 Air Refill Log</button>
     <button class="tbtn" onclick="mgTab('o2calc',this)">🧮 O₂ Reserve Calc</button>
     <button class="tbtn" onclick="mgTab('log',this)">📋 All Records</button>
-    <button class="tbtn" onclick="mgTab('kpi',this)">📊 KPIs</button>
+    <button class="tbtn" onclick="mgTab('cyltest',this)">🧪 Cylinders (FMS 32.9)</button>
+        <button class="tbtn" onclick="mgTab('kpi',this)">📊 KPIs</button>
   </div>
 
   <!-- ═══ 1. LIQUID OXYGEN ═══ -->
@@ -4105,6 +4107,252 @@ if ('caches' in window) {
     <div id="mg-kpi-content"></div>
   </div>
 </div>
+
+
+  <!-- ═══ CYLINDER TESTING — FMS 32.9 ═══ -->
+  <div id="mg-cyltest" style="display:none;">
+    <div class="card" style="margin-bottom:12px;border-left:4px solid #f59e0b;">
+      <div class="ch">
+        <div class="ct">🧪 Cylinder Hydrostatic Testing Records — FMS 32.9</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn bp" style="font-size:10px;" onclick="cylAdd()">+ Add Cylinder</button>
+          <button class="btn bo" style="font-size:10px;" onclick="cylExport()">⬇ Export Report</button>
+        </div>
+      </div>
+      <div class="cb" style="padding:0;overflow-x:auto;">
+        <table class="tbl" id="cyl-tbl">
+          <thead><tr>
+            <th>Cylinder ID</th><th>Serial No.</th><th>Gas Type</th><th>Size (L)</th>
+            <th>Test Date</th><th>Next Due</th><th>Result</th><th>Testing Lab</th>
+            <th>Cert No.</th><th>Notes</th><th>Status</th><th>Actions</th>
+          </tr></thead>
+          <tbody id="cyl-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ CYLINDER ADD/EDIT MODAL ══ -->
+  <div id="cyl-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:1000;overflow-y:auto;">
+    <div style="background:var(--s1);border-radius:14px;margin:20px auto;max-width:480px;padding:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div style="font-weight:700;font-size:15px;" id="cyl-modal-title">Add Cylinder Record</div>
+        <button class="btn br" style="padding:4px 10px;" onclick="cylCloseModal()">✕</button>
+      </div>
+      <div style="display:grid;gap:10px;">
+        <input type="hidden" id="cyl-edit-id">
+        <div class="g g2">
+          <div class="ff"><label>Cylinder ID / Tag</label><input type="text" id="cyl-f-id" placeholder="e.g. CYL-O2-001" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+          <div class="ff"><label>Serial Number</label><input type="text" id="cyl-f-serial" placeholder="Manufacturer serial" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+        </div>
+        <div class="g g2">
+          <div class="ff"><label>Gas Type</label>
+            <select id="cyl-f-gas" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+              <option>Medical Oxygen (O₂)</option><option>Medical Air</option><option>Nitrous Oxide (N₂O)</option>
+              <option>Carbon Dioxide (CO₂)</option><option>Nitrogen (N₂)</option><option>Helium (He)</option><option>Mixed Gas</option>
+            </select>
+          </div>
+          <div class="ff"><label>Cylinder Size (Litres)</label><input type="number" id="cyl-f-size" placeholder="e.g. 50" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+        </div>
+        <div class="g g2">
+          <div class="ff"><label>Hydrostatic Test Date</label><input type="date" id="cyl-f-testdate" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);" oninput="cylAutoNextDue()"></div>
+          <div class="ff"><label>Next Test Due</label><input type="date" id="cyl-f-nextdue" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+        </div>
+        <div class="g g2">
+          <div class="ff"><label>Test Result</label>
+            <select id="cyl-f-result" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+              <option value="Pass">✅ Pass</option><option value="Fail">❌ Fail</option><option value="Conditional">⚠️ Conditional Pass</option>
+            </select>
+          </div>
+          <div class="ff"><label>Testing Lab / Authority</label><input type="text" id="cyl-f-lab" placeholder="Lab name or authority" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+        </div>
+        <div class="ff"><label>Certificate Number</label><input type="text" id="cyl-f-cert" placeholder="e.g. HT-2026-0042" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+        <div class="ff"><label>Notes</label><input type="text" id="cyl-f-notes" placeholder="Condition, location, remarks" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button class="btn bo" style="flex:1;" onclick="cylCloseModal()">Cancel</button>
+        <button class="btn bp" style="flex:2;" onclick="cylSave()">💾 Save Cylinder</button>
+      </div>
+    </div>
+  </div>
+
+
+<!-- ===== PMG PREVENTIVE MAINTENANCE — FMS 32.1 ===== -->
+<div class="pg" id="page-pmg">
+  <div class="ph">
+    <h1>📋 PMG Preventive Maintenance — FMS 32.1</h1>
+    <p>Scheduled &amp; completed PPM reports for all medical gas components · CBAHI FMS Standard 32.1</p>
+  </div>
+
+  <!-- Compliance summary cards -->
+  <div class="g g4" style="margin-bottom:14px;" id="pmg-summary-cards">
+    <div class="sc" style="--c:#3b82f6;"><div class="ico">🔵</div><div class="val" id="pmg-sum-lox">—</div><div class="lbl">LOX System</div></div>
+    <div class="sc" style="--c:#10b981;"><div class="ico">🌬️</div><div class="val" id="pmg-sum-air">—</div><div class="lbl">Air Compressor</div></div>
+    <div class="sc" style="--c:#8b5cf6;"><div class="ico">🔄</div><div class="val" id="pmg-sum-manifold">—</div><div class="lbl">Manifolds</div></div>
+    <div class="sc" style="--c:#f59e0b;"><div class="ico">💧</div><div class="val" id="pmg-sum-suction">—</div><div class="lbl">Suction System</div></div>
+  </div>
+
+  <!-- Tab bar -->
+  <div class="tb" style="flex-wrap:wrap;gap:2px;margin-bottom:14px;">
+    <button class="tbtn active" onclick="pmgTab('lox',this)">🔵 Liquid O₂ (LOX)</button>
+    <button class="tbtn" onclick="pmgTab('air',this)">🌬️ Air Compressor</button>
+    <button class="tbtn" onclick="pmgTab('manifold',this)">🔄 Manifolds</button>
+    <button class="tbtn" onclick="pmgTab('suction',this)">💧 Suction System</button>
+  </div>
+
+  <!-- ── LOX ── -->
+  <div id="pmg-tab-lox">
+    <div class="card" style="margin-bottom:12px;border-left:4px solid #3b82f6;">
+      <div class="ch">
+        <div class="ct">🔵 LOX System — Preventive Maintenance Records</div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn bp" style="font-size:10px;" onclick="pmgAdd('lox')">+ Add Record</button>
+          <button class="btn bo" style="font-size:10px;" onclick="pmgExport('lox')">⬇ Export</button>
+        </div>
+      </div>
+      <div class="cb" style="padding:0;overflow-x:auto;">
+        <table class="tbl" id="pmg-tbl-lox">
+          <thead><tr>
+            <th>Date Done</th><th>Component</th><th>Frequency</th><th>Contractor</th>
+            <th>Findings</th><th>Corrective Action</th><th>Cert No.</th><th>Next Due</th><th>Status</th><th>Actions</th>
+          </tr></thead>
+          <tbody id="pmg-body-lox"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── AIR COMPRESSOR ── -->
+  <div id="pmg-tab-air" style="display:none;">
+    <div class="card" style="margin-bottom:12px;border-left:4px solid #10b981;">
+      <div class="ch">
+        <div class="ct">🌬️ Air Compressor — Preventive Maintenance Records</div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn bp" style="font-size:10px;" onclick="pmgAdd('air')">+ Add Record</button>
+          <button class="btn bo" style="font-size:10px;" onclick="pmgExport('air')">⬇ Export</button>
+        </div>
+      </div>
+      <div class="cb" style="padding:0;overflow-x:auto;">
+        <table class="tbl" id="pmg-tbl-air">
+          <thead><tr>
+            <th>Date Done</th><th>Component</th><th>Frequency</th><th>Contractor</th>
+            <th>Findings</th><th>Corrective Action</th><th>Cert No.</th><th>Next Due</th><th>Status</th><th>Actions</th>
+          </tr></thead>
+          <tbody id="pmg-body-air"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MANIFOLDS ── -->
+  <div id="pmg-tab-manifold" style="display:none;">
+    <div class="card" style="margin-bottom:12px;border-left:4px solid #8b5cf6;">
+      <div class="ch">
+        <div class="ct">🔄 Medical Gas Manifolds — Preventive Maintenance Records</div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn bp" style="font-size:10px;" onclick="pmgAdd('manifold')">+ Add Record</button>
+          <button class="btn bo" style="font-size:10px;" onclick="pmgExport('manifold')">⬇ Export</button>
+        </div>
+      </div>
+      <div class="cb" style="padding:0;overflow-x:auto;">
+        <table class="tbl" id="pmg-tbl-manifold">
+          <thead><tr>
+            <th>Date Done</th><th>Component</th><th>Frequency</th><th>Contractor</th>
+            <th>Findings</th><th>Corrective Action</th><th>Cert No.</th><th>Next Due</th><th>Status</th><th>Actions</th>
+          </tr></thead>
+          <tbody id="pmg-body-manifold"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SUCTION ── -->
+  <div id="pmg-tab-suction" style="display:none;">
+    <div class="card" style="margin-bottom:12px;border-left:4px solid #f59e0b;">
+      <div class="ch">
+        <div class="ct">💧 Suction / Vacuum System — Preventive Maintenance Records</div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn bp" style="font-size:10px;" onclick="pmgAdd('suction')">+ Add Record</button>
+          <button class="btn bo" style="font-size:10px;" onclick="pmgExport('suction')">⬇ Export</button>
+        </div>
+      </div>
+      <div class="cb" style="padding:0;overflow-x:auto;">
+        <table class="tbl" id="pmg-tbl-suction">
+          <thead><tr>
+            <th>Date Done</th><th>Component</th><th>Frequency</th><th>Contractor</th>
+            <th>Findings</th><th>Corrective Action</th><th>Cert No.</th><th>Next Due</th><th>Status</th><th>Actions</th>
+          </tr></thead>
+          <tbody id="pmg-body-suction"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ PMG ADD/EDIT MODAL ══ -->
+<div id="pmg-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:1000;overflow-y:auto;">
+  <div style="background:var(--s1);border-radius:14px;margin:20px auto;max-width:500px;padding:20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div style="font-weight:700;font-size:15px;" id="pmg-modal-title">Add PMG Record</div>
+      <button class="btn br" style="padding:4px 10px;" onclick="pmgCloseModal()">✕</button>
+    </div>
+    <div style="display:grid;gap:10px;">
+      <input type="hidden" id="pmg-edit-id">
+      <input type="hidden" id="pmg-edit-comp">
+      <div class="ff"><label>Date Completed</label><input type="date" id="pmg-f-date" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+      <div class="ff"><label>Component / Sub-System</label>
+        <select id="pmg-f-component" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+          <option value="">Select component...</option>
+          <optgroup label="LOX System" id="pmg-opts-lox">
+            <option>LOX Tank &amp; Fittings</option>
+            <option>LOX Pressure Regulator</option>
+            <option>LOX Vaporizer</option>
+            <option>LOX Safety Relief Valve</option>
+            <option>LOX Pipeline &amp; Valves</option>
+          </optgroup>
+          <optgroup label="Air Compressor">
+            <option>Air Compressor Unit</option>
+            <option>Air Dryer &amp; Filters</option>
+            <option>Air Receiver Tank</option>
+            <option>Air Quality Monitoring System</option>
+            <option>Air Pipeline &amp; Valves</option>
+          </optgroup>
+          <optgroup label="Manifolds">
+            <option>O₂ Manifold (Primary)</option>
+            <option>O₂ Manifold (Secondary)</option>
+            <option>N₂O Manifold</option>
+            <option>CO₂ Manifold</option>
+            <option>N₂ Manifold</option>
+            <option>Medical Air Manifold</option>
+          </optgroup>
+          <optgroup label="Suction System">
+            <option>Vacuum Pump Unit</option>
+            <option>Suction Pipeline &amp; Valves</option>
+            <option>Bacteria Filter</option>
+            <option>Suction Receiver</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="ff"><label>Frequency</label>
+        <select id="pmg-f-freq" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+          <option>Monthly</option><option>Quarterly</option><option>Semi-Annual</option><option>Annual</option>
+        </select>
+      </div>
+      <div class="ff"><label>Contractor / Technician</label><input type="text" id="pmg-f-contractor" placeholder="Company or name" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+      <div class="ff"><label>Findings</label><textarea id="pmg-f-findings" rows="2" placeholder="Describe any findings or observations" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);resize:vertical;"></textarea></div>
+      <div class="ff"><label>Corrective Action Taken</label><textarea id="pmg-f-action" rows="2" placeholder="Actions taken or pending" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);resize:vertical;"></textarea></div>
+      <div class="ff"><label>Certificate / Report No.</label><input type="text" id="pmg-f-cert" placeholder="e.g. PPM-2026-001" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+      <div class="ff"><label>Next Due Date</label><input type="date" id="pmg-f-nextdue" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+      <div class="ff"><label>Notes</label><input type="text" id="pmg-f-notes" placeholder="Additional notes" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button class="btn bo" style="flex:1;" onclick="pmgCloseModal()">Cancel</button>
+      <button class="btn bp" style="flex:2;" onclick="pmgSave()">💾 Save Record</button>
+    </div>
+  </div>
+</div>
+
 
 <!-- ===== RADIATION ===== -->
 <div class="pg" id="page-radiation">
@@ -5927,7 +6175,7 @@ function setDate(){document.getElementById('tbDate').textContent=new Date().toLo
 function prefillDates(){const t=new Date().toISOString().split('T')[0];document.querySelectorAll('input[type=date]').forEach(e=>{if(!e.value)e.value=t;});const tm=new Date().toTimeString().slice(0,5);document.querySelectorAll('input[type=time]').forEach(e=>{if(!e.value)e.value=tm;});}
 
 // ===== NAV =====
-const PTITLES={dash:'⬡ Command Center',kpi:'📊 KPI Dashboard',cbahi:'✓ CBAHI Tracker',mms:'🔩 Maintenance Analytics',reports:'📈 Reports & Analysis',safety:'🛡 Safety — FMS.1.1.1',security:'🔒 Security — FMS.1.1.2',hazmat:'☣ Hazmat — FMS.1.1.3',emergency:'🚨 Emergency — FMS.1.1.4/5',fire:'🔥 Fire Safety — FMS.1.1.6',equip:'⚕ Medical Equipment — FMS.1.1.7',utils:'⚡ Utilities — FMS.1.1.8',medgas:'🫧 Medical Gas — FMS.32',radiation:'☢ Radiation — FMS.9',wo:'🔧 Work Orders',ckpi:'⚙ Custom KPIs',docs:'📁 Documents',pms:'📊 FMS Performance Sheet'};
+const PTITLES={dash:'⬡ Command Center',kpi:'📊 KPI Dashboard',cbahi:'✓ CBAHI Tracker',mms:'🔩 Maintenance Analytics',reports:'📈 Reports & Analysis',safety:'🛡 Safety — FMS.1.1.1',security:'🔒 Security — FMS.1.1.2',hazmat:'☣ Hazmat — FMS.1.1.3',emergency:'🚨 Emergency — FMS.1.1.4/5',fire:'🔥 Fire Safety — FMS.1.1.6',equip:'⚕ Medical Equipment — FMS.1.1.7',utils:'⚡ Utilities — FMS.1.1.8',medgas:'🫧 Medical Gas — FMS.32',radiation:'☢ Radiation — FMS.9',wo:'🔧 Work Orders',ckpi:'⚙ Custom KPIs',docs:'📁 Documents',pms:'📊 FMS Performance Sheet',pmg:'📋 PMG Preventive Maintenance — FMS 32.1'};
 function gp(id){
   document.querySelectorAll('.pg').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
@@ -5941,6 +6189,7 @@ function gp(id){
   if(id==='ckpi')renderCKPI('all');
   if(id==='reports'){renderAnalytics();setTimeout(reinitAnalCharts,150);}
   if(id==='mms')setTimeout(initMMSCharts,150);
+  if(id==='pmg')setTimeout(pmgInit,80);
   window.scrollTo(0,0);
 }
 function st(domain,sub,btn){
@@ -7285,7 +7534,7 @@ function reinitAnalCharts() {
 // Top-level MG tab panel IDs — only these get hidden on tab switch
 const MG_TAB_IDS = ['mg-lox','mg-o2backup','mg-n2o','mg-vacuum','mg-aircomp',
   'mg-airbackup','mg-ambulance','mg-cylinder','mg-o2refill','mg-airrefill',
-  'mg-o2calc','mg-log','mg-kpi'];
+  'mg-o2calc','mg-log','mg-kpi','mg-cyltest'];
 
 function mgTab(tab, btn) {
   // Only hide top-level tab divs — NOT inner tables, inputs, etc.
@@ -7303,6 +7552,7 @@ function mgTab(tab, btn) {
   if (tab === 'log')    { renderMGLog('all'); }
   if (tab === 'kpi')    { renderMGKPIs(); }
   if (tab === 'o2calc') { setTimeout(loxInit, 80); }
+  if (tab === 'cyltest') { setTimeout(cylRender, 80); }
   // Re-render the specific table if it's a checklist tab
   const checklistTabs = ['lox','o2backup','n2o','vacuum','aircomp','airbackup','ambulance','cylinder','o2refill','airrefill'];
   if (checklistTabs.includes(tab)) renderMGTable(tab);
@@ -8497,7 +8747,7 @@ const ROLE_ACCESS = {
   director:    ['ALL'],
   // Maintenance (Mostapha): fire systems, utilities, CBAHI reports — NO analytics/reports pages
   maintenance: ['n-dash','n-kpi','n-kpi2','n-wo','n-utils','n-fire','n-cbahi','n-ckpi','n-settings','n-budget','n-pms'],
-  biomedical:  ['n-dash','n-kpi','n-kpi2','n-equip','n-medgas','n-radiation','n-wo','n-cbahi','n-ckpi','n-settings','n-budget','n-pms'],
+  biomedical:  ['n-dash','n-kpi','n-kpi2','n-equip','n-medgas','n-pmg','n-radiation','n-wo','n-cbahi','n-ckpi','n-settings','n-budget','n-pms'],
   // Safety (Moe): CBAHI, safety, hazmat, emergency, fire — NO analytics/reports pages
   safety:      ['n-dash','n-kpi','n-kpi2','n-cbahi','n-safety','n-hazmat','n-emergency','n-fire','n-wo','n-ckpi','n-docs','n-settings','n-budget','n-pms'],
   security:    ['n-dash','n-kpi','n-kpi2','n-security','n-wo','n-ckpi','n-settings'],
@@ -8507,7 +8757,7 @@ const ROLE_ACCESS = {
 const PAGE_ACCESS = {
   director:    ['ALL'],
   maintenance: ['dash','kpi','kpi2','wo','utils','fire','cbahi','ckpi','settings','budget','pms'],
-  biomedical:  ['dash','kpi','kpi2','equip','medgas','radiation','wo','cbahi','ckpi','settings','budget','pms'],
+  biomedical:  ['dash','kpi','kpi2','equip','medgas','pmg','radiation','wo','cbahi','ckpi','settings','budget','pms'],
   safety:      ['dash','kpi','kpi2','cbahi','safety','hazmat','emergency','fire','wo','ckpi','docs','settings','budget','pms'],
   security:    ['dash','kpi','kpi2','security','wo','ckpi','settings'],
 };
@@ -14498,6 +14748,337 @@ function loxInit() {
   var di=document.getElementById('lox-read-date');
   if(di&&!di.value) di.value=new Date().toISOString().slice(0,10);
   loxRenderDashboard();
+}
+
+
+// ══════════════════════════════════════════════════════
+// PMG PREVENTIVE MAINTENANCE MODULE — FMS 32.1
+// ══════════════════════════════════════════════════════
+
+const PMG_COMPS = ['lox','air','manifold','suction'];
+const PMG_LABELS = {lox:'LOX System',air:'Air Compressor',manifold:'Manifolds',suction:'Suction System'};
+const PMG_COLORS = {lox:'#3b82f6',air:'#10b981',manifold:'#8b5cf6',suction:'#f59e0b'};
+
+function pmgGetRecords(comp) {
+  try { return JSON.parse(localStorage.getItem(PX+'pmg_'+comp)||'[]'); } catch(e){ return []; }
+}
+function pmgSaveRecords(comp, arr) {
+  localStorage.setItem(PX+'pmg_'+comp, JSON.stringify(arr));
+  dbWrite('pmg_ppm', {_id:'pmg_'+comp, comp, records:arr, _ts:new Date().toISOString()});
+}
+
+function pmgTab(tab, btn) {
+  PMG_COMPS.forEach(c => {
+    const el = document.getElementById('pmg-tab-'+c);
+    if (el) el.style.display = c === tab ? 'block' : 'none';
+  });
+  if (btn) {
+    btn.closest('.tb').querySelectorAll('.tbtn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+}
+
+function pmgRenderAll() {
+  PMG_COMPS.forEach(comp => pmgRenderComp(comp));
+  pmgUpdateSummary();
+}
+
+function pmgGetStatus(nextDue) {
+  if (!nextDue) return {label:'No Date', cls:'chip chip-amber'};
+  const today = new Date(); today.setHours(0,0,0,0);
+  const due = new Date(nextDue);
+  const diff = Math.round((due-today)/(1000*60*60*24));
+  if (diff < 0)  return {label:'⚠ Overdue '+Math.abs(diff)+'d', cls:'chip chip-red'};
+  if (diff <= 30) return {label:'Due in '+diff+'d', cls:'chip chip-amber'};
+  return {label:'✅ Valid', cls:'chip chip-green'};
+}
+
+function pmgRenderComp(comp) {
+  const tbody = document.getElementById('pmg-body-'+comp); if (!tbody) return;
+  const recs = pmgGetRecords(comp);
+  if (!recs.length) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--mu);padding:20px;">No records yet — click "+ Add Record" to begin</td></tr>';
+    return;
+  }
+  const sorted = [...recs].sort((a,b) => (b.date||'') > (a.date||'') ? 1 : -1);
+  tbody.innerHTML = sorted.map(r => {
+    const st = pmgGetStatus(r.nextDue);
+    return `<tr>
+      <td style="white-space:nowrap;font-weight:600;">${r.date||'—'}</td>
+      <td style="font-size:11px;">${r.component||'—'}</td>
+      <td><span class="chip chip-blue" style="font-size:9px;">${r.freq||'—'}</span></td>
+      <td style="font-size:11px;">${r.contractor||'—'}</td>
+      <td style="font-size:10px;max-width:120px;">${r.findings||'—'}</td>
+      <td style="font-size:10px;max-width:120px;">${r.action||'—'}</td>
+      <td style="font-size:10px;">${r.cert||'—'}</td>
+      <td style="white-space:nowrap;font-size:11px;">${r.nextDue||'—'}</td>
+      <td><span class="${st.cls}" style="font-size:9px;">${st.label}</span></td>
+      <td style="white-space:nowrap;">
+        <button class="btn bb" style="font-size:9px;padding:2px 6px;margin-right:3px;" onclick="pmgEdit('${comp}','${r._id}')">✏</button>
+        <button class="btn br" style="font-size:9px;padding:2px 6px;" onclick="pmgDelete('${comp}','${r._id}')">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function pmgUpdateSummary() {
+  PMG_COMPS.forEach(comp => {
+    const recs = pmgGetRecords(comp);
+    const el = document.getElementById('pmg-sum-'+comp); if (!el) return;
+    if (!recs.length) { el.textContent = 'No records'; return; }
+    const overdue = recs.filter(r => r.nextDue && new Date(r.nextDue) < new Date()).length;
+    const dueSoon = recs.filter(r => {
+      if (!r.nextDue) return false;
+      const diff = Math.round((new Date(r.nextDue)-new Date())/(1000*60*60*24));
+      return diff >= 0 && diff <= 30;
+    }).length;
+    if (overdue) el.textContent = overdue + ' Overdue';
+    else if (dueSoon) el.textContent = dueSoon + ' Due Soon';
+    else el.textContent = '✅ All Valid';
+  });
+}
+
+let pmgEditComp = null;
+function pmgAdd(comp) {
+  pmgEditComp = comp;
+  document.getElementById('pmg-edit-id').value = '';
+  document.getElementById('pmg-modal-title').textContent = 'Add PMG Record — ' + PMG_LABELS[comp];
+  ['date','findings','action','cert','notes'].forEach(f => {
+    const el = document.getElementById('pmg-f-'+f); if(el) el.value = '';
+  });
+  document.getElementById('pmg-f-freq').value = 'Quarterly';
+  document.getElementById('pmg-f-contractor').value = '';
+  document.getElementById('pmg-f-nextdue').value = '';
+  document.getElementById('pmg-f-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('pmg-modal').style.display = 'block';
+}
+
+function pmgEdit(comp, id) {
+  pmgEditComp = comp;
+  const recs = pmgGetRecords(comp);
+  const r = recs.find(x => x._id === id); if (!r) return;
+  document.getElementById('pmg-edit-id').value = id;
+  document.getElementById('pmg-modal-title').textContent = 'Edit PMG Record — ' + PMG_LABELS[comp];
+  document.getElementById('pmg-f-date').value = r.date||'';
+  document.getElementById('pmg-f-component').value = r.component||'';
+  document.getElementById('pmg-f-freq').value = r.freq||'Quarterly';
+  document.getElementById('pmg-f-contractor').value = r.contractor||'';
+  document.getElementById('pmg-f-findings').value = r.findings||'';
+  document.getElementById('pmg-f-action').value = r.action||'';
+  document.getElementById('pmg-f-cert').value = r.cert||'';
+  document.getElementById('pmg-f-nextdue').value = r.nextDue||'';
+  document.getElementById('pmg-f-notes').value = r.notes||'';
+  document.getElementById('pmg-modal').style.display = 'block';
+}
+
+function pmgCloseModal() { document.getElementById('pmg-modal').style.display = 'none'; }
+
+function pmgSave() {
+  const comp = pmgEditComp;
+  const date = document.getElementById('pmg-f-date').value;
+  if (!date) { toast('Please enter the date completed','#f59e0b'); return; }
+  const editId = document.getElementById('pmg-edit-id').value;
+  const rec = {
+    _id: editId || ('pmg_'+comp+'_'+Date.now()),
+    date, component: document.getElementById('pmg-f-component').value,
+    freq: document.getElementById('pmg-f-freq').value,
+    contractor: document.getElementById('pmg-f-contractor').value,
+    findings: document.getElementById('pmg-f-findings').value,
+    action: document.getElementById('pmg-f-action').value,
+    cert: document.getElementById('pmg-f-cert').value,
+    nextDue: document.getElementById('pmg-f-nextdue').value,
+    notes: document.getElementById('pmg-f-notes').value,
+    _ts: new Date().toISOString(), _by: (window.CU?.name||'Director')
+  };
+  const recs = pmgGetRecords(comp);
+  const idx = recs.findIndex(r => r._id === rec._id);
+  if (idx >= 0) recs[idx] = rec; else recs.push(rec);
+  pmgSaveRecords(comp, recs);
+  pmgCloseModal();
+  pmgRenderComp(comp);
+  pmgUpdateSummary();
+  toast('✅ PMG record saved', '#10b981');
+}
+
+function pmgDelete(comp, id) {
+  if (!confirm('Delete this PMG record?')) return;
+  const updated = pmgGetRecords(comp).filter(r => r._id !== id);
+  pmgSaveRecords(comp, updated);
+  pmgRenderComp(comp);
+  pmgUpdateSummary();
+  toast('🗑 Record deleted');
+}
+
+function pmgExport(comp) {
+  const recs = pmgGetRecords(comp);
+  if (!recs.length) { toast('No records to export','#f59e0b'); return; }
+  const sorted = [...recs].sort((a,b)=>(b.date||'')>(a.date||'')?1:-1);
+  const rows = sorted.map(r => {
+    const st = pmgGetStatus(r.nextDue);
+    return `<tr><td>${r.date||'—'}</td><td>${r.component||'—'}</td><td>${r.freq||'—'}</td><td>${r.contractor||'—'}</td><td>${r.findings||'—'}</td><td>${r.action||'—'}</td><td>${r.cert||'—'}</td><td>${r.nextDue||'—'}</td><td>${st.label}</td><td>${r.notes||'—'}</td></tr>`;
+  }).join('');
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>PMG PPM Report — ${PMG_LABELS[comp]}</title>
+<style>body{font-family:Arial;margin:24px;font-size:11px;} .hdr{background:#1a3a5c;color:#fff;padding:16px;border-radius:8px;margin-bottom:16px;} h2{margin:0;font-size:16px;} p{margin:4px 0 0;opacity:.8;font-size:11px;} table{width:100%;border-collapse:collapse;} th{background:#1a3a5c;color:#fff;padding:7px;font-size:10px;text-align:left;} td{border:1px solid #e2e8f0;padding:6px;font-size:10px;} tr:nth-child(even){background:#f8fafc;} .sig{display:flex;gap:40px;margin-top:40px;} .sl{flex:1;border-top:1px solid #999;padding-top:8px;font-size:10px;color:#666;}</style></head><body>
+<div class="hdr"><h2>📋 PMG Preventive Maintenance Report — FMS 32.1</h2><p>Component: ${PMG_LABELS[comp]} · Obeid Specialized Hospital · Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}</p></div>
+<table><thead><tr><th>Date</th><th>Component</th><th>Frequency</th><th>Contractor</th><th>Findings</th><th>Corrective Action</th><th>Cert No.</th><th>Next Due</th><th>Status</th><th>Notes</th></tr></thead><tbody>${rows}</tbody></table>
+<div class="sig"><div class="sl">Biomedical Engineer: Eng. Bashar / Eng. Robert<br><br>Signature: _____________________ Date: _________</div><div class="sl">FMS Director: Mr. Ali Sobh<br><br>Signature: _____________________ Date: _________</div></div>
+</body></html>`;
+  const b = new Blob([html],{type:'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(b);
+  a.download = 'PMG_PPM_'+comp+'_'+new Date().toISOString().slice(0,10)+'.html';
+  a.click(); toast('✅ Exported','#10b981');
+}
+
+function pmgInit() { pmgRenderAll(); }
+
+// ══════════════════════════════════════════════════════
+// CYLINDER TESTING MODULE — FMS 32.9
+// ══════════════════════════════════════════════════════
+
+function cylGetRecords() {
+  try { return JSON.parse(localStorage.getItem(PX+'cyl_test')||'[]'); } catch(e){ return []; }
+}
+function cylSaveRecords(arr) {
+  localStorage.setItem(PX+'cyl_test', JSON.stringify(arr));
+  dbWrite('cyl_test', {_id:'cyl_test_all', records:arr, _ts:new Date().toISOString()});
+}
+
+function cylGetStatus(nextDue, result) {
+  if (result === 'Fail') return {label:'❌ Failed', cls:'chip chip-red'};
+  if (!nextDue) return {label:'No Date', cls:'chip chip-amber'};
+  const today = new Date(); today.setHours(0,0,0,0);
+  const due = new Date(nextDue);
+  const diff = Math.round((due-today)/(1000*60*60*24));
+  if (diff < 0)  return {label:'⚠ Overdue', cls:'chip chip-red'};
+  if (diff <= 60) return {label:'Due in '+diff+'d', cls:'chip chip-amber'};
+  return {label:'✅ Valid', cls:'chip chip-green'};
+}
+
+function cylRender() {
+  const tbody = document.getElementById('cyl-body'); if (!tbody) return;
+  const recs = cylGetRecords();
+  if (!recs.length) {
+    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--mu);padding:20px;">No cylinder records yet — click "+ Add Cylinder" to begin</td></tr>';
+    return;
+  }
+  tbody.innerHTML = recs.map(r => {
+    const st = cylGetStatus(r.nextDue, r.result);
+    const resColor = r.result==='Pass'?'#16a34a':r.result==='Fail'?'#dc2626':'#d97706';
+    return `<tr>
+      <td style="font-weight:700;">${r.cylId||'—'}</td>
+      <td style="font-size:10px;">${r.serial||'—'}</td>
+      <td><span class="chip chip-blue" style="font-size:9px;">${r.gas||'—'}</span></td>
+      <td style="text-align:center;">${r.size||'—'}</td>
+      <td style="white-space:nowrap;">${r.testDate||'—'}</td>
+      <td style="white-space:nowrap;font-weight:600;">${r.nextDue||'—'}</td>
+      <td><span style="font-size:11px;font-weight:700;color:${resColor};">${r.result||'—'}</span></td>
+      <td style="font-size:10px;">${r.lab||'—'}</td>
+      <td style="font-size:10px;">${r.cert||'—'}</td>
+      <td style="font-size:10px;max-width:100px;">${r.notes||'—'}</td>
+      <td><span class="${st.cls}" style="font-size:9px;">${st.label}</span></td>
+      <td style="white-space:nowrap;">
+        <button class="btn bb" style="font-size:9px;padding:2px 6px;margin-right:3px;" onclick="cylEdit('${r._id}')">✏</button>
+        <button class="btn br" style="font-size:9px;padding:2px 6px;" onclick="cylDelete('${r._id}')">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function cylAdd() {
+  document.getElementById('cyl-edit-id').value = '';
+  document.getElementById('cyl-modal-title').textContent = 'Add Cylinder Record';
+  ['cyl-f-id','cyl-f-serial','cyl-f-cert','cyl-f-lab','cyl-f-notes'].forEach(id => {
+    const e = document.getElementById(id); if(e) e.value = '';
+  });
+  document.getElementById('cyl-f-gas').value = 'Medical Oxygen (O₂)';
+  document.getElementById('cyl-f-size').value = '';
+  document.getElementById('cyl-f-result').value = 'Pass';
+  document.getElementById('cyl-f-testdate').value = '';
+  document.getElementById('cyl-f-nextdue').value = '';
+  document.getElementById('cyl-modal').style.display = 'block';
+}
+
+function cylEdit(id) {
+  const r = cylGetRecords().find(x => x._id === id); if (!r) return;
+  document.getElementById('cyl-edit-id').value = id;
+  document.getElementById('cyl-modal-title').textContent = 'Edit Cylinder Record';
+  document.getElementById('cyl-f-id').value = r.cylId||'';
+  document.getElementById('cyl-f-serial').value = r.serial||'';
+  document.getElementById('cyl-f-gas').value = r.gas||'Medical Oxygen (O₂)';
+  document.getElementById('cyl-f-size').value = r.size||'';
+  document.getElementById('cyl-f-testdate').value = r.testDate||'';
+  document.getElementById('cyl-f-nextdue').value = r.nextDue||'';
+  document.getElementById('cyl-f-result').value = r.result||'Pass';
+  document.getElementById('cyl-f-lab').value = r.lab||'';
+  document.getElementById('cyl-f-cert').value = r.cert||'';
+  document.getElementById('cyl-f-notes').value = r.notes||'';
+  document.getElementById('cyl-modal').style.display = 'block';
+}
+
+function cylAutoNextDue() {
+  const d = document.getElementById('cyl-f-testdate').value;
+  if (!d) return;
+  const next = new Date(d);
+  next.setFullYear(next.getFullYear() + 5); // standard 5-year hydrostatic test cycle
+  document.getElementById('cyl-f-nextdue').value = next.toISOString().slice(0,10);
+}
+
+function cylCloseModal() { document.getElementById('cyl-modal').style.display = 'none'; }
+
+function cylSave() {
+  const cylId = document.getElementById('cyl-f-id').value.trim();
+  if (!cylId) { toast('Cylinder ID is required','#f59e0b'); return; }
+  const editId = document.getElementById('cyl-edit-id').value;
+  const rec = {
+    _id: editId || ('cyl_'+Date.now()),
+    cylId, serial: document.getElementById('cyl-f-serial').value,
+    gas: document.getElementById('cyl-f-gas').value,
+    size: document.getElementById('cyl-f-size').value,
+    testDate: document.getElementById('cyl-f-testdate').value,
+    nextDue: document.getElementById('cyl-f-nextdue').value,
+    result: document.getElementById('cyl-f-result').value,
+    lab: document.getElementById('cyl-f-lab').value,
+    cert: document.getElementById('cyl-f-cert').value,
+    notes: document.getElementById('cyl-f-notes').value,
+    _ts: new Date().toISOString(), _by: (window.CU?.name||'Biomedical')
+  };
+  const recs = cylGetRecords();
+  const idx = recs.findIndex(r => r._id === rec._id);
+  if (idx >= 0) recs[idx] = rec; else recs.push(rec);
+  cylSaveRecords(recs);
+  cylCloseModal();
+  cylRender();
+  toast('✅ Cylinder record saved','#10b981');
+}
+
+function cylDelete(id) {
+  if (!confirm('Delete this cylinder record?')) return;
+  cylSaveRecords(cylGetRecords().filter(r => r._id !== id));
+  cylRender();
+  toast('🗑 Deleted');
+}
+
+function cylExport() {
+  const recs = cylGetRecords();
+  if (!recs.length) { toast('No records to export','#f59e0b'); return; }
+  const overdue = recs.filter(r => r.nextDue && new Date(r.nextDue) < new Date()).length;
+  const rows = recs.map(r => {
+    const st = cylGetStatus(r.nextDue, r.result);
+    return `<tr><td>${r.cylId}</td><td>${r.serial||'—'}</td><td>${r.gas||'—'}</td><td>${r.size||'—'}</td><td>${r.testDate||'—'}</td><td>${r.nextDue||'—'}</td><td style="font-weight:700;color:${r.result==='Pass'?'#16a34a':'#dc2626'}">${r.result||'—'}</td><td>${r.lab||'—'}</td><td>${r.cert||'—'}</td><td>${st.label}</td><td>${r.notes||'—'}</td></tr>`;
+  }).join('');
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cylinder Testing Records — FMS 32.9</title>
+<style>body{font-family:Arial;margin:24px;font-size:11px;} .hdr{background:#1a3a5c;color:#fff;padding:16px;border-radius:8px;margin-bottom:16px;} h2{margin:0;font-size:16px;} p{margin:4px 0 0;opacity:.8;} .badge{display:inline-block;padding:6px 14px;border-radius:8px;font-weight:700;font-size:12px;margin:10px 0;} table{width:100%;border-collapse:collapse;} th{background:#1a3a5c;color:#fff;padding:7px;font-size:10px;text-align:left;} td{border:1px solid #e2e8f0;padding:6px;font-size:10px;} tr:nth-child(even){background:#f8fafc;} .sig{display:flex;gap:40px;margin-top:40px;} .sl{flex:1;border-top:1px solid #999;padding-top:8px;font-size:10px;color:#666;}</style></head><body>
+<div class="hdr"><h2>🧪 Cylinder Hydrostatic Testing Records — FMS 32.9</h2><p>Obeid Specialized Hospital · Medical Gas Department · Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}</p></div>
+<div class="badge" style="background:${overdue>0?'#fee2e2':'#dcfce7'};color:${overdue>0?'#dc2626':'#16a34a'};">Total Cylinders: ${recs.length} · Overdue Tests: ${overdue} · Compliant: ${recs.length-overdue}</div>
+<table><thead><tr><th>Cylinder ID</th><th>Serial</th><th>Gas Type</th><th>Size (L)</th><th>Test Date</th><th>Next Due</th><th>Result</th><th>Testing Lab</th><th>Cert No.</th><th>Status</th><th>Notes</th></tr></thead><tbody>${rows}</tbody></table>
+<div class="sig"><div class="sl">Biomedical Engineer: Eng. Bashar / Eng. Robert<br><br>Signature: _____________________ Date: _________</div><div class="sl">FMS Director: Mr. Ali Sobh<br><br>Signature: _____________________ Date: _________</div></div>
+</body></html>`;
+  const b = new Blob([html],{type:'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(b);
+  a.download = 'Cylinder_Testing_FMS32.9_'+new Date().toISOString().slice(0,10)+'.html';
+  a.click(); toast('✅ Cylinder report exported','#10b981');
 }
 
 </script>
