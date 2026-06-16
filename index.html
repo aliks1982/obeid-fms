@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1523';
+  var v = '20260606-1524';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -5745,7 +5745,7 @@ async function dbLoadAll() {
   if (!url) { dbShowStatus('offline'); return; }
   dbShowStatus('loading');
   try {
-    const r = await fetch(url + '?action=getAll', { signal: AbortSignal.timeout(15000) });
+    const r = await fetch(url + '?action=getAll', { signal: AbortSignal.timeout(30000) });
     if (!r.ok) throw new Error('HTTP '+r.status);
     const j = await r.json();
     if (!j.ok) throw new Error(j.error||'Load failed');
@@ -5779,6 +5779,23 @@ async function dbLoadAll() {
       );
       sv(key, [...dbRows, ...queuedLocal]);
     });
+    try {
+      const q = JSON.parse(localStorage.getItem('obeid_sync_queue')||'[]');
+      if (q.length) {
+        const dbConfirmed = new Set();
+        Object.values(j.data||{}).forEach(rows => {
+          if (Array.isArray(rows)) rows.forEach(r => { if(r._id) dbConfirmed.add(String(r._id)); });
+        });
+        const stillPending = q.filter(item => {
+          const id = String(item.record&&item.record._id||'');
+          return id && !dbConfirmed.has(id);
+        });
+        if (stillPending.length < q.length) {
+          localStorage.setItem('obeid_sync_queue', JSON.stringify(stillPending));
+          console.log('Queue cleaned: ' + (q.length-stillPending.length) + ' removed. Remaining: ' + stillPending.length);
+        }
+      }
+    } catch(qe) { console.warn('Queue cleanup error:', qe.message); }
     dbShowStatus('online', totalRecords);
     if(j.data&&j.data.platform_settings) settingsPullFromDB(j.data.platform_settings);
 
@@ -5884,9 +5901,30 @@ async function dbLoadAll() {
     sanitizeEqAdded(); if (typeof kpi2RenderAll==='function' && document.getElementById('page-kpi2') && document.getElementById('page-kpi2').classList.contains('active')) { try{kpi2RenderAll();}catch(e){} } console.log('✅ DB sync complete —', totalRecords, 'records loaded');
     return true;
   } catch(e) {
-    console.warn('dbLoadAll failed:', e.message);
     DB_ONLINE = false;
-    dbShowStatus('offline');
+    console.warn('dbLoadAll attempt 1 failed:', e.message, '- retrying in 8s...');
+    dbShowStatus('retrying');
+    // Auto-retry once — Apps Script may be cold-starting
+    setTimeout(async () => {
+      try {
+        const url2 = typeof CANONICAL_DB_URL !== 'undefined' ? CANONICAL_DB_URL : getDBUrl();
+        if (!url2) { dbShowStatus('offline'); return; }
+        dbShowStatus('loading');
+        const r2 = await fetch(url2 + '?action=getAll', { signal: AbortSignal.timeout(30000) });
+        if (!r2.ok) throw new Error('HTTP '+r2.status);
+        const j2 = await r2.json();
+        if (!j2.ok) throw new Error('Retry load failed');
+        DB_ONLINE = true;
+        const cnt = Object.values(j2.data||{}).reduce((s,a)=>s+(Array.isArray(a)?a.length:0),0);
+        dbShowStatus('online', cnt);
+        console.log('DB connected on retry - ' + cnt + ' records');
+        setTimeout(dbFlushQueue, 1000);
+      } catch(e2) {
+        DB_ONLINE = false;
+        dbShowStatus('offline');
+        console.error('dbLoadAll retry also failed:', e2.message);
+      }
+    }, 8000);
     return false;
   }
 }
@@ -5914,15 +5952,22 @@ async function dbFlushQueue() {
   window._lastFlushAttempt = now;
   try {
     const q = JSON.parse(localStorage.getItem('obeid_sync_queue') || '[]');
-    if (!q.length) return;
-    const remaining = [];
-    for (const item of q.slice(0, 20)) { // max 20 per flush
-      const ok = await dbWrite(item.type, item.record);
-      if (!ok) remaining.push(item);
-    }
-    const rest = q.slice(20);
-    localStorage.setItem('obeid_sync_queue', JSON.stringify([...remaining, ...rest]));
-    if (remaining.length < q.length) console.log('Flushed', q.length - remaining.length, 'queued writes');
+    if (!q.length) { console.log('Queue empty'); return; }
+    const url = CANONICAL_DB_URL || getDBUrl();
+    if (!url) return;
+    const batch = q.slice(0, 15);
+    const rest  = q.slice(15);
+    await Promise.allSettled(batch.map(item =>
+      fetch(url, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'upsert', type: item.type, record: item.record })
+      }).catch(() => {})
+    ));
+    localStorage.setItem('obeid_sync_queue', JSON.stringify(rest));
+    console.log('Flushed ' + batch.length + ' queued writes. Remaining: ' + rest.length);
+    if (rest.length > 0) setTimeout(dbFlushQueue, 5000);
+    DB_ONLINE = true;
   } catch(e) { console.warn('dbFlushQueue error:', e.message); }
 }
 
@@ -5940,6 +5985,10 @@ function dbShowStatus(state, count) {
   } else if (state === 'loading') {
     dot.style.background = 'var(--or)'; dot.style.animation = 'pulse 1s infinite';
     txt.textContent = '⟳ Loading data from cloud database...';
+    txt.style.color = 'var(--or)';
+  } else if (state === 'retrying') {
+    dot.style.background = 'var(--or)'; dot.style.animation = 'pulse 1s infinite';
+    txt.textContent = 'Connection slow — retrying automatically in 8 seconds...';
     txt.style.color = 'var(--or)';
   } else {
     dot.style.background = 'var(--rd)'; dot.style.animation = '';
@@ -6160,8 +6209,11 @@ function init(){
   const dbUrl = getDBUrl();
   if (dbUrl) {
     setTimeout(() => {
-      dbFlushQueue(); // push any queued offline records first
-      dbLoadAll();    // then pull everything from DB
+      dbLoadAll().then(() => {
+        setTimeout(dbFlushQueue, 2000);
+      }).catch(() => {
+        setTimeout(dbFlushQueue, 3000);
+      });
     }, 900);
   } else {
     dbShowStatus('offline');
