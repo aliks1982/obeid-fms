@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1524';
+  var v = '20260606-1526';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -3900,7 +3900,10 @@ if ('caches' in window) {
   <!-- ── LOX Level Reading Entry ── -->
   <div class="card" style="margin-bottom:14px;border-left:4px solid #3b82f6;">
     <div class="ch"><div class="ct">📥 Daily LOX Level Reading — Physical Gauge Entry</div>
-      <button class="btn bp" style="font-size:10px;" onclick="loxExportReport()">⬇ Export O₂ Report</button>
+      <div style="display:flex;gap:6px;">
+        <button class="btn bo" style="font-size:10px;" onclick="loxRecoverData()">🔄 Recover Data</button>
+        <button class="btn bp" style="font-size:10px;" onclick="loxExportReport()">⬇ Export O₂ Report</button>
+      </div>
     </div>
     <div class="cb">
       <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
@@ -5801,16 +5804,12 @@ async function dbLoadAll() {
 
     // ── Restore LOX gauge readings from DB (lox_gauge table) ──
     if (j.data && j.data.lox_gauge && j.data.lox_gauge.length) {
-      const lgKey = PX + 'lox_gauge_readings';
-      let lgLocal = [];
-      try { lgLocal = JSON.parse(localStorage.getItem(lgKey) || '[]'); } catch(e) {}
-      const lgMap = {};
-      lgLocal.forEach(r => { if(r.date) lgMap[r.date] = r; });
-      j.data.lox_gauge.forEach(r => {
-        if (r.date && (!lgMap[r.date] || (r._ts||'') > (lgMap[r.date]._ts||''))) lgMap[r.date] = r;
-      });
-      const lgMerged = Object.values(lgMap).sort((a,b) => a.date < b.date ? 1 : -1);
-      if (lgMerged.length) localStorage.setItem(lgKey, JSON.stringify(lgMerged));
+      // Write to ALL three storage keys so loxGetReadings() finds the data
+      const lgArr = j.data.lox_gauge;
+      localStorage.setItem(PX + 'lox_gauge',          JSON.stringify(lgArr));
+      localStorage.setItem(PX + 'lox_gauge_readings',  JSON.stringify(lgArr));
+      localStorage.setItem(PX + 'lox_daily_readings',  JSON.stringify(lgArr));
+      console.log('LOX gauge: restored ' + lgArr.length + ' readings from DB');
       if (typeof loxRenderDashboard === 'function') {
         const loxEl = document.getElementById('mg-o2calc');
         if (loxEl && loxEl.style.display !== 'none') setTimeout(loxRenderDashboard, 200);
@@ -14541,7 +14540,7 @@ function loxLookup(inch) {
   var v=loxTableLookup(inch), gas=Math.round(v.litres*LOX_GAS_FACTOR);
   se('lox-gallons',v.gallons.toLocaleString());
   se('lox-litres',v.litres.toLocaleString());
-  se('lox-gas',(gas/1000).toFixed(1)+'K');
+  se('lox-gas', gas >= 1000000 ? (gas/1000000).toFixed(2)+'M' : gas >= 1000 ? Math.round(gas/1000).toLocaleString()+'K' : gas+' L');
 }
 
 function loxCalcTotal() {
@@ -14551,27 +14550,74 @@ function loxCalcTotal() {
   var el=document.getElementById('lox-pt-total'); if(el)el.textContent=w+i+c;
 }
 
+function loxNormalizeDate(d) {
+  if (!d || typeof d !== 'string') return '';
+  // Already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+  // Extract from full date string using month name (timezone-safe)
+  var MMAP = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',
+              Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+  // Pattern: "Tue Jun 16 2026..." or "Jun 16 2026"
+  var m = d.match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\s+(\d{4})/);
+  if (m) return m[3] + '-' + MMAP[m[1]] + '-' + ('0'+m[2]).slice(-2);
+  // Pattern: ISO with time "2026-06-16T..."
+  var iso = d.match(/^(\d{4}-\d{2}-\d{2})T/);
+  if (iso) return iso[1];
+  return d.slice(0,10);
+}
+
 function loxGetReadings() {
-  // 'lox_gauge_readings' = our inch H2O physical gauge readings (separate from LOX checklist)
-  // Also check 'mg_lox' but ONLY for records that have .inch field (gauge readings)
-  // and 'lox_daily_readings' (legacy key from earlier versions)
   try {
-    var a=JSON.parse(localStorage.getItem(PX+'lox_gauge_readings')||'[]');
-    var b=JSON.parse(localStorage.getItem(PX+'lox_daily_readings')||'[]');
-    // From mg_lox, only take records that are gauge readings (have .inch field)
-    var c=JSON.parse(localStorage.getItem(PX+'mg_lox')||'[]').filter(function(r){return r&&r.inch;});
-    var map={};
-    c.forEach(function(r){if(r.date)map[r.date]=r;});
-    b.forEach(function(r){if(r&&r.date&&r.inch&&(!map[r.date]||(r._ts||'')>(map[r.date]._ts||'')))map[r.date]=r;});
-    a.forEach(function(r){if(r&&r.date&&(!map[r.date]||(r._ts||'')>(map[r.date]._ts||'')))map[r.date]=r;});
-    return Object.values(map).sort(function(a,b){return a.date<b.date?1:-1;});
-  } catch(e){return [];}
+    // Read from ALL possible storage locations and merge by date
+    var keys = [
+      PX+'lox_gauge_readings',  // primary key we write to
+      PX+'lox_daily_readings',  // legacy compat key
+      PX+'lox_gauge',           // what dbLoadAll sv() writes to from Google Sheets
+    ];
+    var map = {};
+    keys.forEach(function(key) {
+      var arr = [];
+      try { arr = JSON.parse(localStorage.getItem(key)||'[]'); } catch(e) {}
+      arr.forEach(function(r) {
+        if (!r || !r.inch) return; // must have inch H2O reading to be a gauge record
+        var d = loxNormalizeDate(r.date||'');
+        if (!d) return;
+        r.date = d; // normalize in place
+        if (!map[d] || (r._ts||'') > (map[d]._ts||'')) map[d] = r;
+      });
+    });
+    // Also check mg_lox but only gauge records (have .inch field)
+    var mgLox = [];
+    try { mgLox = JSON.parse(localStorage.getItem(PX+'mg_lox')||'[]'); } catch(e) {}
+    mgLox.forEach(function(r) {
+      if (!r || !r.inch) return;
+      var d = loxNormalizeDate(r.date||'');
+      if (!d) return;
+      r.date = d;
+      if (!map[d] || (r._ts||'') > (map[d]._ts||'')) map[d] = r;
+    });
+    var sorted = Object.values(map).sort(function(a,b) { return a.date < b.date ? 1 : -1; });
+    // Recalculate consumption for all readings (in case prev readings were missing on first save)
+    for (var i = 0; i < sorted.length; i++) {
+      var r = sorted[i];
+      var prev = sorted[i+1]; // sorted newest→oldest, so i+1 is the previous day
+      if (prev && prev.gasL && r.gasL) {
+        r.consumption = Math.max(0, prev.gasL - r.gasL);
+        if (r.totalPt > 0) r.perPt = Math.round(r.consumption / r.totalPt);
+      } else {
+        r.consumption = null;
+        r.perPt = null;
+      }
+    }
+    return sorted;
+  } catch(e) { console.error('loxGetReadings error:', e); return []; }
 }
 
 function loxSaveReadings(arr) {
-  // Use dedicated key to avoid collision with LOX daily checklist (mg_lox)
+  // Write to all keys so dbLoadAll restoration works regardless of which key it uses
   localStorage.setItem(PX+'lox_gauge_readings', JSON.stringify(arr));
   localStorage.setItem(PX+'lox_daily_readings', JSON.stringify(arr)); // legacy compat
+  localStorage.setItem(PX+'lox_gauge', JSON.stringify(arr));         // matches dbLoadAll sv() key
 }
 
 function loxSaveReading() {
@@ -14582,6 +14628,7 @@ function loxSaveReading() {
   var icu=parseInt(((document.getElementById('lox-pt-icu')||{}).value))||0;
   var ccu=parseInt(((document.getElementById('lox-pt-ccu')||{}).value))||0;
   if(!date){toast('Select a date','#f59e0b');return;}
+  date = loxNormalizeDate(date) || date; // ensure YYYY-MM-DD format
   if(!inch||inch<2||inch>84){toast('Enter 2-84 inch H2O','#f59e0b');return;}
   var v=loxTableLookup(inch);
   var gasL=Math.round(v.litres*LOX_GAS_FACTOR);
@@ -14659,7 +14706,12 @@ function loxUpdateKPIs(readings) {
   var ppArr=readings.filter(function(r){return r.perPt!=null;}).slice(0,7);
   var avgPP=ppArr.length?Math.round(ppArr.reduce(function(s,r){return s+r.perPt;},0)/ppArr.length):null;
   se('lox-kpi-level',latest.litres?latest.litres.toLocaleString()+' L':'--');
-  se('lox-kpi-cons',latest.consumption!=null?(latest.consumption/1000).toFixed(1)+'K L':'--');
+  var consVal = latest.consumption;
+  var consStr = consVal == null ? '--' :
+                consVal === 0  ? '0 L (no change)' :
+                consVal < 1000 ? consVal.toLocaleString() + ' L' :
+                Math.round(consVal/1000).toLocaleString() + 'K L';
+  se('lox-kpi-cons', consStr);
   se('lox-kpi-reserve',hrs!=null?hrs+' hrs':'--');
   se('lox-kpi-perpt',avgPP?avgPP.toLocaleString()+' L':'--');
   var rc=document.getElementById('lox-kpi-reserve-card');
@@ -14704,7 +14756,8 @@ function loxRenderWeekly(readings) {
   var body=document.getElementById('lox-weekly-body');if(!body)return;
   var wm={};
   readings.forEach(function(r){
-    var d=new Date(r.date),wk=new Date(d);wk.setDate(d.getDate()-d.getDay());
+    var ds=loxNormalizeDate(r.date||'')||r.date||'';
+    var d=new Date(ds),wk=new Date(d);wk.setDate(d.getDate()-d.getDay());
     var key=wk.toISOString().slice(0,10);if(!wm[key])wm[key]=[];wm[key].push(r);
   });
   var weeks=Object.entries(wm).sort(function(a,b){return a[0]<b[0]?1:-1;}).slice(0,8);
@@ -14721,8 +14774,8 @@ function loxRenderWeekly(readings) {
     var mr=gl.length&&aC?Math.round((Math.min.apply(null,gl.map(function(r){return r.gasL;}))/aC)*24):null;
     var mc=mr==null?'':mr>=48?'color:#16a34a;':mr>=24?'color:#d97706;':'color:#dc2626;';
     return '<tr><td style="font-weight:700;">W/E '+wk.slice(5)+'</td>'
-      +'<td>'+(aC!=null?(aC/1000).toFixed(1)+'K':'--')+'</td>'
-      +'<td>'+(pk!=null?(pk/1000).toFixed(1)+'K':'--')+'</td>'
+      +'<td>'+(aC==null?'--':aC===0?'0 L':aC<1000?aC+' L':Math.round(aC/1000)+'K L')+'</td>'
+      +'<td>'+(pk==null?'--':pk===0?'0 L':pk<1000?pk+' L':Math.round(pk/1000)+'K L')+'</td>'
       +'<td>'+(aP||'--')+'</td>'
       +'<td>'+(pp?pp.toLocaleString():'--')+'</td>'
       +'<td style="'+mc+'">'+(mr!=null?mr+' hrs':'--')+'</td></tr>';
@@ -14736,10 +14789,13 @@ function loxRenderHistory(readings) {
     return;
   }
   body.innerHTML=readings.map(function(r){
-    var cStr=r.consumption!=null?(r.consumption/1000).toFixed(1)+'K':'--';
+    var cStr = r.consumption == null ? '--' :
+                r.consumption === 0  ? '0 L' :
+                r.consumption < 1000 ? r.consumption.toLocaleString()+' L' :
+                Math.round(r.consumption/1000).toLocaleString()+'K L';
     var cc=r.consumption!=null?(r.consumption>50000?'#dc2626':r.consumption>30000?'#d97706':'#3b82f6'):'var(--mu)';
     return '<tr>'
-      +'<td style="font-weight:700;white-space:nowrap;">'+r.date+'</td>'
+      +'<td style="font-weight:700;white-space:nowrap;">'+(r.date||'').slice(0,10)+'</td>'
       +'<td style="text-align:center;font-weight:700;color:#3b82f6;">'+r.inch+'"</td>'
       +'<td style="text-align:center;">'+(r.gallons!=null?r.gallons.toLocaleString():'--')+'</td>'
       +'<td style="text-align:center;font-weight:600;">'+(r.litres!=null?r.litres.toLocaleString():'--')+'</td>'
@@ -14796,9 +14852,53 @@ function loxRenderDashboard() {
   loxRenderWeekly(readings);
 }
 
+function loxRecoverData() {
+  // Scan ALL localStorage keys for any gauge readings (inch field present)
+  var map = {};
+  var scanned = 0;
+  for (var i = 0; i < localStorage.length; i++) {
+    var key = localStorage.key(i);
+    if (!key) continue;
+    try {
+      var val = JSON.parse(localStorage.getItem(key) || '[]');
+      if (!Array.isArray(val)) continue;
+      val.forEach(function(r) {
+        if (!r || !r.inch || !r.date) return;
+        var d = loxNormalizeDate(r.date);
+        if (!d) return;
+        r.date = d;
+        if (!map[d] || (r._ts||'') > (map[d]._ts||'')) { map[d] = r; scanned++; }
+      });
+    } catch(e) {}
+  }
+  var recovered = Object.values(map);
+  if (recovered.length) {
+    // Save recovered data to all storage keys
+    loxSaveReadings(recovered);
+    loxRenderDashboard();
+    toast('Recovered ' + recovered.length + ' readings from ' + scanned + ' records', '#10b981');
+    console.log('LOX Recovery: found ' + recovered.length + ' gauge readings across all localStorage keys');
+  } else {
+    // No local data — force fresh DB sync
+    toast('No local data found — syncing from DB...', '#f59e0b');
+    dbLoadAll().then(function() { loxRenderDashboard(); });
+  }
+}
+
+function loxDebugStorage() {
+  var keys = [PX+'lox_gauge_readings', PX+'lox_daily_readings', PX+'lox_gauge', PX+'mg_lox'];
+  keys.forEach(function(k) {
+    var v = JSON.parse(localStorage.getItem(k)||'[]');
+    var gaugeRecs = Array.isArray(v) ? v.filter(function(r){return r&&r.inch;}) : [];
+    console.log('LOX storage [' + k + ']: ' + (Array.isArray(v)?v.length:0) + ' total, ' + gaugeRecs.length + ' gauge records');
+    if (gaugeRecs.length) console.log('  dates:', gaugeRecs.map(function(r){return r.date;}).join(', '));
+  });
+}
+
 function loxInit() {
   var di=document.getElementById('lox-read-date');
   if(di&&!di.value) di.value=new Date().toISOString().slice(0,10);
+  loxDebugStorage(); // logs storage state to console
   loxRenderDashboard();
 }
 
