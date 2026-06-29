@@ -5874,6 +5874,43 @@ async function dbLoadAll() {
           console.log('✓ PPM overrides synced from DB —', updated, 'assets updated');
         }
       }
+
+      // ── Restore budget data from DB (fms_budget_ keys) ──
+      const budgetRows = j.data.app_settings.filter(r => r._id && r._id.startsWith('fms_budget_'));
+      if (budgetRows.length > 0) {
+        let budgetRestored = 0;
+        budgetRows.forEach(row => {
+          if (!row._id || !row.value) return;
+          try {
+            const dbTs    = row._ts || '';
+            const localRaw = localStorage.getItem(row._id);
+            // Only overwrite if DB is newer OR local is missing
+            if (!localRaw) {
+              localStorage.setItem(row._id, row.value);
+              budgetRestored++;
+            } else {
+              // Compare timestamps: only update if DB record is newer
+              const localData = JSON.parse(localRaw);
+              const localTs   = localData._ts || '';
+              if (dbTs && localTs && dbTs > localTs) {
+                localStorage.setItem(row._id, row.value);
+                budgetRestored++;
+              } else if (!localTs && dbTs) {
+                localStorage.setItem(row._id, row.value);
+                budgetRestored++;
+              }
+            }
+          } catch(be) { console.warn('Budget restore error for', row._id, be.message); }
+        });
+        if (budgetRestored > 0) {
+          console.log('✓ Budget restored from DB —', budgetRestored, 'year(s) synced');
+          // Re-render budget page if it's open
+          if (typeof budgetInit === 'function') {
+            const bEl = document.getElementById('page-budget');
+            if (bEl && bEl.style.display !== 'none') setTimeout(budgetInit, 200);
+          }
+        }
+      }
     }
     renderAll();
     if (typeof renderDash === 'function') renderDash();
@@ -11888,9 +11925,12 @@ let BUDGET_BAR_CHART = null;
 function budgetGetKey(year) { return 'fms_budget_' + (year || BUDGET_YEAR); }
 function budgetLoad(year)   { try { return JSON.parse(localStorage.getItem(budgetGetKey(year))||'{}'); } catch(e) { return {}; } }
 function budgetSave(data, year) {
-  localStorage.setItem(budgetGetKey(year||BUDGET_YEAR), JSON.stringify(data));
+  const ts = new Date().toISOString();
+  data._ts = ts; // embed timestamp so cross-device sync can compare freshness
+  const serialized = JSON.stringify(data);
+  localStorage.setItem(budgetGetKey(year||BUDGET_YEAR), serialized);
   dbWrite('app_settings', { _id: budgetGetKey(year||BUDGET_YEAR), key: budgetGetKey(year||BUDGET_YEAR),
-    value: JSON.stringify(data), _by: (typeof CU!=='undefined'?CU.name:''), _ts: new Date().toISOString() });
+    value: serialized, _by: (typeof CU!=='undefined'?CU.name:''), _ts: ts });
 }
 
 // ── Migrate existing manpower records to use salary×12×count ──
