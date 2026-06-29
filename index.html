@@ -5082,6 +5082,7 @@ if ('caches' in window) {
       style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:6px 14px;color:var(--ac);font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;outline:none;">
     </select>
     <button class="btn bo" style="font-size:10px;padding:5px 12px;" onclick="budgetAddYear()">+ New Year</button>
+    <button class="btn bo" style="font-size:10px;padding:5px 12px;" onclick="budgetPushToDB()" title="Force-save all budget data to cloud DB">☁ Push to DB</button>
     <button class="btn bg" style="font-size:10px;padding:5px 14px;margin-left:auto;" onclick="budgetExport()">📥 Export Budget Report</button>
   </div>
 
@@ -6277,7 +6278,8 @@ function gp(id){
   if(id==='ckpi')renderCKPI('all');
   if(id==='reports'){renderAnalytics();setTimeout(reinitAnalCharts,150);}
   if(id==='mms')setTimeout(initMMSCharts,150);
-  if(id==='pmg')setTimeout(pmgInit,80);
+  if(id==='pmg')    setTimeout(pmgInit,80);
+  if(id==='budget') setTimeout(function(){budgetBuildYearSelect();budgetRenderAll();},80);
   window.scrollTo(0,0);
 }
 function st(domain,sub,btn){
@@ -11967,9 +11969,22 @@ function budgetMigrateManpower() {
 
 function budgetBuildYearSelect() {
   const sel = document.getElementById('budget-year'); if (!sel) return;
-  const years = [];
   const base = new Date().getFullYear();
-  for (let y = base + 1; y >= base - 3; y--) years.push(y);
+  const yearSet = new Set();
+  // Always include surrounding years
+  for (let y = base + 1; y >= base - 3; y--) yearSet.add(y);
+  // Also scan localStorage for any existing budget years
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('fms_budget_')) {
+        const yr = parseInt(k.replace('fms_budget_',''));
+        if (yr > 2000 && yr < 2100) yearSet.add(yr);
+      }
+    }
+  } catch(e) {}
+  const years = Array.from(yearSet).sort((a,b) => b - a);
+  if (!years.includes(BUDGET_YEAR)) BUDGET_YEAR = base;
   sel.innerHTML = years.map(y => `<option value="${y}"${y===BUDGET_YEAR?' selected':''}>${y}</option>`).join('');
 }
 
@@ -11980,6 +11995,36 @@ function budgetAddYear() {
     budgetBuildYearSelect();
     budgetRenderAll();
     toast('Fiscal year ' + BUDGET_YEAR + ' created');
+  }
+}
+
+function budgetPushToDB() {
+  // Scan ALL localStorage keys for budget data and push each to DB
+  let pushed = 0;
+  try {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('fms_budget_')) keys.push(k);
+    }
+    if (!keys.length) { toast('No budget data found in this browser', '#f59e0b'); return; }
+    keys.forEach(k => {
+      const raw = localStorage.getItem(k);
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw);
+        data._ts = data._ts || new Date().toISOString();
+        const serialized = JSON.stringify(data);
+        localStorage.setItem(k, serialized); // re-save with ts
+        dbWrite('app_settings', { _id: k, key: k, value: serialized,
+          _by: (typeof CU!=='undefined'?CU.name:'Director'), _ts: data._ts });
+        pushed++;
+      } catch(e) {}
+    });
+    toast('✅ Pushed ' + pushed + ' budget year(s) to cloud DB', '#10b981');
+    console.log('Budget push: ' + pushed + ' keys pushed:', keys);
+  } catch(e) {
+    toast('Push error: ' + e.message, '#dc2626');
   }
 }
 
