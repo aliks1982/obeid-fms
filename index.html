@@ -15318,6 +15318,48 @@ function cylExport() {
   a.click(); toast('✅ Cylinder report exported','#10b981');
 }
 
+
+// ── BUDGET DATA RESTORE — injected from PDF export 18-Jun-2026 ──
+(function() {
+  const KEY = 'fms_budget_2026';
+  try {
+    const existing = localStorage.getItem(KEY);
+    let hasData = false;
+    if (existing) {
+      const parsed = JSON.parse(existing);
+      // Check if any real data exists (not just empty arrays)
+      const cats = ['opex','capex','cbudget','manpower'];
+      hasData = cats.some(c => parsed[c] && parsed[c].length > 0);
+    }
+    if (!hasData) {
+      const data = {"_ts": "2026-06-18T10:17:29.000Z", "opex": [{"_id": "opex_1", "subcat": "Maintenance Supplies & Spare Parts", "desc": "Heppa Filters", "quarter": "Annual", "budget": 20000, "spent": 20000, "notes": "Needs replacement each 6 months"}, {"_id": "opex_2", "subcat": "Safety Equipment & PPE", "desc": "Face shields, gloves, anti-slip, posters, goggles, cones", "quarter": "Annual", "budget": 5000, "spent": 5000, "notes": ""}, {"_id": "opex_3", "subcat": "Tools & Workshop Equipment", "desc": "Miscellaneous (AC spare parts, belts, sliding door sensors)", "quarter": "Annual", "budget": 15000, "spent": 15000, "notes": ""}, {"_id": "opex_4", "subcat": "Utilities (Electricity, Water, HVAC)", "desc": "Water filters, water tests, cables", "quarter": "Annual", "budget": 20000, "spent": 20000, "notes": ""}, {"_id": "opex_5", "subcat": "Cleaning & Housekeeping Supplies", "desc": "Miscellaneous", "quarter": "Annual", "budget": 50000, "spent": 50000, "notes": ""}, {"_id": "opex_6", "subcat": "IT & Communication (FMS Systems)", "desc": "FM-200 (included in Fire Alarm Contract)", "quarter": "Annual", "budget": 0, "spent": 0, "notes": ""}, {"_id": "opex_7", "subcat": "Other Operating Expenses", "desc": "Kitchen Duct Cleaning", "quarter": "Annual", "budget": 12000, "spent": 12000, "notes": "Twice a year"}, {"_id": "opex_8", "subcat": "Other Operating Expenses", "desc": "Pest Control", "quarter": "Annual", "budget": 10000, "spent": 10000, "notes": ""}], "capex": [{"_id": "capex_1", "cat": "Medical Equipment Upgrade", "desc": "Siemens Ultrasound", "justification": "Capacity Expansion", "priority": "CRITICAL", "cost": 5000, "approved": 5000, "quarter": "Q1", "status": "InProgress"}, {"_id": "capex_2", "cat": "HVAC / Ventilation System", "desc": "Billing Department HVAC Replacement", "justification": "End of Life / Age", "priority": "HIGH", "cost": 20000, "approved": 20000, "quarter": "Q2", "status": "Completed"}, {"_id": "capex_3", "cat": "Security System (CCTV, Access Control)", "desc": "Increase CCTV in different areas", "justification": "Civil Defense Requirement", "priority": "HIGH", "cost": 7000, "approved": 7000, "quarter": "Q2", "status": "Completed"}, {"_id": "capex_4", "cat": "Civil Works / Renovation", "desc": "Wards and OPD Painting", "justification": "Civil Defense Requirement", "priority": "HIGH", "cost": 5000, "approved": 5000, "quarter": "Q2", "status": "Completed"}, {"_id": "capex_5", "cat": "Furniture & Fixtures", "desc": "Replace torn inpatient furniture", "justification": "End of Life / Age", "priority": "LOW", "cost": 12000, "approved": 12000, "quarter": "Q2", "status": "InProgress"}, {"_id": "capex_6", "cat": "Civil Works / Renovation", "desc": "Lab Tiles Replacement", "justification": "End of Life / Age", "priority": "LOW", "cost": 4000, "approved": 4000, "quarter": "Q2", "status": "InProgress"}], "cbudget": [{"_id": "cb_1", "service": "Pest Control", "vendor": "ALaz Pest Control", "cat": "Annual", "freq": "Annual", "annual": 10000, "monthly": 833}, {"_id": "cb_2", "service": "Fire Alarm", "vendor": "Castle System", "cat": "Fire System PPM", "freq": "Annual", "annual": 26000, "monthly": 2167}, {"_id": "cb_3", "service": "Duct Cleaning", "vendor": "Ice Cleaning", "cat": "HVAC Service", "freq": "Semi-Annual", "annual": 12000, "monthly": 1000}, {"_id": "cb_4", "service": "Generator Maintenance", "vendor": "Zahed", "cat": "Generator Service", "freq": "Annual", "annual": 10000, "monthly": 833}, {"_id": "cb_5", "service": "Medical Waste Collection", "vendor": "\u2014", "cat": "Waste Management", "freq": "Annual", "annual": 10000, "monthly": 833}], "manpower": [{"_id": "mp_1", "position": "Safety Officer", "dept": "Safety & Security", "type": "Direct Employee", "count": 1, "salary": 5000, "annual": 60000}, {"_id": "mp_2", "position": "Biomedical Staff", "dept": "Biomedical Engineering", "type": "Direct Employee", "count": 2, "salary": 9000, "annual": 216000}, {"_id": "mp_3", "position": "Maintenance Technicians", "dept": "Maintenance", "type": "Direct Employee", "count": 10, "salary": 30000, "annual": 3600000}]};
+      localStorage.setItem(KEY, JSON.stringify(data));
+      console.log('✅ Budget 2026 restored from embedded backup — SAR 4,129,000');
+      // Push to DB after platform loads
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          try {
+            const raw = localStorage.getItem(KEY);
+            if (raw && typeof dbWrite === 'function') {
+              dbWrite('app_settings', {
+                _id: KEY, key: KEY, value: raw,
+                _by: 'System Restore', _ts: new Date().toISOString()
+              });
+              console.log('✅ Budget 2026 pushed to cloud DB');
+            }
+            if (typeof toast === 'function') {
+              toast('✅ Budget 2026 data restored — SAR 4,129,000', '#10b981');
+            }
+          } catch(e) { console.warn('Budget DB push error:', e.message); }
+        }, 3000);
+      });
+    } else {
+      console.log('Budget 2026: existing data found — restore skipped');
+    }
+  } catch(e) { console.warn('Budget restore error:', e.message); }
+})();
+// ── END BUDGET RESTORE ──
+
 </script>
 </body>
 </html>
