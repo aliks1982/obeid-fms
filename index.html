@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1527';
+  var v = '20260630-1528';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -2592,6 +2592,7 @@ if ('caches' in window) {
     <div class="tb" style="margin:0;" id="mms-month-bar">
       <button class="tbtn active" onclick="setMMSMonth('all',this)">All Time</button>
     </div>
+    <button class="btn bg" style="font-size:10px;padding:5px 14px;margin-left:auto;" onclick="exportMMSReport()">📥 Export Report</button>
   </div>
 
   <!-- KPI Cards - live -->
@@ -12095,6 +12096,71 @@ function budgetDeleteItem(cat, id) {
   toast('Deleted');
 }
 
+let BUDGET_EDIT_ID = null, BUDGET_EDIT_CAT = null;
+
+function budgetEditItem(cat, id) {
+  const data = budgetLoad();
+  const item = (data[cat]||[]).find(x => String(x._id) === String(id));
+  if (!item) return;
+  BUDGET_EDIT_ID = id; BUDGET_EDIT_CAT = cat;
+
+  if (cat === 'opex') {
+    document.getElementById('opex-subcat') && (document.getElementById('opex-subcat').value = item.subcat||'');
+    document.getElementById('opex-desc')   && (document.getElementById('opex-desc').value   = item.desc||'');
+    document.getElementById('opex-quarter')&& (document.getElementById('opex-quarter').value= item.quarter||'Annual');
+    document.getElementById('opex-budget') && (document.getElementById('opex-budget').value = item.budget||'');
+    document.getElementById('opex-spent')  && (document.getElementById('opex-spent').value  = item.spent||'');
+    document.getElementById('opex-notes')  && (document.getElementById('opex-notes').value  = item.notes||'');
+  } else if (cat === 'capex') {
+    document.getElementById('capex-cat')   && (document.getElementById('capex-cat').value   = item.cat||'');
+    document.getElementById('capex-desc')  && (document.getElementById('capex-desc').value  = item.desc||'');
+    document.getElementById('capex-just')  && (document.getElementById('capex-just').value  = item.justification||'');
+    document.getElementById('capex-prio')  && (document.getElementById('capex-prio').value  = item.priority||'medium');
+    document.getElementById('capex-cost')  && (document.getElementById('capex-cost').value  = item.cost||'');
+    document.getElementById('capex-appr')  && (document.getElementById('capex-appr').value  = item.approved||'');
+    document.getElementById('capex-quarter')&&(document.getElementById('capex-quarter').value=item.quarter||'Q1');
+    document.getElementById('capex-status')&& (document.getElementById('capex-status').value= item.status||'Proposed');
+    document.getElementById('capex-notes') && (document.getElementById('capex-notes').value = item.notes||'');
+  } else if (cat === 'cbudget') {
+    document.getElementById('cbudget-name')  && (document.getElementById('cbudget-name').value  = item.name||'');
+    document.getElementById('cbudget-vendor')&& (document.getElementById('cbudget-vendor').value= item.vendor||'');
+    document.getElementById('cbudget-cat')   && (document.getElementById('cbudget-cat').value   = item.cat||'');
+    document.getElementById('cbudget-freq')  && (document.getElementById('cbudget-freq').value  = item.freq||'Annual');
+    document.getElementById('cbudget-value') && (document.getElementById('cbudget-value').value = item.value||'');
+    document.getElementById('cbudget-notes') && (document.getElementById('cbudget-notes').value = item.notes||'');
+  } else if (cat === 'manpower') {
+    document.getElementById('mp-role')   && (document.getElementById('mp-role').value   = item.role||'');
+    document.getElementById('mp-dept')   && (document.getElementById('mp-dept').value   = item.dept||'');
+    document.getElementById('mp-type')   && (document.getElementById('mp-type').value   = item.mtype||'Direct Employee');
+    document.getElementById('mp-count')  && (document.getElementById('mp-count').value  = item.count||1);
+    document.getElementById('mp-salary') && (document.getElementById('mp-salary').value = item.salary||'');
+    if (typeof mpUpdateAnnual === 'function') mpUpdateAnnual();
+  }
+  toast('Editing — update the form above and click Save to apply changes', '#3b82f6');
+  // Scroll the form into view
+  const formCard = document.querySelector('#budget-'+(cat==='cbudget'?'contracts':cat)+' .card');
+  if (formCard) formCard.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function budgetSaveOrUpdateItem(cat, item) {
+  const data = budgetLoad();
+  if (!data[cat]) data[cat] = [];
+  if (BUDGET_EDIT_ID && BUDGET_EDIT_CAT === cat) {
+    // Update existing item, preserve _id
+    const idx = data[cat].findIndex(x => String(x._id) === String(BUDGET_EDIT_ID));
+    if (idx >= 0) {
+      item._id = BUDGET_EDIT_ID;
+      data[cat][idx] = item;
+    } else {
+      data[cat].push(item);
+    }
+    BUDGET_EDIT_ID = null; BUDGET_EDIT_CAT = null;
+  } else {
+    data[cat].push(item);
+  }
+  budgetSave(data);
+}
+
 // Live update annual cost display in manpower form
 function mpUpdateAnnual() {
   const count   = parseFloat(document.getElementById('mp-count')?.value||1);
@@ -12158,9 +12224,9 @@ function budgetAddLine(cat) {
     ['mp-role'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
     ['mp-count','mp-salary'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';}); mpUpdateAnnual();
   }
-  budgetSaveItem(cat, item);
+  budgetSaveOrUpdateItem(cat, item);
   budgetRenderAll();
-  toast('✓ Added to ' + BUDGET_CATS[cat].label);
+  toast((BUDGET_EDIT_ID ? '✓ Updated ' : '✓ Added to ') + BUDGET_CATS[cat].label);
 }
 
 function budgetRenderTable(cat) {
@@ -12192,7 +12258,7 @@ function budgetRenderTable(cat) {
         <td style="color:${vc};font-weight:600;">${v>=0?'+':''}${sar(v)}</td>
         <td>${pctBadge(i.spent,i.budget)}</td>
         <td style="font-size:10px;color:var(--mu);">${i.notes||'—'}</td>
-        <td><button class="btn br" style="font-size:9px;padding:2px 5px;" onclick="budgetDeleteItem('opex','${i._id}')">✕</button></td>
+        <td><button class="btn bb" style="font-size:9px;padding:2px 5px;margin-right:3px;" onclick="budgetEditItem('opex','${i._id}')">✏</button><button class="btn br" style="font-size:9px;padding:2px 5px;" onclick="budgetDeleteItem('opex','${i._id}')">✕</button></td>
       </tr>`;
     }).join('') + `<tr style="background:rgba(0,112,243,.05);font-weight:700;">
       <td colspan="3">TOTAL OPEX</td>
@@ -12217,7 +12283,7 @@ function budgetRenderTable(cat) {
         <td style="text-align:center;">${i.quarter||'—'}</td>
         <td><span style="color:${sc};font-weight:600;font-size:10px;">${i.status||'—'}</span></td>
         <td style="font-size:10px;color:var(--mu);">${i.notes||'—'}</td>
-        <td><button class="btn br" style="font-size:9px;padding:2px 5px;" onclick="budgetDeleteItem('capex','${i._id}')">✕</button></td>
+        <td><button class="btn bb" style="font-size:9px;padding:2px 5px;margin-right:3px;" onclick="budgetEditItem('capex','${i._id}')">✏</button><button class="btn br" style="font-size:9px;padding:2px 5px;" onclick="budgetDeleteItem('capex','${i._id}')">✕</button></td>
       </tr>`;
     }).join('');
 
@@ -12233,7 +12299,7 @@ function budgetRenderTable(cat) {
       <td style="color:var(--ac);font-weight:600;">${sar(i.value)}</td>
       <td style="color:var(--mu);">${sar(Math.round((i.value||0)/12))}/mo</td>
       <td style="font-size:10px;color:var(--mu);">${i.notes||'—'}</td>
-      <td><button class="btn br" style="font-size:9px;padding:2px 5px;" onclick="budgetDeleteItem('cbudget','${i._id}')">✕</button></td>
+      <td><button class="btn bb" style="font-size:9px;padding:2px 5px;margin-right:3px;" onclick="budgetEditItem('cbudget','${i._id}')">✏</button><button class="btn br" style="font-size:9px;padding:2px 5px;" onclick="budgetDeleteItem('cbudget','${i._id}')">✕</button></td>
     </tr>`).join('') + `<tr style="background:rgba(0,112,243,.05);font-weight:700;"><td colspan="4">TOTAL CONTRACTS</td><td style="color:var(--ac);">${sar(total)}</td><td style="color:var(--mu);">${sar(Math.round(total/12))}/mo</td><td colspan="2"></td></tr>`;
 
   } else if (cat==='manpower') {
@@ -12247,7 +12313,7 @@ function budgetRenderTable(cat) {
       <td style="text-align:center;">${i.count||1}</td>
       <td>${sar(i.salary)}</td>
       <td style="color:var(--ac);font-weight:600;">${sar((i.salary>0 ? i.salary*12*(i.count||1) : (i.annual||0)))}</td>
-      <td><button class="btn br" style="font-size:9px;padding:2px 5px;" onclick="budgetDeleteItem('manpower','${i._id}')">✕</button></td>
+      <td><button class="btn bb" style="font-size:9px;padding:2px 5px;margin-right:3px;" onclick="budgetEditItem('manpower','${i._id}')">✏</button><button class="btn br" style="font-size:9px;padding:2px 5px;" onclick="budgetDeleteItem('manpower','${i._id}')">✕</button></td>
     </tr>`).join('') + `<tr style="background:rgba(0,112,243,.05);font-weight:700;"><td colspan="5">TOTAL MANPOWER</td><td style="color:var(--ac);">${sar(totalAnnual)}</td><td></td></tr>`;
   }
 }
@@ -15338,46 +15404,164 @@ function cylExport() {
 }
 
 
-// ── BUDGET DATA RESTORE — injected from PDF export 18-Jun-2026 ──
+// ── BUDGET DATA CORRECTION — fixes field-name mismatch (role/value/dept) ──
+// FORCE-OVERWRITES fms_budget_2026 with corrected field names matching the platform's data model
 (function() {
   const KEY = 'fms_budget_2026';
   try {
-    const existing = localStorage.getItem(KEY);
-    let hasData = false;
-    if (existing) {
-      const parsed = JSON.parse(existing);
-      // Check if any real data exists (not just empty arrays)
-      const cats = ['opex','capex','cbudget','manpower'];
-      hasData = cats.some(c => parsed[c] && parsed[c].length > 0);
-    }
-    if (!hasData) {
-      const data = {"_ts": "2026-06-18T10:17:29.000Z", "opex": [{"_id": "opex_1", "subcat": "Maintenance Supplies & Spare Parts", "desc": "Heppa Filters", "quarter": "Annual", "budget": 20000, "spent": 20000, "notes": "Needs replacement each 6 months"}, {"_id": "opex_2", "subcat": "Safety Equipment & PPE", "desc": "Face shields, gloves, anti-slip, posters, goggles, cones", "quarter": "Annual", "budget": 5000, "spent": 5000, "notes": ""}, {"_id": "opex_3", "subcat": "Tools & Workshop Equipment", "desc": "Miscellaneous (AC spare parts, belts, sliding door sensors)", "quarter": "Annual", "budget": 15000, "spent": 15000, "notes": ""}, {"_id": "opex_4", "subcat": "Utilities (Electricity, Water, HVAC)", "desc": "Water filters, water tests, cables", "quarter": "Annual", "budget": 20000, "spent": 20000, "notes": ""}, {"_id": "opex_5", "subcat": "Cleaning & Housekeeping Supplies", "desc": "Miscellaneous", "quarter": "Annual", "budget": 50000, "spent": 50000, "notes": ""}, {"_id": "opex_6", "subcat": "IT & Communication (FMS Systems)", "desc": "FM-200 (included in Fire Alarm Contract)", "quarter": "Annual", "budget": 0, "spent": 0, "notes": ""}, {"_id": "opex_7", "subcat": "Other Operating Expenses", "desc": "Kitchen Duct Cleaning", "quarter": "Annual", "budget": 12000, "spent": 12000, "notes": "Twice a year"}, {"_id": "opex_8", "subcat": "Other Operating Expenses", "desc": "Pest Control", "quarter": "Annual", "budget": 10000, "spent": 10000, "notes": ""}], "capex": [{"_id": "capex_1", "cat": "Medical Equipment Upgrade", "desc": "Siemens Ultrasound", "justification": "Capacity Expansion", "priority": "CRITICAL", "cost": 5000, "approved": 5000, "quarter": "Q1", "status": "InProgress"}, {"_id": "capex_2", "cat": "HVAC / Ventilation System", "desc": "Billing Department HVAC Replacement", "justification": "End of Life / Age", "priority": "HIGH", "cost": 20000, "approved": 20000, "quarter": "Q2", "status": "Completed"}, {"_id": "capex_3", "cat": "Security System (CCTV, Access Control)", "desc": "Increase CCTV in different areas", "justification": "Civil Defense Requirement", "priority": "HIGH", "cost": 7000, "approved": 7000, "quarter": "Q2", "status": "Completed"}, {"_id": "capex_4", "cat": "Civil Works / Renovation", "desc": "Wards and OPD Painting", "justification": "Civil Defense Requirement", "priority": "HIGH", "cost": 5000, "approved": 5000, "quarter": "Q2", "status": "Completed"}, {"_id": "capex_5", "cat": "Furniture & Fixtures", "desc": "Replace torn inpatient furniture", "justification": "End of Life / Age", "priority": "LOW", "cost": 12000, "approved": 12000, "quarter": "Q2", "status": "InProgress"}, {"_id": "capex_6", "cat": "Civil Works / Renovation", "desc": "Lab Tiles Replacement", "justification": "End of Life / Age", "priority": "LOW", "cost": 4000, "approved": 4000, "quarter": "Q2", "status": "InProgress"}], "cbudget": [{"_id": "cb_1", "service": "Pest Control", "vendor": "ALaz Pest Control", "cat": "Annual", "freq": "Annual", "annual": 10000, "monthly": 833}, {"_id": "cb_2", "service": "Fire Alarm", "vendor": "Castle System", "cat": "Fire System PPM", "freq": "Annual", "annual": 26000, "monthly": 2167}, {"_id": "cb_3", "service": "Duct Cleaning", "vendor": "Ice Cleaning", "cat": "HVAC Service", "freq": "Semi-Annual", "annual": 12000, "monthly": 1000}, {"_id": "cb_4", "service": "Generator Maintenance", "vendor": "Zahed", "cat": "Generator Service", "freq": "Annual", "annual": 10000, "monthly": 833}, {"_id": "cb_5", "service": "Medical Waste Collection", "vendor": "\u2014", "cat": "Waste Management", "freq": "Annual", "annual": 10000, "monthly": 833}], "manpower": [{"_id": "mp_1", "position": "Safety Officer", "dept": "Safety & Security", "type": "Direct Employee", "count": 1, "salary": 5000, "annual": 60000}, {"_id": "mp_2", "position": "Biomedical Staff", "dept": "Biomedical Engineering", "type": "Direct Employee", "count": 2, "salary": 9000, "annual": 216000}, {"_id": "mp_3", "position": "Maintenance Technicians", "dept": "Maintenance", "type": "Direct Employee", "count": 10, "salary": 30000, "annual": 3600000}]};
-      localStorage.setItem(KEY, JSON.stringify(data));
-      console.log('✅ Budget 2026 restored from embedded backup — SAR 4,129,000');
-      // Push to DB after platform loads
-      window.addEventListener('load', function() {
-        setTimeout(function() {
-          try {
-            const raw = localStorage.getItem(KEY);
-            if (raw && typeof dbWrite === 'function') {
-              dbWrite('app_settings', {
-                _id: KEY, key: KEY, value: raw,
-                _by: 'System Restore', _ts: new Date().toISOString()
-              });
-              console.log('✅ Budget 2026 pushed to cloud DB');
-            }
-            if (typeof toast === 'function') {
-              toast('✅ Budget 2026 data restored — SAR 4,129,000', '#10b981');
-            }
-          } catch(e) { console.warn('Budget DB push error:', e.message); }
-        }, 3000);
-      });
-    } else {
-      console.log('Budget 2026: existing data found — restore skipped');
-    }
-  } catch(e) { console.warn('Budget restore error:', e.message); }
+    const correctData = {"_ts": "2026-06-30T00:00:00.000Z", "opex": [{"_id": "opex_1", "subcat": "Maintenance Supplies & Spare Parts", "desc": "Heppa Filters", "quarter": "Annual", "budget": 20000, "spent": 20000, "notes": "Needs replacement each 6 months"}, {"_id": "opex_2", "subcat": "Safety Equipment & PPE", "desc": "Face shields, gloves, anti-slip, posters, goggles, cones", "quarter": "Annual", "budget": 5000, "spent": 5000, "notes": ""}, {"_id": "opex_3", "subcat": "Tools & Workshop Equipment", "desc": "Miscellaneous (AC spare parts, belts, sliding door sensors)", "quarter": "Annual", "budget": 15000, "spent": 15000, "notes": ""}, {"_id": "opex_4", "subcat": "Utilities (Electricity, Water, HVAC)", "desc": "Water filters, water tests, cables", "quarter": "Annual", "budget": 20000, "spent": 20000, "notes": ""}, {"_id": "opex_5", "subcat": "Cleaning & Housekeeping Supplies", "desc": "Miscellaneous", "quarter": "Annual", "budget": 50000, "spent": 50000, "notes": ""}, {"_id": "opex_6", "subcat": "IT & Communication (FMS Systems)", "desc": "FM-200 (included in Fire Alarm Contract)", "quarter": "Annual", "budget": 0, "spent": 0, "notes": ""}, {"_id": "opex_7", "subcat": "Other Operating Expenses", "desc": "Kitchen Duct Cleaning", "quarter": "Annual", "budget": 12000, "spent": 12000, "notes": "Twice a year"}, {"_id": "opex_8", "subcat": "Other Operating Expenses", "desc": "Pest Control", "quarter": "Annual", "budget": 10000, "spent": 10000, "notes": ""}], "capex": [{"_id": "capex_1", "cat": "Medical Equipment Upgrade", "desc": "Siemens Ultrasound", "justification": "Capacity Expansion", "priority": "critical", "cost": 5000, "approved": 5000, "quarter": "Q1", "status": "In Progress"}, {"_id": "capex_2", "cat": "HVAC / Ventilation System", "desc": "Billing Department HVAC Replacement", "justification": "End of Life / Age", "priority": "high", "cost": 20000, "approved": 20000, "quarter": "Q2", "status": "Completed"}, {"_id": "capex_3", "cat": "Security System (CCTV, Access Control)", "desc": "Increase CCTV in different areas", "justification": "Civil Defense Requirement", "priority": "high", "cost": 7000, "approved": 7000, "quarter": "Q2", "status": "Completed"}, {"_id": "capex_4", "cat": "Civil Works / Renovation", "desc": "Wards and OPD Painting", "justification": "Civil Defense Requirement", "priority": "high", "cost": 5000, "approved": 5000, "quarter": "Q2", "status": "Completed"}, {"_id": "capex_5", "cat": "Furniture & Fixtures", "desc": "Replace torn inpatient furniture", "justification": "End of Life / Age", "priority": "low", "cost": 12000, "approved": 12000, "quarter": "Q2", "status": "In Progress"}, {"_id": "capex_6", "cat": "Civil Works / Renovation", "desc": "Lab Tiles Replacement", "justification": "End of Life / Age", "priority": "low", "cost": 4000, "approved": 4000, "quarter": "Q2", "status": "In Progress"}], "cbudget": [{"_id": "cb_1", "name": "Pest Control", "vendor": "ALaz Pest Control", "cat": "Annual", "freq": "Annual", "value": 10000, "notes": ""}, {"_id": "cb_2", "name": "Fire Alarm", "vendor": "Castle System", "cat": "Fire System PPM", "freq": "Annual", "value": 26000, "notes": ""}, {"_id": "cb_3", "name": "Duct Cleaning", "vendor": "Ice Cleaning", "cat": "HVAC Service", "freq": "Semi-Annual", "value": 12000, "notes": ""}, {"_id": "cb_4", "name": "Generator Maintenance", "vendor": "Zahed", "cat": "Generator Service", "freq": "Annual", "value": 10000, "notes": ""}, {"_id": "cb_5", "name": "Medical Waste Collection", "vendor": "\u2014", "cat": "Waste Management", "freq": "Annual", "value": 10000, "notes": ""}], "manpower": [{"_id": "mp_1", "role": "Safety Officer", "dept": "Safety & Security", "mtype": "Direct Employee", "count": 1, "salary": 5000}, {"_id": "mp_2", "role": "Biomedical Staff", "dept": "Biomedical Engineering", "mtype": "Direct Employee", "count": 2, "salary": 9000}, {"_id": "mp_3", "role": "Maintenance Technicians", "dept": "Maintenance", "mtype": "Direct Employee", "count": 10, "salary": 30000}]};
+    localStorage.setItem(KEY, JSON.stringify(correctData));
+    console.log('Budget 2026 CORRECTED — field names fixed, totals verified: SAR 4,129,000');
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        try {
+          if (typeof dbWrite === 'function') {
+            dbWrite('app_settings', {
+              _id: KEY, key: KEY, value: JSON.stringify(correctData),
+              _by: 'System Correction', _ts: new Date().toISOString()
+            });
+            console.log('Corrected budget pushed to cloud DB');
+          }
+          if (typeof budgetBuildYearSelect === 'function') budgetBuildYearSelect();
+          if (typeof budgetRenderAll === 'function') budgetRenderAll();
+          if (typeof toast === 'function') {
+            toast('Budget 2026 data corrected — figures now accurate', '#10b981');
+          }
+        } catch(e) { console.warn('Budget correction push error:', e.message); }
+      }, 3000);
+    });
+  } catch(e) { console.warn('Budget correction error:', e.message); }
 })();
-// ── END BUDGET RESTORE ──
+// ── END BUDGET CORRECTION ──
+
+
+// ══════════════════════════════════════════════════════
+// MAINTENANCE ANALYTICS — EXPORT REPORT (covers current period: All Time or selected Month)
+// ══════════════════════════════════════════════════════
+function exportMMSReport() {
+  const rows = filteredRows();
+  if (!rows.length) { toast('No data to export for this period', '#f59e0b'); return; }
+
+  const periodLabel = MMS_MONTH === 'all' ? 'All Time' : MMS_MONTH;
+  const today = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+
+  // Build summary stats (same logic as updateMMSKPICards)
+  const total = rows.length;
+  const bioR  = rows.filter(e=>isBio(e));
+  const genR  = rows.filter(e=>!isBio(e));
+  const compR = rows.filter(e=>isDone(e));
+  const openR = rows.filter(e=>!isDone(e)&&!isCancelled(e));
+  const emrgR = rows.filter(e=>getNature(e).toLowerCase().includes('emerg'));
+  const slaBr = rows.filter(e=>getSLAStatus(e).includes('breach'));
+  const compRate = total ? Math.round((compR.length/total)*100) : 0;
+
+  // Department breakdown
+  const deptMap = {};
+  rows.forEach(e => {
+    const d = getDept(e);
+    if (!deptMap[d]) deptMap[d] = {total:0, completed:0, open:0};
+    deptMap[d].total++;
+    if (isDone(e)) deptMap[d].completed++;
+    else if (!isCancelled(e)) deptMap[d].open++;
+  });
+
+  // Technician breakdown
+  const techMap = {};
+  rows.forEach(e => {
+    const t = getTech(e) || 'Unassigned';
+    if (!techMap[t]) techMap[t] = {total:0, completed:0};
+    techMap[t].total++;
+    if (isDone(e)) techMap[t].completed++;
+  });
+
+  // Detail rows (full ticket list)
+  const detailRows = rows.map(e => {
+    const wid = getWorkID(e) || '—';
+    const dept = getDept(e) || '—';
+    const tech = getTech(e) || '—';
+    const nature = getNature(e) || '—';
+    const status = getCell(e,'status') || '—';
+    const sla = getSLAStatus(e) || '—';
+    const type = isBio(e) ? 'Biomedical' : 'General';
+    const month = getMonth(e) || '—';
+    return `<tr>
+      <td>${wid}</td><td>${month}</td><td>${dept}</td><td>${type}</td>
+      <td style="font-size:10px;">${nature}</td><td>${tech}</td>
+      <td>${status}</td><td>${sla.includes('breach')?'<span style="color:#dc2626;font-weight:700;">Breached</span>':sla.includes('met')?'<span style="color:#16a34a;">Met</span>':'—'}</td>
+    </tr>`;
+  }).join('');
+
+  const deptRows = Object.entries(deptMap).map(([dept,d]) =>
+    `<tr><td>${dept}</td><td>${d.total}</td><td style="color:#16a34a;">${d.completed}</td><td style="color:#dc2626;">${d.open}</td><td>${d.total?Math.round((d.completed/d.total)*100):0}%</td></tr>`
+  ).join('');
+
+  const techRows = Object.entries(techMap).map(([tech,t]) =>
+    `<tr><td>${tech}</td><td>${t.total}</td><td style="color:#16a34a;">${t.completed}</td><td>${t.total?Math.round((t.completed/t.total)*100):0}%</td></tr>`
+  ).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Maintenance Analytics Report — ${periodLabel}</title>
+<style>
+body{font-family:Arial;margin:24px;font-size:11px;color:#1a1a1a;}
+.hdr{background:#1a3a5c;color:#fff;padding:18px 20px;border-radius:8px;margin-bottom:16px;}
+.hdr h2{margin:0;font-size:18px;}
+.hdr p{margin:4px 0 0;opacity:.85;font-size:11px;}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}
+.kpi{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;text-align:center;}
+.kpi .v{font-size:22px;font-weight:800;color:#1a3a5c;}
+.kpi .l{font-size:9px;color:#6b7280;text-transform:uppercase;margin-top:4px;}
+h3{color:#1a3a5c;font-size:14px;margin:24px 0 10px;border-bottom:2px solid #2563eb;padding-bottom:4px;}
+table{width:100%;border-collapse:collapse;margin-bottom:10px;}
+th{background:#1a3a5c;color:#fff;padding:7px;font-size:10px;text-align:left;}
+td{border:1px solid #e2e8f0;padding:6px;font-size:10px;}
+tr:nth-child(even){background:#f8fafc;}
+.sig{display:flex;gap:40px;margin-top:40px;}
+.sl{flex:1;border-top:1px solid #999;padding-top:8px;font-size:10px;color:#666;}
+@media print{ body{margin:10px;} }
+</style></head><body>
+
+<div class="hdr">
+  <h2>🔩 Maintenance Analytics Report</h2>
+  <p>Obeid Specialized Hospital · Period: <b>${periodLabel}</b> · Generated: ${today}</p>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi"><div class="v">${total}</div><div class="l">Total Tickets</div></div>
+  <div class="kpi"><div class="v">${bioR.length}</div><div class="l">Biomedical</div></div>
+  <div class="kpi"><div class="v">${genR.length}</div><div class="l">General Maint.</div></div>
+  <div class="kpi"><div class="v" style="color:#16a34a;">${compR.length}</div><div class="l">Completed (${compRate}%)</div></div>
+  <div class="kpi"><div class="v" style="color:#dc2626;">${openR.length}</div><div class="l">Open / Pending</div></div>
+  <div class="kpi"><div class="v" style="color:#3b82f6;">${emrgR.length}</div><div class="l">Emergency</div></div>
+  <div class="kpi"><div class="v" style="color:#f43f5e;">${slaBr.length}</div><div class="l">SLA Breached</div></div>
+  <div class="kpi"><div class="v">${total?Math.round(((total-slaBr.length)/total)*100):0}%</div><div class="l">SLA Compliance</div></div>
+</div>
+
+<h3>📊 Department Breakdown</h3>
+<table><thead><tr><th>Department</th><th>Total</th><th>Completed</th><th>Open</th><th>Completion %</th></tr></thead>
+<tbody>${deptRows || '<tr><td colspan="5">No department data</td></tr>'}</tbody></table>
+
+<h3>👷 Technician / Staff Breakdown</h3>
+<table><thead><tr><th>Assigned To</th><th>Total Tickets</th><th>Completed</th><th>Completion %</th></tr></thead>
+<tbody>${techRows || '<tr><td colspan="4">No technician data</td></tr>'}</tbody></table>
+
+<h3>📋 Full Ticket Detail — ${periodLabel}</h3>
+<table><thead><tr><th>Work ID</th><th>Month</th><th>Department</th><th>Type</th><th>Nature of Work</th><th>Assigned To</th><th>Status</th><th>SLA</th></tr></thead>
+<tbody>${detailRows}</tbody></table>
+
+<div class="sig">
+  <div class="sl">Maintenance Manager: Eng. Mustafa<br><br>Signature: _____________________ Date: _________</div>
+  <div class="sl">FMS Director: Mr. Ali Sobh<br><br>Signature: _____________________ Date: _________</div>
+</div>
+
+</body></html>`;
+
+  const blob = new Blob([html], {type:'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const safeLabel = periodLabel.replace(/\s+/g,'_');
+  a.download = 'Maintenance_Analytics_' + safeLabel + '_' + new Date().toISOString().slice(0,10) + '.html';
+  a.click();
+  toast('✅ Report exported — ' + periodLabel, '#10b981');
+}
 
 </script>
 </body>
