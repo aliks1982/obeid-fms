@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260606-1526';
+  var v = '20260606-1527';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -3461,7 +3461,7 @@ if ('caches' in window) {
 <!-- ===== UTILITIES ===== -->
 <div class="pg" id="page-utils">
   <div class="ph"><h1>⚡ Utility Systems — FMS.1.1.8</h1><p>Manager: Mostapha (Maintenance Manager) · PIN: 2222</p></div>
-  <div class="tb"><button class="tbtn active" onclick="st('utils','gen',this)">Generator Tests</button><button class="tbtn" onclick="st('utils','water',this)">Water Safety</button><button class="tbtn" onclick="st('utils','kpi',this)">KPIs</button></div>
+  <div class="tb"><button class="tbtn active" onclick="st('utils','gen',this)">Generator Tests</button><button class="tbtn" onclick="st('utils','water',this)">Water Safety</button><button class="tbtn" onclick="st('utils','comm',this)">📡 Communication Test (FMS 39.2)</button><button class="tbtn" onclick="st('utils','kpi',this)">KPIs</button></div>
   <div id="utils-gen"><div class="g g2">
     <div class="card"><div class="ch"><div class="ct">Log Generator Test</div></div><div class="cb">
       <div class="fg fg2">
@@ -3493,6 +3493,23 @@ if ('caches' in window) {
       <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('waterTest')">✓ Save Test</button>
     </div></div>
     <div class="card"><div class="ch"><div class="ct">Water Safety Log (4/year)</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Location</th><th>Hot°C</th><th>Cold°C</th><th>Legionella</th><th>By</th><th>Doc</th></tr></thead><tbody id="waterTest-tb"></tbody></table></div></div>
+  </div></div>
+  <div id="utils-comm" style="display:none;"><div class="g g2">
+    <div class="card"><div class="ch"><div class="ct">Log Communication System Test</div></div><div class="cb">
+      <div class="fg fg2">
+        <div class="ff"><label>Date</label><input type="date" id="comm-date"></div>
+        <div class="ff"><label>System Tested</label><select id="comm-sys"><option>PA / Overhead Paging</option><option>PABX / Telephone Exchange</option><option>Nurse Call System</option><option>Bleeper / Pager System</option><option>Mobile / Cordless Phones</option><option>Code Blue Alert System</option><option>Fire Alarm Panel Communication</option><option>Other</option></select></div>
+        <div class="ff"><label>Test Type</label><select id="comm-type"><option value="routine">Routine Functional Test</option><option value="drill">Disaster Drill Test</option><option value="postrepair">Post-Repair Verification</option></select></div>
+        <div class="ff"><label>Location / Zone Tested</label><input type="text" id="comm-zone" placeholder="e.g. All zones / OPD / ER / ICU"></div>
+        <div class="ff"><label>Result</label><select id="comm-res"><option value="pass">✅ Pass — Clear &amp; Audible</option><option value="partial">⚠️ Partial — Some Areas Weak</option><option value="fail">❌ Fail — Not Functioning</option></select></div>
+        <div class="ff"><label>Response Time (sec)</label><input type="number" id="comm-time" placeholder="e.g. 5"></div>
+        <div class="ff" style="grid-column:1/-1"><label>Findings / Issues</label><textarea id="comm-notes" placeholder="Note any dead zones, static, delays, or system faults"></textarea></div>
+        <div class="ff"><label>Tested By</label><input type="text" id="comm-by" placeholder="Engineer / Technician name"></div>
+        <div class="ff"><label>Report / Photo</label><input type="file" id="comm-file"></div>
+      </div>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2(\'commTest\')">✓ Save Test</button>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">Communication System Test Log — FMS 39.2 (Monthly/Quarterly)</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>System</th><th>Test Type</th><th>Zone</th><th>Result</th><th>Resp. Time</th><th>By</th><th>Doc</th></tr></thead><tbody id="commTest-tb"></tbody></table></div></div>
   </div></div>
   <div id="utils-kpi" style="display:none;"><div id="utils-kpi-out"></div></div>
 </div>
@@ -6312,6 +6329,7 @@ const RD={
   inventory:{f:['name:inv-name','cat:inv-cat','asset:inv-asset','loc:inv-loc','freq:inv-freq','risk:inv-risk'],r:['name','loc']},
   genTest:{f:['date:gen-date','unit:gen-unit','tr:gen-tr','load:gen-load','fuel:gen-fuel','res:gen-res','notes:gen-notes','by:gen-by','file:gen-file'],r:['date','unit']},
   waterTest:{f:['date:wt-date','loc:wt-loc','hot:wt-hot','cold:wt-cold','leg:wt-leg','by:wt-by','file:wt-file'],r:['date','loc']},
+  commTest:{f:['date:comm-date','sys:comm-sys','type:comm-type','zone:comm-zone','res:comm-res','time:comm-time','notes:comm-notes','by:comm-by','file:comm-file'],r:['date','sys']},
   pmgCheck:{f:['date:pmg-date','by:pmg-by','time:pmg-time','o2:pmg-o2','air:pmg-air','vac:pmg-vac','n2o:pmg-n2o','lox:pmg-lox','alarms:pmg-alarms'],r:['date','by']},
   airPurity:{f:['date:ap-date','by:ap-by','water:ap-water','co:ap-co','co2:ap-co2','so2:ap-so2','dew:ap-dew','res:ap-res','file:ap-file'],r:['date','by']},
   tldReview:{f:['q:tld-q','yr:tld-yr','count:tld-count','dose:tld-dose','over:tld-over','rso:tld-rso','file:tld-file'],r:['yr','rso']},
@@ -6333,7 +6351,7 @@ function sv2(type){
   d.f.filter(f=>f.includes('file')).forEach(f=>{const e=document.getElementById(f.split(':')[1]);if(e)e.value='';});
 }
 
-const ALT={eoc:'ESR Round logged',training:'Training logged',incident:'Safety incident logged',secInc:'Security incident logged',secDrill:'Security drill logged',chemical:'Chemical registered',wasteAudit:'Waste audit logged',emDrill:'Emergency drill logged',fireAlarm:'Fire alarm record',fireSup:'Suppression PPM',fireExit:'Exit inspection',fireDrill:'Fire drill logged',ppm:'Equipment PPM saved',inventory:'Equipment added',genTest:'Generator test',waterTest:'Water test',pmgCheck:'PMG checklist submitted',airPurity:'Air purity test',tldReview:'TLD review',leadApron:'Lead apron test',shieldCert:'Shielding cert',doc:'Document uploaded',wo:'Work order submitted'};
+const ALT={commTest:'Communication system test logged',eoc:'ESR Round logged',training:'Training logged',incident:'Safety incident logged',secInc:'Security incident logged',secDrill:'Security drill logged',chemical:'Chemical registered',wasteAudit:'Waste audit logged',emDrill:'Emergency drill logged',fireAlarm:'Fire alarm record',fireSup:'Suppression PPM',fireExit:'Exit inspection',fireDrill:'Fire drill logged',ppm:'Equipment PPM saved',inventory:'Equipment added',genTest:'Generator test',waterTest:'Water test',pmgCheck:'PMG checklist submitted',airPurity:'Air purity test',tldReview:'TLD review',leadApron:'Lead apron test',shieldCert:'Shielding cert',doc:'Document uploaded',wo:'Work order submitted'};
 function logA(type){const a=ld('act');a.unshift({l:ALT[type]||type,by:CU.name,rl:CU.rl,ts:new Date().toISOString()});if(a.length>80)a.pop();sv('act',a);}
 
 // ===== RENDER LOGS =====
@@ -6359,6 +6377,7 @@ const LRS={
   inventory:r=>`<td>${r.name||'—'}</td><td>${r.cat||'—'}</td><td>${r.asset||'—'}</td><td>${r.loc||'—'}</td><td>${r.freq||'—'}</td><td>${r.risk||'—'}</td>`,
   genTest:r=>`<td>${r.date||'—'}</td><td>${r.unit||'—'}</td><td>${r.tr||'—'}s</td><td>${r.load||'—'}%</td><td>${r.fuel||'—'}%</td><td>${rb(r.res)}</td><td>${r.by||'—'}</td><td>${fc(r.file)}</td>`,
   waterTest:r=>`<td>${r.date||'—'}</td><td>${r.loc||'—'}</td><td style="color:${Number(r.hot)>=55?'var(--gn)':'var(--rd)'};">${r.hot||'—'}°C</td><td style="color:${Number(r.cold)<=20?'var(--gn)':'var(--rd)'};">${r.cold||'—'}°C</td><td>${r.leg==='neg'?'<span class="bx bg2">Neg</span>':r.leg==='pos'?'<span class="bx br2">POS!</span>':'<span class="bx bm2">N/A</span>'}</td><td>${r.by||'—'}</td><td>${fc(r.file)}</td>`,
+commTest:r=>`<td>${r.date||'—'}</td><td style="font-size:10px;">${r.sys||'—'}</td><td><span class="bx ${r.type==='drill'?'bm2':r.type==='postrepair'?'bo2':'bb2'}">${r.type==='drill'?'Drill Test':r.type==='postrepair'?'Post-Repair':'Routine'}</span></td><td style="font-size:10px;">${r.zone||'—'}</td><td>${r.res==='pass'?'<span class=\"bx bg2\">✅ Pass</span>':r.res==='partial'?'<span class=\"bx bo2\">⚠️ Partial</span>':'<span class=\"bx br2\">❌ Fail</span>'}</td><td>${r.time?r.time+'s':'—'}</td><td>${r.by||'—'}</td><td>${fc(r.file)}</td>`,
   pmgCheck:r=>`<td>${r.date||'—'}</td><td style="color:${Number(r.o2)>=100?'var(--gn)':'var(--rd)'};">${r.o2||'—'}</td><td style="color:${Number(r.air)>=3.5&&Number(r.air)<=5.5?'var(--gn)':'var(--rd)'};">${r.air||'—'}</td><td style="color:${Number(r.vac)<=-300?'var(--gn)':'var(--rd)'};">${r.vac||'—'}</td><td>${r.lox||'—'}%</td><td style="font-size:10px;">${r.alarms||'None'}</td><td>${r.by||'—'}</td>`,
   airPurity:r=>`<td>${r.date||'—'}</td><td>${r.water||'—'}</td><td>${r.co||'—'}</td><td>${r.co2||'—'}</td><td>${r.so2||'—'}</td><td>${r.dew||'—'}</td><td>${rb(r.res)}</td><td>${fc(r.file)}</td>`,
   tldReview:r=>`<td>${r.q||'—'}</td><td>${r.yr||'—'}</td><td>${r.count||'—'}</td><td>${r.dose||'—'}mSv</td><td>${r.over==='no'?'<span class="bx bg2">No</span>':'<span class="bx br2">YES!</span>'}</td><td>${r.rso||'—'}</td><td>${fc(r.file)}</td>`,
