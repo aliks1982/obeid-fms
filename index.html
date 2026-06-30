@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260630-1528';
+  var v = '20260630-1531';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -6606,8 +6606,6 @@ function closeMod(id){document.getElementById('mod-'+id)?.classList.remove('open
 function toast(msg,color){const t=document.getElementById('toast');t.textContent=msg;t.style.background=color||'linear-gradient(135deg,#10b981,#059669)';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
 
 
-
-
 // ===== GOOGLE SHEETS LIVE INTEGRATION =====
 // IMPORTANT: To connect your sheet, paste your Apps Script Web App URL below.
 // See instructions shown in the platform when sheet is not connected.
@@ -8787,7 +8785,6 @@ function relAutoFill(assetNo) {
 }
 
 
-
 // ── Add new equipment ──
 function eqAddRecord() {
   const g = id => document.getElementById(id)?.value?.trim() || '';
@@ -8845,7 +8842,6 @@ function eqDelAdded(ts) {
 
 // Hook into gp() for equip page
 // equip gp hook consolidated into main gp override below
-
 
 
 // ════════════════════════════════════════════════════════════════
@@ -9229,7 +9225,6 @@ function getDynUsers() {
 }
 
 
-
 function settingsEditUser(role) {
   const sel = document.getElementById('set-role');
   if (sel) sel.value = role;
@@ -9253,7 +9248,6 @@ function settingsLoadUser() {
   const hint = document.getElementById('set-role-hint');
   if (hint && user) hint.textContent = user.access;
 }
-
 
 
 function settingsAddUser() {
@@ -10610,7 +10604,6 @@ window.renderLog = function(type) {
 };
 
 // safety/radiation/docs init now handled in consolidated gp() override below
-
 
 
 // ════════════════════════════════════════════════════════════════
@@ -12218,7 +12211,7 @@ function budgetAddLine(cat) {
     item.count   = count;
     item.salary  = salary;
     // Always compute annual from salary × 12 × count (correct formula)
-    item.annual  = salary * 12 * count;
+    item.annual  = salary * 12; // 'Monthly' = total dept. budget, not per-person — headcount is informational only
     item.mtype   = document.getElementById('mp-type')?.value;
     if (!item.role) { toast('Enter position name','#f59e0b'); return; }
     ['mp-role'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
@@ -12305,14 +12298,14 @@ function budgetRenderTable(cat) {
   } else if (cat==='manpower') {
     const tb = document.getElementById('manpower-tb'); if (!tb) return;
     if (!items.length) { tb.innerHTML='<tr><td colspan="7" class="em">No manpower lines yet</td></tr>'; return; }
-    const totalAnnual = items.reduce((s,i)=>s+((i.salary>0 ? i.salary*12*(i.count||1) : (i.annual||0))),0);
+    const totalAnnual = items.reduce((s,i)=>s+((i.salary>0 ? i.salary*12 : (i.annual||0))),0);
     tb.innerHTML = items.map(i=>`<tr>
       <td style="font-weight:600;">${i.role||'—'}</td>
       <td style="font-size:11px;">${i.dept||'—'}</td>
       <td style="font-size:10px;">${i.mtype||'—'}</td>
       <td style="text-align:center;">${i.count||1}</td>
       <td>${sar(i.salary)}</td>
-      <td style="color:var(--ac);font-weight:600;">${sar((i.salary>0 ? i.salary*12*(i.count||1) : (i.annual||0)))}</td>
+      <td style="color:var(--ac);font-weight:600;">${sar((i.salary>0 ? i.salary*12 : (i.annual||0)))}</td>
       <td><button class="btn bb" style="font-size:9px;padding:2px 5px;margin-right:3px;" onclick="budgetEditItem('manpower','${i._id}')">✏</button><button class="btn br" style="font-size:9px;padding:2px 5px;" onclick="budgetDeleteItem('manpower','${i._id}')">✕</button></td>
     </tr>`).join('') + `<tr style="background:rgba(0,112,243,.05);font-weight:700;"><td colspan="5">TOTAL MANPOWER</td><td style="color:var(--ac);">${sar(totalAnnual)}</td><td></td></tr>`;
   }
@@ -12329,7 +12322,7 @@ function budgetRenderOverview() {
     opex:     { b: opex.reduce((s,i)=>s+(i.budget||0),0),     s: opex.reduce((s,i)=>s+(i.spent||0),0) },
     capex:    { b: capex.reduce((s,i)=>s+(i.approved||0),0),  s: capex.filter(i=>i.status==='Completed').reduce((s,i)=>s+(i.cost||0),0) },
     cbudget:  { b: cbudget.reduce((s,i)=>s+(i.value||0),0),   s: cbudget.reduce((s,i)=>s+(i.value||0),0) },
-    manpower: { b: manpower.reduce((s,i)=>s+((i.salary>0 ? i.salary*12*(i.count||1) : (i.annual||0))),0), s: manpower.reduce((s,i)=>s+((i.salary>0 ? i.salary*12*(i.count||1) : (i.annual||0))),0) },
+    manpower: { b: manpower.reduce((s,i)=>s+((i.salary>0 ? i.salary*12 : (i.annual||0))),0), s: manpower.reduce((s,i)=>s+((i.salary>0 ? i.salary*12 : (i.annual||0))),0) },
   };
   const totalBudget = Object.values(totals).reduce((s,t)=>s+t.b,0);
   const totalSpent  = Object.values(totals).reduce((s,t)=>s+t.s,0);
@@ -12439,7 +12432,7 @@ function budgetRenderHistory() {
   const sar = v=>'SAR '+(v||0).toLocaleString('en-SA',{maximumFractionDigits:0});
   el.innerHTML = years.map(y => {
     const data = budgetLoad(y);
-    const getTotal = cat => (data[cat]||[]).reduce((s,i)=>s+((cat==='capex'?i.approved:cat==='manpower'?((i.salary>0 ? i.salary*12*(i.count||1) : (i.annual||0))):i.value||i.budget)||0),0);
+    const getTotal = cat => (data[cat]||[]).reduce((s,i)=>s+((cat==='capex'?i.approved:cat==='manpower'?((i.salary>0 ? i.salary*12 : (i.annual||0))):i.value||i.budget)||0),0);
     const total = ['opex','capex','cbudget','manpower'].reduce((s,c)=>s+getTotal(c),0);
     return `<div style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
       <div>
@@ -12460,7 +12453,7 @@ function budgetExport() {
   const manpower = budgetGetItems('manpower');
   const totalB   = [...opex,...cbudget].reduce((s,i)=>s+(i.budget||i.value||0),0)
     + capex.reduce((s,i)=>s+(i.approved||0),0)
-    + manpower.reduce((s,i)=>s+((i.salary>0 ? i.salary*12*(i.count||1) : (i.annual||0))),0);
+    + manpower.reduce((s,i)=>s+((i.salary>0 ? i.salary*12 : (i.annual||0))),0);
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
 <title>FMS Annual Budget ${BUDGET_YEAR} — Obeid Specialized Hospital</title>
@@ -12520,8 +12513,8 @@ function budgetExport() {
   <div class="section-title">👥 MANPOWER COSTS</div>
   <table><thead><tr><th>Position</th><th>Department</th><th>Type</th><th>Count</th><th>Monthly</th><th>Annual</th></tr></thead>
   <tbody>
-    ${manpower.map(i=>`<tr><td>${i.role||'—'}</td><td>${i.dept||'—'}</td><td>${i.mtype||'—'}</td><td>${i.count||1}</td><td>${sar(i.salary)}</td><td>${sar((i.salary>0 ? i.salary*12*(i.count||1) : (i.annual||0)))}</td></tr>`).join('')}
-    <tr class="total-row"><td colspan="5">MANPOWER TOTAL</td><td>${sar(manpower.reduce((s,i)=>s+((i.salary>0 ? i.salary*12*(i.count||1) : (i.annual||0))),0))}</td></tr>
+    ${manpower.map(i=>`<tr><td>${i.role||'—'}</td><td>${i.dept||'—'}</td><td>${i.mtype||'—'}</td><td>${i.count||1}</td><td>${sar(i.salary)}</td><td>${sar((i.salary>0 ? i.salary*12 : (i.annual||0)))}</td></tr>`).join('')}
+    <tr class="total-row"><td colspan="5">MANPOWER TOTAL</td><td>${sar(manpower.reduce((s,i)=>s+((i.salary>0 ? i.salary*12 : (i.annual||0))),0))}</td></tr>
   </tbody></table>
 </div>
 
@@ -14043,7 +14036,6 @@ function renderCbahi() {
 }
 
 
-
 // ── Fire Safety Report Data (from hospital Fire Alarm distribution) ──
 const FA_FLOORS_DATA = [["Basement",1,[["Billing Office",9],["Quality Dept.",7],["CSSD Decontamination Room",2],["CSSD Clean Room",4],["CSSD Sterile Room",3],["Marketing Dept.",2],["Electrical Room",1],["Physiotherapy",25],["Javy Office",1],["Inpatient Approval Office",1],["Medical Record",16],["Communication Room",7],["Blood Bank",14],["Auditorium",4],["InPatient Pharmacy",6],["Kitchen",13],["Lithrotripsy",2],["Laboratory",21],["Electrical Rm. (Elev.)",1],["Radiology",38],["MRI New",4],["Old X-Ray Room",3],["Dr. Office 1",1],["Dr. Office 2",1],["Communication Dept. Server",2]]],["Ground Floor",2,[["Generator Room",2],["Oxygen Room",4],["Medical Gas Room",4],["Kitchen Gas Room",1],["Electrical Room Gate 4",1],["MOH Office",1],["Security Office",1],["Emergency Room",22],["Tawuniya Office",1],["Electrical Rm. (Tawuniya)",1],["VIP Approval",6],["VIP Pharmacy",2],["Server Room",1],["VIP Clinic",11],["ENT Department",39],["File Opening",7],["Admission for Female",2],["Dental",16],["Orthopedic",15],["Pediatric",14],["Internal Medicine",26],["Surgery",23],["Out Patient Pharmacy",4]]],["1st Floor",3,[["Station E",8],["Room 139",2],["Room 140",2],["Room 141",2],["Room 142",2],["Room 143",2],["Room 144",2],["Room 145",2],["Room 146",2],["Room 147",2],["Room 148",2],["Room 149",2],["Room 150",2],["Station G",12],["Room 121",2],["Room 122",2],["Room 123",2],["Room 124",2],["Room 125",2],["Room 126",2],["Room 127",2],["Room 128",2],["Room 129",2],["Room 130",2],["Room 131",2],["Room 132",2],["Room 133",2],["Room 134",2],["Room 135",2],["Room 136",2],["Room 137",2],["Room 138",2],["Medication Rm.(G)",2],["Stock Rm.(G)",2],["Housekeeping Rm.(G)",2],["Dr. Office (G)",2],["NICU-PICU",2],["Station B",7],["Room 111",2],["Room 112",2],["Room 113",2],["Room 114",2],["Room 115",2],["Room 116",2],["Room 117",2],["Room 118",2],["Room 119",2],["Suite 20",2],["Medication Rm.(B)",1],["Stock Rm.(B)",1],["Electrical Rm.(B)",1],["Suite 10",2],["UPS Room (B)",1],["Station A",7],["Isolation Room",1],["Room 101",2],["Room 102",2],["Room 103",2],["Room 104",2],["Room 105",2],["Room 106",2],["Room 107",2],["Room 108",2],["Room 109",2],["Room 110",2],["Nursing Dept.",1],["Medication Rm.(A)",1],["Delivery Room",14],["ICU A",4],["ICU B",4],["ICU C",4],["ICU Stock Rm.",1]]],["2nd Floor",4,[["Station C",8],["Room 208 (Isolation)",2],["Room 209 (Isolation)",2],["Room 210 (Isolation)",2],["Room 211 (Isolation)",2],["Room 201",2],["Room 202",2],["Room 203",2],["Room 204",2],["Room 205",2],["Room 206",2],["Room 207",2],["UPS Room (C)",1],["Electrical Rm.(C)",1],["Operating Room",18],["Station D",7],["Room 212",2],["Room 213",2],["Room 214",2],["Room 215",2],["Room 216",2],["Room 217",2],["Room 218",2],["Room 219",2],["Medication Rm.(2F)",1],["Station H",8],["Room 220",2],["Room 221",2],["Room 222",2],["Room 223",2],["Room 224",2],["Room 225",2],["Room 226",2],["Room 227",2],["Room 228",2],["Room 229",2],["Room 230",2],["Room 231",2],["Room 232",2],["Room 233",2],["Room 234",2],["Room 235",2],["Room 236",2],["Room 237",2],["Room 238",2],["Stock Rm.(H)",1],["Cathlab",7],["Cathlab Recovery/CCU",3],["Female Waiting Area",1],["Male Waiting Area",1],["Housekeeping Rm.(H)",1]]],["3rd Floor",4,[["Station F",7],["Medication Rm.(F)",1],["Social Worker",1],["Room 239",2],["Room 240",2],["Room 241",2],["Room 242",2],["Room 243",2],["Room 244",2],["Room 245",2],["Room 246",2],["Room 247",2],["Room 248",2],["Room 249",2],["Room 250",2],["Housekeeping Stock Rm.",1],["Oncology Dept.",7],["Medication Rm.(Onco)",1],["Housekeeping Rm.(Onco)",1],["VIP Room",6],["Waiting Area",1],["Hallway",3]]]];
 const FM200_DATA = [["Basement","Medical Record","1"],["Basement","X-Ray Department","1"],["Basement","Electrical Room (Elev 2&3)","1"],["Ground Floor","Air Compressor Room","2"],["Ground Floor","Admission Dept. Gate 1","2"],["Ground Floor","Medical Gas Room","2"],["Ground Floor","X-Ray Department","2"],["Ground Floor","Elec. Rm. (Tawuniya)","2"],["Ground Floor","Electrical Room Gate 4","2"],["Ground Floor","Generator Room Door #4","2"],["Ground Floor","Generator Room Door #2","2"],["1st Floor","Electrical Room (NICU)","3"],["1st Floor","Electrical Room ST-B","3"],["2nd Floor","ST-C CCTV Room","4"],["2nd Floor","ST-D Electrical Room","4"],["2nd Floor","ST-F Electrical Room","4"],["2nd Floor","Elevator Room","4"]];
@@ -15402,37 +15394,6 @@ function cylExport() {
   a.download = 'Cylinder_Testing_FMS32.9_'+new Date().toISOString().slice(0,10)+'.html';
   a.click(); toast('✅ Cylinder report exported','#10b981');
 }
-
-
-// ── BUDGET DATA CORRECTION — fixes field-name mismatch (role/value/dept) ──
-// FORCE-OVERWRITES fms_budget_2026 with corrected field names matching the platform's data model
-(function() {
-  const KEY = 'fms_budget_2026';
-  try {
-    const correctData = {"_ts": "2026-06-30T00:00:00.000Z", "opex": [{"_id": "opex_1", "subcat": "Maintenance Supplies & Spare Parts", "desc": "Heppa Filters", "quarter": "Annual", "budget": 20000, "spent": 20000, "notes": "Needs replacement each 6 months"}, {"_id": "opex_2", "subcat": "Safety Equipment & PPE", "desc": "Face shields, gloves, anti-slip, posters, goggles, cones", "quarter": "Annual", "budget": 5000, "spent": 5000, "notes": ""}, {"_id": "opex_3", "subcat": "Tools & Workshop Equipment", "desc": "Miscellaneous (AC spare parts, belts, sliding door sensors)", "quarter": "Annual", "budget": 15000, "spent": 15000, "notes": ""}, {"_id": "opex_4", "subcat": "Utilities (Electricity, Water, HVAC)", "desc": "Water filters, water tests, cables", "quarter": "Annual", "budget": 20000, "spent": 20000, "notes": ""}, {"_id": "opex_5", "subcat": "Cleaning & Housekeeping Supplies", "desc": "Miscellaneous", "quarter": "Annual", "budget": 50000, "spent": 50000, "notes": ""}, {"_id": "opex_6", "subcat": "IT & Communication (FMS Systems)", "desc": "FM-200 (included in Fire Alarm Contract)", "quarter": "Annual", "budget": 0, "spent": 0, "notes": ""}, {"_id": "opex_7", "subcat": "Other Operating Expenses", "desc": "Kitchen Duct Cleaning", "quarter": "Annual", "budget": 12000, "spent": 12000, "notes": "Twice a year"}, {"_id": "opex_8", "subcat": "Other Operating Expenses", "desc": "Pest Control", "quarter": "Annual", "budget": 10000, "spent": 10000, "notes": ""}], "capex": [{"_id": "capex_1", "cat": "Medical Equipment Upgrade", "desc": "Siemens Ultrasound", "justification": "Capacity Expansion", "priority": "critical", "cost": 5000, "approved": 5000, "quarter": "Q1", "status": "In Progress"}, {"_id": "capex_2", "cat": "HVAC / Ventilation System", "desc": "Billing Department HVAC Replacement", "justification": "End of Life / Age", "priority": "high", "cost": 20000, "approved": 20000, "quarter": "Q2", "status": "Completed"}, {"_id": "capex_3", "cat": "Security System (CCTV, Access Control)", "desc": "Increase CCTV in different areas", "justification": "Civil Defense Requirement", "priority": "high", "cost": 7000, "approved": 7000, "quarter": "Q2", "status": "Completed"}, {"_id": "capex_4", "cat": "Civil Works / Renovation", "desc": "Wards and OPD Painting", "justification": "Civil Defense Requirement", "priority": "high", "cost": 5000, "approved": 5000, "quarter": "Q2", "status": "Completed"}, {"_id": "capex_5", "cat": "Furniture & Fixtures", "desc": "Replace torn inpatient furniture", "justification": "End of Life / Age", "priority": "low", "cost": 12000, "approved": 12000, "quarter": "Q2", "status": "In Progress"}, {"_id": "capex_6", "cat": "Civil Works / Renovation", "desc": "Lab Tiles Replacement", "justification": "End of Life / Age", "priority": "low", "cost": 4000, "approved": 4000, "quarter": "Q2", "status": "In Progress"}], "cbudget": [{"_id": "cb_1", "name": "Pest Control", "vendor": "ALaz Pest Control", "cat": "Annual", "freq": "Annual", "value": 10000, "notes": ""}, {"_id": "cb_2", "name": "Fire Alarm", "vendor": "Castle System", "cat": "Fire System PPM", "freq": "Annual", "value": 26000, "notes": ""}, {"_id": "cb_3", "name": "Duct Cleaning", "vendor": "Ice Cleaning", "cat": "HVAC Service", "freq": "Semi-Annual", "value": 12000, "notes": ""}, {"_id": "cb_4", "name": "Generator Maintenance", "vendor": "Zahed", "cat": "Generator Service", "freq": "Annual", "value": 10000, "notes": ""}, {"_id": "cb_5", "name": "Medical Waste Collection", "vendor": "\u2014", "cat": "Waste Management", "freq": "Annual", "value": 10000, "notes": ""}], "manpower": [{"_id": "mp_1", "role": "Safety Officer", "dept": "Safety & Security", "mtype": "Direct Employee", "count": 1, "salary": 5000}, {"_id": "mp_2", "role": "Biomedical Staff", "dept": "Biomedical Engineering", "mtype": "Direct Employee", "count": 2, "salary": 9000}, {"_id": "mp_3", "role": "Maintenance Technicians", "dept": "Maintenance", "mtype": "Direct Employee", "count": 10, "salary": 30000}]};
-    localStorage.setItem(KEY, JSON.stringify(correctData));
-    console.log('Budget 2026 CORRECTED — field names fixed, totals verified: SAR 4,129,000');
-    window.addEventListener('load', function() {
-      setTimeout(function() {
-        try {
-          if (typeof dbWrite === 'function') {
-            dbWrite('app_settings', {
-              _id: KEY, key: KEY, value: JSON.stringify(correctData),
-              _by: 'System Correction', _ts: new Date().toISOString()
-            });
-            console.log('Corrected budget pushed to cloud DB');
-          }
-          if (typeof budgetBuildYearSelect === 'function') budgetBuildYearSelect();
-          if (typeof budgetRenderAll === 'function') budgetRenderAll();
-          if (typeof toast === 'function') {
-            toast('Budget 2026 data corrected — figures now accurate', '#10b981');
-          }
-        } catch(e) { console.warn('Budget correction push error:', e.message); }
-      }, 3000);
-    });
-  } catch(e) { console.warn('Budget correction error:', e.message); }
-})();
-// ── END BUDGET CORRECTION ──
 
 
 // ══════════════════════════════════════════════════════
