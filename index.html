@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260630-1531';
+  var v = '20260630-1532';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -3537,6 +3537,13 @@ if ('caches' in window) {
     <button class="tbtn" onclick="mgTab('o2calc',this)">🧮 O₂ Reserve Calc</button>
     <button class="tbtn" onclick="mgTab('log',this)">📋 All Records</button>
     <button class="tbtn" onclick="mgTab('cyltest',this)">🧪 Cylinders (FMS 32.9)</button>
+    <button class="tbtn" onclick="mgTab('offline',this)">🔴 Offline Requests (A)</button>
+    <button class="tbtn" onclick="mgTab('zsvlog',this)">🔒 ZSV Log (B)</button>
+    <button class="tbtn" onclick="mgTab('modreq',this)">🔧 Modifications (C)</button>
+    <button class="tbtn" onclick="mgTab('loxpo',this)">🛒 LOX Orders (D)</button>
+    <button class="tbtn" onclick="mgTab('repair',this)">🔨 Repairs (F)</button>
+    <button class="tbtn" onclick="mgTab('gastest',this)">🧫 Gas Tests (G)</button>
+    <button class="tbtn" onclick="mgTab('competency',this)">🎓 Competency (I)</button>
         <button class="tbtn" onclick="mgTab('kpi',this)">📊 KPIs</button>
   </div>
 
@@ -4197,6 +4204,449 @@ if ('caches' in window) {
     </div>
   </div>
 
+
+
+  <!-- ══════════ ANNEX A — PMG SYSTEM OFFLINE REQUEST ══════════ -->
+  <div id="mg-offline" style="display:none;">
+    <div class="g g2" style="gap:14px;">
+      <div class="card" style="border-left:4px solid #dc2626;">
+        <div class="ch"><div class="ct">🔴 New System Offline Request — Annex A</div></div>
+        <div class="cb">
+          <div class="fg fg2">
+            <div class="ff"><label>Request Date</label><input type="date" id="offreq-date" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Request Type</label>
+              <select id="offreq-type" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+                <option value="planned">Planned — PPM / Maintenance</option>
+                <option value="modification">Planned — Modification / Testing</option>
+                <option value="emergency">Emergency — Immediate Isolation Required</option>
+              </select>
+            </div>
+            <div class="ff"><label>Gas System Affected</label>
+              <select id="offreq-gas" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+                <option>Medical Oxygen (O₂) — LOX System</option>
+                <option>Medical Air Compressor</option>
+                <option>Nitrous Oxide (N₂O) Manifold</option>
+                <option>Vacuum / Suction System</option>
+                <option>CO₂ Manifold</option>
+                <option>N₂ Manifold</option>
+                <option>Multiple Systems</option>
+              </select>
+            </div>
+            <div class="ff"><label>Zone / Area Affected</label><input type="text" id="offreq-zone" placeholder="e.g. ICU Floor 2 / OPD Ground Floor" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Planned Start Date/Time</label><input type="datetime-local" id="offreq-start" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Estimated Duration</label><input type="text" id="offreq-duration" placeholder="e.g. 2 hours / 4 hours" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff" style="grid-column:1/-1"><label>Reason / Justification</label><textarea id="offreq-reason" rows="2" placeholder="Describe the reason for taking the system offline" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);resize:vertical;"></textarea></div>
+            <div class="ff" style="grid-column:1/-1"><label>Alternative Gas Supply Plan</label><textarea id="offreq-alt" rows="2" placeholder="e.g. Portable O₂ cylinders to be deployed in affected zone — minimum 2 full cylinders per area" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);resize:vertical;"></textarea></div>
+            <div class="ff"><label>Clinical Areas Notified</label><input type="text" id="offreq-notify" placeholder="Departments/wards notified" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Requested By</label><input type="text" id="offreq-by" placeholder="Biomedical Engineer name" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>FMS Director Approval</label>
+              <select id="offreq-approval" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+                <option value="pending">⏳ Pending</option>
+                <option value="approved">✅ Approved — Mr. Ali Sobh</option>
+                <option value="rejected">❌ Rejected</option>
+              </select>
+            </div>
+            <div class="ff"><label>Nurse-in-Charge Acknowledgment</label>
+              <select id="offreq-nurse" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+                <option value="pending">⏳ Pending</option>
+                <option value="confirmed">✅ Confirmed</option>
+              </select>
+            </div>
+            <div class="ff"><label>Notes</label><input type="text" id="offreq-notes" placeholder="Any additional notes" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+          </div>
+          <button class="btn bg" style="margin-top:12px;width:100%;" onclick="mgAnnexSave('offline','offreq')">✓ Save Offline Request</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch">
+          <div class="ct">📋 Offline Request Log — Annex A</div>
+          <button class="btn bo" style="font-size:10px;" onclick="mgAnnexExport('offline','PMG_Offline_Requests')">⬇ Export</button>
+        </div>
+        <div class="cb" style="padding:0;overflow-x:auto;">
+          <table class="tbl"><thead><tr>
+            <th>Date</th><th>Type</th><th>Gas System</th><th>Zone</th><th>Start</th><th>Duration</th>
+            <th>Alt. Supply</th><th>Director Approval</th><th>Nurse Ack.</th><th>By</th><th>Actions</th>
+          </tr></thead><tbody id="offline-tb"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ ANNEX B — ZSV OPERATION LOG ══════════ -->
+  <div id="mg-zsvlog" style="display:none;">
+    <div class="g g2" style="gap:14px;">
+      <div class="card" style="border-left:4px solid #7c3aed;">
+        <div class="ch"><div class="ct">🔒 Log ZSV Operation — Annex B</div></div>
+        <div class="cb">
+          <div class="fg fg2">
+            <div class="ff"><label>Date</label><input type="date" id="zsv-date" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Valve Location / Label</label><input type="text" id="zsv-location" placeholder="e.g. ZSV-ICU-O2-Floor2" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Gas Type</label>
+              <select id="zsv-gas" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+                <option>Medical Oxygen (O₂)</option><option>Medical Air</option>
+                <option>Nitrous Oxide (N₂O)</option><option>Vacuum / Suction</option>
+                <option>CO₂</option><option>Nitrogen (N₂)</option>
+              </select>
+            </div>
+            <div class="ff"><label>Zones / Rooms Served</label><input type="text" id="zsv-rooms" placeholder="e.g. Rooms 201–208, ICU Bay 1–4" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Reason for Operation</label>
+              <select id="zsv-reason" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+                <option value="planned_ppm">Planned — PPM</option>
+                <option value="planned_mod">Planned — Modification</option>
+                <option value="planned_test">Planned — Testing</option>
+                <option value="emergency_leak">Emergency — Gas Leak</option>
+                <option value="emergency_fail">Emergency — System Failure</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="ff"><label>Offline Request Ref. (Annex A)</label><input type="text" id="zsv-reqref" placeholder="e.g. PMG-OFF-2026-001" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Time Valve Closed</label><input type="time" id="zsv-closed" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Time Valve Re-Opened</label><input type="time" id="zsv-opened" placeholder="Leave blank if still closed" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Patients Affected / Alternative Supply</label><input type="text" id="zsv-patients" placeholder="e.g. 3 patients on O₂ — portable cylinders deployed" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Operated By</label><input type="text" id="zsv-by" placeholder="Biomedical / Maintenance Technician name" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Witnessed By (2-person rule)</label><input type="text" id="zsv-witness" placeholder="Second person present" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff" style="grid-column:1/-1"><label>Findings / Outcome</label><textarea id="zsv-notes" rows="2" placeholder="Post-operation observations, issues found, follow-up required" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);resize:vertical;"></textarea></div>
+          </div>
+          <button class="btn bg" style="margin-top:12px;width:100%;" onclick="mgAnnexSave('zsvlog','zsv')">✓ Save ZSV Operation</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch">
+          <div class="ct">📋 ZSV Operation Log — Annex B</div>
+          <button class="btn bo" style="font-size:10px;" onclick="mgAnnexExport('zsvlog','PMG_ZSV_Log')">⬇ Export</button>
+        </div>
+        <div class="cb" style="padding:0;overflow-x:auto;">
+          <table class="tbl"><thead><tr>
+            <th>Date</th><th>Valve / Location</th><th>Gas</th><th>Zones</th><th>Reason</th>
+            <th>Closed</th><th>Re-Opened</th><th>By</th><th>Witness</th><th>Actions</th>
+          </tr></thead><tbody id="zsvlog-tb"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ ANNEX C — PMG MODIFICATION REQUEST ══════════ -->
+  <div id="mg-modreq" style="display:none;">
+    <div class="g g2" style="gap:14px;">
+      <div class="card" style="border-left:4px solid #0f766e;">
+        <div class="ch"><div class="ct">🔧 New Modification Request — Annex C</div></div>
+        <div class="cb">
+          <div class="fg fg2">
+            <div class="ff"><label>Request Date</label><input type="date" id="mod-date" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Modification Type</label>
+              <select id="mod-type" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+                <option>Add New Outlet(s)</option><option>Remove Outlet(s)</option>
+                <option>Extend Pipeline</option><option>Replace Component</option>
+                <option>Upgrade Alarm Panel</option><option>Manifold Reconfiguration</option>
+                <option>Connector Type Change</option><option>Other</option>
+              </select>
+            </div>
+            <div class="ff"><label>Gas System</label>
+              <select id="mod-gas" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+                <option>Medical Oxygen (O₂)</option><option>Medical Air</option>
+                <option>Nitrous Oxide (N₂O)</option><option>Vacuum / Suction</option>
+                <option>CO₂</option><option>Multiple</option>
+              </select>
+            </div>
+            <div class="ff"><label>Location / Zone</label><input type="text" id="mod-location" placeholder="Floor, department, room numbers" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff" style="grid-column:1/-1"><label>Description of Modification</label><textarea id="mod-desc" rows="2" placeholder="Detailed description of what will be changed" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);resize:vertical;"></textarea></div>
+            <div class="ff" style="grid-column:1/-1"><label>Justification / Reason</label><textarea id="mod-justif" rows="2" placeholder="Clinical need, capacity expansion, compliance requirement, etc." style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);resize:vertical;"></textarea></div>
+            <div class="ff"><label>Contractor Name (if external)</label><input type="text" id="mod-contractor" placeholder="Company name and certification" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Estimated Timeline</label><input type="text" id="mod-timeline" placeholder="e.g. 2 days — Q3 2026" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Requested By</label><input type="text" id="mod-reqby" placeholder="Name / Department" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Biomedical Technical Review</label>
+              <select id="mod-bioappr" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+                <option value="pending">⏳ Pending</option>
+                <option value="approved">✅ Approved</option>
+                <option value="rejected">❌ Rejected — see notes</option>
+              </select>
+            </div>
+            <div class="ff"><label>FMS Director Approval</label>
+              <select id="mod-dirappr" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+                <option value="pending">⏳ Pending</option>
+                <option value="approved">✅ Approved — Mr. Ali Sobh</option>
+                <option value="rejected">❌ Rejected</option>
+              </select>
+            </div>
+            <div class="ff"><label>Completion Date</label><input type="date" id="mod-completed" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Post-Modification Tests Passed</label>
+              <select id="mod-tested" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+                <option value="">— Not yet completed —</option>
+                <option value="pass">✅ All Tests Passed</option>
+                <option value="fail">❌ Test Failures — see PMG Test Log</option>
+              </select>
+            </div>
+            <div class="ff" style="grid-column:1/-1"><label>Notes</label><input type="text" id="mod-notes" placeholder="Additional notes or rejection reason" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+          </div>
+          <button class="btn bg" style="margin-top:12px;width:100%;" onclick="mgAnnexSave('modreq','mod')">✓ Save Modification Request</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch">
+          <div class="ct">📋 Modification Register — Annex C</div>
+          <button class="btn bo" style="font-size:10px;" onclick="mgAnnexExport('modreq','PMG_Modification_Register')">⬇ Export</button>
+        </div>
+        <div class="cb" style="padding:0;overflow-x:auto;">
+          <table class="tbl"><thead><tr>
+            <th>Date</th><th>Type</th><th>Gas</th><th>Location</th><th>Contractor</th>
+            <th>Biomed</th><th>Director</th><th>Completed</th><th>Tests</th><th>Actions</th>
+          </tr></thead><tbody id="modreq-tb"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ ANNEX D — LOX PURCHASE ORDER ══════════ -->
+  <div id="mg-loxpo" style="display:none;">
+    <div class="g g2" style="gap:14px;">
+      <div class="card" style="border-left:4px solid #d97706;">
+        <div class="ch"><div class="ct">🛒 New LOX Purchase Order — Annex D</div></div>
+        <div class="cb">
+          <div class="fg fg2">
+            <div class="ff"><label>PO Date</label><input type="date" id="loxpo-date" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>PO Reference Number</label><input type="text" id="loxpo-ref" placeholder="e.g. LOX-PO-2026-001" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Supplier Name</label><input type="text" id="loxpo-supplier" placeholder="Approved LOX supplier" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Quantity Ordered (Litres LOX)</label><input type="number" id="loxpo-qty" placeholder="e.g. 3000" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Current LOX Level at Time of Order (L)</label><input type="number" id="loxpo-current" placeholder="Current tank level" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Reserve Hours at Time of Order</label><input type="text" id="loxpo-reserve" placeholder="e.g. 68 hours" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Trigger Level</label>
+              <select id="loxpo-trigger" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+                <option value="routine">Routine — ≤72 hrs reserve</option>
+                <option value="urgent">Urgent — ≤48 hrs reserve</option>
+                <option value="emergency">Emergency — ≤24 hrs reserve</option>
+              </select>
+            </div>
+            <div class="ff"><label>Required Delivery Date</label><input type="date" id="loxpo-delivery" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Unit Price (SAR/Litre) — optional</label><input type="number" id="loxpo-price" placeholder="Optional" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Requested By</label><input type="text" id="loxpo-reqby" placeholder="Biomedical Engineer name" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>FMS Director Approval</label>
+              <select id="loxpo-approval" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+                <option value="pending">⏳ Pending</option>
+                <option value="approved">✅ Approved — Mr. Ali Sobh</option>
+              </select>
+            </div>
+            <div class="ff"><label>Delivery Status</label>
+              <select id="loxpo-status" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+                <option value="pending">⏳ Pending Delivery</option>
+                <option value="delivered">✅ Delivered — see Filling Log (Annex E)</option>
+                <option value="delayed">⚠️ Delayed</option>
+              </select>
+            </div>
+            <div class="ff"><label>Notes</label><input type="text" id="loxpo-notes" placeholder="Special instructions, emergency notes" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+          </div>
+          <button class="btn bg" style="margin-top:12px;width:100%;" onclick="mgAnnexSave('loxpo','loxpo')">✓ Save Purchase Order</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch">
+          <div class="ct">📋 LOX Purchase Orders — Annex D</div>
+          <button class="btn bo" style="font-size:10px;" onclick="mgAnnexExport('loxpo','LOX_Purchase_Orders')">⬇ Export</button>
+        </div>
+        <div class="cb" style="padding:0;overflow-x:auto;">
+          <table class="tbl"><thead><tr>
+            <th>PO Date</th><th>PO Ref</th><th>Supplier</th><th>Qty (L)</th><th>Reserve at Order</th>
+            <th>Trigger</th><th>Delivery Date</th><th>Director Approval</th><th>Status</th><th>Actions</th>
+          </tr></thead><tbody id="loxpo-tb"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ ANNEX F — PMG REPAIR LOG ══════════ -->
+  <div id="mg-repair" style="display:none;">
+    <div class="g g2" style="gap:14px;">
+      <div class="card" style="border-left:4px solid #dc2626;">
+        <div class="ch"><div class="ct">🔨 Log Repair / Corrective Maintenance — Annex F</div></div>
+        <div class="cb">
+          <div class="fg fg2">
+            <div class="ff"><label>Date of Repair</label><input type="date" id="rep-date" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Work Order Number</label><input type="text" id="rep-wo" placeholder="e.g. WO-2026-0142" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Component Repaired</label>
+              <select id="rep-component" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+                <option>LOX Tank / Fittings</option><option>LOX Pressure Regulator</option>
+                <option>LOX Vaporizer</option><option>LOX Safety Relief Valve</option>
+                <option>Air Compressor Unit</option><option>Air Dryer / Filters</option>
+                <option>Air Receiver Tank</option><option>O₂ Manifold</option>
+                <option>N₂O Manifold</option><option>CO₂ Manifold</option>
+                <option>Vacuum Pump</option><option>Suction Pipeline</option>
+                <option>Terminal Outlet(s)</option><option>Zone Shutoff Valve</option>
+                <option>Alarm Panel / Zone Alarm</option><option>Pipeline (specify in description)</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div class="ff"><label>Location / Zone</label><input type="text" id="rep-location" placeholder="Floor, department, room" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff" style="grid-column:1/-1"><label>Fault Description</label><textarea id="rep-fault" rows="2" placeholder="Describe the fault, symptom, or reason for repair" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);resize:vertical;"></textarea></div>
+            <div class="ff" style="grid-column:1/-1"><label>Repair / Action Taken</label><textarea id="rep-action" rows="2" placeholder="What was done to rectify the fault" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);resize:vertical;"></textarea></div>
+            <div class="ff"><label>Parts / Materials Used</label><input type="text" id="rep-parts" placeholder="Part names and quantities" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Repaired By</label><input type="text" id="rep-by" placeholder="Technician / Contractor name" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Post-Repair Test Result</label>
+              <select id="rep-test" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+                <option value="pass">✅ Pass — System restored to full function</option>
+                <option value="partial">⚠️ Partial — Temporary fix, follow-up required</option>
+                <option value="pending">⏳ Pending retest</option>
+              </select>
+            </div>
+            <div class="ff"><label>Return to Service Date</label><input type="date" id="rep-restored" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Biomed Engineer Sign-Off</label><input type="text" id="rep-signoff" placeholder="Confirming engineer name" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Notes / Follow-Up</label><input type="text" id="rep-notes" placeholder="Recurring issue? Preventive action required?" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+          </div>
+          <button class="btn bg" style="margin-top:12px;width:100%;" onclick="mgAnnexSave('repair','rep')">✓ Save Repair Record</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch">
+          <div class="ct">📋 PMG Repair & Corrective Maintenance Log — Annex F</div>
+          <button class="btn bo" style="font-size:10px;" onclick="mgAnnexExport('repair','PMG_Repair_Log')">⬇ Export</button>
+        </div>
+        <div class="cb" style="padding:0;overflow-x:auto;">
+          <table class="tbl"><thead><tr>
+            <th>Date</th><th>WO No.</th><th>Component</th><th>Location</th>
+            <th>Fault</th><th>Action Taken</th><th>Test Result</th><th>Restored</th><th>By</th><th>Actions</th>
+          </tr></thead><tbody id="repair-tb"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ ANNEX G — PMG TESTING & INSPECTION LOG ══════════ -->
+  <div id="mg-gastest" style="display:none;">
+    <div class="g g2" style="gap:14px;">
+      <div class="card" style="border-left:4px solid #0f766e;">
+        <div class="ch"><div class="ct">🧫 Log PMG Test / Inspection — Annex G</div></div>
+        <div class="cb">
+          <div class="fg fg2">
+            <div class="ff"><label>Test Date</label><input type="date" id="gtest-date" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Test Type</label>
+              <select id="gtest-type" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+                <option value="identity">Gas Identity Test</option>
+                <option value="pressure">Pressure Test</option>
+                <option value="cross">Cross-Connection Test</option>
+                <option value="flow">Flow Rate Test</option>
+                <option value="leak">Leak Test (1.5× working pressure)</option>
+                <option value="alarm">Alarm Panel Test</option>
+                <option value="airpurity">Medical Air Purity Test</option>
+                <option value="connector">Outlet Connector Type Verification</option>
+                <option value="ppm">Routine PPM Inspection</option>
+              </select>
+            </div>
+            <div class="ff"><label>Gas System / Component</label>
+              <select id="gtest-system" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+                <option>Medical Oxygen (O₂) — Full System</option>
+                <option>Medical Air</option><option>Nitrous Oxide (N₂O)</option>
+                <option>Vacuum / Suction</option><option>CO₂</option>
+                <option>Alarm Panel / Zone Alarms</option><option>All Systems</option>
+              </select>
+            </div>
+            <div class="ff"><label>Zone / Area Tested</label><input type="text" id="gtest-zone" placeholder="e.g. ICU Floor 2 — all outlets, or System-wide" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Test Equipment Used</label><input type="text" id="gtest-equip" placeholder="Analyzer model, gauge type, calibration cert no." style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Result</label>
+              <select id="gtest-result" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+                <option value="pass">✅ Pass — Within acceptable limits</option>
+                <option value="conditional">⚠️ Conditional Pass — Minor issue, monitored</option>
+                <option value="fail">❌ Fail — Immediate corrective action required</option>
+              </select>
+            </div>
+            <div class="ff"><label>Measured Value / Reading</label><input type="text" id="gtest-value" placeholder="e.g. 380 kPa / CO: 2ppm / Flow: 45 L/min" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Acceptable Limit / Pass Criteria</label><input type="text" id="gtest-limit" placeholder="e.g. 345–410 kPa / CO ≤5ppm / ≥40 L/min" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Number of Outlets / Points Tested</label><input type="number" id="gtest-count" placeholder="e.g. 12" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Trigger (why test done now)</label>
+              <select id="gtest-trigger" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+                <option value="post_mod">Post-Modification</option>
+                <option value="post_repair">Post-Repair</option>
+                <option value="routine_annual">Routine Annual</option>
+                <option value="routine_quarterly">Routine Quarterly (alarms)</option>
+                <option value="cbahi_prep">CBAHI Preparation</option>
+                <option value="complaint">Following complaint / incident</option>
+              </select>
+            </div>
+            <div class="ff"><label>Tested By</label><input type="text" id="gtest-by" placeholder="Biomedical Engineer / Contractor" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Lab / Certificate No. (if applicable)</label><input type="text" id="gtest-cert" placeholder="For medical air purity tests" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff" style="grid-column:1/-1"><label>Findings / Corrective Action Required</label><textarea id="gtest-notes" rows="2" placeholder="Detail any failures, out-of-range values, or follow-up actions" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);resize:vertical;"></textarea></div>
+          </div>
+          <button class="btn bg" style="margin-top:12px;width:100%;" onclick="mgAnnexSave('gastest','gtest')">✓ Save Test Record</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch">
+          <div class="ct">📋 PMG Testing & Inspection Log — Annex G</div>
+          <button class="btn bo" style="font-size:10px;" onclick="mgAnnexExport('gastest','PMG_Testing_Log')">⬇ Export</button>
+        </div>
+        <div class="cb" style="padding:0;overflow-x:auto;">
+          <table class="tbl"><thead><tr>
+            <th>Date</th><th>Test Type</th><th>System</th><th>Zone</th>
+            <th>Measured</th><th>Limit</th><th>Result</th><th>Trigger</th><th>By</th><th>Cert No.</th><th>Actions</th>
+          </tr></thead><tbody id="gastest-tb"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ ANNEX I — STAFF PMG COMPETENCY CHECKLIST ══════════ -->
+  <div id="mg-competency" style="display:none;">
+    <div class="g g2" style="gap:14px;">
+      <div class="card" style="border-left:4px solid #16a34a;">
+        <div class="ch"><div class="ct">🎓 Staff PMG Competency Assessment — Annex I</div></div>
+        <div class="cb">
+          <div class="fg fg2">
+            <div class="ff"><label>Staff Name</label><input type="text" id="comp-name" placeholder="Full name" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Staff Role / Department</label><input type="text" id="comp-role" placeholder="e.g. Biomedical Engineer / ICU Nurse" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Training Type</label>
+              <select id="comp-training" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+                <option value="initial">Initial (On-Hire) Orientation</option>
+                <option value="annual">Annual Refresher</option>
+                <option value="followup">Post-Incident / Follow-Up</option>
+              </select>
+            </div>
+            <div class="ff"><label>Date of Assessment</label><input type="date" id="comp-date" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Next Assessment Due</label><input type="date" id="comp-next" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+            <div class="ff"><label>Assessed By</label><input type="text" id="comp-assessor" placeholder="Biomedical Engineer / Safety Officer" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+          </div>
+          <div style="margin:12px 0 6px;font-weight:700;font-size:12px;color:var(--ac);">COMPETENCY ITEMS — Mark each as Competent (C) / Needs Improvement (NI) / Not Applicable (N/A)</div>
+          <div style="background:var(--s2);border-radius:10px;padding:12px;display:grid;gap:6px;">
+            <div style="font-size:11px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">For ALL Staff:</div>
+            <div id="comp-items" style="display:grid;gap:6px;">
+              <div style="display:flex;align-items:center;gap:8px;"><select style="width:80px;font-size:11px;padding:3px;border:1px solid var(--bd);border-radius:6px;background:var(--s1);" id="ci1"><option value="C">C</option><option value="NI">NI</option><option value="NA">N/A</option></select><span style="font-size:12px;">Knows the location of the ZSV serving their work area and which rooms it serves</span></div>
+              <div style="display:flex;align-items:center;gap:8px;"><select style="width:80px;font-size:11px;padding:3px;border:1px solid var(--bd);border-radius:6px;background:var(--s1);" id="ci2"><option value="C">C</option><option value="NI">NI</option><option value="NA">N/A</option></select><span style="font-size:12px;">Can identify the correct gas outlet color coding (O₂ white, Air yellow, Suction black)</span></div>
+              <div style="display:flex;align-items:center;gap:8px;"><select style="width:80px;font-size:11px;padding:3px;border:1px solid var(--bd);border-radius:6px;background:var(--s1);" id="ci3"><option value="C">C</option><option value="NI">NI</option><option value="NA">N/A</option></select><span style="font-size:12px;">Knows who to call for gas failure (Biomedical ext. 6130) and what to do immediately</span></div>
+              <div style="display:flex;align-items:center;gap:8px;"><select style="width:80px;font-size:11px;padding:3px;border:1px solid var(--bd);border-radius:6px;background:var(--s1);" id="ci4"><option value="C">C</option><option value="NI">NI</option><option value="NA">N/A</option></select><span style="font-size:12px;">Understands no combustibles/ignition sources near O₂ outlets</span></div>
+              <div style="display:flex;align-items:center;gap:8px;"><select style="width:80px;font-size:11px;padding:3px;border:1px solid var(--bd);border-radius:6px;background:var(--s1);" id="ci5"><option value="C">C</option><option value="NI">NI</option><option value="NA">N/A</option></select><span style="font-size:12px;">Can demonstrate connecting and disconnecting from an O₂ terminal outlet safely</span></div>
+              <div style="font-size:11px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-top:8px;">For Biomedical Engineers only:</div>
+              <div style="display:flex;align-items:center;gap:8px;"><select style="width:80px;font-size:11px;padding:3px;border:1px solid var(--bd);border-radius:6px;background:var(--s1);" id="ci6"><option value="C">C</option><option value="NI">NI</option><option value="NA">N/A</option></select><span style="font-size:12px;">Can perform LOX daily gauge reading and calculate reserve hours correctly</span></div>
+              <div style="display:flex;align-items:center;gap:8px;"><select style="width:80px;font-size:11px;padding:3px;border:1px solid var(--bd);border-radius:6px;background:var(--s1);" id="ci7"><option value="C">C</option><option value="NI">NI</option><option value="NA">N/A</option></select><span style="font-size:12px;">Can execute the planned ZSV offline procedure including two-person rule and portable O₂ deployment</span></div>
+              <div style="display:flex;align-items:center;gap:8px;"><select style="width:80px;font-size:11px;padding:3px;border:1px solid var(--bd);border-radius:6px;background:var(--s1);" id="ci8"><option value="C">C</option><option value="NI">NI</option><option value="NA">N/A</option></select><span style="font-size:12px;">Knows the CBAHI medical air purity limits (CO ≤5ppm, CO₂ ≤500ppm, SO₂ ≤1ppm, Dewpoint ≤-46°C)</span></div>
+              <div style="display:flex;align-items:center;gap:8px;"><select style="width:80px;font-size:11px;padding:3px;border:1px solid var(--bd);border-radius:6px;background:var(--s1);" id="ci9"><option value="C">C</option><option value="NI">NI</option><option value="NA">N/A</option></select><span style="font-size:12px;">Can perform post-modification gas identity test, pressure test, and leak test independently</span></div>
+              <div style="display:flex;align-items:center;gap:8px;"><select style="width:80px;font-size:11px;padding:3px;border:1px solid var(--bd);border-radius:6px;background:var(--s1);" id="ci10"><option value="C">C</option><option value="NI">NI</option><option value="NA">N/A</option></select><span style="font-size:12px;">Can complete all PMG documentation (LOX log, filling log, repair log, test log) correctly in FMS Platform</span></div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+            <div class="ff"><label>Overall Assessment Result</label>
+              <select id="comp-result" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+                <option value="competent">✅ Competent — All core items met</option>
+                <option value="partial">⚠️ Partially Competent — Follow-up required</option>
+                <option value="not">❌ Not Yet Competent — Re-training required</option>
+              </select>
+            </div>
+            <div class="ff"><label>Notes / Follow-Up Actions</label>
+              <input type="text" id="comp-notes" placeholder="Training gaps, re-assessment date" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);">
+            </div>
+          </div>
+          <button class="btn bg" style="margin-top:12px;width:100%;" onclick="mgAnnexSaveComp()">✓ Save Competency Record</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch">
+          <div class="ct">📋 Staff Competency Register — Annex I</div>
+          <button class="btn bo" style="font-size:10px;" onclick="mgAnnexExport('competency','PMG_Competency_Register')">⬇ Export</button>
+        </div>
+        <div class="cb" style="padding:0;overflow-x:auto;">
+          <table class="tbl"><thead><tr>
+            <th>Date</th><th>Staff Name</th><th>Role</th><th>Training Type</th>
+            <th>Result</th><th>Next Due</th><th>Assessed By</th><th>Actions</th>
+          </tr></thead><tbody id="competency-tb"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
 
 <!-- ===== PMG PREVENTIVE MAINTENANCE — FMS 32.1 ===== -->
 <div class="pg" id="page-pmg">
@@ -7642,7 +8092,8 @@ function reinitAnalCharts() {
 // Top-level MG tab panel IDs — only these get hidden on tab switch
 const MG_TAB_IDS = ['mg-lox','mg-o2backup','mg-n2o','mg-vacuum','mg-aircomp',
   'mg-airbackup','mg-ambulance','mg-cylinder','mg-o2refill','mg-airrefill',
-  'mg-o2calc','mg-log','mg-kpi','mg-cyltest'];
+  'mg-o2calc','mg-log','mg-kpi','mg-cyltest',
+  'mg-offline','mg-zsvlog','mg-modreq','mg-loxpo','mg-repair','mg-gastest','mg-competency'];
 
 function mgTab(tab, btn) {
   // Only hide top-level tab divs — NOT inner tables, inputs, etc.
@@ -7660,7 +8111,9 @@ function mgTab(tab, btn) {
   if (tab === 'log')    { renderMGLog('all'); }
   if (tab === 'kpi')    { renderMGKPIs(); }
   if (tab === 'o2calc') { setTimeout(loxInit, 80); }
-  if (tab === 'cyltest') { setTimeout(cylRender, 80); }
+  if (tab === 'cyltest')    { setTimeout(cylRender, 80); }
+  const annexTabs = ['offline','zsvlog','modreq','loxpo','repair','gastest','competency'];
+  if (annexTabs.includes(tab)) { setTimeout(()=>mgAnnexRender(tab), 80); }
   // Re-render the specific table if it's a checklist tab
   const checklistTabs = ['lox','o2backup','n2o','vacuum','aircomp','airbackup','ambulance','cylinder','o2refill','airrefill'];
   if (checklistTabs.includes(tab)) renderMGTable(tab);
@@ -15522,6 +15975,239 @@ tr:nth-child(even){background:#f8fafc;}
   a.download = 'Maintenance_Analytics_' + safeLabel + '_' + new Date().toISOString().slice(0,10) + '.html';
   a.click();
   toast('✅ Report exported — ' + periodLabel, '#10b981');
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// PMG ANNEXES A, B, C, D, F, G, I — Generic save/render engine
+// ══════════════════════════════════════════════════════════════
+
+const MG_ANNEX_DEFS = {
+  offline: {
+    fields: ['date','type','gas','zone','start','duration','reason','alt','notify','by','approval','nurse','notes'],
+    prefix: 'offreq', key: 'pmg_offline_requests',
+    render: r => [
+      r.date||'—', r.type==='planned'?'Planned PPM':r.type==='modification'?'Planned Mod':r.type==='emergency'?'🚨 Emergency':'—',
+      r.gas||'—', r.zone||'—', (r.start||'—').replace('T',' '), r.duration||'—', (r.alt||'—').slice(0,30),
+      r.approval==='approved'?'<span class="chip chip-green">✅ Approved</span>':r.approval==='rejected'?'<span class="chip chip-red">❌ Rejected</span>':'<span class="chip chip-amber">⏳ Pending</span>',
+      r.nurse==='confirmed'?'<span class="chip chip-green">✅ Confirmed</span>':'<span class="chip chip-amber">⏳ Pending</span>',
+      r.by||'—'
+    ]
+  },
+  zsvlog: {
+    fields: ['date','location','gas','rooms','reason','reqref','closed','opened','patients','by','witness','notes'],
+    prefix: 'zsv', key: 'pmg_zsv_log',
+    render: r => [
+      r.date||'—', r.location||'—', r.gas||'—', r.rooms||'—',
+      r.reason==='emergency_leak'?'🚨 Gas Leak':r.reason==='emergency_fail'?'🚨 Failure':(r.reason||'—').replace('planned_','').replace('_',' '),
+      r.closed||'—', r.opened||'Still closed', r.by||'—', r.witness||'—'
+    ]
+  },
+  modreq: {
+    fields: ['date','type','gas','location','desc','justif','contractor','timeline','reqby','bioappr','dirappr','completed','tested','notes'],
+    prefix: 'mod', key: 'pmg_modifications',
+    render: r => [
+      r.date||'—', r.type||'—', r.gas||'—', r.location||'—', r.contractor||'—',
+      r.bioappr==='approved'?'✅':r.bioappr==='rejected'?'❌':'⏳',
+      r.dirappr==='approved'?'✅':r.dirappr==='rejected'?'❌':'⏳',
+      r.completed||'—',
+      r.tested==='pass'?'<span class="chip chip-green">✅ Pass</span>':r.tested==='fail'?'<span class="chip chip-red">❌ Fail</span>':'—'
+    ]
+  },
+  loxpo: {
+    fields: ['date','ref','supplier','qty','current','reserve','trigger','delivery','price','reqby','approval','status','notes'],
+    prefix: 'loxpo', key: 'pmg_lox_orders',
+    render: r => [
+      r.date||'—', r.ref||'—', r.supplier||'—',
+      r.qty?Number(r.qty).toLocaleString()+' L':'—', r.reserve||'—',
+      r.trigger==='routine'?'Routine':r.trigger==='urgent'?'⚠️ Urgent':'🚨 Emergency',
+      r.delivery||'—',
+      r.approval==='approved'?'<span class="chip chip-green">✅</span>':'<span class="chip chip-amber">⏳</span>',
+      r.status==='delivered'?'<span class="chip chip-green">Delivered</span>':r.status==='delayed'?'<span class="chip chip-amber">Delayed</span>':'<span class="chip chip-blue">Pending</span>'
+    ]
+  },
+  repair: {
+    fields: ['date','wo','component','location','fault','action','parts','by','test','restored','signoff','notes'],
+    prefix: 'rep', key: 'pmg_repairs',
+    render: r => [
+      r.date||'—', r.wo||'—', r.component||'—', r.location||'—',
+      (r.fault||'—').slice(0,30), (r.action||'—').slice(0,30),
+      r.test==='pass'?'<span class="chip chip-green">✅ Pass</span>':r.test==='partial'?'<span class="chip chip-amber">⚠️ Partial</span>':'<span class="chip chip-blue">⏳ Pending</span>',
+      r.restored||'—', r.by||'—'
+    ]
+  },
+  gastest: {
+    fields: ['date','type','system','zone','equip','result','value','limit','count','trigger','by','cert','notes'],
+    prefix: 'gtest', key: 'pmg_gas_tests',
+    render: r => [
+      r.date||'—', r.type||'—', r.system||'—', r.zone||'—',
+      r.value||'—', r.limit||'—',
+      r.result==='pass'?'<span class="chip chip-green">✅ Pass</span>':r.result==='conditional'?'<span class="chip chip-amber">⚠️ Partial</span>':'<span class="chip chip-red">❌ Fail</span>',
+      r.trigger||'—', r.by||'—', r.cert||'—'
+    ]
+  },
+  competency: {
+    fields: ['name','role','training','date','next','assessor','result','notes'],
+    prefix: 'comp', key: 'pmg_competency',
+    render: r => [
+      r.date||'—', r.name||'—', r.role||'—',
+      r.training==='initial'?'On-Hire':r.training==='annual'?'Annual':'Follow-Up',
+      r.result==='competent'?'<span class="chip chip-green">✅ Competent</span>':r.result==='partial'?'<span class="chip chip-amber">⚠️ Partial</span>':'<span class="chip chip-red">❌ Not Yet</span>',
+      r.next||'—', r.assessor||'—'
+    ]
+  }
+};
+
+function mgAnnexGetAll(type) {
+  try { return JSON.parse(localStorage.getItem(PX+'pmg_annex_'+type)||'[]'); } catch(e){ return []; }
+}
+function mgAnnexSaveAll(type, arr) {
+  localStorage.setItem(PX+'pmg_annex_'+type, JSON.stringify(arr));
+  dbWrite('pmg_annex', { _id:'pmg_annex_'+type, type, records:arr, _ts:new Date().toISOString() });
+}
+
+function mgAnnexSave(type, prefix) {
+  const def = MG_ANNEX_DEFS[type];
+  if (!def) return;
+  const editId = document.getElementById(prefix+'-_editid') && document.getElementById(prefix+'-_editid').value;
+  const record = { _id: editId || (type+'_'+Date.now()), _ts: new Date().toISOString(), _by: (window.CU&&CU.name)||'Biomedical' };
+  def.fields.forEach(f => {
+    const el = document.getElementById(prefix+'-'+f);
+    if (el) record[f] = el.value;
+  });
+  if (!record.date && !record.name) { toast('Please fill in the required fields','#f59e0b'); return; }
+  const arr = mgAnnexGetAll(type);
+  const idx = arr.findIndex(r => r._id === record._id);
+  if (idx>=0) arr[idx]=record; else arr.push(record);
+  mgAnnexSaveAll(type, arr);
+  // Reset form
+  def.fields.forEach(f => {
+    const el = document.getElementById(prefix+'-'+f);
+    if (el) { if (el.tagName==='SELECT') el.selectedIndex=0; else el.value=''; }
+  });
+  if (document.getElementById(prefix+'-_editid')) document.getElementById(prefix+'-_editid').value='';
+  mgAnnexRender(type);
+  toast('✅ Record saved','#10b981');
+}
+
+function mgAnnexSaveComp() {
+  const editId = document.getElementById('comp-_editid') && document.getElementById('comp-_editid').value;
+  const rec = {
+    _id: editId||('comp_'+Date.now()), _ts:new Date().toISOString(),
+    _by:(window.CU&&CU.name)||'',
+    name:g('comp-name'), role:g('comp-role'), training:g('comp-training'),
+    date:g('comp-date'), next:g('comp-next'), assessor:g('comp-assessor'),
+    result:g('comp-result'), notes:g('comp-notes'),
+    ci1:g('ci1'),ci2:g('ci2'),ci3:g('ci3'),ci4:g('ci4'),ci5:g('ci5'),
+    ci6:g('ci6'),ci7:g('ci7'),ci8:g('ci8'),ci9:g('ci9'),ci10:g('ci10')
+  };
+  function g(id){ const e=document.getElementById(id); return e?e.value:''; }
+  if (!rec.name) { toast('Staff name required','#f59e0b'); return; }
+  const arr = mgAnnexGetAll('competency');
+  const idx = arr.findIndex(r=>r._id===rec._id);
+  if(idx>=0) arr[idx]=rec; else arr.push(rec);
+  mgAnnexSaveAll('competency', arr);
+  mgAnnexRender('competency');
+  toast('✅ Competency record saved','#10b981');
+}
+
+function mgAnnexRender(type) {
+  const def = MG_ANNEX_DEFS[type]; if (!def) return;
+  const tb = document.getElementById(type+'-tb'); if (!tb) return;
+  const arr = mgAnnexGetAll(type);
+  if (!arr.length) {
+    tb.innerHTML='<tr><td colspan="15" style="text-align:center;color:var(--mu);padding:20px;">No records yet</td></tr>';
+    return;
+  }
+  const sorted = [...arr].sort((a,b)=>(b.date||b._ts||'')>(a.date||a._ts||'')?1:-1);
+  tb.innerHTML = sorted.map(r => {
+    const cells = def.render(r);
+    return '<tr>'+cells.map(c=>`<td style="font-size:11px;">${c}</td>`).join('')+
+      `<td style="white-space:nowrap;">
+        <button class="btn bb" style="font-size:9px;padding:2px 5px;margin-right:3px;" onclick="mgAnnexEdit('${type}','${r._id}')">✏</button>
+        <button class="btn br" style="font-size:9px;padding:2px 5px;" onclick="mgAnnexDelete('${type}','${r._id}')">✕</button>
+      </td></tr>`;
+  }).join('');
+}
+
+function mgAnnexEdit(type, id) {
+  const def = MG_ANNEX_DEFS[type]; if (!def) return;
+  const r = mgAnnexGetAll(type).find(x=>x._id===id); if (!r) return;
+  def.fields.forEach(f => {
+    const el = document.getElementById(def.prefix+'-'+f);
+    if (el) el.value = r[f]||'';
+  });
+  // Set competency items if competency type
+  if (type==='competency') {
+    for(let i=1;i<=10;i++) { const e=document.getElementById('ci'+i); if(e) e.value=r['ci'+i]||'C'; }
+  }
+  // Store edit id
+  let hidEl = document.getElementById(def.prefix+'-_editid');
+  if (!hidEl) {
+    hidEl = document.createElement('input'); hidEl.type='hidden';
+    hidEl.id = def.prefix+'-_editid';
+    document.getElementById('mg-'+type) && document.getElementById('mg-'+type).appendChild(hidEl);
+  }
+  hidEl.value = id;
+  document.getElementById('mg-'+type).scrollIntoView({behavior:'smooth',block:'start'});
+  toast('Editing record — update form and save','#3b82f6');
+}
+
+function mgAnnexDelete(type, id) {
+  if (!confirm('Delete this record?')) return;
+  const arr = mgAnnexGetAll(type).filter(r=>r._id!==id);
+  mgAnnexSaveAll(type, arr);
+  mgAnnexRender(type);
+  toast('🗑 Deleted');
+}
+
+function mgAnnexExport(type, filename) {
+  const arr = mgAnnexGetAll(type);
+  if (!arr.length) { toast('No records to export','#f59e0b'); return; }
+  const def = MG_ANNEX_DEFS[type];
+  const sorted = [...arr].sort((a,b)=>(b.date||b._ts||'')>(a.date||a._ts||'')?1:-1);
+  const LABELS = {
+    offline:['Date','Type','Gas System','Zone','Start','Duration','Alt. Supply Plan','Director Approval','Nurse Ack.','Requested By'],
+    zsvlog:['Date','Valve Location','Gas','Rooms Served','Reason','Closed','Re-Opened','By','Witnessed By'],
+    modreq:['Date','Mod. Type','Gas','Location','Contractor','Biomed Approval','Director Approval','Completed','Tests'],
+    loxpo:['Date','PO Ref','Supplier','Qty (L)','Reserve at Order','Trigger','Delivery Date','Director Approval','Status'],
+    repair:['Date','WO No.','Component','Location','Fault','Action Taken','Test Result','Restored','By'],
+    gastest:['Date','Test Type','System','Zone','Measured Value','Limit/Criteria','Result','Trigger','By','Cert No.'],
+    competency:['Date','Staff Name','Role','Training Type','Result','Next Due','Assessed By']
+  };
+  const hdrs = LABELS[type]||[];
+  const rows = sorted.map(r => {
+    const cells = def.render(r);
+    return '<tr>'+cells.map(c=>`<td>${c}</td>`).join('')+'</tr>';
+  }).join('');
+  const title = {
+    offline:'PMG System Offline Request Register — Annex A',
+    zsvlog:'PMG ZSV Operation Log — Annex B',
+    modreq:'PMG Modification Register — Annex C',
+    loxpo:'LOX Purchase Order Log — Annex D',
+    repair:'PMG Repair & Corrective Maintenance Log — Annex F',
+    gastest:'PMG Testing & Inspection Log — Annex G',
+    competency:'Staff PMG Competency Register — Annex I'
+  }[type]||type;
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title>
+<style>body{font-family:Arial;margin:24px;font-size:11px;} .hdr{background:#1a3a5c;color:#fff;padding:14px 18px;border-radius:8px;margin-bottom:14px;} h2{margin:0;font-size:16px;} p{margin:4px 0 0;opacity:.8;font-size:11px;} table{width:100%;border-collapse:collapse;} th{background:#1a3a5c;color:#fff;padding:7px;font-size:10px;text-align:left;} td{border:1px solid #e2e8f0;padding:6px;font-size:10px;} tr:nth-child(even){background:#f8fafc;} .sig{display:flex;gap:40px;margin-top:40px;} .sl{flex:1;border-top:1px solid #999;padding-top:8px;font-size:10px;color:#666;}</style></head><body>
+<div class="hdr"><h2>📋 ${title}</h2><p>Obeid Specialized Hospital · Medical Gas Department · FMS.32.2 · Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}</p></div>
+<table><thead><tr>${hdrs.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
+<div class="sig"><div class="sl">Biomedical Engineer: Eng. Bashar / Eng. Robert<br><br>Signature: _____________________ Date: _________</div><div class="sl">FMS Director: Mr. Ali Sobh<br><br>Signature: _____________________ Date: _________</div></div>
+</body></html>`;
+  const b=new Blob([html],{type:'text/html'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(b);
+  a.download=filename+'_'+new Date().toISOString().slice(0,10)+'.html';
+  a.click();
+  toast('✅ Exported','#10b981');
+}
+
+// Tab init rendering
+function mgAnnexInitTab(type) {
+  ['offline','zsvlog','modreq','loxpo','repair','gastest','competency'].forEach(t => {
+    if (t===type) mgAnnexRender(t);
+  });
 }
 
 </script>
