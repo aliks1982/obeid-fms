@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260703-1533';
+  var v = '20260703-1534';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -15268,13 +15268,36 @@ function loxGetReadings() {
       if (!map[d] || (r._ts||'') > (map[d]._ts||'')) map[d] = r;
     });
     var sorted = Object.values(map).sort(function(a,b) { return a.date < b.date ? 1 : -1; });
+    // ── SANITIZE: recompute litres & gasL from the raw inch reading ──
+    // The physical gauge (inch H2O) is the only source of truth. Stored
+    // litres/gasL may be corrupted from past sync bugs (values compounding
+    // ×860 produced astronomical numbers). Derived fields are always
+    // recomputed in memory; raw user data (date/inch/patients) is never touched.
+    var GAS_MAX = LOX_MAX_LITRES * LOX_GAS_FACTOR; // 3,000 × 860 = 2,580,000 L absolute ceiling
+    for (var s = 0; s < sorted.length; s++) {
+      var rec = sorted[s];
+      var inchN = parseFloat(rec.inch);
+      if (isFinite(inchN) && inchN >= 2 && inchN <= 84) {
+        var lk = loxTableLookup(inchN);
+        rec.litres = lk.litres;
+        rec.gallons = lk.gallons;
+        rec.gasL = Math.round(lk.litres * LOX_GAS_FACTOR);
+      } else {
+        // Invalid gauge reading — cap any stored values to physical limits
+        rec.litres = (isFinite(Number(rec.litres)) && Number(rec.litres) >= 0 && Number(rec.litres) <= LOX_MAX_LITRES) ? Number(rec.litres) : null;
+        rec.gasL   = (isFinite(Number(rec.gasL))   && Number(rec.gasL)   >= 0 && Number(rec.gasL)   <= GAS_MAX)        ? Number(rec.gasL)   : null;
+      }
+      rec.totalPt = parseInt(rec.totalPt) || 0;
+    }
     // Recalculate consumption for all readings (in case prev readings were missing on first save)
     for (var i = 0; i < sorted.length; i++) {
       var r = sorted[i];
       var prev = sorted[i+1]; // sorted newest→oldest, so i+1 is the previous day
       if (prev && prev.gasL && r.gasL) {
         r.consumption = Math.max(0, prev.gasL - r.gasL);
-        if (r.totalPt > 0) r.perPt = Math.round(r.consumption / r.totalPt);
+        // Physical impossibility guard: cannot consume more than a full tank per day
+        if (!isFinite(r.consumption) || r.consumption > GAS_MAX) r.consumption = null;
+        r.perPt = (r.consumption != null && r.totalPt > 0) ? Math.round(r.consumption / r.totalPt) : null;
       } else {
         r.consumption = null;
         r.perPt = null;
@@ -15371,11 +15394,13 @@ function loxUpdateKPIs(readings) {
     loxUpdateTank(0,null);loxUpdate48hr(null);return;
   }
   var latest=readings[0];
-  var cArr=readings.filter(function(r){return r.consumption!=null;}).slice(0,7);
-  var avgC=cArr.length?Math.round(cArr.reduce(function(s,r){return s+r.consumption;},0)/cArr.length):null;
-  var hrs=(avgC&&latest.gasL)?Math.round((latest.gasL/avgC)*24):null;
-  var ppArr=readings.filter(function(r){return r.perPt!=null;}).slice(0,7);
-  var avgPP=ppArr.length?Math.round(ppArr.reduce(function(s,r){return s+r.perPt;},0)/ppArr.length):null;
+  var GAS_CAP = (typeof LOX_MAX_LITRES!=='undefined'?LOX_MAX_LITRES:3000) * (typeof LOX_GAS_FACTOR!=='undefined'?LOX_GAS_FACTOR:860);
+  var cArr=readings.filter(function(r){var c=Number(r.consumption);return r.consumption!=null&&isFinite(c)&&c>=0&&c<=GAS_CAP;}).slice(0,7);
+  var avgC=cArr.length?Math.round(cArr.reduce(function(s,r){return s+Number(r.consumption);},0)/cArr.length):null;
+  var hrs=(avgC&&latest.gasL)?Math.round((Number(latest.gasL)/avgC)*24):null;
+  if(hrs!=null&&(!isFinite(hrs)||hrs<0||hrs>8760))hrs=null; // cap at 1 year
+  var ppArr=readings.filter(function(r){var p=Number(r.perPt);return r.perPt!=null&&isFinite(p)&&p>=0&&p<=GAS_CAP;}).slice(0,7);
+  var avgPP=ppArr.length?Math.round(ppArr.reduce(function(s,r){return s+Number(r.perPt);},0)/ppArr.length):null;
   se('lox-kpi-level',latest.litres?latest.litres.toLocaleString()+' L':'--');
   var consVal = latest.consumption;
   var consStr = consVal == null ? '--' :
