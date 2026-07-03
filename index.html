@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260630-1532';
+  var v = '20260703-1533';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -6190,6 +6190,8 @@ async function dbWrite(type, record) {
   } catch(e) {
     DB_ONLINE = false;
     dbQueue(type, record, 'upsert');
+    // Record is safe in the queue — start auto-reconnect so it flushes ASAP
+    if (typeof dbScheduleReconnect === 'function') dbScheduleReconnect();
     return false;
   }
 }
@@ -6217,7 +6219,7 @@ async function dbLoadAll() {
   if (!url) { dbShowStatus('offline'); return; }
   dbShowStatus('loading');
   try {
-    const r = await fetch(url + '?action=getAll', { signal: AbortSignal.timeout(30000) });
+    const r = await fetch(url + '?action=getAll', { signal: AbortSignal.timeout(45000) });
     if (!r.ok) throw new Error('HTTP '+r.status);
     const j = await r.json();
     if (!j.ok) throw new Error(j.error||'Load failed');
@@ -6407,32 +6409,86 @@ async function dbLoadAll() {
     return true;
   } catch(e) {
     DB_ONLINE = false;
-    console.warn('dbLoadAll attempt 1 failed:', e.message, '- retrying in 8s...');
-    dbShowStatus('retrying');
-    // Auto-retry once — Apps Script may be cold-starting
-    setTimeout(async () => {
-      try {
-        const url2 = typeof CANONICAL_DB_URL !== 'undefined' ? CANONICAL_DB_URL : getDBUrl();
-        if (!url2) { dbShowStatus('offline'); return; }
-        dbShowStatus('loading');
-        const r2 = await fetch(url2 + '?action=getAll', { signal: AbortSignal.timeout(30000) });
-        if (!r2.ok) throw new Error('HTTP '+r2.status);
-        const j2 = await r2.json();
-        if (!j2.ok) throw new Error('Retry load failed');
-        DB_ONLINE = true;
-        const cnt = Object.values(j2.data||{}).reduce((s,a)=>s+(Array.isArray(a)?a.length:0),0);
-        dbShowStatus('online', cnt);
-        console.log('DB connected on retry - ' + cnt + ' records');
-        setTimeout(dbFlushQueue, 1000);
-      } catch(e2) {
-        DB_ONLINE = false;
-        dbShowStatus('offline');
-        console.error('dbLoadAll retry also failed:', e2.message);
-      }
-    }, 8000);
+    console.warn('dbLoadAll failed:', e.message, '— scheduling auto-reconnect');
+    dbScheduleReconnect();
     return false;
   }
 }
+
+// ══ PERSISTENT AUTO-RECONNECT — never gives up ══
+// Retries with backoff: 8s → 15s → 30s → 60s → then every 60s forever.
+// Also reconnects instantly when network returns or tab becomes visible.
+let DB_RETRY_ATTEMPT = 0;
+let DB_RETRY_TIMER = null;
+
+function dbScheduleReconnect() {
+  if (DB_RETRY_TIMER) return; // already scheduled
+  const delays = [8000, 15000, 30000, 60000];
+  const delay = delays[Math.min(DB_RETRY_ATTEMPT, delays.length - 1)];
+  DB_RETRY_ATTEMPT++;
+  dbShowStatus('retrying', Math.round(delay/1000));
+  console.log('DB reconnect attempt ' + DB_RETRY_ATTEMPT + ' in ' + (delay/1000) + 's');
+  DB_RETRY_TIMER = setTimeout(async () => {
+    DB_RETRY_TIMER = null;
+    const ok = await dbTryReconnect();
+    if (!ok) dbScheduleReconnect(); // keep trying forever
+  }, delay);
+}
+
+async function dbTryReconnect() {
+  try {
+    const url = typeof CANONICAL_DB_URL !== 'undefined' ? CANONICAL_DB_URL : getDBUrl();
+    if (!url) { dbShowStatus('offline'); return false; }
+    dbShowStatus('loading');
+    const r = await fetch(url + '?action=getAll', { signal: AbortSignal.timeout(45000) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'Load failed');
+    // Success — reset retry counter and do a full proper load
+    DB_RETRY_ATTEMPT = 0;
+    DB_ONLINE = true;
+    const cnt = Object.values(j.data||{}).reduce((s,a)=>s+(Array.isArray(a)?a.length:0),0);
+    dbShowStatus('online', cnt);
+    console.log('✅ DB reconnected — ' + cnt + ' records. Running full sync...');
+    setTimeout(dbFlushQueue, 1000);
+    // Run the full dbLoadAll to restore all data properly (LOX, budget, KPIs, annexes)
+    setTimeout(() => { dbLoadAll(); }, 1500);
+    return true;
+  } catch(e) {
+    DB_ONLINE = false;
+    console.warn('Reconnect attempt failed:', e.message);
+    return false;
+  }
+}
+
+function dbForceReconnect() {
+  // Manual "Retry now" — cancels pending timer and tries immediately
+  if (DB_RETRY_TIMER) { clearTimeout(DB_RETRY_TIMER); DB_RETRY_TIMER = null; }
+  DB_RETRY_ATTEMPT = 0;
+  dbTryReconnect().then(ok => { if (!ok) dbScheduleReconnect(); });
+}
+
+// Instant reconnect when network returns
+window.addEventListener('online', () => {
+  console.log('Network back online — reconnecting DB immediately');
+  dbForceReconnect();
+});
+
+// Reconnect when user returns to the tab (if we were offline)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && !DB_ONLINE) {
+    console.log('Tab visible + DB offline — attempting reconnect');
+    dbForceReconnect();
+  }
+});
+
+// Background heartbeat: every 2 minutes, if offline, quietly retry
+setInterval(() => {
+  if (!DB_ONLINE && !DB_RETRY_TIMER) {
+    console.log('Heartbeat: DB offline — attempting background reconnect');
+    dbTryReconnect().then(ok => { if (!ok && !DB_RETRY_TIMER) dbScheduleReconnect(); });
+  }
+}, 120000);
 
 // ── Offline queue ──
 function dbQueue(type, record, action) {
@@ -6493,11 +6549,11 @@ function dbShowStatus(state, count) {
     txt.style.color = 'var(--or)';
   } else if (state === 'retrying') {
     dot.style.background = 'var(--or)'; dot.style.animation = 'pulse 1s infinite';
-    txt.textContent = 'Connection slow — retrying automatically in 8 seconds...';
+    txt.innerHTML = '⟳ Connection slow — auto-retrying in ' + (count||8) + 's… <a href="#" onclick="dbForceReconnect();return false;" style="color:var(--ac);text-decoration:underline;font-weight:700;">Retry now</a>';
     txt.style.color = 'var(--or)';
   } else {
     dot.style.background = 'var(--rd)'; dot.style.animation = '';
-    txt.textContent = '⚠ Offline mode — data saved locally only · Connect DB in Settings';
+    txt.innerHTML = '⚠ Offline — data saved locally · auto-reconnect active · <a href="#" onclick="dbForceReconnect();return false;" style="color:var(--ac);text-decoration:underline;font-weight:700;">Retry now</a>';
     txt.style.color = 'var(--rd)';
   }
 }
