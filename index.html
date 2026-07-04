@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260704-1536';
+  var v = '20260704-1537';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -7110,6 +7110,7 @@ function renderKPI(tab){
 const DKM={safety:'111',security:'112',hazmat:'113',emergency:'1145',fire:'116',equip:'117',utils:'118',medgas:'118',radiation:'118'};
 function renderDomainKPI(domain){
   const key=DKM[domain];const g=key&&KGS[key];const el=document.getElementById(domain+'-kpi-out');if(!el)return;
+  el.style.display='block'; // st() hides all [id^=domain-] incl. this inner div — restore it
   if(!g){el.innerHTML='<div class="em">KPIs auto-calculated from records entered above</div>';return;}
   el.innerHTML=`<div class="st">${g.lbl}</div>`+g.kpis.map(k=>{
     const actual=k.c(ld(k.k));
