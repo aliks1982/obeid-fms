@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260703-1535';
+  var v = '20260704-1536';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -3508,7 +3508,7 @@ if ('caches' in window) {
         <div class="ff"><label>Tested By</label><input type="text" id="comm-by" placeholder="Engineer / Technician name"></div>
         <div class="ff"><label>Report / Photo</label><input type="file" id="comm-file"></div>
       </div>
-      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2(\'commTest\')">✓ Save Test</button>
+      <button class="btn bg" style="margin-top:10px;width:100%;" onclick="sv2('commTest')">✓ Save Test</button>
     </div></div>
     <div class="card"><div class="ch"><div class="ct">Communication System Test Log — FMS 39.2 (Monthly/Quarterly)</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>System</th><th>Test Type</th><th>Zone</th><th>Result</th><th>Resp. Time</th><th>By</th><th>Doc</th></tr></thead><tbody id="commTest-tb"></tbody></table></div></div>
   </div></div>
@@ -6381,6 +6381,31 @@ async function dbLoadAll() {
             if (bEl && bEl.style.display !== 'none') setTimeout(budgetInit, 200);
           }
         }
+      }
+
+      // ── Restore fire-safety inspection reports (fms_rep_ rows) ──
+      // repSave() stores reports in app_settings with _id prefix 'fms_rep_'.
+      // Without this block they sync UP to Sheets but never come back DOWN
+      // on other devices/accounts.
+      const repRows = j.data.app_settings.filter(r => r._id && String(r._id).startsWith('fms_rep_'));
+      if (repRows.length > 0) {
+        try {
+          const localReps = JSON.parse(localStorage.getItem('obeid3_fms_reports') || '[]');
+          const localIds = new Set(localReps.map(r => String(r._id)));
+          let added = 0;
+          repRows.forEach(row => {
+            if (!localIds.has(String(row._id))) { localReps.push(row); added++; }
+          });
+          if (added > 0) {
+            // newest first, consistent with repSave's unshift ordering
+            localReps.sort((a,b) => (b._ts||'') > (a._ts||'') ? 1 : -1);
+            localStorage.setItem('obeid3_fms_reports', JSON.stringify(localReps));
+            console.log('✓ Fire safety reports synced from DB —', added, 'new report(s)');
+            if (typeof repRenderLog === 'function') {
+              ['fa-inspection','fa-testing','fm200','fire-pump','wet-chem'].forEach(t => { try { repRenderLog(t); } catch(e2){} });
+            }
+          }
+        } catch(re) { console.warn('Report restore error:', re.message); }
       }
     }
     renderAll();
