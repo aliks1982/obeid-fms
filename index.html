@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260705-1539';
+  var v = '20260705-1540';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260512-0818">
+<meta name="app-version" content="20260705-1540">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -5294,7 +5294,7 @@ if ('caches' in window) {
 <!-- ===== SETTINGS (Director only) ===== -->
 <div class="pg" id="page-settings">
   <div class="ph"><h1>⚙ Settings</h1>
-    <p id="settings-role-desc">Database connection · Platform configuration</p><p>Manage user accounts · Modify PINs · View access log · Platform version: <b style="color:var(--ac);">20260512-0818</b></p></div>
+    <p id="settings-role-desc">Database connection · Platform configuration</p><p>Manage user accounts · Modify PINs · View access log · Platform version: <b style="color:var(--ac);" id="platform-version-display">…</b></p></div>
   
   <!-- Storage Usage Card -->
   <div class="card" style="margin-bottom:14px;">
@@ -15074,11 +15074,20 @@ function repDelete(id) {
   toast('🗑 Report deleted');
 }
 
+// Recover the report type from the _id (format: fms_rep_<type>_<timestamp>).
+// Bulletproof against rows whose 'type' field was lost in DB round-trips.
+function repTypeOf(r) {
+  if (r && r.type) return r.type;
+  const id = String((r && r._id) || '');
+  const m = id.match(/^fms_rep_(.+)_\d+$/);
+  return m ? m[1] : '';
+}
+
 function repRenderLog(type) {
   const el = document.getElementById('repLog-' + type);
   if (!el) return;
   const all = JSON.parse(localStorage.getItem('obeid3_fms_reports') || '[]');
-  const reps = all.filter(r => r.type === type);
+  const reps = all.filter(r => repTypeOf(r) === type);
   if (!reps.length) { el.innerHTML = '<div style="font-size:11px;color:var(--mu);padding:12px;">No records saved yet</div>'; return; }
   
   el.innerHTML = reps.map(r => {
@@ -15101,6 +15110,16 @@ function repRenderLog(type) {
 function repLoadAll() {
   repBuildFATable();
   repBuildFM200Table();
+  // One-time repair: restore lost 'type' fields on locally stored reports
+  try {
+    const _all = JSON.parse(localStorage.getItem('obeid3_fms_reports') || '[]');
+    let _fixed = 0;
+    _all.forEach(r => { if (!r.type) { const t = repTypeOf(r); if (t) { r.type = t; _fixed++; } } });
+    if (_fixed > 0) {
+      localStorage.setItem('obeid3_fms_reports', JSON.stringify(_all));
+      console.log('✓ Repaired type on ' + _fixed + ' locally stored report(s)');
+    }
+  } catch(e) {}
   // Render whatever we already have locally first (instant paint)
   ['fa-inspection','fa-testing','fm200','fire-pump','wet-chem'].forEach(repRenderLog);
   repInitFM200();
@@ -15132,25 +15151,34 @@ async function repSyncFromDB(verbose) {
       if (verbose) toast('⚠️ Cloud DB has NO fire-safety reports. On the account that entered them, press "⬆ Push All My Reports to Cloud"','#f59e0b');
       return;
     }
-    const local = JSON.parse(localStorage.getItem('obeid3_fms_reports') || '[]');
-    const localIds = new Set(local.map(x => String(x._id)));
-    let added = 0;
-    repRows.forEach(row => {
-      if (localIds.has(String(row._id))) return;
+    const richness = r => Object.keys(r||{}).filter(k => r[k] !== '' && r[k] != null && k !== '_id').length;
+    const normalize = row => {
       if (typeof row.floors === 'string' && row.floors.trim().startsWith('[')) {
         try { row.floors = JSON.parse(row.floors); } catch(e) {}
       }
-      local.push(row); added++;
+      if (!row.type) row.type = repTypeOf(row); // repair lost type from _id
+      return row;
+    };
+    const local = JSON.parse(localStorage.getItem('obeid3_fms_reports') || '[]');
+    local.forEach(r => { if (!r.type) r.type = repTypeOf(r); }); // repair existing local rows too
+    const byId = {};
+    local.forEach(r => { if (r && r._id) byId[String(r._id)] = r; });
+    let added = 0, upgraded = 0;
+    repRows.forEach(raw => {
+      const row = normalize(raw);
+      const key = String(row._id);
+      if (!byId[key]) { byId[key] = row; added++; }
+      else if (richness(row) > richness(byId[key])) { byId[key] = row; upgraded++; } // cloud copy has more data
     });
-    if (added > 0) {
-      local.sort((a,b) => (b._ts||'') > (a._ts||'') ? 1 : -1);
-      localStorage.setItem('obeid3_fms_reports', JSON.stringify(local));
-      ['fa-inspection','fa-testing','fm200','fire-pump','wet-chem'].forEach(repRenderLog);
-      setStatus('Cloud: ' + repRows.length + ' reports · ' + added + ' new synced');
-      toast('✅ ' + added + ' report(s) synced from cloud', '#10b981');
-    } else {
-      setStatus('Cloud: ' + repRows.length + ' reports · all already on this device');
-      if (verbose) toast('✅ Cloud has ' + repRows.length + ' report(s) — all already synced here','#10b981');
+    const merged = Object.values(byId).sort((a,b) => (b._ts||'') > (a._ts||'') ? 1 : -1);
+    localStorage.setItem('obeid3_fms_reports', JSON.stringify(merged));
+    // ALWAYS re-render — type repairs alone can make previously invisible reports appear
+    ['fa-inspection','fa-testing','fm200','fire-pump','wet-chem'].forEach(repRenderLog);
+    setStatus('Cloud: ' + repRows.length + ' reports · ' + added + ' new · ' + upgraded + ' updated');
+    if (added > 0 || upgraded > 0) {
+      toast('✅ Synced: ' + added + ' new, ' + upgraded + ' updated from cloud', '#10b981');
+    } else if (verbose) {
+      toast('✅ Cloud has ' + repRows.length + ' report(s) — this device is up to date','#10b981');
     }
   } catch(e) {
     setStatus('Sync failed: ' + e.message);
@@ -16395,6 +16423,8 @@ function mgAnnexInitTab(type) {
   });
 }
 
+
+try { const _pv = document.getElementById('platform-version-display'); if (_pv && typeof v !== 'undefined') _pv.textContent = v; } catch(e) {}
 </script>
 </body>
 </html>
