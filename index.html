@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260704-1538';
+  var v = '20260705-1539';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -2210,6 +2210,11 @@ if ('caches' in window) {
     <button class="rep-type-btn" id="repBtn-fm200" onclick="repShowType('fm200',this)">🧯 FM-200 Inspection</button>
     <button class="rep-type-btn" id="repBtn-fire-pump" onclick="repShowType('fire-pump',this)">💧 Fire Pump Weekly</button>
     <button class="rep-type-btn" id="repBtn-wet-chem" onclick="repShowType('wet-chem',this)">🍳 Wet Chemical Check</button>
+    <div style="width:100%;display:flex;gap:8px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--bd);">
+      <button class="btn bb" style="font-size:11px;padding:6px 14px;" onclick="repSyncFromDB(true)">🔄 Sync from Cloud</button>
+      <button class="btn bo" style="font-size:11px;padding:6px 14px;" onclick="repPushAllToDB()">⬆ Push All My Reports to Cloud</button>
+      <span id="rep-sync-status" style="font-size:10px;color:var(--mu);align-self:center;"></span>
+    </div>
   </div>
 
   <!-- ══ REPORT 1: FA Monthly Inspection ══ -->
@@ -15106,22 +15111,32 @@ function repLoadAll() {
 
 // Fetch fire-safety reports straight from the DB (app_settings, fms_rep_ prefix).
 // This is independent of dbLoadAll timing so it always works when the page opens.
-async function repSyncFromDB() {
+async function repSyncFromDB(verbose) {
+  const statusEl = document.getElementById('rep-sync-status');
+  const setStatus = t => { if (statusEl) statusEl.textContent = t; };
   try {
     const url = (typeof CANONICAL_DB_URL !== 'undefined' && CANONICAL_DB_URL) ? CANONICAL_DB_URL : (typeof getDBUrl === 'function' ? getDBUrl() : null);
-    if (!url) { console.log('repSyncFromDB: no DB URL'); return; }
+    if (!url) { setStatus('No DB URL configured'); if(verbose) toast('❌ No DB URL configured','#ef4444'); return; }
+    setStatus('Checking cloud…');
     const r = await fetch(url + '?action=getAll', { signal: AbortSignal.timeout(45000) });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const j = await r.json();
-    if (!j.ok || !j.data || !j.data.app_settings) { console.log('repSyncFromDB: no app_settings in response'); return; }
+    if (!j.ok || !j.data || !j.data.app_settings) {
+      setStatus('Cloud responded but no App_Settings data');
+      if (verbose) toast('⚠️ Cloud has no App_Settings data','#f59e0b');
+      return;
+    }
     const repRows = j.data.app_settings.filter(row => row._id && String(row._id).startsWith('fms_rep_'));
-    if (!repRows.length) { console.log('repSyncFromDB: no fms_rep_ rows in DB'); return; }
+    if (!repRows.length) {
+      setStatus('Cloud DB has 0 reports — ask the entering account to Push All');
+      if (verbose) toast('⚠️ Cloud DB has NO fire-safety reports. On the account that entered them, press "⬆ Push All My Reports to Cloud"','#f59e0b');
+      return;
+    }
     const local = JSON.parse(localStorage.getItem('obeid3_fms_reports') || '[]');
     const localIds = new Set(local.map(x => String(x._id)));
     let added = 0;
     repRows.forEach(row => {
       if (localIds.has(String(row._id))) return;
-      // 'floors' comes back from the sheet as a JSON string — parse it back to an array
       if (typeof row.floors === 'string' && row.floors.trim().startsWith('[')) {
         try { row.floors = JSON.parse(row.floors); } catch(e) {}
       }
@@ -15131,14 +15146,40 @@ async function repSyncFromDB() {
       local.sort((a,b) => (b._ts||'') > (a._ts||'') ? 1 : -1);
       localStorage.setItem('obeid3_fms_reports', JSON.stringify(local));
       ['fa-inspection','fa-testing','fm200','fire-pump','wet-chem'].forEach(repRenderLog);
-      console.log('✓ repSyncFromDB — ' + added + ' report(s) synced from other accounts');
-      if (typeof toast === 'function') toast('✅ ' + added + ' report(s) synced', '#10b981');
+      setStatus('Cloud: ' + repRows.length + ' reports · ' + added + ' new synced');
+      toast('✅ ' + added + ' report(s) synced from cloud', '#10b981');
     } else {
-      console.log('repSyncFromDB: all ' + repRows.length + ' DB reports already local');
+      setStatus('Cloud: ' + repRows.length + ' reports · all already on this device');
+      if (verbose) toast('✅ Cloud has ' + repRows.length + ' report(s) — all already synced here','#10b981');
     }
   } catch(e) {
+    setStatus('Sync failed: ' + e.message);
     console.warn('repSyncFromDB failed:', e.message);
+    if (verbose) toast('❌ Sync failed: ' + e.message,'#ef4444');
   }
+}
+
+// Force-push every locally saved report up to the cloud DB.
+// Use on the account that ENTERED the data (e.g. Mostapha) if reports
+// never reached the Google Sheet (saved while offline, queue lost, etc.)
+async function repPushAllToDB() {
+  const all = JSON.parse(localStorage.getItem('obeid3_fms_reports') || '[]');
+  const statusEl = document.getElementById('rep-sync-status');
+  const setStatus = t => { if (statusEl) statusEl.textContent = t; };
+  if (!all.length) { toast('No local reports on this device to push','#f59e0b'); setStatus('0 local reports'); return; }
+  toast('⬆ Pushing ' + all.length + ' report(s) to cloud…','#3b82f6');
+  let pushed = 0;
+  for (const r of all) {
+    try {
+      await dbWrite('app_settings', r);
+      pushed++;
+      setStatus('Pushing… ' + pushed + '/' + all.length);
+      // small delay so Apps Script isn't rate-limited
+      await new Promise(res => setTimeout(res, 400));
+    } catch(e) { console.warn('push failed for', r._id, e.message); }
+  }
+  setStatus('Pushed ' + pushed + '/' + all.length + ' reports to cloud');
+  toast('✅ Pushed ' + pushed + ' report(s) to cloud. Now press "Sync from Cloud" on the other account.','#10b981');
 }
 
 function repExport(type) {
