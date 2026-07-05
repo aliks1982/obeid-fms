@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260704-1537';
+  var v = '20260704-1538';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -6394,7 +6394,12 @@ async function dbLoadAll() {
           const localIds = new Set(localReps.map(r => String(r._id)));
           let added = 0;
           repRows.forEach(row => {
-            if (!localIds.has(String(row._id))) { localReps.push(row); added++; }
+            if (!localIds.has(String(row._id))) {
+              if (typeof row.floors === 'string' && row.floors.trim().startsWith('[')) {
+                try { row.floors = JSON.parse(row.floors); } catch(e){}
+              }
+              localReps.push(row); added++;
+            }
           });
           if (added > 0) {
             // newest first, consistent with repSave's unshift ordering
@@ -15091,17 +15096,49 @@ function repRenderLog(type) {
 function repLoadAll() {
   repBuildFATable();
   repBuildFM200Table();
-  // Load reports from DB into localStorage
-  const dbReps = ld('fms_rep_') || [];  // will work if dbLoadAll loaded them
-  if (dbReps.length) {
-    const existing = JSON.parse(localStorage.getItem('obeid3_fms_reports') || '[]');
-    const existingIds = new Set(existing.map(r => r._id));
-    dbReps.forEach(r => { if (!existingIds.has(r._id)) existing.push(r); });
-    localStorage.setItem('obeid3_fms_reports', JSON.stringify(existing));
-  }
+  // Render whatever we already have locally first (instant paint)
   ['fa-inspection','fa-testing','fm200','fire-pump','wet-chem'].forEach(repRenderLog);
   repInitFM200();
   repInitFATest();
+  // Then pull fresh reports directly from the DB (works across all accounts)
+  repSyncFromDB();
+}
+
+// Fetch fire-safety reports straight from the DB (app_settings, fms_rep_ prefix).
+// This is independent of dbLoadAll timing so it always works when the page opens.
+async function repSyncFromDB() {
+  try {
+    const url = (typeof CANONICAL_DB_URL !== 'undefined' && CANONICAL_DB_URL) ? CANONICAL_DB_URL : (typeof getDBUrl === 'function' ? getDBUrl() : null);
+    if (!url) { console.log('repSyncFromDB: no DB URL'); return; }
+    const r = await fetch(url + '?action=getAll', { signal: AbortSignal.timeout(45000) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    if (!j.ok || !j.data || !j.data.app_settings) { console.log('repSyncFromDB: no app_settings in response'); return; }
+    const repRows = j.data.app_settings.filter(row => row._id && String(row._id).startsWith('fms_rep_'));
+    if (!repRows.length) { console.log('repSyncFromDB: no fms_rep_ rows in DB'); return; }
+    const local = JSON.parse(localStorage.getItem('obeid3_fms_reports') || '[]');
+    const localIds = new Set(local.map(x => String(x._id)));
+    let added = 0;
+    repRows.forEach(row => {
+      if (localIds.has(String(row._id))) return;
+      // 'floors' comes back from the sheet as a JSON string — parse it back to an array
+      if (typeof row.floors === 'string' && row.floors.trim().startsWith('[')) {
+        try { row.floors = JSON.parse(row.floors); } catch(e) {}
+      }
+      local.push(row); added++;
+    });
+    if (added > 0) {
+      local.sort((a,b) => (b._ts||'') > (a._ts||'') ? 1 : -1);
+      localStorage.setItem('obeid3_fms_reports', JSON.stringify(local));
+      ['fa-inspection','fa-testing','fm200','fire-pump','wet-chem'].forEach(repRenderLog);
+      console.log('✓ repSyncFromDB — ' + added + ' report(s) synced from other accounts');
+      if (typeof toast === 'function') toast('✅ ' + added + ' report(s) synced', '#10b981');
+    } else {
+      console.log('repSyncFromDB: all ' + repRows.length + ' DB reports already local');
+    }
+  } catch(e) {
+    console.warn('repSyncFromDB failed:', e.message);
+  }
 }
 
 function repExport(type) {
