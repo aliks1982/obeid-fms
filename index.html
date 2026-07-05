@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260705-1540';
+  var v = '20260705-1541';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260705-1540">
+<meta name="app-version" content="20260705-1541">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -14338,9 +14338,19 @@ function cbahiKey(stdCode, field) {
 function cbahiSave(stdCode, field, value) {
   try {
     localStorage.setItem(cbahiKey(stdCode, field), value);
-    // Auto-save to DB
-    const rec = { _id: 'cbahi_' + stdCode, _ts: new Date().toISOString(), _by: (window._user || 'director'), std: stdCode };
-    rec[field] = value;
+    // Auto-save FULL std state to DB (a partial row would blank the other
+    // fields server-side, because upsert rewrites the entire row)
+    const rec = { _id: 'cbahi_' + stdCode, _ts: new Date().toISOString(),
+                  _by: ((window.CU && CU.name) || window._user || 'unknown'), std: stdCode };
+    const prefix = 'obeid3_cbahi_' + stdCode + '_';
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(prefix)) {
+        const f = k.slice(prefix.length);
+        const v = localStorage.getItem(k);
+        if (v !== null && v !== '') rec[f] = v;
+      }
+    }
     dbWrite('app_settings', rec);
   } catch(e) {}
 }
@@ -15145,6 +15155,27 @@ async function repSyncFromDB(verbose) {
       if (verbose) toast('⚠️ Cloud has no App_Settings data','#f59e0b');
       return;
     }
+    // ── CBAHI checklist state sync (same response, no extra fetch) ──
+    try {
+      const cbRows = j.data.app_settings.filter(row => row._id && String(row._id).startsWith('cbahi_'));
+      let cbFieldsRestored = 0;
+      cbRows.forEach(row => {
+        const std = row.std || String(row._id).replace(/^cbahi_/, '');
+        if (!std) return;
+        Object.keys(row).forEach(f => {
+          if (['_id','_ts','_by','std'].includes(f)) return;
+          const v = row[f];
+          if (v === '' || v == null) return;
+          const k = 'obeid3_cbahi_' + std + '_' + f;
+          if (!localStorage.getItem(k)) { localStorage.setItem(k, v); cbFieldsRestored++; } // local non-empty wins
+        });
+      });
+      if (cbFieldsRestored > 0) {
+        console.log('✓ CBAHI checklist synced — ' + cbFieldsRestored + ' field(s) from ' + cbRows.length + ' standard(s)');
+        if (typeof cbahiRestoreAll === 'function') { try { cbahiRestoreAll(); } catch(e2) {} }
+      }
+    } catch(cbe) { console.warn('CBAHI sync error:', cbe.message); }
+
     const repRows = j.data.app_settings.filter(row => row._id && String(row._id).startsWith('fms_rep_'));
     if (!repRows.length) {
       setStatus('Cloud DB has 0 reports — ask the entering account to Push All');
@@ -15194,7 +15225,23 @@ async function repPushAllToDB() {
   const all = JSON.parse(localStorage.getItem('obeid3_fms_reports') || '[]');
   const statusEl = document.getElementById('rep-sync-status');
   const setStatus = t => { if (statusEl) statusEl.textContent = t; };
-  if (!all.length) { toast('No local reports on this device to push','#f59e0b'); setStatus('0 local reports'); return; }
+  // Also collect full CBAHI checklist state (one row per standard with data)
+  const cbMap = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (!k || !k.startsWith('obeid3_cbahi_')) continue;
+    const rest = k.slice('obeid3_cbahi_'.length);
+    const us = rest.lastIndexOf('_');
+    if (us <= 0) continue;
+    const std = rest.slice(0, us), f = rest.slice(us + 1);
+    const v = localStorage.getItem(k);
+    if (v === null || v === '') continue;
+    if (!cbMap[std]) cbMap[std] = { _id: 'cbahi_' + std, _ts: new Date().toISOString(),
+      _by: ((window.CU && CU.name) || window._user || 'unknown'), std };
+    cbMap[std][f] = v;
+  }
+  const cbRows = Object.values(cbMap);
+  if (!all.length && !cbRows.length) { toast('No local reports or checklist data on this device to push','#f59e0b'); setStatus('0 local records'); return; }
   toast('⬆ Pushing ' + all.length + ' report(s) to cloud…','#3b82f6');
   let pushed = 0;
   for (const r of all) {
@@ -15206,8 +15253,17 @@ async function repPushAllToDB() {
       await new Promise(res => setTimeout(res, 400));
     } catch(e) { console.warn('push failed for', r._id, e.message); }
   }
-  setStatus('Pushed ' + pushed + '/' + all.length + ' reports to cloud');
-  toast('✅ Pushed ' + pushed + ' report(s) to cloud. Now press "Sync from Cloud" on the other account.','#10b981');
+  let cbPushed = 0;
+  for (const row of cbRows) {
+    try {
+      await dbWrite('app_settings', row);
+      cbPushed++;
+      setStatus('Pushing checklist… ' + cbPushed + '/' + cbRows.length);
+      await new Promise(res => setTimeout(res, 350));
+    } catch(e) { console.warn('cbahi push failed for', row._id, e.message); }
+  }
+  setStatus('Pushed ' + pushed + ' reports + ' + cbPushed + ' checklist standards to cloud');
+  toast('✅ Pushed ' + pushed + ' report(s) + ' + cbPushed + ' checklist standard(s). Now press "Sync from Cloud" on the other account.','#10b981');
 }
 
 function repExport(type) {
