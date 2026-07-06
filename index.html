@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260706-1542';
+  var v = '20260706-1543';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260706-1542">
+<meta name="app-version" content="20260706-1543">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -9397,19 +9397,19 @@ function eqDelAdded(ts) {
 const ROLE_ACCESS = {
   director:    ['ALL'],
   // Maintenance (Mostapha): fire systems, utilities, CBAHI reports — NO analytics/reports pages
-  maintenance: ['n-dash','n-kpi','n-kpi2','n-wo','n-utils','n-fire','n-cbahi','n-ckpi','n-settings','n-budget','n-pms'],
-  biomedical:  ['n-dash','n-kpi','n-kpi2','n-equip','n-medgas','n-pmg','n-radiation','n-wo','n-cbahi','n-ckpi','n-settings','n-budget','n-pms'],
+  maintenance: ['n-dash','n-kpi','n-kpi2','n-wo','n-utils','n-fire','n-cbahi','n-ckpi','n-settings','n-pms'],
+  biomedical:  ['n-dash','n-kpi','n-kpi2','n-equip','n-medgas','n-pmg','n-radiation','n-wo','n-cbahi','n-ckpi','n-settings','n-pms'],
   // Safety (Moe): CBAHI, safety, hazmat, emergency, fire — NO analytics/reports pages
-  safety:      ['n-dash','n-kpi','n-kpi2','n-cbahi','n-safety','n-hazmat','n-emergency','n-fire','n-wo','n-ckpi','n-docs','n-settings','n-budget','n-pms'],
+  safety:      ['n-dash','n-kpi','n-kpi2','n-cbahi','n-safety','n-hazmat','n-emergency','n-fire','n-wo','n-ckpi','n-docs','n-settings','n-pms'],
   security:    ['n-dash','n-kpi','n-kpi2','n-security','n-wo','n-ckpi','n-settings'],
 };
 
 // Page access — which pages each role can open
 const PAGE_ACCESS = {
   director:    ['ALL'],
-  maintenance: ['dash','kpi','kpi2','wo','utils','fire','cbahi','ckpi','settings','budget','pms'],
-  biomedical:  ['dash','kpi','kpi2','equip','medgas','pmg','radiation','wo','cbahi','ckpi','settings','budget','pms'],
-  safety:      ['dash','kpi','kpi2','cbahi','safety','hazmat','emergency','fire','wo','ckpi','docs','settings','budget','pms'],
+  maintenance: ['dash','kpi','kpi2','wo','utils','fire','cbahi','ckpi','settings','pms'],
+  biomedical:  ['dash','kpi','kpi2','equip','medgas','pmg','radiation','wo','cbahi','ckpi','settings','pms'],
+  safety:      ['dash','kpi','kpi2','cbahi','safety','hazmat','emergency','fire','wo','ckpi','docs','settings','pms'],
   security:    ['dash','kpi','kpi2','security','wo','ckpi','settings'],
 };
 
@@ -9462,6 +9462,7 @@ function applyRBAC() {
 
 function canAccessPage(pageId) {
   if (!CU.role || CU.role === 'director') return true;
+  if (pageId === 'budget') return false; // FMS Budget — strictly FMS Director only
   if (pageId === 'settings') return true; // all roles can access settings for DB connection
   const effectiveRole = getEffectiveRole(CU.role);
   const allowed = PAGE_ACCESS[effectiveRole] || PAGE_ACCESS['security'] || [];
@@ -15108,7 +15109,7 @@ function repRenderLog(type) {
       <div class="rep-log-badge">${REP_ICONS[type] || '📋'}</div>
       <div class="rep-log-info">
         <div class="rep-log-title">${REP_TITLES[type]} — ${dateStr}</div>
-        <div class="rep-log-meta">By: ${r.by || r._by || '—'} · Saved: ${new Date(r._ts).toLocaleDateString('en-GB')}</div>
+        <div class="rep-log-meta">By: ${r.by || r._by || '—'}</div>
       </div>
       <span class="${resultClass}">${resultLabel}</span>
       <button class="btn bo" style="font-size:10px;padding:4px 10px;" onclick="repExportById('${r._id}')">⬇ Export</button>
@@ -15200,7 +15201,10 @@ async function repSyncFromDB(verbose) {
       const row = normalize(raw);
       const key = String(row._id);
       cloudById[key] = row;
-      if (!byId[key]) { byId[key] = row; added++; }
+      if (!byId[key]) {
+        // Skip stripped skeleton rows (old-script artifacts with no content)
+        if (richness(row) >= 4) { byId[key] = row; added++; }
+      }
       else if (richness(row) > richness(byId[key])) { byId[key] = row; upgraded++; } // cloud copy has more data
     });
     const merged = Object.values(byId).sort((a,b) => (b._ts||'') > (a._ts||'') ? 1 : -1);
@@ -15218,6 +15222,18 @@ async function repSyncFromDB(verbose) {
     // push the complete local rows back up automatically. This is what
     // repairs the cloud from the device where the data was entered.
     try {
+      // Purge orphan skeleton rows from the cloud: stripped rows (old-script
+      // artifacts) with no full local counterpart are junk that would linger forever
+      const orphanSkeletons = Object.keys(cloudById).filter(k => !byId[k] && richness(cloudById[k]) < 4);
+      if (orphanSkeletons.length > 0) {
+        (async () => {
+          for (const oid of orphanSkeletons) {
+            try { await dbDelete('app_settings', oid); } catch(e3) {}
+            await new Promise(res => setTimeout(res, 300));
+          }
+          console.log('🗑 Purged ' + orphanSkeletons.length + ' orphan skeleton row(s) from cloud');
+        })();
+      }
       const toPush = merged.filter(r => {
         const c = cloudById[String(r._id)];
         return !c || richness(r) > richness(c);
