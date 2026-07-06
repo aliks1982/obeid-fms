@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260705-1541';
+  var v = '20260706-1542';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260705-1541">
+<meta name="app-version" content="20260706-1542">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -15194,10 +15194,12 @@ async function repSyncFromDB(verbose) {
     local.forEach(r => { if (!r.type) r.type = repTypeOf(r); }); // repair existing local rows too
     const byId = {};
     local.forEach(r => { if (r && r._id) byId[String(r._id)] = r; });
+    const cloudById = {};
     let added = 0, upgraded = 0;
     repRows.forEach(raw => {
       const row = normalize(raw);
       const key = String(row._id);
+      cloudById[key] = row;
       if (!byId[key]) { byId[key] = row; added++; }
       else if (richness(row) > richness(byId[key])) { byId[key] = row; upgraded++; } // cloud copy has more data
     });
@@ -15211,6 +15213,28 @@ async function repSyncFromDB(verbose) {
     } else if (verbose) {
       toast('✅ Cloud has ' + repRows.length + ' report(s) — this device is up to date','#10b981');
     }
+    // ── AUTO-HEAL UP: if this device holds richer copies than the cloud
+    // (e.g. the cloud rows are stripped skeletons from the old script),
+    // push the complete local rows back up automatically. This is what
+    // repairs the cloud from the device where the data was entered.
+    try {
+      const toPush = merged.filter(r => {
+        const c = cloudById[String(r._id)];
+        return !c || richness(r) > richness(c);
+      });
+      if (toPush.length > 0) {
+        toast('⬆ Auto-repairing cloud: pushing ' + toPush.length + ' complete report(s)…', '#3b82f6');
+        (async () => {
+          let n = 0;
+          for (const r of toPush) {
+            try { await dbWrite('app_settings', r); n++; setStatus('Auto-push ' + n + '/' + toPush.length); } catch(e2) {}
+            await new Promise(res => setTimeout(res, 350));
+          }
+          setStatus('Auto-pushed ' + n + ' complete report(s) to cloud');
+          toast('✅ Cloud repaired — ' + n + ' complete report(s) uploaded. Other accounts will receive them on next open.', '#10b981');
+        })();
+      }
+    } catch(pe) { console.warn('auto-push error:', pe.message); }
   } catch(e) {
     setStatus('Sync failed: ' + e.message);
     console.warn('repSyncFromDB failed:', e.message);
