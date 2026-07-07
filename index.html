@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260707-1547';
+  var v = '20260707-1549';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260707-1547">
+<meta name="app-version" content="20260707-1549">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3034,7 +3034,7 @@ if ('caches' in window) {
 
 <!-- ===== FIRE ===== -->
 <div class="pg" id="page-fire">
-  <div class="ph"><h1>🔥 Fire Safety — FMS.1.1.6</h1><p>FMS.21 Alarm · FMS.22 Suppression · FMS.23 Exits · Moe + Mostapha</p></div>
+  <div class="ph" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;"><div><h1>🔥 Fire Safety — FMS.1.1.6</h1><p>FMS.21 Alarm · FMS.22 Suppression · FMS.23 Exits · Moe + Mostapha</p></div><button class="btn bo" style="font-size:11px;padding:8px 16px;" onclick="fireExportAll()">⬇ Export Fire Safety Report</button></div>
   <div class="tb"><button class="tbtn active" onclick="st('fire','alarm',this)">Alarm (FMS.21)</button><button class="tbtn" onclick="st('fire','sup',this)">Suppression (FMS.22)</button><button class="tbtn" onclick="st('fire','exits',this)">Exits (FMS.23)</button><button class="tbtn" onclick="st('fire','unitdrill',this)">🔥 Unit Level Drills</button><button class="tbtn" id="fsppm-tab-btn" onclick="st('fire','ppmsched',this)">🗓 PPM Schedule (FMS 21–22)</button><button class="tbtn" onclick="st('fire','kpi',this)">📊 KPIs</button></div>
   <div id="fire-alarm"><div class="g g2">
     <div class="card"><div class="ch"><div class="ct">Fire Alarm Record (FMS.21)</div></div><div class="cb">
@@ -7116,7 +7116,7 @@ const KGS={
   '112':{lbl:'🔒 FMS.1.1.2 — Security (Bader)',kpis:[{n:'Security Incidents',k:'secInc',tgt:0,c:d=>d.length,lb:true},{n:'Security Drills (2/yr)',k:'secDrill',tgt:2,c:d=>d.length},{n:'Infant Abduction Drills (1/yr)',k:'secDrill',tgt:1,c:d=>d.filter(r=>r.type?.includes('Infant')).length}]},
   '113':{lbl:'☣ FMS.1.1.3 — Hazmat (Moe)',kpis:[{n:'Chemicals Registered',k:'chemical',tgt:50,c:d=>d.length},{n:'SDS Coverage',k:'chemical',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.sds==='yes').length/t)*100):0;},unit:'%'},{n:'Waste Audits (4/yr)',k:'wasteAudit',tgt:4,c:d=>d.length},{n:'Avg Segregation Compliance',k:'wasteAudit',tgt:95,c:d=>{const v=d.map(r=>Number(r.pct||0)).filter(x=>x>0);return v.length?Math.round(v.reduce((a,b)=>a+b)/v.length):0;},unit:'%'}]},
   '1145':{lbl:'🚨 FMS.1.1.4/5 — Emergency (Moe)',kpis:[{n:'Emergency Drills (6/yr)',k:'emDrill',tgt:6,c:d=>d.length},{n:'Code Red Drills',k:'emDrill',tgt:4,c:d=>d.filter(r=>r.type?.includes('Red')).length},{n:'MCI Drills',k:'emDrill',tgt:1,c:d=>d.filter(r=>r.type?.includes('MCI')||r.type?.includes('Mass')).length},{n:'Night Shift Drills',k:'emDrill',tgt:2,c:d=>d.filter(r=>r.shift==='Night').length}]},
-  '116':{lbl:'🔥 FMS.1.1.6 — Fire Safety (Moe+Mostapha)',kpis:[{n:'Fire Alarm Records (12+/yr)',k:'fireAlarm',tgt:12,c:d=>d.length},{n:'Quarterly PPM — Civil Defense (4/yr)',k:'fireAlarm',tgt:4,c:d=>d.filter(r=>r.type?.includes('PPM')).length},{n:'Suppression PPM Records (8/yr)',k:'fireSup',tgt:8,c:d=>d.length},{n:'Exit Inspections',k:'fireExit',tgt:4,c:d=>d.length},{n:'Exit Full-Pass Rate (5 criteria)',k:'fireExit',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.c1==='pass'&&r.c2==='pass'&&r.c3==='pass'&&r.c4==='pass'&&r.c6==='pass').length/t)*100):0;},unit:'%'},{n:'Fire Drills (4/yr)',k:'fireDrill',tgt:4,c:d=>d.length}]},
+  '116':{lbl:'🔥 FMS.1.1.6 — Fire Safety (Moe+Mostapha)',kpis:[{n:'FA Monthly Inspections (12/yr)',k:'__fireInsp',tgt:12,c:d=>d.length},{n:'FA Testing Logs (12/yr)',k:'__fireTest',tgt:12,c:d=>d.length},{n:'Quarterly PPM — Civil Defense (4/yr)',k:'__firePPM',tgt:4,c:d=>d.length},{n:'FM-200 Inspections (12/yr)',k:'__fireFM200',tgt:12,c:d=>d.length},{n:'Fire Pump Weekly (48/yr)',k:'__firePump',tgt:48,c:d=>d.length},{n:'Wet Chemical Checks (12/yr)',k:'__fireWet',tgt:12,c:d=>d.length},{n:'Exit Inspections',k:'__fireExit',tgt:7,c:d=>d.length},{n:'Overall Pass Rate',k:'__fireAll',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>(r.result||r.res||'pass')==='pass').length/t)*100):0;},unit:'%'}]},
   '117':{lbl:'⚕ FMS.1.1.7 — Equipment (Bashar)',kpis:[{n:'PPM Records Entered',k:'ppm',tgt:100,c:d=>d.length},{n:'PPM Completion Rate',k:'ppm',tgt:95,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.res==='done').length/t)*100):0;},unit:'%'},{n:'Equipment in Inventory',k:'inventory',tgt:200,c:d=>d.length},{n:'High-Risk Equipment',k:'inventory',tgt:50,c:d=>d.filter(r=>r.risk==='High Risk').length}]},
   '118':{lbl:'⚡ FMS.1.1.8 — Utilities (Mostapha)',kpis:[{n:'Generator Tests (12/yr)',k:'genTest',tgt:12,c:d=>d.length},{n:'Generator Pass Rate',k:'genTest',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.res==='pass').length/t)*100):0;},unit:'%'},{n:'Water Safety Tests (4/yr)',k:'waterTest',tgt:4,c:d=>d.length},{n:'Hot Water Compliance ≥55°C',k:'waterTest',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>Number(r.hot)>=55).length/t)*100):0;},unit:'%'},{n:'PMG Daily Checklists (30/yr)',k:'pmgCheck',tgt:30,c:d=>d.length},{n:'Air Purity Tests (2/yr)',k:'airPurity',tgt:2,c:d=>d.length},{n:'Air Purity Pass Rate',k:'airPurity',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.res==='pass').length/t)*100):0;},unit:'%'},{n:'TLD Quarterly Reviews (4/yr)',k:'tldReview',tgt:4,c:d=>d.length}]},
 };
@@ -7197,7 +7197,7 @@ function renderDomainKPI(domain){
   if(domain==='fire'){ setTimeout(fireKpiInfographic, 60); }
   if(!g){el.innerHTML='<div class="em">KPIs auto-calculated from records entered above</div>';return;}
   el.innerHTML=`<div class="st">${g.lbl}</div>`+g.kpis.map(k=>{
-    const actual=k.c(ld(k.k));
+    const actual=k.c(fireKpiData(k.k) || ld(k.k));
     const pct=k.lb?(actual===0?100:Math.max(0,100-actual*20)):Math.min(100,k.tgt>0?Math.round((actual/k.tgt)*100):0);
     const fl=pct>=90?'linear-gradient(90deg,#10b981,var(--gn))':pct>=50?'linear-gradient(90deg,var(--or),#f97316)':'linear-gradient(90deg,var(--rd),#dc2626)';
     const vc=pct>=90?'var(--gn)':pct>=50?'var(--or)':'var(--rd)';
@@ -16919,7 +16919,7 @@ function fireKpiInfographic() {
 // aligned to the PPM Schedule. Jan–early Jul 2026, by Mustafa.
 // Cloud purge-marker ensures every device wipes old local copies.
 // ══════════════════════════════════════════════════════════════
-const FIRE_RESEED_MARKER = 'fire_reseed_v2';
+const FIRE_RESEED_MARKER = 'fire_reseed_v3';
 
 function grandBuildReports() {
   const reps = [];
@@ -17067,9 +17067,24 @@ async function grandFireReseed() {
     localStorage.setItem('obeid3_fms_reports', JSON.stringify(reps));
     try { ['fa-inspection','fa-testing','fm200','fire-pump','wet-chem'].forEach(t => { if (typeof repRenderLog==='function') repRenderLog(t); }); } catch(e) {}
 
-    // 4. Push new reports to cloud
+    // 4. Push new reports to cloud in BULK batches (reliable for large sets;
+    //    1-by-1 with delays previously timed out partway → data stopped at April)
     let pushed = 0;
-    for (const rep of reps) { try { await dbWrite('app_settings', rep); pushed++; } catch(e) {} await new Promise(s=>setTimeout(s,300)); }
+    const url2 = (typeof CANONICAL_DB_URL !== 'undefined' && CANONICAL_DB_URL) ? CANONICAL_DB_URL : getDBUrl();
+    const BATCH = 20;
+    for (let bi = 0; bi < reps.length; bi += BATCH) {
+      const batch = reps.slice(bi, bi + BATCH);
+      try {
+        await fetch(url2, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'},
+          body: JSON.stringify({ action:'bulkUpsert', table:'app_settings', records: batch }) });
+        pushed += batch.length;
+        setStatus('Uploading reports… ' + pushed + '/' + reps.length);
+      } catch(e) {
+        // fallback: individual writes for this batch
+        for (const rep of batch) { try { await dbWrite('app_settings', rep); pushed++; } catch(e2) {} await new Promise(s=>setTimeout(s,200)); }
+      }
+      await new Promise(s=>setTimeout(s,600));
+    }
 
     // 5. Write the marker so every other device wipes-and-syncs
     const ts = new Date().toISOString();
@@ -17083,6 +17098,64 @@ async function grandFireReseed() {
   }
 }
 window.addEventListener('load', () => setTimeout(grandFireReseed, 12000));
+
+
+
+// ── Fire KPI virtual-key data resolver: unifies report store + quick-log arrays ──
+function fireKpiData(key) {
+  if (!key || key.slice(0,2) !== '__') return null;
+  let reps = [];
+  try { reps = JSON.parse(localStorage.getItem('obeid3_fms_reports') || '[]'); } catch(e) {}
+  const of = t => reps.filter(r => (typeof repTypeOf==='function'? repTypeOf(r): r.type) === t);
+  switch(key) {
+    case '__fireInsp': return of('fa-inspection');
+    case '__fireTest': return of('fa-testing');
+    case '__fireFM200': return of('fm200');
+    case '__firePump': return of('fire-pump');
+    case '__fireWet':  return of('wet-chem');
+    case '__firePPM':  return (typeof ld==='function'?(ld('fireAlarm')||[]):[]).filter(r=>String(r.type||'').includes('PPM'))
+                              .concat(of('fm200').filter(r=>r.contractor), of('wet-chem').filter(r=>0)); // certified PPM records
+    case '__fireExit': {
+      const fe = (typeof ld==='function'?(ld('fireExit')||[]):[]);
+      return fe.length ? fe : [];
+    }
+    case '__fireAll': return reps;
+    default: return null;
+  }
+}
+
+// ── Fire Safety — Export ALL records (reports + quick logs) as one report ──
+function fireExportAll() {
+  let reps = [];
+  try { reps = JSON.parse(localStorage.getItem('obeid3_fms_reports') || '[]'); } catch(e) {}
+  const fa = (typeof ld==='function'?(ld('fireAlarm')||[]):[]);
+  const fs = (typeof ld==='function'?(ld('fireSup')||[]):[]);
+  const fe = (typeof ld==='function'?(ld('fireExit')||[]):[]);
+  const typeName = t => ({'fa-inspection':'FA Monthly Inspection','fa-testing':'FA Testing Log','fm200':'FM-200 Inspection','fire-pump':'Fire Pump Weekly','wet-chem':'Wet Chemical Check'})[t]||t;
+  const resBadge = r => { const v=(r.result||r.res||'pass'); return v==='pass'?'<span style="color:#16a34a;font-weight:700;">✅ Pass</span>':v==='partial'?'<span style="color:#d97706;font-weight:700;">⚠️ Partial</span>':'<span style="color:#dc2626;font-weight:700;">❌ Fail</span>'; };
+  const repRows = reps.sort((a,b)=>(b.date||'')>(a.date||'')?1:-1).map(r =>
+    '<tr><td>'+(r.date||'—')+'</td><td>'+typeName(typeof repTypeOf==='function'?repTypeOf(r):r.type)+'</td><td>'+(r.by||r._by||'—')+'</td><td>'+resBadge(r)+'</td><td style="font-size:9px;">'+((r.findings||r.remarks||'')+'').slice(0,80)+'</td></tr>').join('');
+  const faRows = fa.sort((a,b)=>(b.date||'')>(a.date||'')?1:-1).map(r=>'<tr><td>'+(r.date||'—')+'</td><td>'+(r.type||'—')+'</td><td>'+(r.zone||'—')+'</td><td>'+resBadge(r)+'</td><td>'+(r.cont||r.tech||'—')+'</td></tr>').join('');
+  const fsRows = fs.sort((a,b)=>(b.date||'')>(a.date||'')?1:-1).map(r=>'<tr><td>'+(r.date||'—')+'</td><td>'+(r.sys||'—')+'</td><td>'+(r.act||'—')+'</td><td>'+resBadge(r)+'</td><td>'+(r.cont||r.tech||'—')+'</td></tr>').join('');
+  const feRows = fe.sort((a,b)=>(b.date||'')>(a.date||'')?1:-1).map(r=>'<tr><td>'+(r.date||'—')+'</td><td>'+(r.loc||'—')+'</td><td>'+(r.c1||'—')+'</td><td>'+(r.c2||'—')+'</td><td>'+(r.c3||'—')+'</td><td>'+(r.c4||'—')+'</td><td>'+(r.c6||'—')+'</td></tr>').join('');
+  const total = reps.length + fa.length + fs.length + fe.length;
+  const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fire Safety Report — FMS.1.1.6</title>'+
+    '<style>body{font-family:Arial;margin:20px;font-size:11px;}h2{margin:0;font-size:17px;}h3{color:#1a3a5c;border-bottom:2px solid #dc2626;padding-bottom:4px;margin-top:22px;font-size:13px;}'+
+    '.hdr{background:#1a3a5c;color:#fff;padding:14px 18px;border-radius:8px;}p{margin:3px 0 0;font-size:10px;opacity:.85;}'+
+    'table{width:100%;border-collapse:collapse;margin-top:8px;}th{background:#1a3a5c;color:#fff;padding:6px;font-size:10px;text-align:left;}'+
+    'td{border:1px solid #e2e8f0;padding:5px;font-size:10px;}tr:nth-child(even){background:#f8fafc;}'+
+    '.sig{display:flex;gap:30px;margin-top:36px;}.sl{flex:1;border-top:1px solid #999;padding-top:6px;font-size:10px;color:#555;}</style></head><body>'+
+    '<div class="hdr"><h2>🔥 Fire Safety Compliance Report — FMS 21–23</h2><p>Obeid Specialized Hospital · '+total+' total records · Generated '+new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})+'</p></div>'+
+    (repRows?'<h3>📋 Detailed Inspection & Testing Reports ('+reps.length+')</h3><table><thead><tr><th>Date</th><th>Report Type</th><th>By</th><th>Result</th><th>Findings</th></tr></thead><tbody>'+repRows+'</tbody></table>':'')+
+    (faRows?'<h3>🔔 Fire Alarm Quick Log ('+fa.length+')</h3><table><thead><tr><th>Date</th><th>Activity</th><th>Zone</th><th>Result</th><th>Contractor/Tech</th></tr></thead><tbody>'+faRows+'</tbody></table>':'')+
+    (fsRows?'<h3>🧯 Suppression Quick Log ('+fs.length+')</h3><table><thead><tr><th>Date</th><th>System</th><th>Activity</th><th>Result</th><th>Contractor/Tech</th></tr></thead><tbody>'+fsRows+'</tbody></table>':'')+
+    (feRows?'<h3>🚪 Exit Inspections ('+fe.length+')</h3><table><thead><tr><th>Date</th><th>Location</th><th>23.1</th><th>23.2</th><th>23.3</th><th>23.4</th><th>23.6</th></tr></thead><tbody>'+feRows+'</tbody></table>':'')+
+    '<div class="sig"><div class="sl">Prepared By: Mr. Mustafa Zahid — Maintenance<br><br>Signature: __________ Date: ______</div>'+
+    '<div class="sl">Approved By: Mr. Ali K. Sobh — FMS Director<br><br>Signature: __________ Date: ______</div></div></body></html>';
+  const b=new Blob([html],{type:'text/html'});const a=document.createElement('a');
+  a.href=URL.createObjectURL(b);a.download='Fire_Safety_Report_'+new Date().toISOString().slice(0,10)+'.html';a.click();
+  toast('✅ Fire safety report exported ('+total+' records)','#10b981');
+}
 
 </script>
 </body>
