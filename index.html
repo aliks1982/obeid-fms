@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260706-1546';
+  var v = '20260707-1547';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260706-1546">
+<meta name="app-version" content="20260707-1547">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6257,6 +6257,30 @@ async function dbDelete(type, id) {
 }
 
 // ── Read all from DB on load ──
+
+// ── SHARED getAll: one in-flight request + 60s cache for ALL consumers ──
+// Prevents concurrent getAll storms (dbLoadAll + repSync + fsPpmSync +
+// reseed all hitting Apps Script simultaneously caused 500s/timeouts).
+let DB_GETALL_CACHE = null, DB_GETALL_TS = 0, DB_GETALL_INFLIGHT = null;
+async function dbGetAllShared(force) {
+  const now = Date.now();
+  if (!force && DB_GETALL_CACHE && (now - DB_GETALL_TS) < 60000) return DB_GETALL_CACHE;
+  if (DB_GETALL_INFLIGHT) return DB_GETALL_INFLIGHT;
+  const url = (typeof CANONICAL_DB_URL !== 'undefined' && CANONICAL_DB_URL) ? CANONICAL_DB_URL : (typeof getDBUrl === 'function' ? getDBUrl() : null);
+  if (!url) throw new Error('No DB URL');
+  DB_GETALL_INFLIGHT = (async () => {
+    try {
+      const r = await fetch(url + '?action=getAll', { signal: AbortSignal.timeout(90000) });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'getAll failed');
+      DB_GETALL_CACHE = j; DB_GETALL_TS = Date.now();
+      return j;
+    } finally { DB_GETALL_INFLIGHT = null; }
+  })();
+  return DB_GETALL_INFLIGHT;
+}
+
 async function dbLoadAll() {
   // Always use canonical URL for reads (prevents CORS issues on other devices)
   const url = typeof CANONICAL_DB_URL !== 'undefined' ? CANONICAL_DB_URL : getDBUrl();
@@ -6264,10 +6288,7 @@ async function dbLoadAll() {
   if (!url) { dbShowStatus('offline'); return; }
   dbShowStatus('loading');
   try {
-    const r = await fetch(url + '?action=getAll', { signal: AbortSignal.timeout(45000) });
-    if (!r.ok) throw new Error('HTTP '+r.status);
-    const j = await r.json();
-    if (!j.ok) throw new Error(j.error||'Load failed');
+    const j = await dbGetAllShared(true); // shared fetch — also fills the cache for other consumers
     DB_ONLINE = true;
 
     // DB is the single source of truth — replace local data with DB data
@@ -6528,10 +6549,7 @@ async function dbTryReconnect() {
     const url = typeof CANONICAL_DB_URL !== 'undefined' ? CANONICAL_DB_URL : getDBUrl();
     if (!url) { dbShowStatus('offline'); return false; }
     dbShowStatus('loading');
-    const r = await fetch(url + '?action=getAll', { signal: AbortSignal.timeout(45000) });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const j = await r.json();
-    if (!j.ok) throw new Error(j.error || 'Load failed');
+    const j = await dbGetAllShared(true);
     // Success — reset retry counter and do a full proper load
     DB_RETRY_ATTEMPT = 0;
     DB_ONLINE = true;
@@ -14487,7 +14505,11 @@ function cbahiRestoreAll() {
       const oc = el.getAttribute('onchange') || '';
       const m = oc.match(/cbahiSave\('[^']+','([^']+)'/);
       if (m) {
-        const val = cbahiLoad(std, m[1]);
+        let val = cbahiLoad(std, m[1]);
+        if (val && el.type === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+          const dd = new Date(val);
+          val = isNaN(dd) ? '' : dd.toISOString().slice(0,10);
+        }
         if (val) el.value = val;
       }
     });
@@ -15208,12 +15230,8 @@ async function repSyncFromDB(verbose) {
   const statusEl = document.getElementById('rep-sync-status');
   const setStatus = t => { if (statusEl) statusEl.textContent = t; };
   try {
-    const url = (typeof CANONICAL_DB_URL !== 'undefined' && CANONICAL_DB_URL) ? CANONICAL_DB_URL : (typeof getDBUrl === 'function' ? getDBUrl() : null);
-    if (!url) { setStatus('No DB URL configured'); if(verbose) toast('❌ No DB URL configured','#ef4444'); return; }
     setStatus('Checking cloud…');
-    const r = await fetch(url + '?action=getAll', { signal: AbortSignal.timeout(45000) });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const j = await r.json();
+    const j = await dbGetAllShared(verbose === true); // manual button forces fresh; auto uses 60s cache
     if (!j.ok || !j.data || !j.data.app_settings) {
       setStatus('Cloud responded but no App_Settings data');
       if (verbose) toast('⚠️ Cloud has no App_Settings data','#f59e0b');
@@ -16706,10 +16724,7 @@ function fsPpmResetSeed() {
 
 async function fsPpmSync() {
   try {
-    const url = (typeof CANONICAL_DB_URL!=='undefined'&&CANONICAL_DB_URL)?CANONICAL_DB_URL:getDBUrl();
-    if (!url) return;
-    const r = await fetch(url+'?action=getAll',{signal:AbortSignal.timeout(45000)});
-    const j = await r.json();
+    const j = await dbGetAllShared(false);
     if (!j.ok || !j.data || !j.data.app_settings) return;
     const row = j.data.app_settings.find(x=>x._id==='fs_ppm_schedule');
     if (!row || !row.value) return;
@@ -17011,10 +17026,7 @@ function grandBuildReports() {
 async function grandFireReseed() {
   try {
     if (typeof dbWrite !== 'function' || typeof dbDelete !== 'function') { setTimeout(grandFireReseed, 2000); return; }
-    const url = (typeof CANONICAL_DB_URL !== 'undefined' && CANONICAL_DB_URL) ? CANONICAL_DB_URL : (typeof getDBUrl === 'function' ? getDBUrl() : null);
-    if (!url) { setTimeout(grandFireReseed, 30000); return; }
-    const r = await fetch(url + '?action=getAll', { signal: AbortSignal.timeout(45000) });
-    const j = await r.json();
+    const j = await dbGetAllShared(false);
     if (!j.ok || !j.data) return;
     const appRows = j.data.app_settings || [];
     const marker = appRows.find(x => x._id === FIRE_RESEED_MARKER);
@@ -17040,12 +17052,12 @@ async function grandFireReseed() {
 
     // 1. Delete ALL old report rows from cloud
     const oldRepIds = appRows.filter(x => x._id && String(x._id).startsWith('fms_rep_')).map(x => String(x._id));
-    for (const id of oldRepIds) { try { await dbDelete('app_settings', id); } catch(e) {} await new Promise(s=>setTimeout(s,250)); }
+    for (const id of oldRepIds) { try { await dbDelete('app_settings', id); } catch(e) {} await new Promise(s=>setTimeout(s,450)); }
 
     // 2. Delete non-seed quick-log rows from cloud
     for (const t of ['fireAlarm','fireSup','fireExit']) {
       const rows = (j.data[t] || []).filter(x => x._id && !String(x._id).startsWith('fseed_'));
-      for (const row of rows) { try { await dbDelete(t, String(row._id)); } catch(e) {} await new Promise(s=>setTimeout(s,250)); }
+      for (const row of rows) { try { await dbDelete(t, String(row._id)); } catch(e) {} await new Promise(s=>setTimeout(s,450)); }
       try { const arr = (ld(t)||[]).filter(x => String(x._id).startsWith('fseed_')); sv(t, arr); } catch(e) {}
     }
 
@@ -17065,9 +17077,12 @@ async function grandFireReseed() {
     localStorage.setItem('obeid3_' + FIRE_RESEED_MARKER, ts);
     console.log('🔥 GRAND RESEED complete — ' + pushed + ' reports live');
     toast('✅ Fire safety records rebuilt & synchronized — ' + pushed + ' reports (Jan–Jul 2026, by Mustafa)', '#10b981');
-  } catch(e) { console.warn('grand reseed:', e.message); }
+  } catch(e) {
+    console.warn('grand reseed:', e.message, '— retrying in 90s');
+    setTimeout(grandFireReseed, 90000); // keep trying until the marker exists
+  }
 }
-window.addEventListener('load', () => setTimeout(grandFireReseed, 6000));
+window.addEventListener('load', () => setTimeout(grandFireReseed, 12000));
 
 </script>
 </body>
