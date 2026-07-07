@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260706-1543';
+  var v = '20260706-1544';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260706-1543">
+<meta name="app-version" content="20260706-1544">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3028,7 +3028,7 @@ if ('caches' in window) {
 <!-- ===== FIRE ===== -->
 <div class="pg" id="page-fire">
   <div class="ph"><h1>🔥 Fire Safety — FMS.1.1.6</h1><p>FMS.21 Alarm · FMS.22 Suppression · FMS.23 Exits · Moe + Mostapha</p></div>
-  <div class="tb"><button class="tbtn active" onclick="st('fire','alarm',this)">Alarm (FMS.21)</button><button class="tbtn" onclick="st('fire','sup',this)">Suppression (FMS.22)</button><button class="tbtn" onclick="st('fire','exits',this)">Exits (FMS.23)</button><button class="tbtn" onclick="st('fire','unitdrill',this)">🔥 Unit Level Drills</button><button class="tbtn" onclick="st('fire','kpi',this)">📊 KPIs</button></div>
+  <div class="tb"><button class="tbtn active" onclick="st('fire','alarm',this)">Alarm (FMS.21)</button><button class="tbtn" onclick="st('fire','sup',this)">Suppression (FMS.22)</button><button class="tbtn" onclick="st('fire','exits',this)">Exits (FMS.23)</button><button class="tbtn" onclick="st('fire','unitdrill',this)">🔥 Unit Level Drills</button><button class="tbtn" id="fsppm-tab-btn" onclick="st('fire','ppmsched',this)">🗓 PPM Schedule (FMS 21–22)</button><button class="tbtn" onclick="st('fire','kpi',this)">📊 KPIs</button></div>
   <div id="fire-alarm"><div class="g g2">
     <div class="card"><div class="ch"><div class="ct">Fire Alarm Record (FMS.21)</div></div><div class="cb">
       <div class="fg fg2">
@@ -3227,6 +3227,39 @@ if ('caches' in window) {
   </div>
 </div>
 </div>
+
+  <div id="fire-ppmsched" style="display:none;">
+    <div class="card" style="margin-bottom:14px;">
+      <div class="ch">
+        <div class="ct">🗓 Annual Fire Alarm &amp; Suppression PPM Schedule <span id="fsppm-year"></span> — FMS 21.1–22.4</div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn bo" style="font-size:10px;" onclick="fsPpmExport()">⬇ Export</button>
+          <button class="btn" style="font-size:10px;" onclick="fsPpmResetSeed()">↺ Reset to Compliant Default</button>
+        </div>
+      </div>
+      <div class="cb" style="padding:0;overflow-x:auto;" >
+        <div id="fsppm-grid"></div>
+      </div>
+      <div class="cb" style="font-size:10px;color:var(--mu);border-top:1px solid var(--bd);">
+        Legend: <b style="color:#dc2626;">C</b> Civil-Defense-certified company · <b style="color:#16a34a;">IN</b> In-house PPM · <b style="color:#16a34a;">IN-W</b> In-house weekly · <b style="color:#7c3aed;">C/IN</b> Both in same month — per ESR: monthly inspection in-house, quarterly maintenance by certified company (FMS 22.1–22.4); fire alarm maintenance strictly certified company (FMS 21.3)
+      </div>
+    </div>
+    <div class="card" id="fsppm-form">
+      <div class="ch"><div class="ct" id="fsppm-form-title">➕ Add / Edit Schedule Row</div></div>
+      <div class="cb">
+        <div class="fg fg2">
+          <div class="ff"><label>Activity</label><input type="text" id="fsppm-act" placeholder="e.g. Sprinkler System — Inspection &amp; PPM" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+          <div class="ff"><label>CBAHI Ref</label><input type="text" id="fsppm-ref" placeholder="e.g. FMS 22.1" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+          <div class="ff"><label>Performed By</label><input type="text" id="fsppm-by" placeholder="e.g. IN monthly · Castle System quarterly" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+          <div class="ff"><label>Evidence Source</label><input type="text" id="fsppm-ev" placeholder="Which platform report proves execution" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:4px;margin-top:10px;">
+          <div style="text-align:center;"><div style="font-size:9px;color:var(--mu);font-weight:700;">JAN</div><select id="fsppm-m-JAN" style="width:100%;font-size:10px;padding:3px 1px;border:1px solid var(--bd);border-radius:6px;background:var(--s2);"><option>—</option><option>IN</option><option>C</option><option>C/IN</option><option>IN-W</option><option>C+IN-W</option></select></div><div style="text-align:center;"><div style="font-size:9px;color:var(--mu);font-weight:700;">FEB</div><select id="fsppm-m-FEB" style="width:100%;font-size:10px;padding:3px 1px;border:1px solid var(--bd);border-radius:6px;background:var(--s2);"><option>—</option><option>IN</option><option>C</option><option>C/IN</option><option>IN-W</option><option>C+IN-W</option></select></div><div style="text-align:center;"><div style="font-size:9px;color:var(--mu);font-weight:700;">MAR</div><select id="fsppm-m-MAR" style="width:100%;font-size:10px;padding:3px 1px;border:1px solid var(--bd);border-radius:6px;background:var(--s2);"><option>—</option><option>IN</option><option>C</option><option>C/IN</option><option>IN-W</option><option>C+IN-W</option></select></div><div style="text-align:center;"><div style="font-size:9px;color:var(--mu);font-weight:700;">APR</div><select id="fsppm-m-APR" style="width:100%;font-size:10px;padding:3px 1px;border:1px solid var(--bd);border-radius:6px;background:var(--s2);"><option>—</option><option>IN</option><option>C</option><option>C/IN</option><option>IN-W</option><option>C+IN-W</option></select></div><div style="text-align:center;"><div style="font-size:9px;color:var(--mu);font-weight:700;">MAY</div><select id="fsppm-m-MAY" style="width:100%;font-size:10px;padding:3px 1px;border:1px solid var(--bd);border-radius:6px;background:var(--s2);"><option>—</option><option>IN</option><option>C</option><option>C/IN</option><option>IN-W</option><option>C+IN-W</option></select></div><div style="text-align:center;"><div style="font-size:9px;color:var(--mu);font-weight:700;">JUN</div><select id="fsppm-m-JUN" style="width:100%;font-size:10px;padding:3px 1px;border:1px solid var(--bd);border-radius:6px;background:var(--s2);"><option>—</option><option>IN</option><option>C</option><option>C/IN</option><option>IN-W</option><option>C+IN-W</option></select></div><div style="text-align:center;"><div style="font-size:9px;color:var(--mu);font-weight:700;">JUL</div><select id="fsppm-m-JUL" style="width:100%;font-size:10px;padding:3px 1px;border:1px solid var(--bd);border-radius:6px;background:var(--s2);"><option>—</option><option>IN</option><option>C</option><option>C/IN</option><option>IN-W</option><option>C+IN-W</option></select></div><div style="text-align:center;"><div style="font-size:9px;color:var(--mu);font-weight:700;">AUG</div><select id="fsppm-m-AUG" style="width:100%;font-size:10px;padding:3px 1px;border:1px solid var(--bd);border-radius:6px;background:var(--s2);"><option>—</option><option>IN</option><option>C</option><option>C/IN</option><option>IN-W</option><option>C+IN-W</option></select></div><div style="text-align:center;"><div style="font-size:9px;color:var(--mu);font-weight:700;">SEP</div><select id="fsppm-m-SEP" style="width:100%;font-size:10px;padding:3px 1px;border:1px solid var(--bd);border-radius:6px;background:var(--s2);"><option>—</option><option>IN</option><option>C</option><option>C/IN</option><option>IN-W</option><option>C+IN-W</option></select></div><div style="text-align:center;"><div style="font-size:9px;color:var(--mu);font-weight:700;">OCT</div><select id="fsppm-m-OCT" style="width:100%;font-size:10px;padding:3px 1px;border:1px solid var(--bd);border-radius:6px;background:var(--s2);"><option>—</option><option>IN</option><option>C</option><option>C/IN</option><option>IN-W</option><option>C+IN-W</option></select></div><div style="text-align:center;"><div style="font-size:9px;color:var(--mu);font-weight:700;">NOV</div><select id="fsppm-m-NOV" style="width:100%;font-size:10px;padding:3px 1px;border:1px solid var(--bd);border-radius:6px;background:var(--s2);"><option>—</option><option>IN</option><option>C</option><option>C/IN</option><option>IN-W</option><option>C+IN-W</option></select></div><div style="text-align:center;"><div style="font-size:9px;color:var(--mu);font-weight:700;">DEC</div><select id="fsppm-m-DEC" style="width:100%;font-size:10px;padding:3px 1px;border:1px solid var(--bd);border-radius:6px;background:var(--s2);"><option>—</option><option>IN</option><option>C</option><option>C/IN</option><option>IN-W</option><option>C+IN-W</option></select></div>
+        </div>
+        <button class="btn bg" style="margin-top:12px;width:100%;" onclick="fsPpmSaveRow()">✓ Save Schedule Row</button>
+      </div>
+    </div>
+  </div>
 
 <!-- ===== EQUIPMENT ===== -->
 <div class="pg" id="page-equip">
@@ -6388,6 +6421,19 @@ async function dbLoadAll() {
         }
       }
 
+      // ── Restore fire PPM schedule (single blob row) ──
+      try {
+        const schedRow = j.data.app_settings.find(x => x._id === 'fs_ppm_schedule');
+        if (schedRow && schedRow.value) {
+          const cloudSched = JSON.parse(schedRow.value);
+          const localSched = JSON.parse(localStorage.getItem('obeid3_fs_ppm_schedule') || 'null');
+          if (!localSched || (cloudSched._ts||'') > (localSched._ts||'')) {
+            localStorage.setItem('obeid3_fs_ppm_schedule', JSON.stringify(cloudSched));
+            if (typeof fsPpmRender === 'function') { try { fsPpmRender(); } catch(e2){} }
+          }
+        }
+      } catch(se) { console.warn('PPM schedule restore:', se.message); }
+
       // ── Restore fire-safety inspection reports (fms_rep_ rows) ──
       // repSave() stores reports in app_settings with _id prefix 'fms_rep_'.
       // Without this block they sync UP to Sheets but never come back DOWN
@@ -8206,6 +8252,7 @@ function mgTab(tab, btn) {
   if (tab === 'cyltest')    { setTimeout(cylRender, 80); }
   const annexTabs = ['offline','zsvlog','modreq','loxpo','repair','gastest','competency'];
   if (annexTabs.includes(tab)) { setTimeout(()=>mgAnnexRender(tab), 80); }
+  if (domain === 'fire' && tab === 'ppmsched') { setTimeout(()=>{ fsPpmRender(); fsPpmSync(); }, 80); }
   // Re-render the specific table if it's a checklist tab
   const checklistTabs = ['lox','o2backup','n2o','vacuum','aircomp','airbackup','ambulance','cylinder','o2refill','airrefill'];
   if (checklistTabs.includes(tab)) renderMGTable(tab);
@@ -9438,6 +9485,11 @@ function getEffectiveRole(role) {
 }
 
 function applyRBAC() {
+  // PPM Schedule tab: Director + Maintenance only (fire page is shared with Safety role)
+  try {
+    const t = document.getElementById('fsppm-tab-btn');
+    if (t) t.style.display = (!CU.role || CU.role === 'director' || CU.role === 'maintenance') ? '' : 'none';
+  } catch(e) {}
   if (!CU.role || CU.role === 'director') {
     document.querySelectorAll('.ni, .nsc').forEach(el => el.style.display = '');
     return;
@@ -16521,6 +16573,181 @@ function mgAnnexInitTab(type) {
 
 
 try { const _pv = document.getElementById('platform-version-display'); if (_pv && typeof v !== 'undefined') _pv.textContent = v; } catch(e) {}
+
+// ══════════════════════════════════════════════════════════════
+// ANNUAL FIRE PPM SCHEDULE — FMS 21.1–22.4 (Director + Maintenance only)
+// Storage: single blob in app_settings (_id: fs_ppm_schedule)
+// ══════════════════════════════════════════════════════════════
+const FSPPM_KEY = 'obeid3_fs_ppm_schedule';
+const FSPPM_MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+const FSPPM_CELL_OPTS = ['—','IN','C','C/IN','IN-W','C+IN-W'];
+
+// Corrected surveyor-compliant seed schedule (per exact ESR text FMS 21.1–22.4)
+function fsPpmSeed() {
+  const Q = m => ['JAN','APR','JUL','OCT'].includes(m);   // quarterly months
+  const H = m => ['JAN','JUL'].includes(m);                // semi-annual
+  const mk = fn => { const o = {}; FSPPM_MONTHS.forEach(m => o[m] = fn(m)); return o; };
+  return [
+    { _id:'fsppm_1', act:'Fire Alarm — Monthly Inspection (FACP, detectors, zones)', ref:'FMS 21.1', by:'In-house — Maintenance Dept.', ev:'FA Monthly Inspection report (CBAHI page)', cells:mk(m=>'IN') },
+    { _id:'fsppm_2', act:'Fire Alarm — Function Testing (devices per zone)', ref:'FMS 21.2', by:'In-house — Maintenance Dept.', ev:'FA Testing Log (CBAHI page)', cells:mk(m=>'IN') },
+    { _id:'fsppm_3', act:'Fire Alarm — Preventive Maintenance (Civil-Defense-certified)', ref:'FMS 21.3', by:'Castle System (C)', ev:'Contractor PPM reports + corrective action plans', cells:mk(m=>Q(m)?'C':'—') },
+    { _id:'fsppm_4', act:'Elevator PPM', ref:'FMS 21.4', by:'OTIS / Kone (C) — monthly contract', ev:'Contractor service reports', cells:mk(m=>'C') },
+    { _id:'fsppm_5', act:'Elevator ↔ Fire Alarm Recall Interface Test + Certificate', ref:'FMS 21.4', by:'OTIS/Kone + Castle System (C)', ev:'Interface test certificate on file', cells:mk(m=>H(m)?'C':'—') },
+    { _id:'fsppm_6', act:'Sprinkler System — Inspection & PPM', ref:'FMS 22.1', by:'IN monthly · Certified company quarterly', ev:'Sprinkler inspection reports', cells:mk(m=>Q(m)?'C/IN':'IN') },
+    { _id:'fsppm_7', act:'Fire Pump — Run/Churn Test (jockey, electric, diesel — auto mode)', ref:'FMS 22.1', by:'IN weekly · Certified company quarterly', ev:'Fire Pump Weekly report (CBAHI page)', cells:mk(m=>Q(m)?'C+IN-W':'IN-W') },
+    { _id:'fsppm_8', act:'Clean Agent Systems — FM-200 / FirePro (Server Rm, Med. Records, Electrical, Generator)', ref:'FMS 22.2', by:'IN monthly · Certified company quarterly', ev:'FM-200 Inspection report (CBAHI page)', cells:mk(m=>Q(m)?'C/IN':'IN') },
+    { _id:'fsppm_9', act:'Wet Chemical System — Kitchen', ref:'FMS 22.3', by:'IN monthly · Certified company quarterly', ev:'Wet Chemical Check report (CBAHI page)', cells:mk(m=>Q(m)?'C/IN':'IN') },
+    { _id:'fsppm_10', act:'Stand Pipes, Hydrants & Hose Reels', ref:'FMS 22.4', by:'IN monthly · Certified company quarterly', ev:'Suppression log (Fire page)', cells:mk(m=>Q(m)?'C/IN':'IN') },
+  ];
+}
+
+function fsPpmGet() {
+  try {
+    const s = JSON.parse(localStorage.getItem(FSPPM_KEY) || 'null');
+    if (s && Array.isArray(s.rows) && s.rows.length) return s;
+  } catch(e) {}
+  const seeded = { rows: fsPpmSeed(), year: new Date().getFullYear(), _ts: new Date().toISOString() };
+  localStorage.setItem(FSPPM_KEY, JSON.stringify(seeded));
+  return seeded;
+}
+function fsPpmSave(s) {
+  s._ts = new Date().toISOString();
+  localStorage.setItem(FSPPM_KEY, JSON.stringify(s));
+  dbWrite('app_settings', { _id:'fs_ppm_schedule', key:'fs_ppm_schedule', value: JSON.stringify(s),
+    _by: ((window.CU&&CU.name)||'unknown'), _ts: s._ts });
+}
+
+function fsPpmRender() {
+  const el = document.getElementById('fsppm-grid'); if (!el) return;
+  // Role gate (defense in depth — tab is also hidden for other roles)
+  if (CU.role && CU.role !== 'director' && CU.role !== 'maintenance') {
+    el.innerHTML = '<div style="padding:20px;color:var(--mu);">Access restricted to FMS Director and Maintenance Manager.</div>'; return;
+  }
+  const s = fsPpmGet();
+  const yEl = document.getElementById('fsppm-year'); if (yEl) yEl.textContent = s.year || new Date().getFullYear();
+  let html = '<table class="tbl" style="min-width:1100px;"><thead><tr>' +
+    '<th style="min-width:230px;">Activity</th><th>CBAHI Ref</th><th style="min-width:150px;">Performed By</th>' +
+    FSPPM_MONTHS.map(m=>'<th style="text-align:center;">'+m+'</th>').join('') +
+    '<th style="min-width:150px;">Evidence Source</th><th>Actions</th></tr></thead><tbody>';
+  s.rows.forEach(r => {
+    html += '<tr><td style="font-size:11px;font-weight:600;">'+ (r.act||'—') +'</td>' +
+      '<td style="font-size:10px;color:var(--ac);white-space:nowrap;">'+ (r.ref||'—') +'</td>' +
+      '<td style="font-size:10px;">'+ (r.by||'—') +'</td>' +
+      FSPPM_MONTHS.map(m => {
+        const v = (r.cells&&r.cells[m])||'—';
+        const col = v==='—' ? 'var(--mu)' : v.includes('C') && v.includes('IN') ? '#7c3aed' : v.includes('C') ? '#dc2626' : '#16a34a';
+        return '<td style="text-align:center;font-size:10px;font-weight:700;color:'+col+';">'+v+'</td>';
+      }).join('') +
+      '<td style="font-size:10px;color:var(--mu);">'+ (r.ev||'—') +'</td>' +
+      '<td style="white-space:nowrap;"><button class="btn bb" style="font-size:9px;padding:2px 5px;margin-right:3px;" onclick="fsPpmEdit(\''+r._id+'\')">✏</button>' +
+      '<button class="btn br" style="font-size:9px;padding:2px 5px;" onclick="fsPpmDelete(\''+r._id+'\')">✕</button></td></tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+let FSPPM_EDIT_ID = null;
+function fsPpmEdit(id) {
+  const s = fsPpmGet();
+  const r = s.rows.find(x=>x._id===id); if (!r) return;
+  FSPPM_EDIT_ID = id;
+  document.getElementById('fsppm-act').value = r.act||'';
+  document.getElementById('fsppm-ref').value = r.ref||'';
+  document.getElementById('fsppm-by').value = r.by||'';
+  document.getElementById('fsppm-ev').value = r.ev||'';
+  FSPPM_MONTHS.forEach(m => { const e=document.getElementById('fsppm-m-'+m); if(e) e.value=(r.cells&&r.cells[m])||'—'; });
+  document.getElementById('fsppm-form-title').textContent = '✏ Editing: ' + (r.act||'').slice(0,50);
+  document.getElementById('fsppm-form').scrollIntoView({behavior:'smooth',block:'start'});
+  toast('Editing row — update and press Save','#3b82f6');
+}
+
+function fsPpmSaveRow() {
+  const act = document.getElementById('fsppm-act').value.trim();
+  if (!act) { toast('Activity name required','#f59e0b'); return; }
+  const s = fsPpmGet();
+  const cells = {};
+  FSPPM_MONTHS.forEach(m => { const e=document.getElementById('fsppm-m-'+m); cells[m]=e?e.value:'—'; });
+  const row = { _id: FSPPM_EDIT_ID || ('fsppm_'+Date.now()), act,
+    ref: document.getElementById('fsppm-ref').value.trim(),
+    by:  document.getElementById('fsppm-by').value.trim(),
+    ev:  document.getElementById('fsppm-ev').value.trim(), cells };
+  const idx = s.rows.findIndex(x=>x._id===row._id);
+  if (idx>=0) s.rows[idx]=row; else s.rows.push(row);
+  fsPpmSave(s); FSPPM_EDIT_ID=null;
+  document.getElementById('fsppm-form-title').textContent = '➕ Add / Edit Schedule Row';
+  ['fsppm-act','fsppm-ref','fsppm-by','fsppm-ev'].forEach(i=>{document.getElementById(i).value='';});
+  FSPPM_MONTHS.forEach(m=>{const e=document.getElementById('fsppm-m-'+m); if(e) e.value='—';});
+  fsPpmRender(); toast('✅ Schedule row saved','#10b981');
+}
+
+function fsPpmDelete(id) {
+  if (!confirm('Delete this schedule row?')) return;
+  const s = fsPpmGet();
+  s.rows = s.rows.filter(x=>x._id!==id);
+  fsPpmSave(s); fsPpmRender(); toast('🗑 Row deleted');
+}
+
+function fsPpmResetSeed() {
+  if (!confirm('Reset the schedule to the CBAHI-compliant default (FMS 21.1–22.4)? Your current rows will be replaced.')) return;
+  const s = { rows: fsPpmSeed(), year: new Date().getFullYear() };
+  fsPpmSave(s); fsPpmRender(); toast('✅ Schedule reset to compliant default','#10b981');
+}
+
+async function fsPpmSync() {
+  try {
+    const url = (typeof CANONICAL_DB_URL!=='undefined'&&CANONICAL_DB_URL)?CANONICAL_DB_URL:getDBUrl();
+    if (!url) return;
+    const r = await fetch(url+'?action=getAll',{signal:AbortSignal.timeout(45000)});
+    const j = await r.json();
+    if (!j.ok || !j.data || !j.data.app_settings) return;
+    const row = j.data.app_settings.find(x=>x._id==='fs_ppm_schedule');
+    if (!row || !row.value) return;
+    const cloud = JSON.parse(row.value);
+    const local = JSON.parse(localStorage.getItem(FSPPM_KEY)||'null');
+    if (!local || (cloud._ts||'') > (local._ts||'')) {
+      localStorage.setItem(FSPPM_KEY, JSON.stringify(cloud));
+      fsPpmRender();
+      console.log('✓ PPM schedule synced from cloud');
+    }
+  } catch(e) { console.warn('fsPpmSync:', e.message); }
+}
+
+function fsPpmExport() {
+  const s = fsPpmGet();
+  const yr = s.year || new Date().getFullYear();
+  const rows = s.rows.map(r =>
+    '<tr><td style="font-weight:600;">'+(r.act||'')+'</td><td style="color:#2563eb;white-space:nowrap;">'+(r.ref||'')+'</td><td>'+(r.by||'')+'</td>' +
+    FSPPM_MONTHS.map(m=>{
+      const v=(r.cells&&r.cells[m])||'—';
+      const col=v==='—'?'#9ca3af':(v.includes('C')&&v.includes('IN'))?'#7c3aed':v.includes('C')?'#dc2626':'#16a34a';
+      return '<td style="text-align:center;font-weight:700;color:'+col+';">'+v+'</td>';
+    }).join('')+'<td style="font-size:9px;color:#555;">'+(r.ev||'')+'</td></tr>').join('');
+  const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fire Safety PPM Schedule '+yr+'</title>'+
+    '<style>body{font-family:Arial;margin:20px;font-size:11px;}h2{margin:0;font-size:16px;}p{margin:3px 0 0;font-size:10px;opacity:.85;}'+
+    '.hdr{background:#1a3a5c;color:#fff;padding:14px 18px;border-radius:8px;margin-bottom:12px;}'+
+    'table{width:100%;border-collapse:collapse;}th{background:#1a3a5c;color:#fff;padding:6px 4px;font-size:9px;}'+
+    'td{border:1px solid #d7dde5;padding:5px 4px;font-size:9.5px;}tr:nth-child(even){background:#f8fafc;}'+
+    '.lg{margin-top:10px;font-size:10px;}.sig{display:flex;gap:24px;margin-top:36px;}.sl{flex:1;border-top:1px solid #999;padding-top:6px;font-size:10px;color:#555;}'+
+    '@media print{body{margin:8px;}}</style></head><body>'+
+    '<div class="hdr"><h2>🔥 Buildings &amp; Grounds — Annual Fire Alarm &amp; Suppression Inspection / PPM Schedule '+yr+'</h2>'+
+    '<p>Obeid Specialized Hospital · CBAHI FMS 21.1 – 22.4 · Evidence-mapped · Generated '+new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})+'</p></div>'+
+    '<table><thead><tr><th style="min-width:190px;text-align:left;">Activity</th><th>CBAHI Ref</th><th style="min-width:120px;text-align:left;">Performed By</th>'+
+    FSPPM_MONTHS.map(m=>'<th>'+m+'</th>').join('')+'<th style="min-width:120px;text-align:left;">Evidence Source</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+    '<div class="lg"><b>Legend:</b> <span style="color:#dc2626;font-weight:700;">C</span> — Civil-Defense-certified Outside Company &nbsp;·&nbsp; '+
+    '<span style="color:#16a34a;font-weight:700;">IN</span> — In-House PPM (hospital maintenance staff) &nbsp;·&nbsp; '+
+    '<span style="color:#16a34a;font-weight:700;">IN-W</span> — In-House WEEKLY &nbsp;·&nbsp; '+
+    '<span style="color:#7c3aed;font-weight:700;">C/IN</span> — Certified company + in-house in the same month</div>'+
+    '<div class="sig"><div class="sl">Prepared By:<br><b>Mr. Mustafa Zahid</b><br>Maintenance Supervisor<br><br>Signature: ____________</div>'+
+    '<div class="sl">Noted By:<br><b>Mr. Yaman Akil</b><br>Maintenance Manager<br><br>Signature: ____________</div>'+
+    '<div class="sl">Approved By:<br><b>Mr. Ali K. Sobh</b><br>FMS Director / Risk Manager<br><br>Signature: ____________</div></div>'+
+    '</body></html>';
+  const b = new Blob([html],{type:'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(b);
+  a.download = 'Fire_PPM_Schedule_'+yr+'_'+new Date().toISOString().slice(0,10)+'.html';
+  a.click(); toast('✅ Schedule exported','#10b981');
+}
+
 </script>
 </body>
 </html>
