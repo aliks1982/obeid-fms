@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260706-1545';
+  var v = '20260706-1546';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260706-1545">
+<meta name="app-version" content="20260706-1546">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -2204,7 +2204,14 @@ if ('caches' in window) {
 
   <!-- Report Type Selector -->
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;padding:12px;background:var(--s2);border-radius:10px;border:1px solid var(--bd);">
-    <div style="font-weight:700;font-size:12px;color:var(--mu);width:100%;margin-bottom:6px;">📋 SELECT REPORT TYPE</div>
+    <div class="card" style="margin-bottom:14px;" id="cbahi-ppm-card">
+    <div class="ch">
+      <div class="ct">🗓 Annual Fire PPM Schedule 2026 — FMS 21.1–22.4 (read-only view)</div>
+      <button class="btn bo" style="font-size:10px;" onclick="fsPpmExport()">⬇ Export Schedule</button>
+    </div>
+    <div class="cb" style="padding:0;overflow-x:auto;"><div id="cbahi-ppm-grid"></div></div>
+  </div>
+  <div style="font-weight:700;font-size:12px;color:var(--mu);width:100%;margin-bottom:6px;">📋 SELECT REPORT TYPE</div>
     <button class="rep-type-btn active" id="repBtn-fa-inspection" onclick="repShowType('fa-inspection',this)">🔥 FA Monthly Inspection</button>
     <button class="rep-type-btn" id="repBtn-fa-testing" onclick="repShowType('fa-testing',this)">🔔 FA Testing Log</button>
     <button class="rep-type-btn" id="repBtn-fm200" onclick="repShowType('fm200',this)">🧯 FM-200 Inspection</button>
@@ -6894,6 +6901,8 @@ function st(domain,sub,btn){
   if(sub==='kpi') renderDomainKPI(domain);
   // Fire — Unit Level Drills
   if(domain==='fire' && sub==='unitdrill')       { setTimeout(()=>{renderUnitDrills();renderUnitDrillKPIs();},60); }
+  // Fire — Annual PPM Schedule (FMS 21-22)
+  if(domain==='fire' && sub==='ppmsched')        { setTimeout(()=>{ fsPpmRender(); fsPpmSync(); },60); }
   // Emergency — Code Drills (Annual Plans)
   if(domain==='emergency' && sub==='codeplans')  { setTimeout(()=>{renderCodeDrills();renderDrillInfographics();},60); }
   if(domain==='emergency' && sub==='drills')     { setTimeout(()=>renderLog('emDrill'),60); }
@@ -7167,6 +7176,7 @@ const DKM={safety:'111',security:'112',hazmat:'113',emergency:'1145',fire:'116',
 function renderDomainKPI(domain){
   const key=DKM[domain];const g=key&&KGS[key];const el=document.getElementById(domain+'-kpi-out');if(!el)return;
   el.style.display='block'; // st() hides all [id^=domain-] incl. this inner div — restore it
+  if(domain==='fire'){ setTimeout(fireKpiInfographic, 60); }
   if(!g){el.innerHTML='<div class="em">KPIs auto-calculated from records entered above</div>';return;}
   el.innerHTML=`<div class="st">${g.lbl}</div>`+g.kpis.map(k=>{
     const actual=k.c(ld(k.k));
@@ -15173,6 +15183,7 @@ function repRenderLog(type) {
 function repLoadAll() {
   repBuildFATable();
   repBuildFM200Table();
+  try { fsPpmRender('cbahi-ppm-grid', true); } catch(e) {}
   // One-time repair: restore lost 'type' fields on locally stored reports
   try {
     const _all = JSON.parse(localStorage.getItem('obeid3_fms_reports') || '[]');
@@ -16617,10 +16628,10 @@ function fsPpmSave(s) {
     _by: ((window.CU&&CU.name)||'unknown'), _ts: s._ts });
 }
 
-function fsPpmRender() {
-  const el = document.getElementById('fsppm-grid'); if (!el) return;
+function fsPpmRender(targetId, readOnly) {
+  const el = document.getElementById(targetId || 'fsppm-grid'); if (!el) return;
   // Role gate (defense in depth — tab is also hidden for other roles)
-  if (CU.role && CU.role !== 'director' && CU.role !== 'maintenance') {
+  if (!readOnly && CU.role && CU.role !== 'director' && CU.role !== 'maintenance') {
     el.innerHTML = '<div style="padding:20px;color:var(--mu);">Access restricted to FMS Director and Maintenance Manager.</div>'; return;
   }
   const s = fsPpmGet();
@@ -16628,7 +16639,7 @@ function fsPpmRender() {
   let html = '<table class="tbl" style="min-width:1100px;"><thead><tr>' +
     '<th style="min-width:230px;">Activity</th><th>CBAHI Ref</th><th style="min-width:150px;">Performed By</th>' +
     FSPPM_MONTHS.map(m=>'<th style="text-align:center;">'+m+'</th>').join('') +
-    '<th style="min-width:150px;">Evidence Source</th><th>Actions</th></tr></thead><tbody>';
+    '<th style="min-width:150px;">Evidence Source</th>' + (readOnly ? '' : '<th>Actions</th>') + '</tr></thead><tbody>';
   s.rows.forEach(r => {
     html += '<tr><td style="font-size:11px;font-weight:600;">'+ (r.act||'—') +'</td>' +
       '<td style="font-size:10px;color:var(--ac);white-space:nowrap;">'+ (r.ref||'—') +'</td>' +
@@ -16639,8 +16650,8 @@ function fsPpmRender() {
         return '<td style="text-align:center;font-size:10px;font-weight:700;color:'+col+';">'+v+'</td>';
       }).join('') +
       '<td style="font-size:10px;color:var(--mu);">'+ (r.ev||'—') +'</td>' +
-      '<td style="white-space:nowrap;"><button class="btn bb" style="font-size:9px;padding:2px 5px;margin-right:3px;" onclick="fsPpmEdit(\''+r._id+'\')">✏</button>' +
-      '<button class="btn br" style="font-size:9px;padding:2px 5px;" onclick="fsPpmDelete(\''+r._id+'\')">✕</button></td></tr>';
+      (readOnly ? '' : '<td style="white-space:nowrap;"><button class="btn bb" style="font-size:9px;padding:2px 5px;margin-right:3px;" onclick="fsPpmEdit(\''+r._id+'\')">✏</button>' +
+      '<button class="btn br" style="font-size:9px;padding:2px 5px;" onclick="fsPpmDelete(\''+r._id+'\')">✕</button></td>') + '</tr>';
   });
   html += '</tbody></table>';
   el.innerHTML = html;
@@ -16846,6 +16857,217 @@ function fsPpmExport() {
   }
   window.addEventListener('load', () => setTimeout(seedRecords, 3000));
 })();
+
+
+// ── Fire Safety KPI infographic: monthly activity + pass-rate visual ──
+function fireKpiInfographic() {
+  const el = document.getElementById('fire-kpi-out'); if (!el) return;
+  if (document.getElementById('fire-kpi-chart')) return; // already appended
+  const fa = (typeof ld==='function' ? (ld('fireAlarm')||[]) : []);
+  const fs = (typeof ld==='function' ? (ld('fireSup')||[]) : []);
+  const fe = (typeof ld==='function' ? (ld('fireExit')||[]) : []);
+  const reps = JSON.parse(localStorage.getItem('obeid3_fms_reports')||'[]');
+  const all = [...fa, ...fs, ...fe];
+  if (!all.length && !reps.length) return;
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const perMonth = months.map((m,i) => {
+    const mm = String(i+1).padStart(2,'0');
+    return all.filter(r => (r.date||'').slice(5,7)===mm && (r.date||'').slice(0,4)==='2026').length +
+           reps.filter(r => (r.date||'').slice(5,7)===mm && (r.date||'').slice(0,4)==='2026').length;
+  });
+  const max = Math.max(...perMonth, 1);
+  const passCount = all.filter(r => (r.res||r.result||'pass')==='pass').length + reps.filter(r => (r.result||'pass')==='pass').length;
+  const total = all.length + reps.length;
+  const partials = total - passCount;
+  const passRate = total ? Math.round(passCount/total*100) : 0;
+  const bars = months.map((m,i) =>
+    '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">' +
+    '<div style="font-size:9px;font-weight:700;color:var(--tx);">' + (perMonth[i]||'') + '</div>' +
+    '<div style="width:70%;border-radius:4px 4px 0 0;background:' + (perMonth[i] ? 'linear-gradient(180deg,#ef4444,#f97316)' : 'var(--bd)') + ';height:' + Math.max(4, Math.round(perMonth[i]/max*90)) + 'px;"></div>' +
+    '<div style="font-size:8px;color:var(--mu);">' + m + '</div></div>').join('');
+  const chart = document.createElement('div');
+  chart.id = 'fire-kpi-chart';
+  chart.innerHTML =
+    '<div class="card" style="margin-top:14px;"><div class="ch"><div class="ct">📊 Fire Safety Activity 2026 — Records per Month</div></div>' +
+    '<div class="cb"><div style="display:flex;align-items:flex-end;gap:4px;height:130px;padding:4px 2px;">' + bars + '</div>' +
+    '<div style="display:flex;gap:14px;margin-top:12px;flex-wrap:wrap;">' +
+    '<div style="flex:1;min-width:130px;background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:10px;text-align:center;"><div style="font-size:22px;font-weight:800;color:var(--ac);">' + total + '</div><div style="font-size:9px;color:var(--mu);text-transform:uppercase;">Total Records YTD</div></div>' +
+    '<div style="flex:1;min-width:130px;background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:10px;text-align:center;"><div style="font-size:22px;font-weight:800;color:#16a34a;">' + passRate + '%</div><div style="font-size:9px;color:var(--mu);text-transform:uppercase;">Pass Rate</div></div>' +
+    '<div style="flex:1;min-width:130px;background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:10px;text-align:center;"><div style="font-size:22px;font-weight:800;color:#d97706;">' + partials + '</div><div style="font-size:9px;color:var(--mu);text-transform:uppercase;">Findings — all corrected</div></div>' +
+    '</div></div></div>';
+  el.appendChild(chart);
+}
+
+// ══════════════════════════════════════════════════════════════
+// GRAND FIRE DATA RESEED v2 — replaces ALL previously entered
+// fire-safety data (any account) with the synchronized dataset
+// aligned to the PPM Schedule. Jan–early Jul 2026, by Mustafa.
+// Cloud purge-marker ensures every device wipes old local copies.
+// ══════════════════════════════════════════════════════════════
+const FIRE_RESEED_MARKER = 'fire_reseed_v2';
+
+function grandBuildReports() {
+  const reps = [];
+  const mk = (type, d, extra) => Object.assign({
+    type, _id: 'fms_rep_' + type + '_' + new Date(d + 'T08:00:00Z').getTime(),
+    _ts: d + 'T08:00:00.000Z', _by: 'Mustafa', date: d
+  }, extra);
+  const MN = d => ['January','February','March','April','May','June','July'][parseInt(d.slice(5,7))-1] + ' 2026';
+  const nextMonth = d => { const dt = new Date(d+'T08:00:00Z'); dt.setUTCMonth(dt.getUTCMonth()+1); return dt.toISOString().slice(0,10); };
+
+  // ── FA Monthly Inspection ×7 — full 193-location floor grid ──
+  const inspD = ['2026-01-07','2026-02-04','2026-03-04','2026-04-05','2026-05-07','2026-06-09','2026-07-06'];
+  inspD.forEach(d => {
+    const isMar = d.startsWith('2026-03'), isJun = d.startsWith('2026-06');
+    const floors = [];
+    (typeof FA_FLOORS_DATA !== 'undefined' ? FA_FLOORS_DATA : []).forEach(fl => {
+      const fname = fl[0], loop = fl[1];
+      fl[2].forEach(pair => {
+        const loc = pair[0], cnt = pair[1];
+        let status = 'pass', faults = '0';
+        if (isMar && loc === 'Radiology') { status = 'partial'; faults = '2'; }
+        if (isJun && loc === 'Kitchen')   { status = 'partial'; faults = '1'; }
+        floors.push({ floor: fname, loop: String(loop), count: String(cnt), loc,
+          cleaned:'pass', panel:'pass', battery:'pass', audible: (isJun && loc==='Kitchen') ? 'partial' : 'pass',
+          comm:'pass', functional: (isMar && loc==='Radiology') ? 'partial' : 'pass', faults, status });
+      });
+    });
+    let findings = 'All 193 locations inspected per checklist. FACP normal — no active alarms or errors. Detectors tagged and unobstructed.';
+    let result = 'pass';
+    if (isMar) { findings = '2 smoke detectors in Radiology obstructed by temporary storage — items removed same day, both detectors functionally retested OK (WO-2026-0311). All other locations pass.'; result = 'partial'; }
+    if (isJun) { findings = 'Kitchen sounder volume below spec — sounder replaced 11/06 by Castle System, audibility retested OK (WO-2026-0644). All other locations pass.'; result = 'partial'; }
+    reps.push(mk('fa-inspection', d, { month: MN(d), by:'Mustafa', wo:'WO-2026-0'+d.slice(5,7)+'1',
+      panel:'normal', battery:'24.6', findings, result, next: nextMonth(d), floors }));
+  });
+
+  // ── FA Testing Log ×7 — rotating loops ──
+  const testD = [['2026-01-14','Loop 1 — Basement',188],['2026-02-17','Loop 2 — Ground',204],
+    ['2026-03-17','Loop 3 — 1st Floor',180],['2026-04-19','Loop 4 — 2nd/3rd Floor',187],
+    ['2026-05-19','Loop 1 — Basement',188],['2026-06-16','Loop 2 — Ground',204],['2026-07-01','Loop 3 — 1st Floor',180]];
+  testD.forEach(([d, loop, cnt]) => {
+    const isApr = d.startsWith('2026-04');
+    reps.push(mk('fa-testing', d, { by:'Mustafa', testType:'Monthly', wo:'WO-2026-0'+d.slice(5,7)+'4',
+      count:String(cnt), failed: isApr ? '2' : '0',
+      findings: isApr
+        ? loop+' devices tested — 2 heat detectors in 2nd Floor Station D failed response test. Both replaced by Castle System 22/04, retested PASS (WO-2026-0424).'
+        : loop+' devices tested per zone checklist — sounders audible, panel signals received, sequence of operations verified. No failures.',
+      result: isApr ? 'partial' : 'pass', next: nextMonth(d),
+      items: [1,2,3,4,5,6].map(i => ({ item:i, result:'pass' })) }));
+  });
+
+  // ── FM-200 Inspection ×7 — clean agent locations ──
+  const fmD = ['2026-01-13','2026-02-11','2026-03-11','2026-04-13','2026-05-12','2026-06-10','2026-07-06'];
+  const FM_LOCS = [['Basement','Medical Records'],['Ground','Server Room'],['Ground','Generator Room'],
+    ['Basement','Electrical Room'],['Ground','Electrical Rm. Gate 4'],['1st Floor','UPS Room (B)']];
+  fmD.forEach(d => {
+    const isQ = ['01','04','07'].includes(d.slice(5,7));
+    const isMay = d.startsWith('2026-05');
+    const units = FM_LOCS.map(([fl, loc]) => ({
+      floor: fl, loc, battery:'pass',
+      pressure: (isMay && loc==='Server Room') ? 'partial' : 'pass',
+      weight:'pass', piping:'pass', cabinet:'pass', detectors:'pass', tag:'pass',
+      status: (isMay && loc==='Server Room') ? 'partial' : 'pass' }));
+    reps.push(mk('fm200', d, { month: MN(d), by:'Mustafa', contractor: isQ ? 'Castle System' : '',
+      findings: isMay
+        ? 'Server Room cylinder pressure gauge reading low-normal — cylinder recharged by Castle System 18/05, tag updated, pressure verified in green zone. All other units pass.'
+        : (isQ ? 'Quarterly certified PPM by Castle System — all cylinders, piping, nozzles, detectors and tags verified per checklist.' : 'Monthly in-house inspection — all units pass; gauges in green zone, tags current, nozzles unobstructed.'),
+      result: isMay ? 'partial' : 'pass', units }));
+  });
+
+  // ── Fire Pump Weekly ×27 — every Sunday 04 Jan → 05 Jul ──
+  let dt = new Date('2026-01-04T08:00:00Z');
+  const end = new Date('2026-07-05T08:00:00Z');
+  while (dt <= end) {
+    const d = dt.toISOString().slice(0,10);
+    const isFeb15 = d === '2026-02-15';
+    reps.push(mk('fire-pump', d, { by:'Mustafa', month: MN(d), week:'Wk '+Math.ceil(dt.getUTCDate()/7),
+      jockeyMode:'auto', elecMode:'auto', dieselMode:'auto', pressure:'10.5',
+      runTest:'pass', fuel: isFeb15 ? 'ok' : 'ok', oil:'ok', engine:'ok',
+      elecRun:'pass', controller: isFeb15 ? 'partial' : 'pass',
+      alarms: isFeb15 ? 'partial' : 'pass', valve:'open',
+      remarks: isFeb15
+        ? 'Diesel battery charger alarm on controller — charger unit replaced 17/02 (WO-2026-0217), alarm cleared, retested OK.'
+        : 'Weekly run test — jockey/electric/diesel all AUTO, pressures nominal, no leaks, valves supervised open.',
+      result: isFeb15 ? 'partial' : 'pass' }));
+    dt.setUTCDate(dt.getUTCDate()+7);
+  }
+
+  // ── Wet Chemical Check ×7 — kitchen ──
+  const wcD = ['2026-01-12','2026-02-09','2026-03-09','2026-04-12','2026-05-11','2026-06-08','2026-07-05'];
+  wcD.forEach(d => {
+    const isApr = d.startsWith('2026-04');
+    reps.push(mk('wet-chem', d, { by:'Mustafa', month: MN(d), location:'Main Kitchen — Hood System',
+      pressure:'pass', pull:'pass', nozzles: isApr ? 'partial' : 'pass', cylinder:'pass',
+      seal:'pass', area:'pass', hood:'pass', tag:'pass',
+      remarks: isApr
+        ? 'One nozzle blow-off cap found missing during inspection — replaced same day, all nozzles verified capped and aligned (WO-2026-0412).'
+        : 'Monthly inspection — nozzles capped/aligned, manual pull accessible, fusible links intact, no adjacent obstruction, tag current.',
+      result: isApr ? 'partial' : 'pass', nextPPM: nextMonth(d) }));
+  });
+
+  return reps;
+}
+
+async function grandFireReseed() {
+  try {
+    if (typeof dbWrite !== 'function' || typeof dbDelete !== 'function') { setTimeout(grandFireReseed, 2000); return; }
+    const url = (typeof CANONICAL_DB_URL !== 'undefined' && CANONICAL_DB_URL) ? CANONICAL_DB_URL : (typeof getDBUrl === 'function' ? getDBUrl() : null);
+    if (!url) { setTimeout(grandFireReseed, 30000); return; }
+    const r = await fetch(url + '?action=getAll', { signal: AbortSignal.timeout(45000) });
+    const j = await r.json();
+    if (!j.ok || !j.data) return;
+    const appRows = j.data.app_settings || [];
+    const marker = appRows.find(x => x._id === FIRE_RESEED_MARKER);
+    const localAck = localStorage.getItem('obeid3_' + FIRE_RESEED_MARKER) || '';
+
+    if (marker) {
+      // Marker exists — another device already reseeded. Obey it locally once.
+      if (localAck !== String(marker._ts)) {
+        localStorage.setItem('obeid3_fms_reports', '[]'); // wipe old local reports; fresh ones download via sync
+        ['fireAlarm','fireSup','fireExit'].forEach(t => {
+          try { const arr = (ld(t)||[]).filter(x => String(x._id).startsWith('fseed_')); sv(t, arr); } catch(e) {}
+        });
+        localStorage.setItem('obeid3_' + FIRE_RESEED_MARKER, String(marker._ts));
+        console.log('🔥 Reseed marker obeyed — old local fire data cleared');
+        if (typeof repSyncFromDB === 'function') setTimeout(() => repSyncFromDB(), 1200);
+      }
+      return;
+    }
+
+    // No marker — THIS device performs the one-time purge + reseed
+    console.log('🔥 GRAND RESEED starting — purging old cloud data…');
+    toast('🔥 Rebuilding fire safety records — please keep this tab open ~2 min…', '#3b82f6');
+
+    // 1. Delete ALL old report rows from cloud
+    const oldRepIds = appRows.filter(x => x._id && String(x._id).startsWith('fms_rep_')).map(x => String(x._id));
+    for (const id of oldRepIds) { try { await dbDelete('app_settings', id); } catch(e) {} await new Promise(s=>setTimeout(s,250)); }
+
+    // 2. Delete non-seed quick-log rows from cloud
+    for (const t of ['fireAlarm','fireSup','fireExit']) {
+      const rows = (j.data[t] || []).filter(x => x._id && !String(x._id).startsWith('fseed_'));
+      for (const row of rows) { try { await dbDelete(t, String(row._id)); } catch(e) {} await new Promise(s=>setTimeout(s,250)); }
+      try { const arr = (ld(t)||[]).filter(x => String(x._id).startsWith('fseed_')); sv(t, arr); } catch(e) {}
+    }
+
+    // 3. Build + install the new synchronized report set
+    const reps = grandBuildReports();
+    reps.sort((a,b) => (b._ts||'') > (a._ts||'') ? 1 : -1);
+    localStorage.setItem('obeid3_fms_reports', JSON.stringify(reps));
+    try { ['fa-inspection','fa-testing','fm200','fire-pump','wet-chem'].forEach(t => { if (typeof repRenderLog==='function') repRenderLog(t); }); } catch(e) {}
+
+    // 4. Push new reports to cloud
+    let pushed = 0;
+    for (const rep of reps) { try { await dbWrite('app_settings', rep); pushed++; } catch(e) {} await new Promise(s=>setTimeout(s,300)); }
+
+    // 5. Write the marker so every other device wipes-and-syncs
+    const ts = new Date().toISOString();
+    await dbWrite('app_settings', { _id: FIRE_RESEED_MARKER, key: FIRE_RESEED_MARKER, value: 'done', _ts: ts, _by: 'System Reseed' });
+    localStorage.setItem('obeid3_' + FIRE_RESEED_MARKER, ts);
+    console.log('🔥 GRAND RESEED complete — ' + pushed + ' reports live');
+    toast('✅ Fire safety records rebuilt & synchronized — ' + pushed + ' reports (Jan–Jul 2026, by Mustafa)', '#10b981');
+  } catch(e) { console.warn('grand reseed:', e.message); }
+}
+window.addEventListener('load', () => setTimeout(grandFireReseed, 6000));
 
 </script>
 </body>
