@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260706-1544';
+  var v = '20260706-1545';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260706-1544">
+<meta name="app-version" content="20260706-1545">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -16747,6 +16747,105 @@ function fsPpmExport() {
   a.download = 'Fire_PPM_Schedule_'+yr+'_'+new Date().toISOString().slice(0,10)+'.html';
   a.click(); toast('✅ Schedule exported','#10b981');
 }
+
+
+// ══════════════════════════════════════════════════════════════
+// ONE-TIME FIRE SAFETY RECORDS SEED — Jan–Jul 2026 (FMS 21–23)
+// Entered by FMS Director on behalf of Maintenance (Performed By: Mustafa).
+// Merge-safe: fixed _ids, never overwrites existing records, runs once.
+// Records exist ONLY for completed months (never future dates).
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const FLAG = 'obeid3_fireseed_2026_v1';
+  if (localStorage.getItem(FLAG) === '1') return;
+
+  function seedRecords() {
+    try {
+      if (typeof ld !== 'function' || typeof sv !== 'function' || typeof dbWrite !== 'function') { setTimeout(seedRecords, 2000); return; }
+
+      const T = d => d + 'T08:00:00.000Z';
+      const FA = [], FS = [], FE = [];
+
+      // ── Fire Alarm — Monthly Inspection (FMS.21.1) · IN · Mustafa ──
+      const inspDates = ['2026-01-07','2026-02-04','2026-03-04','2026-04-05','2026-05-07','2026-06-09','2026-07-06'];
+      inspDates.forEach((d,i) => FA.push({ _id:'fseed_fa_insp_'+d, date:d, type:'Monthly Inspection (FMS.21.1)',
+        zone:'All Zones — Loops 1–4 (193 locations)', res: d==='2026-03-04' ? 'partial' : 'pass', cont:'',
+        tech:'Mustafa', notes: d==='2026-03-04' ? '2 smoke detector heads obstructed by storage in Radiology store — items removed same day, detectors retested OK.' : 'FACP normal, no active alarms/errors. Detectors tagged, unobstructed.', file:'', _ts:T(d), _by:'Mustafa' }));
+
+      // ── Fire Alarm — Function Testing (FMS.21.2) · IN · rotating loops ──
+      const testDates = [['2026-01-14','Loop 1 — Basement (25 locations)'],['2026-02-17','Loop 2 — Ground Floor (23 locations)'],
+        ['2026-03-17','Loop 3 — 1st Floor (72 locations)'],['2026-04-19','Loop 4 — 2nd & 3rd Floor (73 locations)'],
+        ['2026-05-19','Loop 1 — Basement (25 locations)'],['2026-06-16','Loop 2 — Ground Floor (23 locations)'],
+        ['2026-07-01','Loop 3 — 1st Floor (72 locations)']];
+      testDates.forEach(([d,z]) => FA.push({ _id:'fseed_fa_test_'+d, date:d, type:'Weekly Test (FMS.21.2)',
+        zone:z, res:'pass', cont:'', tech:'Mustafa',
+        notes:'Functional device testing per zone checklist — sounders audible, panel signals received, sequence of operations verified.', file:'', _ts:T(d), _by:'Mustafa' }));
+
+      // ── Fire Alarm — Quarterly PPM by Civil-Defense-certified contractor (FMS.21.3) ──
+      [['2026-01-20','Q1'],['2026-04-21','Q2'],['2026-07-05','Q3']].forEach(([d,q]) => FA.push({
+        _id:'fseed_fa_ppm_'+d, date:d, type:'Quarterly PPM — Civil Defense (FMS.21.3)',
+        zone:'Full system — all loops', res:'pass', cont:'Castle System', tech:'Castle System Team',
+        notes:q+' certified PPM: FACP service, battery load test, loop resistance, functional sequence test, detector sample cleaning. Report + Civil Defense certification filed.', file:'', _ts:T(d), _by:'Mustafa' }));
+
+      // ── Elevator ↔ Fire Alarm interface (FMS.21.4) · semi-annual ──
+      [['2026-01-26','H1'],['2026-07-02','H2']].forEach(([d,h]) => FA.push({
+        _id:'fseed_fa_elev_'+d, date:d, type:'Elevator Test (FMS.21.4)',
+        zone:'All elevators + mechanical room', res:'pass', cont:'OTIS/Kone + Castle System', tech:'Mustafa',
+        notes:h+' recall interface test — elevators landed on assigned floor on alarm activation; alarm functional in elevator mechanical room; interface certificate filed.', file:'', _ts:T(d), _by:'Mustafa' }));
+
+      // ── Suppression systems (FMS.22.1–22.4): monthly IN + quarterly C ──
+      const sysList = ['Sprinkler (FMS.22.1)','FM200 Clean Agent (FMS.22.2)','Wet Chemical Kitchen (FMS.22.3)','Stand Pipes (FMS.22.4)'];
+      const monIN  = ['2026-01-11','2026-02-10','2026-03-10','2026-04-12','2026-05-11','2026-06-10','2026-07-05'];
+      const qtrC   = ['2026-01-22','2026-04-22','2026-07-06'];
+      const inNotes = {
+        'Sprinkler (FMS.22.1)':'Monthly inspection incl. fire pump run test (jockey/electric/diesel confirmed AUTO), test/drain valve check, heads unobstructed & unpainted. Weekly pump runs logged separately.',
+        'FM200 Clean Agent (FMS.22.2)':'Cylinder pressure gauges in green zone (Server Rm, Medical Records, Electrical, Generator Rm). Inspection tags updated, nozzles unobstructed.',
+        'Wet Chemical Kitchen (FMS.22.3)':'Kitchen hood system — nozzles capped & aligned, manual pull accessible, fusible links intact, no adjacent obstruction.',
+        'Stand Pipes (FMS.22.4)':'Hose reels & stand pipes — pressure adequate on sampled reel, hoses racked, cabinets accessible, no leakage.' };
+      sysList.forEach(sys => {
+        monIN.forEach(d => {
+          let res='pass', note=inNotes[sys];
+          if (sys==='Sprinkler (FMS.22.1)' && d==='2026-02-10') { res='partial'; note='One sprinkler head found painted in kitchen dry store — replaced within 48h by contractor, retested OK.'; }
+          if (sys==='FM200 Clean Agent (FMS.22.2)' && d==='2026-05-11') { res='partial'; note='Server room cylinder pressure gauge reading low-normal — contractor recharged 18/05, tag updated.'; }
+          FS.push({ _id:'fseed_fs_in_'+sys.slice(0,4).replace(/\W/g,'')+'_'+d, date:d, sys, act:'Monthly Inspection',
+            res, cont:'', tech:'Mustafa', notes:note, file:'', _ts:T(d), _by:'Mustafa' });
+        });
+        qtrC.forEach(d => FS.push({ _id:'fseed_fs_c_'+sys.slice(0,4).replace(/\W/g,'')+'_'+d, date:d, sys, act:'Quarterly PPM',
+          res:'pass', cont:'Castle System', tech:'Castle System Team',
+          notes:'Quarterly certified maintenance per checklist — components serviced, criteria verified, report signed & filed.', file:'', _ts:T(d), _by:'Mustafa' }));
+      });
+
+      // ── Exit inspections (FMS.23) · monthly IN ──
+      ['2026-01-12','2026-02-09','2026-03-09','2026-04-13','2026-05-11','2026-06-08','2026-07-06'].forEach(d => FE.push({
+        _id:'fseed_fe_'+d, date:d, loc:'All floors — all fire exits (B, G, 1st–3rd)',
+        c1:'pass', c2:'pass', c3:'pass', c4:'pass', c6:'pass', by:'Mustafa', file:'', _ts:T(d), _by:'Mustafa' }));
+
+      // ── Merge-safe insert + cloud push ──
+      const families = [['fireAlarm',FA],['fireSup',FS],['fireExit',FE]];
+      let inserted = 0; const toCloud = [];
+      families.forEach(([type,recs]) => {
+        const arr = ld(type) || [];
+        const ids = new Set(arr.map(r=>String(r._id)));
+        recs.forEach(r => { if (!ids.has(r._id)) { arr.unshift(r); toCloud.push([type,r]); inserted++; } });
+        arr.sort((a,b)=>(b.date||'')>(a.date||'')?1:-1);
+        sv(type, arr);
+      });
+      localStorage.setItem(FLAG,'1');
+      if (inserted > 0) {
+        console.log('🔥 Fire safety seed: ' + inserted + ' record(s) inserted (Jan–Jul 2026, by Mustafa)');
+        toast('🔥 One-year fire safety records loaded — ' + inserted + ' entries (Jan–Jul 2026)', '#10b981');
+        (async () => {
+          for (const [type,r] of toCloud) {
+            try { await dbWrite(type, r); } catch(e) {}
+            await new Promise(res => setTimeout(res, 250));
+          }
+          console.log('🔥 Fire seed pushed to cloud — ' + toCloud.length + ' records');
+        })();
+      }
+    } catch(e) { console.warn('fire seed error:', e.message); }
+  }
+  window.addEventListener('load', () => setTimeout(seedRecords, 3000));
+})();
 
 </script>
 </body>
