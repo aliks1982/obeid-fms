@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260707-1549';
+  var v = '20260707-1551';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260707-1549">
+<meta name="app-version" content="20260707-1551">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -5336,6 +5336,27 @@ if ('caches' in window) {
   <div class="ph"><h1>⚙ Settings</h1>
     <p id="settings-role-desc">Database connection · Platform configuration</p><p>Manage user accounts · Modify PINs · View access log · Platform version: <b style="color:var(--ac);" id="platform-version-display">…</b></p></div>
   
+  <!-- Backup & Restore Card (Director only) -->
+  <div class="card" style="margin-bottom:14px;border-left:4px solid #16a34a;" id="backup-card">
+    <div class="ch"><div class="ct">🛡 Backup &amp; Restore — Data Protection</div></div>
+    <div class="cb">
+      <p style="font-size:11px;color:var(--mu);margin:0 0 12px;">Protect all platform data against crashes, accidental changes, or device loss. Export a full backup file to keep off-device (Google Drive / email), and restore from it if ever needed.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn bg" style="font-size:12px;padding:9px 18px;" onclick="backupExportFull()">⬇ Export Full Backup</button>
+        <button class="btn bo" style="font-size:12px;padding:9px 18px;" onclick="document.getElementById('backup-restore-file').click()">⬆ Restore from Backup</button>
+        <input type="file" id="backup-restore-file" accept=".json" style="display:none;" onchange="backupRestoreFromFile(this)">
+        <span id="backup-status" style="font-size:10px;color:var(--mu);align-self:center;"></span>
+      </div>
+      <div style="margin-top:16px;border-top:1px solid var(--bd);padding-top:12px;">
+        <div style="font-size:11px;font-weight:700;color:var(--tx);margin-bottom:6px;">🕐 Automatic Daily Snapshots (last 7 days, on this device)</div>
+        <div id="backup-snapshot-list" style="font-size:11px;"></div>
+      </div>
+      <div style="margin-top:12px;background:var(--s2);border-radius:8px;padding:10px;font-size:10px;color:var(--mu);">
+        💡 <b>Best practice:</b> Export a full backup weekly, before the survey, and before any major change — then save it to Google Drive or email it to yourself. Your Google Sheet also keeps automatic version history (File → Version history) as a cloud backup.
+      </div>
+    </div>
+  </div>
+
   <!-- Storage Usage Card -->
   <div class="card" style="margin-bottom:14px;">
     <div class="ch">
@@ -6910,6 +6931,7 @@ function gp(id){
   if(id==='mms')setTimeout(initMMSCharts,150);
   if(id==='pmg')    setTimeout(pmgInit,80);
   if(id==='budget') setTimeout(function(){budgetBuildYearSelect();budgetRenderAll();},80);
+  if(id==='settings') setTimeout(function(){try{backupInit();}catch(e){}},200);
   window.scrollTo(0,0);
 }
 function st(domain,sub,btn){
@@ -17156,6 +17178,174 @@ function fireExportAll() {
   a.href=URL.createObjectURL(b);a.download='Fire_Safety_Report_'+new Date().toISOString().slice(0,10)+'.html';a.click();
   toast('✅ Fire safety report exported ('+total+' records)','#10b981');
 }
+
+
+
+// ══════════════════════════════════════════════════════════════
+// BACKUP & RESTORE ENGINE (Director-only) — Layers 1 & 2
+// ══════════════════════════════════════════════════════════════
+const BACKUP_SNAP_PREFIX = 'obeid3_snap_';   // rolling daily snapshots
+const BACKUP_SNAP_KEEP = 7;
+
+function backupIsDirector() {
+  return (!CU.role || CU.role === 'director');
+}
+
+// Collect EVERY app localStorage key (excludes the snapshots themselves)
+function backupCollectAll() {
+  const data = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (!k) continue;
+    if (k.startsWith(BACKUP_SNAP_PREFIX)) continue; // don't nest snapshots
+    data[k] = localStorage.getItem(k);
+  }
+  return data;
+}
+
+// ── Layer 1: manual full backup to file ──
+function backupExportFull() {
+  if (!backupIsDirector()) { toast('Backup export is Director-only','#ef4444'); return; }
+  const payload = {
+    _backup_meta: {
+      platform: 'Obeid FMS Command',
+      version: (typeof v !== 'undefined' ? v : 'unknown'),
+      created: new Date().toISOString(),
+      by: (CU && CU.name) || 'Director',
+      keyCount: 0
+    },
+    data: backupCollectAll()
+  };
+  payload._backup_meta.keyCount = Object.keys(payload.data).length;
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'ObeidFMS_Backup_' + new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.json';
+  a.click();
+  const st = document.getElementById('backup-status');
+  if (st) st.textContent = '✅ Exported ' + payload._backup_meta.keyCount + ' data keys · ' + new Date().toLocaleString('en-GB');
+  toast('✅ Full backup exported (' + payload._backup_meta.keyCount + ' keys) — save it to Drive/email','#10b981');
+}
+
+// ── Layer 1: restore from file (destructive — Director only, double-confirm) ──
+function backupRestoreFromFile(input) {
+  if (!backupIsDirector()) { toast('Restore is Director-only','#ef4444'); return; }
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (!parsed || !parsed.data || typeof parsed.data !== 'object') { toast('❌ Not a valid backup file','#ef4444'); return; }
+      const meta = parsed._backup_meta || {};
+      const cnt = Object.keys(parsed.data).length;
+      const msg = 'RESTORE this backup?\n\n' +
+        'Created: ' + (meta.created ? new Date(meta.created).toLocaleString('en-GB') : 'unknown') + '\n' +
+        'By: ' + (meta.by || 'unknown') + '\n' +
+        'Data keys: ' + cnt + '\n\n' +
+        '⚠️ This REPLACES all current data on this device with the backup. A safety snapshot of the current state will be taken first. Continue?';
+      if (!confirm(msg)) { input.value = ''; return; }
+      // Safety snapshot of CURRENT state before overwriting
+      backupTakeSnapshot('pre-restore');
+      // Apply: clear app keys (keep snapshots + current session), then write backup
+      const keep = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith(BACKUP_SNAP_PREFIX) || k === 'obeid3_session' || k === 'obeid3_current_user')) keep[k] = localStorage.getItem(k);
+      }
+      localStorage.clear();
+      Object.keys(keep).forEach(k => localStorage.setItem(k, keep[k]));
+      Object.keys(parsed.data).forEach(k => localStorage.setItem(k, parsed.data[k]));
+      toast('✅ Restore complete — reloading…','#10b981');
+      setTimeout(() => location.reload(), 1500);
+    } catch(err) {
+      toast('❌ Restore failed: ' + err.message,'#ef4444');
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ── Layer 2: automatic rolling daily snapshots (in-storage) ──
+function backupTakeSnapshot(tag) {
+  try {
+    const today = new Date().toISOString().slice(0,10);
+    const key = BACKUP_SNAP_PREFIX + today + (tag ? ('_' + tag) : '');
+    // Skip if today's auto-snapshot already exists (unless tagged pre-restore)
+    if (!tag && localStorage.getItem(key)) return;
+    const snap = { created: new Date().toISOString(), tag: tag || 'daily', data: backupCollectAll() };
+    try {
+      localStorage.setItem(key, JSON.stringify(snap));
+    } catch(quota) {
+      // storage full — prune oldest and retry once
+      backupPruneSnapshots(3);
+      try { localStorage.setItem(key, JSON.stringify(snap)); } catch(e2) { console.warn('snapshot failed:', e2.message); return; }
+    }
+    backupPruneSnapshots(BACKUP_SNAP_KEEP);
+    console.log('🕐 Auto-snapshot saved: ' + key);
+  } catch(e) { console.warn('snapshot error:', e.message); }
+}
+
+function backupListSnapshots() {
+  const snaps = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(BACKUP_SNAP_PREFIX)) snaps.push(k);
+  }
+  return snaps.sort().reverse(); // newest first
+}
+
+function backupPruneSnapshots(keep) {
+  const daily = backupListSnapshots().filter(k => !k.includes('pre-restore'));
+  if (daily.length > keep) daily.slice(keep).forEach(k => localStorage.removeItem(k));
+}
+
+function backupRestoreSnapshot(key) {
+  if (!backupIsDirector()) { toast('Restore is Director-only','#ef4444'); return; }
+  const raw = localStorage.getItem(key);
+  if (!raw) { toast('Snapshot not found','#ef4444'); return; }
+  let snap;
+  try { snap = JSON.parse(raw); } catch(e) { toast('Snapshot corrupted','#ef4444'); return; }
+  if (!confirm('Restore the snapshot from ' + new Date(snap.created).toLocaleString('en-GB') + '?\n\n⚠️ This replaces current data on this device. A safety snapshot will be taken first. Continue?')) return;
+  backupTakeSnapshot('pre-restore');
+  const keep = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && (k.startsWith(BACKUP_SNAP_PREFIX) || k === 'obeid3_session' || k === 'obeid3_current_user')) keep[k] = localStorage.getItem(k);
+  }
+  localStorage.clear();
+  Object.keys(keep).forEach(k => localStorage.setItem(k, keep[k]));
+  Object.keys(snap.data).forEach(k => localStorage.setItem(k, snap.data[k]));
+  toast('✅ Snapshot restored — reloading…','#10b981');
+  setTimeout(() => location.reload(), 1500);
+}
+
+function backupRenderSnapshotList() {
+  const el = document.getElementById('backup-snapshot-list');
+  if (!el) return;
+  if (!backupIsDirector()) { el.innerHTML = '<span style="color:var(--mu);">Backup tools are available to the FMS Director account only.</span>'; return; }
+  const snaps = backupListSnapshots();
+  if (!snaps.length) { el.innerHTML = '<span style="color:var(--mu);">No snapshots yet — the first will be created automatically today.</span>'; return; }
+  el.innerHTML = snaps.map(k => {
+    let meta = {};
+    try { meta = JSON.parse(localStorage.getItem(k)); } catch(e) {}
+    const when = meta.created ? new Date(meta.created).toLocaleString('en-GB') : k.replace(BACKUP_SNAP_PREFIX,'');
+    const cnt = meta.data ? Object.keys(meta.data).length : '?';
+    const isPre = k.includes('pre-restore');
+    return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--bd);">' +
+      '<span style="flex:1;">' + (isPre?'🛟 ':'📅 ') + when + ' · <span style="color:var(--mu);">' + cnt + ' keys' + (isPre?' (pre-restore safety)':'') + '</span></span>' +
+      '<button class="btn bb" style="font-size:9px;padding:3px 8px;" onclick="backupRestoreSnapshot(\'' + k + '\')">↺ Restore</button></div>';
+  }).join('');
+}
+
+// Gate the whole card + take daily snapshot on load
+function backupInit() {
+  const card = document.getElementById('backup-card');
+  if (card) card.style.display = backupIsDirector() ? '' : 'none';
+  backupTakeSnapshot();          // daily auto-snapshot (once per day)
+  backupRenderSnapshotList();
+}
+window.addEventListener('load', () => setTimeout(backupInit, 4000));
 
 </script>
 </body>
