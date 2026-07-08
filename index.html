@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260707-1551';
+  var v = '20260707-1552';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260707-1551">
+<meta name="app-version" content="20260707-1552">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -672,6 +672,7 @@ if ('caches' in window) {
     <div class="ni" onclick="gp('fire')" id="n-fire"><span class="ni-ic">🔥</span>Fire Safety (FMS.1.1.6)</div>
     <div class="ni" onclick="gp('equip')" id="n-equip"><span class="ni-ic">⚕</span>Med. Equipment (FMS.1.1.7)</div>
     <div class="ni" onclick="gp('utils')" id="n-utils"><span class="ni-ic">⚡</span>Utilities (FMS.1.1.8)</div>
+    <div class="ni" onclick="gp('ach')" id="n-ach"><span class="ni-ic">🌬</span>ACH / Room Pressure (IPC)</div>
     <div class="nsc">FMS Standards</div>
     <div class="ni" onclick="gp('medgas')" id="n-medgas"><span class="ni-ic">🫧</span>Medical Gas (FMS.32)</div>
     <div class="ni" onclick="gp('pmg')" id="n-pmg"><span class="ni-ic">📋</span>PMG PPM (FMS.32.1)</div>
@@ -3506,7 +3507,7 @@ if ('caches' in window) {
 
 <!-- ===== UTILITIES ===== -->
 <div class="pg" id="page-utils">
-  <div class="ph"><h1>⚡ Utility Systems — FMS.1.1.8</h1><p>Manager: Mostapha (Maintenance Manager) · PIN: 2222</p></div>
+  <div class="ph" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;"><div><h1>⚡ Utility Systems — FMS.1.1.8</h1><p>Manager: Mostapha (Maintenance Manager) · PIN: 2222</p></div><button class="btn bo" style="font-size:11px;padding:8px 16px;" onclick="utilsExportAll()">⬇ Export Utility Systems Report</button></div>
   <div class="tb"><button class="tbtn active" onclick="st('utils','gen',this)">Generator Tests</button><button class="tbtn" onclick="st('utils','water',this)">Water Safety</button><button class="tbtn" onclick="st('utils','comm',this)">📡 Communication Test (FMS 39.2)</button><button class="tbtn" onclick="st('utils','kpi',this)">KPIs</button></div>
   <div id="utils-gen"><div class="g g2">
     <div class="card"><div class="ch"><div class="ct">Log Generator Test</div></div><div class="cb">
@@ -3561,6 +3562,61 @@ if ('caches' in window) {
 </div>
 
 <!-- ===== MEDGAS ===== -->
+<div class="pg" id="page-ach">
+  <div class="ph" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+    <div><h1>🌬 ACH / Room Pressure Monitoring — MOH IPC</h1><p>ASHRAE 170 · USP 797/800 · Daily negative/positive pressure readings · IPC monitored</p></div>
+    <button class="btn bo" style="font-size:11px;padding:8px 16px;" onclick="achExport()">⬇ Export IPC Compliance Report</button>
+  </div>
+  <div class="tb">
+    <button class="tbtn active" onclick="st('ach','dash',this)">📊 Compliance Dashboard</button>
+    <button class="tbtn" onclick="st('ach','rooms',this)">🏥 Rooms &amp; Thresholds</button>
+    <button class="tbtn" onclick="st('ach','log',this)">📋 Reading Log</button>
+  </div>
+
+  <div id="ach-dash-tab">
+    <div id="ach-dash"></div>
+  </div>
+
+  <div id="ach-rooms-tab" style="display:none;">
+    <div class="card" style="margin-bottom:14px;">
+      <div class="ch"><div class="ct">🏥 Rooms &amp; Compliance Thresholds (22 rooms · 8 departments)</div></div>
+      <div class="cb" style="padding:0;overflow-x:auto;">
+        <table class="tbl" style="min-width:900px;"><thead><tr>
+          <th>Room</th><th>Department</th><th>Pressure</th><th>Min ACH</th><th>Temp °C</th><th>RH %</th><th>Compliance</th><th>Last Read</th><th>Edit</th>
+        </tr></thead><tbody id="ach-room-compliance"></tbody></table>
+      </div>
+    </div>
+    <div class="card" id="ach-edit-card">
+      <div class="ch"><div class="ct" id="ach-edit-title">✏ Edit Room Thresholds</div></div>
+      <div class="cb">
+        <p style="font-size:10px;color:var(--mu);margin:0 0 10px;">Press ✏ on any room above to load it here. Adjust pressure direction (+/−), ACH, temperature and humidity ranges, then Save. Changes sync to all accounts.</p>
+        <div class="fg fg2">
+          <div class="ff"><label>Room Name</label><input type="text" id="ach-e-name" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+          <div class="ff"><label>Department</label><input type="text" id="ach-e-dept" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+          <div class="ff"><label>Pressure Direction</label><select id="ach-e-p" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"><option value="neg">Negative (≤ −2.5 Pa)</option><option value="pos">Positive (≥ +2.5 Pa)</option></select></div>
+          <div class="ff"><label>Min ACH</label><input type="number" id="ach-e-ach" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+          <div class="ff"><label>Temp Min °C</label><input type="number" step="0.1" id="ach-e-tmin" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+          <div class="ff"><label>Temp Max °C</label><input type="number" step="0.1" id="ach-e-tmax" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+          <div class="ff"><label>RH Min %</label><input type="number" id="ach-e-hmin" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+          <div class="ff"><label>RH Max %</label><input type="number" id="ach-e-hmax" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+        </div>
+        <button class="btn bg" style="margin-top:12px;width:100%;" onclick="achSaveRoomEdit()">✓ Save Thresholds</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ach-log-tab" style="display:none;">
+    <div class="card">
+      <div class="ch"><div class="ct">📋 Daily Reading Log — entered via ACH Google Form (QR)</div></div>
+      <div class="cb" style="padding:0;overflow-x:auto;">
+        <table class="tbl" style="min-width:820px;"><thead><tr>
+          <th>Date/Time</th><th>Room</th><th>Type</th><th>Pressure (Pa)</th><th>ACH</th><th>Temp °C</th><th>RH %</th><th>By</th><th>Result</th>
+        </tr></thead><tbody id="ach-readings-tb"></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="pg" id="page-medgas">
   <div class="ph">
     <h1>🫧 Medical Gas — FMS.32</h1>
@@ -6932,6 +6988,7 @@ function gp(id){
   if(id==='pmg')    setTimeout(pmgInit,80);
   if(id==='budget') setTimeout(function(){budgetBuildYearSelect();budgetRenderAll();},80);
   if(id==='settings') setTimeout(function(){try{backupInit();}catch(e){}},200);
+  if(id==='ach') setTimeout(function(){try{achInit();}catch(e){}},120);
   window.scrollTo(0,0);
 }
 function st(domain,sub,btn){
@@ -6943,6 +7000,11 @@ function st(domain,sub,btn){
   if(domain==='fire' && sub==='unitdrill')       { setTimeout(()=>{renderUnitDrills();renderUnitDrillKPIs();},60); }
   // Fire — Annual PPM Schedule (FMS 21-22)
   if(domain==='fire' && sub==='ppmsched')        { setTimeout(()=>{ fsPpmRender(); fsPpmSync(); },60); }
+  // ACH / Room Pressure sub-tabs
+  if(domain==='ach') {
+    ['dash','rooms','log'].forEach(t=>{ const el=document.getElementById('ach-'+t+'-tab'); if(el) el.style.display = (t===sub)?'':'none'; });
+    setTimeout(()=>{ try{ achRender(); }catch(e){} }, 60);
+  }
   // Emergency — Code Drills (Annual Plans)
   if(domain==='emergency' && sub==='codeplans')  { setTimeout(()=>{renderCodeDrills();renderDrillInfographics();},60); }
   if(domain==='emergency' && sub==='drills')     { setTimeout(()=>renderLog('emDrill'),60); }
@@ -9499,6 +9561,8 @@ const ROLE_ACCESS = {
   // Safety (Moe): CBAHI, safety, hazmat, emergency, fire — NO analytics/reports pages
   safety:      ['n-dash','n-kpi','n-kpi2','n-cbahi','n-safety','n-hazmat','n-emergency','n-fire','n-wo','n-ckpi','n-docs','n-settings','n-pms'],
   security:    ['n-dash','n-kpi','n-kpi2','n-security','n-wo','n-ckpi','n-settings'],
+  // IPC (Infection Prevention & Control): read-only ACH compliance monitoring
+  ipc:         ['n-dash','n-ach','n-ckpi','n-settings'],
 };
 
 // Page access — which pages each role can open
@@ -9508,6 +9572,7 @@ const PAGE_ACCESS = {
   biomedical:  ['dash','kpi','kpi2','equip','medgas','pmg','radiation','wo','cbahi','ckpi','settings','pms'],
   safety:      ['dash','kpi','kpi2','cbahi','safety','hazmat','emergency','fire','wo','ckpi','docs','settings','pms'],
   security:    ['dash','kpi','kpi2','security','wo','ckpi','settings'],
+  ipc:         ['dash','ach','ckpi','settings'],
 };
 
 // Page access — which page IDs each role can visit
@@ -17346,6 +17411,274 @@ function backupInit() {
   backupRenderSnapshotList();
 }
 window.addEventListener('load', () => setTimeout(backupInit, 4000));
+
+
+// ══════════════════════════════════════════════════════════════
+// ACH / ROOM PRESSURE MONITORING — MOH/IPC + ASHRAE 170 / USP 797-800
+// Data entry via separate Google Form → Sheet → platform (table: ach_readings)
+// Thresholds editable per room (Director/Maintenance). IPC = read-only.
+// ══════════════════════════════════════════════════════════════
+
+// Default room thresholds (MOH-confirmed). p:'neg'|'pos', ach min, t[min,max], h[min,max]
+const ACH_ROOMS_DEFAULT = [
+  {id:'RM206', dept:'Station C', name:'RM206 (AIIR)', p:'neg', ach:12, t:[20,24], h:[0,60]},
+  {id:'RM207', dept:'Station C', name:'RM207 (AIIR)', p:'neg', ach:12, t:[20,24], h:[0,60]},
+  {id:'RM208', dept:'Station C', name:'RM208 (AIIR)', p:'neg', ach:12, t:[20,24], h:[0,60]},
+  {id:'RM209', dept:'Station C', name:'RM209 (AIIR)', p:'neg', ach:12, t:[20,24], h:[0,60]},
+  {id:'RM210', dept:'Station C', name:'RM210 (AIIR)', p:'neg', ach:12, t:[20,24], h:[0,60]},
+  {id:'RM211', dept:'Station C', name:'RM211 (AIIR)', p:'neg', ach:12, t:[20,24], h:[0,60]},
+  {id:'OR1', dept:'Operating Rooms', name:'OR1', p:'pos', ach:20, t:[20,24], h:[20,60]},
+  {id:'OR2', dept:'Operating Rooms', name:'OR2', p:'pos', ach:20, t:[20,24], h:[20,60]},
+  {id:'OR3', dept:'Operating Rooms', name:'OR3', p:'pos', ach:20, t:[20,24], h:[20,60]},
+  {id:'OR4', dept:'Operating Rooms', name:'OR4', p:'pos', ach:20, t:[20,24], h:[20,60]},
+  {id:'CHEMO', dept:'Inpatient Pharmacy', name:'Chemotherapy (C-SCA, HD sterile)', p:'neg', ach:12, t:[20,24], h:[0,60]},
+  {id:'IVPA', dept:'Inpatient Pharmacy', name:'IVPA (SCA, non-HD sterile)', p:'pos', ach:6, t:[20,24], h:[0,60]},
+  {id:'CSSD_DECON', dept:'CSSD', name:'Decontamination', p:'neg', ach:10, t:[18,22], h:[30,60]},
+  {id:'CSSD_ASSY', dept:'CSSD', name:'Clean Assembly / Packing', p:'pos', ach:10, t:[20,23], h:[35,60]},
+  {id:'CSSD_STORE', dept:'CSSD', name:'Sterile Storage', p:'pos', ach:10, t:[0,24], h:[0,70]},
+  {id:'ER1', dept:'Emergency Room', name:'ER1', p:'neg', ach:12, t:[20,24], h:[0,60]},
+  {id:'ER2', dept:'Emergency Room', name:'ER2', p:'neg', ach:12, t:[20,24], h:[0,60]},
+  {id:'ER_EXAM', dept:'Emergency Room', name:'ER Examination', p:'neg', ach:12, t:[20,24], h:[0,60]},
+  {id:'GASTRO', dept:'Gastro', name:'Gastro Room', p:'neg', ach:12, t:[20,23], h:[0,60]},
+  {id:'ICU_A7', dept:'ICU', name:'ICU A.7', p:'neg', ach:12, t:[21,24], h:[0,60]},
+  {id:'ICU_CSTA', dept:'ICU', name:'ICU C.ST.A', p:'neg', ach:12, t:[21,24], h:[0,60]},
+  {id:'NICU', dept:'NICU', name:'NICU Isolation', p:'neg', ach:12, t:[22,26], h:[30,60]},
+];
+
+const ACH_ROOMS_KEY = 'obeid3_ach_rooms';
+function achRooms() {
+  try { const s = JSON.parse(localStorage.getItem(ACH_ROOMS_KEY)||'null'); if (s && s.length) return s; } catch(e) {}
+  localStorage.setItem(ACH_ROOMS_KEY, JSON.stringify(ACH_ROOMS_DEFAULT));
+  return ACH_ROOMS_DEFAULT;
+}
+function achSaveRooms(r) {
+  localStorage.setItem(ACH_ROOMS_KEY, JSON.stringify(r));
+  dbWrite('app_settings', {_id:'ach_room_thresholds', key:'ach_room_thresholds', value:JSON.stringify(r), _by:((window.CU&&CU.name)||'—'), _ts:new Date().toISOString()});
+}
+function achRoomById(id){ return achRooms().find(r=>String(r.id)===String(id)); }
+
+// Readings come from the Google Form Sheet (table ach_readings) via dbLoadAll.
+function achReadings() {
+  try { return (ld('ach_readings')||[]); } catch(e) { return []; }
+}
+
+// Evaluate one reading against its room thresholds → per-parameter pass/fail
+function achEval(r) {
+  const room = achRoomById(r.room) || achRoomById(r.roomId) || null;
+  const out = { room, pressure:null, ach:null, temp:null, hum:null, overall:'na' };
+  if (!room) return out;
+  const pres = parseFloat(r.pressure), ach = parseFloat(r.ach), tmp = parseFloat(r.temp), hum = parseFloat(r.humidity);
+  // Pressure: negative rooms need pres <= -2.5 ; positive rooms need pres >= +2.5
+  if (isFinite(pres)) out.pressure = room.p==='neg' ? (pres <= -2.5) : (pres >= 2.5);
+  if (isFinite(ach)) out.ach = ach >= room.ach;
+  if (isFinite(tmp)) out.temp = (tmp >= room.t[0] && tmp <= room.t[1]);
+  if (isFinite(hum)) out.hum = (hum >= room.h[0] && hum <= room.h[1]);
+  const checks = [out.pressure,out.ach,out.temp,out.hum].filter(v=>v!==null);
+  out.overall = checks.length===0 ? 'na' : checks.every(v=>v) ? 'pass' : 'fail';
+  return out;
+}
+
+function achToday(){ return new Date().toISOString().slice(0,10); }
+
+// ── Compliance stats ──
+function achStats(readings) {
+  const rooms = achRooms();
+  const today = achToday();
+  const todays = readings.filter(r => (r.date||'').slice(0,10) === today);
+  const roomsReadToday = new Set(todays.map(r=>String(r.room||r.roomId)));
+  const missing = rooms.filter(rm => !roomsReadToday.has(String(rm.id)));
+  let pass=0, fail=0;
+  readings.forEach(r=>{ const e=achEval(r); if(e.overall==='pass')pass++; else if(e.overall==='fail')fail++; });
+  const total = pass+fail;
+  return {
+    totalReadings: readings.length,
+    todayCount: todays.length,
+    roomsTotal: rooms.length,
+    roomsReadToday: roomsReadToday.size,
+    missingToday: missing,
+    passRate: total ? Math.round(pass/total*100) : 0,
+    pass, fail
+  };
+}
+
+// ── Render dashboard ──
+function achRender() {
+  const readings = achReadings();
+  const s = achStats(readings);
+  const el = document.getElementById('ach-dash'); if (!el) return;
+  const cards =
+    '<div class="g g4" style="margin-bottom:14px;">' +
+    achKpiCard('🏥', s.roomsTotal, 'Monitored Rooms') +
+    achKpiCard('✅', s.roomsReadToday + '/' + s.roomsTotal, "Read Today", s.roomsReadToday===s.roomsTotal?'#16a34a':'#d97706') +
+    achKpiCard('📊', s.passRate + '%', 'Compliance Rate', s.passRate>=90?'#16a34a':s.passRate>=75?'#d97706':'#dc2626') +
+    achKpiCard('⚠️', s.missingToday.length, 'Rooms Not Read Today', s.missingToday.length?'#dc2626':'#16a34a') +
+    '</div>';
+  let miss = '';
+  if (s.missingToday.length) {
+    miss = '<div class="card" style="margin-bottom:14px;border-left:4px solid #dc2626;"><div class="ch"><div class="ct">⚠️ Rooms Not Yet Read Today ('+achToday()+')</div></div>' +
+      '<div class="cb"><div style="display:flex;flex-wrap:wrap;gap:6px;">' +
+      s.missingToday.map(rm=>'<span style="font-size:11px;background:var(--s2);border:1px solid #dc2626;border-radius:6px;padding:3px 8px;">'+rm.name+'</span>').join('') +
+      '</div></div></div>';
+  }
+  el.innerHTML = cards + miss;
+  achRenderReadings();
+  achRenderCompliByRoom();
+}
+
+function achKpiCard(icon, val, lbl, col) {
+  return '<div class="kpi-card" style="text-align:center;padding:14px;background:var(--s1);border:1px solid var(--bd);border-radius:12px;">'+
+    '<div style="font-size:20px;">'+icon+'</div>'+
+    '<div style="font-size:24px;font-weight:800;color:'+(col||'var(--ac)')+';margin:2px 0;">'+val+'</div>'+
+    '<div style="font-size:9px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;">'+lbl+'</div></div>';
+}
+
+function achRenderReadings() {
+  const el = document.getElementById('ach-readings-tb'); if (!el) return;
+  const readings = achReadings().slice().sort((a,b)=>(b.date||'')>(a.date||'')?1:-1).slice(0,200);
+  if (!readings.length) { el.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--mu);padding:20px;">No readings yet — staff enter via the ACH Google Form (QR)</td></tr>'; return; }
+  el.innerHTML = readings.map(r=>{
+    const e = achEval(r);
+    const room = e.room;
+    const cell = (v,ok)=> v==null||v==='' ? '<td style="color:var(--mu);">—</td>' : '<td style="color:'+(ok===true?'#16a34a':ok===false?'#dc2626':'var(--tx)')+';font-weight:'+(ok===false?'700':'400')+';">'+v+(ok===false?' ✕':'')+'</td>';
+    const badge = e.overall==='pass'?'<span class="chip chip-green">✅ Pass</span>':e.overall==='fail'?'<span class="chip chip-red">❌ Fail</span>':'<span class="chip">—</span>';
+    return '<tr><td style="font-size:10px;">'+(r.date||'—').slice(0,16).replace('T',' ')+'</td>'+
+      '<td style="font-size:11px;">'+(room?room.name:(r.room||'—'))+'</td>'+
+      '<td style="font-size:9px;color:var(--mu);">'+(room?(room.p==='neg'?'NEG':'POS'):'—')+'</td>'+
+      cell(r.pressure, e.pressure)+cell(r.ach, e.ach)+cell(r.temp, e.temp)+cell(r.humidity, e.hum)+
+      '<td style="font-size:10px;">'+(r.by||r.staff||'—')+'</td>'+
+      '<td>'+badge+'</td></tr>';
+  }).join('');
+}
+
+function achRenderCompliByRoom() {
+  const el = document.getElementById('ach-room-compliance'); if (!el) return;
+  const rooms = achRooms();
+  const readings = achReadings();
+  el.innerHTML = rooms.map(rm=>{
+    const rr = readings.filter(r=>String(r.room||r.roomId)===String(rm.id));
+    const evals = rr.map(achEval);
+    const p = evals.filter(e=>e.overall==='pass').length;
+    const t = evals.filter(e=>e.overall!=='na').length;
+    const rate = t?Math.round(p/t*100):null;
+    const lastR = rr.slice().sort((a,b)=>(b.date||'')>(a.date||'')?1:-1)[0];
+    const col = rate==null?'var(--mu)':rate>=90?'#16a34a':rate>=75?'#d97706':'#dc2626';
+    return '<tr><td style="font-size:11px;">'+rm.name+'</td>'+
+      '<td style="font-size:9px;color:var(--mu);">'+rm.dept+'</td>'+
+      '<td style="font-size:10px;color:'+(rm.p==='neg'?'#D85A30':'#378ADD')+';font-weight:700;">'+(rm.p==='neg'?'NEG ≤−2.5':'POS ≥+2.5')+'</td>'+
+      '<td style="font-size:10px;">≥'+rm.ach+'</td>'+
+      '<td style="font-size:10px;">'+rm.t[0]+'–'+rm.t[1]+'°C</td>'+
+      '<td style="font-size:10px;">'+rm.h[0]+'–'+rm.h[1]+'%</td>'+
+      '<td style="font-weight:700;color:'+col+';">'+(rate==null?'—':rate+'%')+'</td>'+
+      '<td style="font-size:9px;color:var(--mu);">'+(lastR?(lastR.date||'').slice(0,10):'never')+'</td>'+
+      (achCanEdit()?'<td><button class="btn bb" style="font-size:9px;padding:2px 6px;" onclick="achEditRoom(\''+rm.id+'\')">✏</button></td>':'')+
+      '</tr>';
+  }).join('');
+}
+
+function achCanEdit(){ return (!CU.role || CU.role==='director' || CU.role==='maintenance'); }
+
+// ── Edit room thresholds ──
+let ACH_EDIT_ID=null;
+function achEditRoom(id) {
+  if (!achCanEdit()) { toast('Editing is Director/Maintenance only','#ef4444'); return; }
+  const rm = achRoomById(id); if (!rm) return;
+  ACH_EDIT_ID = id;
+  document.getElementById('ach-e-name').value = rm.name;
+  document.getElementById('ach-e-dept').value = rm.dept;
+  document.getElementById('ach-e-p').value = rm.p;
+  document.getElementById('ach-e-ach').value = rm.ach;
+  document.getElementById('ach-e-tmin').value = rm.t[0];
+  document.getElementById('ach-e-tmax').value = rm.t[1];
+  document.getElementById('ach-e-hmin').value = rm.h[0];
+  document.getElementById('ach-e-hmax').value = rm.h[1];
+  document.getElementById('ach-edit-title').textContent = '✏ Editing thresholds: ' + rm.name;
+  document.getElementById('ach-edit-card').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function achSaveRoomEdit() {
+  if (!ACH_EDIT_ID) { toast('Select a room to edit first (✏)','#f59e0b'); return; }
+  const rooms = achRooms();
+  const rm = rooms.find(r=>r.id===ACH_EDIT_ID); if (!rm) return;
+  rm.name = document.getElementById('ach-e-name').value.trim();
+  rm.dept = document.getElementById('ach-e-dept').value.trim();
+  rm.p = document.getElementById('ach-e-p').value;
+  rm.ach = parseFloat(document.getElementById('ach-e-ach').value)||0;
+  rm.t = [parseFloat(document.getElementById('ach-e-tmin').value)||0, parseFloat(document.getElementById('ach-e-tmax').value)||0];
+  rm.h = [parseFloat(document.getElementById('ach-e-hmin').value)||0, parseFloat(document.getElementById('ach-e-hmax').value)||0];
+  achSaveRooms(rooms);
+  ACH_EDIT_ID=null;
+  document.getElementById('ach-edit-title').textContent = '✏ Edit Room Thresholds';
+  ['ach-e-name','ach-e-dept','ach-e-ach','ach-e-tmin','ach-e-tmax','ach-e-hmin','ach-e-hmax'].forEach(i=>document.getElementById(i).value='');
+  achRender();
+  toast('✅ Thresholds updated','#10b981');
+}
+
+function achSyncRooms() {
+  // pull edited thresholds from cloud if newer
+  try {
+    if (typeof DB_GETALL_CACHE==='object' && DB_GETALL_CACHE && DB_GETALL_CACHE.data && DB_GETALL_CACHE.data.app_settings) {
+      const row = DB_GETALL_CACHE.data.app_settings.find(x=>x._id==='ach_room_thresholds');
+      if (row && row.value) { localStorage.setItem(ACH_ROOMS_KEY, row.value); }
+    }
+  } catch(e){}
+}
+
+// ── Export ──
+function achExport() {
+  const readings = achReadings().slice().sort((a,b)=>(b.date||'')>(a.date||'')?1:-1);
+  const s = achStats(readings);
+  const rows = readings.map(r=>{
+    const e=achEval(r); const room=e.room;
+    const mark=(v,ok)=> (v==null||v==='')?'—':(v+(ok===false?' ✗':ok===true?' ✓':''));
+    const badge=e.overall==='pass'?'<span style="color:#16a34a;font-weight:700;">Pass</span>':e.overall==='fail'?'<span style="color:#dc2626;font-weight:700;">Fail</span>':'—';
+    return '<tr><td>'+(r.date||'—').slice(0,16).replace('T',' ')+'</td><td>'+(room?room.name:r.room)+'</td><td>'+(room?(room.p==='neg'?'Neg':'Pos'):'—')+'</td><td>'+mark(r.pressure,e.pressure)+'</td><td>'+mark(r.ach,e.ach)+'</td><td>'+mark(r.temp,e.temp)+'</td><td>'+mark(r.humidity,e.hum)+'</td><td>'+(r.by||r.staff||'—')+'</td><td>'+badge+'</td></tr>';
+  }).join('');
+  const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ACH Room Pressure Compliance Report</title>'+
+    '<style>body{font-family:Arial;margin:20px;font-size:11px;}h2{margin:0;font-size:16px;}h3{color:#1a3a5c;border-bottom:2px solid #0f766e;padding-bottom:4px;font-size:13px;margin-top:20px;}p{margin:3px 0 0;font-size:10px;opacity:.85;}'+
+    '.hdr{background:#1a3a5c;color:#fff;padding:14px 18px;border-radius:8px;}.kpis{display:flex;gap:12px;margin:14px 0;}'+
+    '.k{flex:1;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center;}.k .v{font-size:20px;font-weight:800;color:#0f766e;}.k .l{font-size:9px;color:#6b7280;text-transform:uppercase;}'+
+    'table{width:100%;border-collapse:collapse;margin-top:8px;}th{background:#1a3a5c;color:#fff;padding:6px;font-size:9px;text-align:left;}td{border:1px solid #e2e8f0;padding:5px;font-size:9px;}tr:nth-child(even){background:#f8fafc;}'+
+    '.sig{display:flex;gap:30px;margin-top:36px;}.sl{flex:1;border-top:1px solid #999;padding-top:6px;font-size:10px;color:#555;}</style></head><body>'+
+    '<div class="hdr"><h2>🌬 ACH / Room Pressure Compliance Report — MOH IPC / ASHRAE 170</h2><p>Obeid Specialized Hospital · '+readings.length+' readings · Generated '+new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})+'</p></div>'+
+    '<div class="kpis"><div class="k"><div class="v">'+s.roomsTotal+'</div><div class="l">Rooms Monitored</div></div>'+
+    '<div class="k"><div class="v">'+s.passRate+'%</div><div class="l">Compliance Rate</div></div>'+
+    '<div class="k"><div class="v">'+s.pass+'</div><div class="l">Compliant Readings</div></div>'+
+    '<div class="k"><div class="v" style="color:#dc2626;">'+s.fail+'</div><div class="l">Non-Compliant</div></div></div>'+
+    '<h3>📋 Reading Log</h3><table><thead><tr><th>Date/Time</th><th>Room</th><th>Type</th><th>Pressure (Pa)</th><th>ACH</th><th>Temp °C</th><th>RH %</th><th>By</th><th>Result</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+    '<div class="sig"><div class="sl">Reviewed By: IPC Department<br><br>Signature: _______ Date: ____</div>'+
+    '<div class="sl">Approved By: Mr. Ali K. Sobh — FMS Director<br><br>Signature: _______ Date: ____</div></div></body></html>';
+  const b=new Blob([html],{type:'text/html'});const a=document.createElement('a');
+  a.href=URL.createObjectURL(b);a.download='ACH_Compliance_Report_'+new Date().toISOString().slice(0,10)+'.html';a.click();
+  toast('✅ ACH compliance report exported','#10b981');
+}
+
+function achInit(){ achSyncRooms(); achRender(); }
+
+
+// ── Utility Systems — Export all (Generator + Water + Communication tests) ──
+function utilsExportAll() {
+  const gen = (typeof ld==='function'?(ld('genTest')||[]):[]);
+  const water = (typeof ld==='function'?(ld('waterTest')||[]):[]);
+  const comm = (typeof ld==='function'?(ld('commTest')||[]):[]);
+  const rb = v => v==='pass'||v==='ok'||v==='pass'? '<span style="color:#16a34a;font-weight:700;">Pass</span>' : v ? '<span style="color:#dc2626;font-weight:700;">'+v+'</span>' : '—';
+  const genRows = gen.slice().sort((a,b)=>(b.date||'')>(a.date||'')?1:-1).map(r=>'<tr><td>'+(r.date||'—')+'</td><td>'+(r.load||r.result||'—')+'</td><td>'+(r.fuel||'—')+'</td><td>'+(r.duration||r.mins||'—')+'</td><td>'+(r.by||r.tech||'—')+'</td></tr>').join('');
+  const waterRows = water.slice().sort((a,b)=>(b.date||'')>(a.date||'')?1:-1).map(r=>'<tr><td>'+(r.date||'—')+'</td><td>'+(r.type||r.test||'—')+'</td><td>'+(r.result||r.res||'—')+'</td><td>'+(r.lab||r.by||'—')+'</td></tr>').join('');
+  const commRows = comm.slice().sort((a,b)=>(b.date||'')>(a.date||'')?1:-1).map(r=>'<tr><td>'+(r.date||'—')+'</td><td>'+(r.system||r.type||'—')+'</td><td>'+(r.result||r.res||'—')+'</td><td>'+(r.by||r.tech||'—')+'</td></tr>').join('');
+  const total = gen.length+water.length+comm.length;
+  const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Utility Systems Report — FMS.1.1.8</title>'+
+    '<style>body{font-family:Arial;margin:20px;font-size:11px;}h2{margin:0;font-size:16px;}h3{color:#1a3a5c;border-bottom:2px solid #d97706;padding-bottom:4px;font-size:13px;margin-top:20px;}p{margin:3px 0 0;font-size:10px;opacity:.85;}'+
+    '.hdr{background:#1a3a5c;color:#fff;padding:14px 18px;border-radius:8px;}table{width:100%;border-collapse:collapse;margin-top:8px;}th{background:#1a3a5c;color:#fff;padding:6px;font-size:10px;text-align:left;}td{border:1px solid #e2e8f0;padding:5px;font-size:10px;}tr:nth-child(even){background:#f8fafc;}'+
+    '.sig{display:flex;gap:30px;margin-top:36px;}.sl{flex:1;border-top:1px solid #999;padding-top:6px;font-size:10px;color:#555;}</style></head><body>'+
+    '<div class="hdr"><h2>⚡ Utility Systems Compliance Report — FMS.1.1.8</h2><p>Obeid Specialized Hospital · '+total+' records · Generated '+new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})+'</p></div>'+
+    (genRows?'<h3>🔌 Generator Tests ('+gen.length+')</h3><table><thead><tr><th>Date</th><th>Load/Result</th><th>Fuel</th><th>Duration</th><th>By</th></tr></thead><tbody>'+genRows+'</tbody></table>':'')+
+    (waterRows?'<h3>💧 Water Safety Tests ('+water.length+')</h3><table><thead><tr><th>Date</th><th>Test Type</th><th>Result</th><th>Lab/By</th></tr></thead><tbody>'+waterRows+'</tbody></table>':'')+
+    (commRows?'<h3>📡 Communication System Tests ('+comm.length+')</h3><table><thead><tr><th>Date</th><th>System</th><th>Result</th><th>By</th></tr></thead><tbody>'+commRows+'</tbody></table>':'')+
+    (total===0?'<p style="margin-top:20px;">No utility records yet.</p>':'')+
+    '<div class="sig"><div class="sl">Prepared By: Mostapha — Maintenance Manager<br><br>Signature: _______ Date: ____</div>'+
+    '<div class="sl">Approved By: Mr. Ali K. Sobh — FMS Director<br><br>Signature: _______ Date: ____</div></div></body></html>';
+  const b=new Blob([html],{type:'text/html'});const a=document.createElement('a');
+  a.href=URL.createObjectURL(b);a.download='Utility_Systems_Report_'+new Date().toISOString().slice(0,10)+'.html';a.click();
+  toast('✅ Utility systems report exported ('+total+' records)','#10b981');
+}
 
 </script>
 </body>
