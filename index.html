@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260707-1553';
+  var v = '20260707-1554';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260707-1553">
+<meta name="app-version" content="20260707-1554">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -17496,7 +17496,29 @@ function achNormalizeRow(raw) {
     }
   }
   row.room = rm;
+  // Normalize date to YYYY-MM-DD regardless of source format
+  // (Google Sheets returns e.g. "Thu Jul 09 2026 10:15:56 GMT+0300 (...)")
+  row._raw_date = row.date;
+  row.date = achDateISO(row.date);
   return row;
+}
+
+// Convert any date string to YYYY-MM-DD (keeps time separately not needed for compliance)
+function achDateISO(v) {
+  if (!v) return '';
+  const s = String(v).trim();
+  // already ISO
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
+  // try native Date parse (handles "Thu Jul 09 2026 ..." and "7/9/2026 10:15:57")
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+    return y + '-' + m + '-' + day;
+  }
+  // fallback: M/D/YYYY manual
+  const mm = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (mm) return mm[3] + '-' + String(mm[1]).padStart(2,'0') + '-' + String(mm[2]).padStart(2,'0');
+  return s;
 }
 
 function achReadings() {
