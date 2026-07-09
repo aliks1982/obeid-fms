@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260707-1552';
+  var v = '20260707-1553';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260707-1552">
+<meta name="app-version" content="20260707-1553">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -17458,8 +17458,52 @@ function achSaveRooms(r) {
 function achRoomById(id){ return achRooms().find(r=>String(r.id)===String(id)); }
 
 // Readings come from the Google Form Sheet (table ach_readings) via dbLoadAll.
+// Known room IDs (for stripping friendly labels like "RM206 ST. C" -> "RM206")
+function achKnownIds() { return achRooms().map(r=>String(r.id)); }
+
+// Normalize a raw sheet row: trim whitespace from BOTH keys and values,
+// map alternate header names, and resolve the room to a known ID even if
+// the cell carries a friendly label.
+function achNormalizeRow(raw) {
+  const o = {};
+  Object.keys(raw||{}).forEach(k => {
+    const key = String(k).trim().toLowerCase();
+    let val = raw[k];
+    if (typeof val === 'string') val = val.trim();
+    o[key] = val;
+  });
+  // header aliases
+  const row = {
+    date: o['date'] || o['timestamp'] || o['date & time'] || o['datetime'] || '',
+    room: o['room'] || o['roomid'] || o['room id'] || '',
+    pressure: o['pressure'] || o['pressure (pa)'] || o['pressure(pa)'] || '',
+    ach: o['ach'] || o['air changes'] || o['air changes per hour'] || '',
+    temp: o['temp'] || o['temperature'] || o['temperature (°c)'] || o['temperature (c)'] || '',
+    humidity: o['humidity'] || o['humidity (%)'] || o['rh'] || o['relative humidity'] || '',
+    by: o['by'] || o['staff name'] || o['staff'] || o['name'] || ''
+  };
+  // Resolve room: exact match first, else strip label (take first token before space/dash)
+  let rm = String(row.room||'').trim();
+  const ids = achKnownIds();
+  if (rm && ids.indexOf(rm) === -1) {
+    // try first token (e.g. "RM206 ST. C" -> "RM206", "OR1 — Operating" -> "OR1")
+    const first = rm.split(/[\s\u2014\u2013\-]+/)[0].trim();
+    if (ids.indexOf(first) !== -1) rm = first;
+    else {
+      // try case-insensitive full/prefix match
+      const hit = ids.find(id => id.toLowerCase() === rm.toLowerCase() || rm.toLowerCase().startsWith(id.toLowerCase()));
+      if (hit) rm = hit;
+    }
+  }
+  row.room = rm;
+  return row;
+}
+
 function achReadings() {
-  try { return (ld('ach_readings')||[]); } catch(e) { return []; }
+  try {
+    const raw = ld('ach_readings') || [];
+    return raw.map(achNormalizeRow).filter(r => r.room || r.pressure || r.ach);
+  } catch(e) { return []; }
 }
 
 // Evaluate one reading against its room thresholds → per-parameter pass/fail
