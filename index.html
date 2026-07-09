@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260707-1555';
+  var v = '20260707-1557';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260707-1555">
+<meta name="app-version" content="20260707-1557">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3568,17 +3568,28 @@ if ('caches' in window) {
     <button class="btn bo" style="font-size:11px;padding:8px 16px;" onclick="achExport()">⬇ Export IPC Compliance Report</button>
   </div>
   <div class="tb">
-    <button class="tbtn active" onclick="st('ach','dash',this)">📊 Compliance Dashboard</button>
-    <button class="tbtn" onclick="st('ach','rooms',this)">🏥 Rooms &amp; Thresholds</button>
-    <button class="tbtn" onclick="st('ach','log',this)">📋 Reading Log</button>
+    <button class="tbtn active" id="achTabBtn-dash" onclick="achTab('dash',this)">📊 Compliance Dashboard</button>
+    <button class="tbtn" id="achTabBtn-rooms" onclick="achTab('rooms',this)">🏥 Rooms &amp; Thresholds</button>
+    <button class="tbtn" id="achTabBtn-log" onclick="achTab('log',this)">📋 Reading Log</button>
   </div>
 
-  <div id="ach-dash-tab">
+  <div id="achpanel-dash">
+    <div class="card" style="margin-bottom:14px;">
+      <div class="ch"><div class="ct">📱 Data Entry QR — staff scan to submit a reading</div></div>
+      <div class="cb" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUoAAAFKCAIAAAD0S4FSAAAGP0lEQVR4nO3dy60cNxBAUT/DWTgUxaLoFItDcRytrVaEJIpg9X3n7Oc/F9wUih/P8/wFFP19+w0Ap8gbsuQNWfKGLHlDlrwhS96QJW/IkjdkyRuy5A1Z8oYseUOWvCFL3pAlb8iSN2TJG7LkDVn/7Dz43y9f/9T7GOL//7799mPX38bOM++87o71e975vOe+K//JHzm9IUvekCVvyJI3ZMkbsuQNWfKGLHlDlrwha2tqbe3cnNaOnammmXNpM2e8Zs609f6Ta05vyJI3ZMkbsuQNWfKGLHlDlrwhS96QJW/IOji1tnZrQ9g5Mz/RzOmxmWb+gjuc3pAlb8iSN2TJG7LkDVnyhix5Q5a8IUvekHVtau2z2ZkPe+OutR29ebhbnN6QJW/IkjdkyRuy5A1Z8oYseUOWvCFL3pBlau0X7EyenXvmmRvC7HibwOkNWfKGLHlDlrwhS96QJW/IkjdkyRuy5A1Z16bWerNHb/xE56bHet/GGzm9IUvekCVvyJI3ZMkbsuQNWfKGLHlDlrwh6+DU2szbJ3fM3B92bgPcjpn70nr/yTWnN2TJG7LkDVnyhix5Q5a8IUvekCVvyJI3ZG1NrfV2U800cx7unDe+55mc3pAlb8iSN2TJG7LkDVnyhix5Q5a8IUvekLU1tTZzn9baufd8a4/XuZm2nU907te/9a7O/b7nviunN2TJG7LkDVnyhix5Q5a8IUvekCVvyJI3ZH08z3PoqW9N+dyapZs5H/bGOzHfOIc3c8LP6Q1Z8oYseUOWvCFL3pAlb8iSN2TJG7LkDVlbu9bOOTchdGuKq7eJbe2Ne/h2zPxETm/IkjdkyRuy5A1Z8oYseUOWvCFL3pAlb8g6OLX2xtsYZ+7i2vHGXWu3phJn7vDb4fSGLHlDlrwhS96QJW/IkjdkyRuy5A1Z8oasg1NrtybP1mZOce3MS828m3LmLZ87Zt4tu+b0hix5Q5a8IUvekCVvyJI3ZMkbsuQNWfKGrOANoevH3pp4e+MU18yNd7duj33jrKTTG7LkDVnyhix5Q5a8IUvekCVvyJI3ZMkbsq7dEHpuf9jazDtAb90vOXNO69YGuLWZn2jN6Q1Z8oYseUOWvCFL3pAlb8iSN2TJG7LkDVkfz/P89oNnbghbuzV5NvNm0h29CbBz/+dzj11zekOWvCFL3pAlb8iSN2TJG7LkDVnyhix5Q9bWrrWdeZpzM0+3JoR2zLwxc+a3sWPmnOW5z+v0hix5Q5a8IUvekCVvyJI3ZMkbsuQNWfKGrIO71tZuTa2d88applu75WZO6a3NfN01pzdkyRuy5A1Z8oYseUOWvCFL3pAlb8iSN2Rt7Vo7Z2cG6NYsnWm5n3dr7nDmrOS5X9DpDVnyhix5Q5a8IUvekCVvyJI3ZMkbsuQNWQd3rb3xps43bgjrfc+33Po2znF6Q5a8IUvekCVvyJI3ZMkbsuQNWfKGLHlD1rVdazPnpd54C+StZ545D7ej999wekOWvCFL3pAlb8iSN2TJG7LkDVnyhix5Q9bWrrXP5tbdozax/ejWHN7azCk9pzdkyRuy5A1Z8oYseUOWvCFL3pAlb8iSN2Rt7Vqbec/jjvXs0cy9ZevH3vqNZr7uzF/wHKc3ZMkbsuQNWfKGLHlDlrwhS96QJW/IkjdkHbwhdOb2qZnTVOecm3jb+X3P3bY5867VW5/I6Q1Z8oYseUOWvCFL3pAlb8iSN2TJG7LkDVkHp9bWzk1xvfFey5lb62bOpc2cO5w5o+n0hix5Q5a8IUvekCVvyJI3ZMkbsuQNWfKGrGtTa5/NG+e01m7NHc68A3TmzKLTG7LkDVnyhix5Q5a8IUvekCVvyJI3ZMkbskyt/TG3JpNuzWnNNPM935q0c3pDlrwhS96QJW/IkjdkyRuy5A1Z8oYseUPWtam1mTcqvtHORNStibdzrztzhu/W9jinN2TJG7LkDVnyhix5Q5a8IUvekCVvyJI3ZB2cWpu59WrHuemiWzN85yax3njL59q5XXp2rQG/TN6QJW/IkjdkyRuy5A1Z8oYseUOWvCHr43me2+8BOMLpDVnyhix5Q5a8IUvekCVvyJI3ZMkbsuQNWfKGLHlDlrwhS96QJW/IkjdkyRuy5A1Z8oYseUPWd+oBIuKneBihAAAAAElFTkSuQmCC" alt="ACH Form QR" style="width:140px;height:140px;border:1px solid var(--bd);border-radius:10px;background:#fff;padding:6px;">
+        <div style="flex:1;min-width:200px;">
+          <div style="font-size:12px;color:var(--tx);font-weight:600;margin-bottom:6px;">Scan with phone camera to open the ACH reading form</div>
+          <div style="font-size:11px;color:var(--mu);line-height:1.6;">Staff select their room, enter pressure (Pa, with – sign for negative rooms), ACH, temperature and humidity. Submissions appear here automatically.</div>
+          <a href="https://forms.gle/JTaUSDhiCpjU6ibZ9" target="_blank" style="display:inline-block;margin-top:8px;font-size:11px;color:var(--ac);text-decoration:underline;">Open form in new tab ↗</a>
+        </div>
+      </div>
+    </div>
     <div id="ach-dash"></div>
     <div id="ach-infographic"></div>
   </div>
 
-  <div id="ach-rooms-tab" style="display:none;">
+  <div id="achpanel-rooms" style="display:none;">
     <div class="card" style="margin-bottom:14px;">
       <div class="ch"><div class="ct">🏥 Rooms &amp; Compliance Thresholds (22 rooms · 8 departments)</div></div>
       <div class="cb" style="padding:0;overflow-x:auto;">
@@ -3606,7 +3617,7 @@ if ('caches' in window) {
     </div>
   </div>
 
-  <div id="ach-log-tab" style="display:none;">
+  <div id="achpanel-log" style="display:none;">
     <div class="card">
       <div class="ch"><div class="ct">📋 Daily Reading Log — entered via ACH Google Form (QR)</div></div>
       <div class="cb" style="padding:0;overflow-x:auto;">
@@ -7001,16 +7012,7 @@ function st(domain,sub,btn){
   if(domain==='fire' && sub==='unitdrill')       { setTimeout(()=>{renderUnitDrills();renderUnitDrillKPIs();},60); }
   // Fire — Annual PPM Schedule (FMS 21-22)
   if(domain==='fire' && sub==='ppmsched')        { setTimeout(()=>{ fsPpmRender(); fsPpmSync(); },60); }
-  // ACH / Room Pressure sub-tabs
-  if(domain==='ach') {
-    ['dash','rooms','log'].forEach(t=>{ const el=document.getElementById('ach-'+t+'-tab'); if(el) el.style.display = (t===sub)?'':'none'; });
-    setTimeout(()=>{ try{
-      if(sub==='dash'){ achRender(); achRenderInfographic(); }
-      else if(sub==='rooms'){ achRenderCompliByRoom(); }
-      else if(sub==='log'){ achRenderReadings(); }
-      else { achRender(); }
-    }catch(e){ console.warn('ACH render error:', e.message); } }, 60);
-  }
+
   // Emergency — Code Drills (Annual Plans)
   if(domain==='emergency' && sub==='codeplans')  { setTimeout(()=>{renderCodeDrills();renderDrillInfographics();},60); }
   if(domain==='emergency' && sub==='drills')     { setTimeout(()=>renderLog('emDrill'),60); }
@@ -17725,10 +17727,13 @@ function achExport() {
 
 function achInit(){
   achSyncRooms();
+  // Render all three panels so any tab is ready, then show dashboard
   try { achRender(); } catch(e){ console.warn('achRender:', e.message); }
   try { achRenderCompliByRoom(); } catch(e){}
   try { achRenderReadings(); } catch(e){}
   try { achRenderInfographic(); } catch(e){}
+  // Ensure dashboard tab is the active/visible one on entry
+  try { achTab('dash'); } catch(e){}
 }
 
 
@@ -17810,6 +17815,23 @@ function achRenderInfographic() {
     '<div class="cb"><div style="display:flex;align-items:flex-end;gap:8px;height:100px;padding:6px 10px;">'+
     paramBar('Pressure',pf,'#dc2626')+paramBar('ACH',af,'#d97706')+paramBar('Temp',tf,'#2563eb')+paramBar('Humidity',hf,'#7c3aed')+
     '</div><div style="font-size:10px;color:var(--mu);text-align:center;margin-top:6px;">Total compliant readings: <b style="color:#16a34a;">'+okAll+'</b> of '+readings.length+'</div></div></div>';
+}
+
+
+
+// ── ACH self-contained tab switcher (bypasses st() prefix-hiding collision) ──
+function achTab(sub, btn) {
+  ['dash','rooms','log'].forEach(t => {
+    const p = document.getElementById('achpanel-'+t);
+    if (p) p.style.display = (t===sub) ? '' : 'none';
+    const b = document.getElementById('achTabBtn-'+t);
+    if (b) b.classList.toggle('active', t===sub);
+  });
+  try {
+    if (sub==='dash') { achRender(); achRenderInfographic(); }
+    else if (sub==='rooms') { achRenderCompliByRoom(); }
+    else if (sub==='log') { achRenderReadings(); }
+  } catch(e) { console.warn('achTab render error:', e.message); }
 }
 
 </script>
