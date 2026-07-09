@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260707-1554';
+  var v = '20260707-1555';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260707-1554">
+<meta name="app-version" content="20260707-1555">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3575,6 +3575,7 @@ if ('caches' in window) {
 
   <div id="ach-dash-tab">
     <div id="ach-dash"></div>
+    <div id="ach-infographic"></div>
   </div>
 
   <div id="ach-rooms-tab" style="display:none;">
@@ -7003,7 +7004,12 @@ function st(domain,sub,btn){
   // ACH / Room Pressure sub-tabs
   if(domain==='ach') {
     ['dash','rooms','log'].forEach(t=>{ const el=document.getElementById('ach-'+t+'-tab'); if(el) el.style.display = (t===sub)?'':'none'; });
-    setTimeout(()=>{ try{ achRender(); }catch(e){} }, 60);
+    setTimeout(()=>{ try{
+      if(sub==='dash'){ achRender(); achRenderInfographic(); }
+      else if(sub==='rooms'){ achRenderCompliByRoom(); }
+      else if(sub==='log'){ achRenderReadings(); }
+      else { achRender(); }
+    }catch(e){ console.warn('ACH render error:', e.message); } }, 60);
   }
   // Emergency — Code Drills (Annual Plans)
   if(domain==='emergency' && sub==='codeplans')  { setTimeout(()=>{renderCodeDrills();renderDrillInfographics();},60); }
@@ -17717,7 +17723,13 @@ function achExport() {
   toast('✅ ACH compliance report exported','#10b981');
 }
 
-function achInit(){ achSyncRooms(); achRender(); }
+function achInit(){
+  achSyncRooms();
+  try { achRender(); } catch(e){ console.warn('achRender:', e.message); }
+  try { achRenderCompliByRoom(); } catch(e){}
+  try { achRenderReadings(); } catch(e){}
+  try { achRenderInfographic(); } catch(e){}
+}
 
 
 // ── Utility Systems — Export all (Generator + Water + Communication tests) ──
@@ -17744,6 +17756,60 @@ function utilsExportAll() {
   const b=new Blob([html],{type:'text/html'});const a=document.createElement('a');
   a.href=URL.createObjectURL(b);a.download='Utility_Systems_Report_'+new Date().toISOString().slice(0,10)+'.html';a.click();
   toast('✅ Utility systems report exported ('+total+' records)','#10b981');
+}
+
+
+
+// ── ACH Infographics: per-department compliance + parameter-failure breakdown ──
+function achRenderInfographic() {
+  const el = document.getElementById('ach-infographic'); if (!el) return;
+  const readings = achReadings();
+  const rooms = achRooms();
+  if (!readings.length) { el.innerHTML = '<div style="padding:16px;color:var(--mu);font-size:12px;">Infographics will appear once readings are recorded.</div>'; return; }
+
+  // Per-department compliance
+  const depts = {};
+  rooms.forEach(rm => { if(!depts[rm.dept]) depts[rm.dept] = {pass:0,total:0,rooms:0,read:new Set()}; depts[rm.dept].rooms++; });
+  const today = achToday();
+  readings.forEach(r => {
+    const rm = achRoomById(r.room); if(!rm) return;
+    const e = achEval(r);
+    if (e.overall!=='na') { depts[rm.dept].total++; if(e.overall==='pass') depts[rm.dept].pass++; }
+    if ((r.date||'').slice(0,10)===today) depts[rm.dept].read.add(r.room);
+  });
+
+  // Parameter failure counts
+  let pf=0, af=0, tf=0, hf=0, okAll=0;
+  readings.forEach(r=>{ const e=achEval(r);
+    if(e.pressure===false)pf++; if(e.ach===false)af++; if(e.temp===false)tf++; if(e.hum===false)hf++;
+    if(e.overall==='pass')okAll++;
+  });
+
+  const deptBars = Object.keys(depts).sort().map(dn=>{
+    const d = depts[dn];
+    const rate = d.total ? Math.round(d.pass/d.total*100) : null;
+    const col = rate==null?'var(--mu)':rate>=90?'#16a34a':rate>=75?'#d97706':'#dc2626';
+    const w = rate==null?0:rate;
+    return '<div style="margin-bottom:10px;">'+
+      '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;">'+
+      '<span style="color:var(--tx);font-weight:600;">'+dn+'</span>'+
+      '<span style="color:'+col+';font-weight:700;">'+(rate==null?'no data':rate+'%')+' <span style="color:var(--mu);font-weight:400;">('+d.read.size+'/'+d.rooms+' read today)</span></span></div>'+
+      '<div style="height:8px;background:var(--s2);border-radius:4px;overflow:hidden;"><div style="height:100%;width:'+w+'%;background:'+col+';border-radius:4px;transition:width .3s;"></div></div></div>';
+  }).join('');
+
+  const paramMax = Math.max(pf,af,tf,hf,1);
+  const paramBar = (lbl,val,color)=>'<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">'+
+    '<div style="font-size:13px;font-weight:800;color:'+(val>0?color:'var(--mu)')+';">'+val+'</div>'+
+    '<div style="width:60%;background:'+(val>0?color:'var(--bd)')+';border-radius:4px 4px 0 0;height:'+Math.max(4,Math.round(val/paramMax*70))+'px;"></div>'+
+    '<div style="font-size:9px;color:var(--mu);text-align:center;">'+lbl+'</div></div>';
+
+  el.innerHTML =
+    '<div class="card" style="margin-bottom:14px;"><div class="ch"><div class="ct">📊 Compliance by Department</div></div>'+
+    '<div class="cb">'+deptBars+'</div></div>'+
+    '<div class="card" style="margin-bottom:14px;"><div class="ch"><div class="ct">⚠️ Non-Compliance by Parameter (which failed most)</div></div>'+
+    '<div class="cb"><div style="display:flex;align-items:flex-end;gap:8px;height:100px;padding:6px 10px;">'+
+    paramBar('Pressure',pf,'#dc2626')+paramBar('ACH',af,'#d97706')+paramBar('Temp',tf,'#2563eb')+paramBar('Humidity',hf,'#7c3aed')+
+    '</div><div style="font-size:10px;color:var(--mu);text-align:center;margin-top:6px;">Total compliant readings: <b style="color:#16a34a;">'+okAll+'</b> of '+readings.length+'</div></div></div>';
 }
 
 </script>
