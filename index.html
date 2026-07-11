@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260707-1557';
+  var v = '20260707-1558';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260707-1557">
+<meta name="app-version" content="20260707-1558">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3590,12 +3590,38 @@ if ('caches' in window) {
   </div>
 
   <div id="achpanel-rooms" style="display:none;">
-    <div class="card" style="margin-bottom:14px;">
-      <div class="ch"><div class="ct">🏥 Rooms &amp; Compliance Thresholds (22 rooms · 8 departments)</div></div>
+    <div class="card" style="margin-bottom:14px;border-left:4px solid #D85A30;">
+      <div class="ch"><div class="ct" id="ach-neg-title">🔴 Negative Pressure Rooms</div></div>
       <div class="cb" style="padding:0;overflow-x:auto;">
         <table class="tbl" style="min-width:900px;"><thead><tr>
-          <th>Room</th><th>Department</th><th>Pressure</th><th>Min ACH</th><th>Temp °C</th><th>RH %</th><th>Compliance</th><th>Last Read</th><th>Edit</th>
-        </tr></thead><tbody id="ach-room-compliance"></tbody></table>
+          <th>Room</th><th>Department</th><th>Pressure</th><th>Min ACH</th><th>Temp °C</th><th>RH %</th><th>Compliance</th><th>Last Read</th><th>Actions</th>
+        </tr></thead><tbody id="ach-room-neg"></tbody></table>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:14px;border-left:4px solid #378ADD;">
+      <div class="ch"><div class="ct" id="ach-pos-title">🔵 Positive Pressure Rooms</div></div>
+      <div class="cb" style="padding:0;overflow-x:auto;">
+        <table class="tbl" style="min-width:900px;"><thead><tr>
+          <th>Room</th><th>Department</th><th>Pressure</th><th>Min ACH</th><th>Temp °C</th><th>RH %</th><th>Compliance</th><th>Last Read</th><th>Actions</th>
+        </tr></thead><tbody id="ach-room-pos"></tbody></table>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:14px;" id="ach-add-card">
+      <div class="ch"><div class="ct">➕ Add New Room / Department</div></div>
+      <div class="cb">
+        <p style="font-size:10px;color:var(--mu);margin:0 0 10px;">Add a monitored room. Type any department name — new departments are created automatically. Removing a room stops it being monitored but <b>keeps its historical readings</b> for audit evidence.</p>
+        <div class="fg fg2">
+          <div class="ff"><label>Room ID (must match the Google Form dropdown, e.g. OR5)</label><input type="text" id="ach-n-id" placeholder="OR5" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+          <div class="ff"><label>Room Name (display)</label><input type="text" id="ach-n-name" placeholder="OR5" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+          <div class="ff"><label>Department</label><input type="text" id="ach-n-dept" placeholder="Operating Rooms" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+          <div class="ff"><label>Pressure Direction</label><select id="ach-n-p" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"><option value="neg">Negative (≤ −2.5 Pa)</option><option value="pos">Positive (≥ +2.5 Pa)</option></select></div>
+          <div class="ff"><label>Min ACH</label><input type="number" id="ach-n-ach" placeholder="12" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+          <div class="ff"><label>Temp Min °C</label><input type="number" step="0.1" id="ach-n-tmin" placeholder="20" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+          <div class="ff"><label>Temp Max °C</label><input type="number" step="0.1" id="ach-n-tmax" placeholder="24" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+          <div class="ff"><label>RH Min %</label><input type="number" id="ach-n-hmin" placeholder="0" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+          <div class="ff"><label>RH Max %</label><input type="number" id="ach-n-hmax" placeholder="60" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);"></div>
+        </div>
+        <button class="btn bg" style="margin-top:12px;width:100%;" onclick="achAddRoom()">➕ Add Room</button>
       </div>
     </div>
     <div class="card" id="ach-edit-card">
@@ -3618,12 +3644,20 @@ if ('caches' in window) {
   </div>
 
   <div id="achpanel-log" style="display:none;">
-    <div class="card">
-      <div class="ch"><div class="ct">📋 Daily Reading Log — entered via ACH Google Form (QR)</div></div>
+    <div class="card" style="margin-bottom:14px;border-left:4px solid #D85A30;">
+      <div class="ch"><div class="ct" id="ach-log-neg-title">🔴 Negative Pressure Room Readings</div></div>
       <div class="cb" style="padding:0;overflow-x:auto;">
         <table class="tbl" style="min-width:820px;"><thead><tr>
-          <th>Date/Time</th><th>Room</th><th>Type</th><th>Pressure (Pa)</th><th>ACH</th><th>Temp °C</th><th>RH %</th><th>By</th><th>Result</th>
-        </tr></thead><tbody id="ach-readings-tb"></tbody></table>
+          <th>Date/Time</th><th>Room</th><th>Pressure (Pa)</th><th>ACH</th><th>Temp °C</th><th>RH %</th><th>By</th><th>Result</th>
+        </tr></thead><tbody id="ach-readings-neg"></tbody></table>
+      </div>
+    </div>
+    <div class="card" style="border-left:4px solid #378ADD;">
+      <div class="ch"><div class="ct" id="ach-log-pos-title">🔵 Positive Pressure Room Readings</div></div>
+      <div class="cb" style="padding:0;overflow-x:auto;">
+        <table class="tbl" style="min-width:820px;"><thead><tr>
+          <th>Date/Time</th><th>Room</th><th>Pressure (Pa)</th><th>ACH</th><th>Temp °C</th><th>RH %</th><th>By</th><th>Result</th>
+        </tr></thead><tbody id="ach-readings-pos"></tbody></table>
       </div>
     </div>
   </div>
@@ -17564,6 +17598,17 @@ function achStats(readings) {
   let pass=0, fail=0;
   readings.forEach(r=>{ const e=achEval(r); if(e.overall==='pass')pass++; else if(e.overall==='fail')fail++; });
   const total = pass+fail;
+  // Split compliance by pressure type
+  const negIds = new Set(rooms.filter(r=>r.p==='neg').map(r=>String(r.id)));
+  const posIds = new Set(rooms.filter(r=>r.p==='pos').map(r=>String(r.id)));
+  let np=0,nf=0,pp=0,pf=0;
+  readings.forEach(r=>{
+    const e=achEval(r); if(e.overall==='na') return;
+    const id=String(r.room);
+    if(negIds.has(id)){ e.overall==='pass'?np++:nf++; }
+    else if(posIds.has(id)){ e.overall==='pass'?pp++:pf++; }
+  });
+  const negTot=np+nf, posTot=pp+pf;
   return {
     totalReadings: readings.length,
     todayCount: todays.length,
@@ -17571,7 +17616,11 @@ function achStats(readings) {
     roomsReadToday: roomsReadToday.size,
     missingToday: missing,
     passRate: total ? Math.round(pass/total*100) : 0,
-    pass, fail
+    pass, fail,
+    negRooms: negIds.size, posRooms: posIds.size,
+    negRate: negTot ? Math.round(np/negTot*100) : null,
+    posRate: posTot ? Math.round(pp/posTot*100) : null,
+    negReadings: negTot, posReadings: posTot
   };
 }
 
@@ -17586,6 +17635,10 @@ function achRender() {
     achKpiCard('✅', s.roomsReadToday + '/' + s.roomsTotal, "Read Today", s.roomsReadToday===s.roomsTotal?'#16a34a':'#d97706') +
     achKpiCard('📊', s.passRate + '%', 'Compliance Rate', s.passRate>=90?'#16a34a':s.passRate>=75?'#d97706':'#dc2626') +
     achKpiCard('⚠️', s.missingToday.length, 'Rooms Not Read Today', s.missingToday.length?'#dc2626':'#16a34a') +
+    '</div>' +
+    '<div class="g g2" style="margin-bottom:14px;">' +
+    achKpiCard('🔴', (s.negRate==null?'—':s.negRate+'%'), 'Negative Rooms Compliance (' + s.negRooms + ' rooms · ' + s.negReadings + ' readings)', s.negRate==null?'var(--mu)':s.negRate>=90?'#16a34a':s.negRate>=75?'#d97706':'#dc2626') +
+    achKpiCard('🔵', (s.posRate==null?'—':s.posRate+'%'), 'Positive Rooms Compliance (' + s.posRooms + ' rooms · ' + s.posReadings + ' readings)', s.posRate==null?'var(--mu)':s.posRate>=90?'#16a34a':s.posRate>=75?'#d97706':'#dc2626') +
     '</div>';
   let miss = '';
   if (s.missingToday.length) {
@@ -17607,28 +17660,57 @@ function achKpiCard(icon, val, lbl, col) {
 }
 
 function achRenderReadings() {
-  const el = document.getElementById('ach-readings-tb'); if (!el) return;
-  const readings = achReadings().slice().sort((a,b)=>(b.date||'')>(a.date||'')?1:-1).slice(0,200);
-  if (!readings.length) { el.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--mu);padding:20px;">No readings yet — staff enter via the ACH Google Form (QR)</td></tr>'; return; }
-  el.innerHTML = readings.map(r=>{
+  const readings = achReadings().slice().sort((a,b)=>(b.date||'')>(a.date||'')?1:-1);
+
+  const rowHtml = r => {
     const e = achEval(r);
     const room = e.room;
-    const cell = (v,ok)=> v==null||v==='' ? '<td style="color:var(--mu);">—</td>' : '<td style="color:'+(ok===true?'#16a34a':ok===false?'#dc2626':'var(--tx)')+';font-weight:'+(ok===false?'700':'400')+';">'+v+(ok===false?' ✕':'')+'</td>';
-    const badge = e.overall==='pass'?'<span class="chip chip-green">✅ Pass</span>':e.overall==='fail'?'<span class="chip chip-red">❌ Fail</span>':'<span class="chip">—</span>';
-    return '<tr><td style="font-size:10px;">'+(r.date||'—').slice(0,16).replace('T',' ')+'</td>'+
-      '<td style="font-size:11px;">'+(room?room.name:(r.room||'—'))+'</td>'+
-      '<td style="font-size:9px;color:var(--mu);">'+(room?(room.p==='neg'?'NEG':'POS'):'—')+'</td>'+
+    const cell = (v,ok)=> (v==null||v==='') ? '<td style="color:var(--mu);">—</td>'
+      : '<td style="color:'+(ok===true?'#16a34a':ok===false?'#dc2626':'var(--tx)')+';font-weight:'+(ok===false?'700':'400')+';">'+v+(ok===false?' ✕':'')+'</td>';
+    const badge = e.overall==='pass'?'<span class="chip chip-green">✅ Pass</span>'
+      : e.overall==='fail'?'<span class="chip chip-red">❌ Fail</span>':'<span class="chip">—</span>';
+    return '<tr><td style="font-size:10px;">'+String(r.date||'—').slice(0,16).replace('T',' ')+'</td>'+
+      '<td style="font-size:11px;font-weight:600;">'+(room?room.name:(r.room||'—'))+'</td>'+
       cell(r.pressure, e.pressure)+cell(r.ach, e.ach)+cell(r.temp, e.temp)+cell(r.humidity, e.hum)+
       '<td style="font-size:10px;">'+(r.by||r.staff||'—')+'</td>'+
       '<td>'+badge+'</td></tr>';
-  }).join('');
+  };
+
+  // Split by the room's configured pressure type; unknown rooms go to negative table
+  // with a note (so nothing is silently hidden).
+  const neg = [], pos = [], unknown = [];
+  readings.forEach(r => {
+    const rm = achRoomById(r.room);
+    if (!rm) unknown.push(r);
+    else if (rm.p === 'pos') pos.push(r);
+    else neg.push(r);
+  });
+
+  const negEl = document.getElementById('ach-readings-neg');
+  if (negEl) negEl.innerHTML = (neg.length||unknown.length)
+    ? neg.map(rowHtml).join('') + unknown.map(r =>
+        '<tr style="opacity:.7;"><td style="font-size:10px;">'+String(r.date||'—').slice(0,16).replace('T',' ')+'</td>'+
+        '<td style="font-size:11px;color:#d97706;">'+(r.room||'—')+' <span style="font-size:9px;">(room not in list — e.g. removed/out of service)</span></td>'+
+        '<td>'+(r.pressure||'—')+'</td><td>'+(r.ach||'—')+'</td><td>'+(r.temp||'—')+'</td><td>'+(r.humidity||'—')+'</td>'+
+        '<td style="font-size:10px;">'+(r.by||'—')+'</td><td><span class="chip">—</span></td></tr>').join('')
+    : '<tr><td colspan="8" style="text-align:center;color:var(--mu);padding:20px;">No negative-pressure readings yet — staff enter via the ACH Google Form (QR)</td></tr>';
+
+  const posEl = document.getElementById('ach-readings-pos');
+  if (posEl) posEl.innerHTML = pos.length ? pos.map(rowHtml).join('')
+    : '<tr><td colspan="8" style="text-align:center;color:var(--mu);padding:20px;">No positive-pressure readings yet — staff enter via the ACH Google Form (QR)</td></tr>';
+
+  const nt = document.getElementById('ach-log-neg-title');
+  if (nt) nt.textContent = '🔴 Negative Pressure Room Readings (' + neg.length + ')';
+  const pt = document.getElementById('ach-log-pos-title');
+  if (pt) pt.textContent = '🔵 Positive Pressure Room Readings (' + pos.length + ')';
 }
 
 function achRenderCompliByRoom() {
-  const el = document.getElementById('ach-room-compliance'); if (!el) return;
   const rooms = achRooms();
   const readings = achReadings();
-  el.innerHTML = rooms.map(rm=>{
+  const canEdit = achCanEdit();
+
+  const rowHtml = rm => {
     const rr = readings.filter(r=>String(r.room||r.roomId)===String(rm.id));
     const evals = rr.map(achEval);
     const p = evals.filter(e=>e.overall==='pass').length;
@@ -17636,17 +17718,84 @@ function achRenderCompliByRoom() {
     const rate = t?Math.round(p/t*100):null;
     const lastR = rr.slice().sort((a,b)=>(b.date||'')>(a.date||'')?1:-1)[0];
     const col = rate==null?'var(--mu)':rate>=90?'#16a34a':rate>=75?'#d97706':'#dc2626';
-    return '<tr><td style="font-size:11px;">'+rm.name+'</td>'+
-      '<td style="font-size:9px;color:var(--mu);">'+rm.dept+'</td>'+
+    return '<tr><td style="font-size:11px;font-weight:600;">'+rm.name+'</td>'+
+      '<td style="font-size:10px;color:var(--mu);">'+rm.dept+'</td>'+
       '<td style="font-size:10px;color:'+(rm.p==='neg'?'#D85A30':'#378ADD')+';font-weight:700;">'+(rm.p==='neg'?'NEG ≤−2.5':'POS ≥+2.5')+'</td>'+
       '<td style="font-size:10px;">≥'+rm.ach+'</td>'+
       '<td style="font-size:10px;">'+rm.t[0]+'–'+rm.t[1]+'°C</td>'+
       '<td style="font-size:10px;">'+rm.h[0]+'–'+rm.h[1]+'%</td>'+
       '<td style="font-weight:700;color:'+col+';">'+(rate==null?'—':rate+'%')+'</td>'+
       '<td style="font-size:9px;color:var(--mu);">'+(lastR?(lastR.date||'').slice(0,10):'never')+'</td>'+
-      (achCanEdit()?'<td><button class="btn bb" style="font-size:9px;padding:2px 6px;" onclick="achEditRoom(\''+rm.id+'\')">✏</button></td>':'')+
+      (canEdit?'<td style="white-space:nowrap;"><button class="btn bb" style="font-size:9px;padding:2px 6px;margin-right:3px;" onclick="achEditRoom(\''+rm.id+'\')">✏</button>'+
+        '<button class="btn br" style="font-size:9px;padding:2px 6px;" onclick="achDeleteRoom(\''+rm.id+'\')">🗑</button></td>':'<td></td>')+
       '</tr>';
-  }).join('');
+  };
+
+  const negRooms = rooms.filter(r=>r.p==='neg');
+  const posRooms = rooms.filter(r=>r.p==='pos');
+
+  const negEl = document.getElementById('ach-room-neg');
+  if (negEl) negEl.innerHTML = negRooms.length ? negRooms.map(rowHtml).join('')
+    : '<tr><td colspan="9" style="text-align:center;color:var(--mu);padding:16px;">No negative-pressure rooms configured</td></tr>';
+  const posEl = document.getElementById('ach-room-pos');
+  if (posEl) posEl.innerHTML = posRooms.length ? posRooms.map(rowHtml).join('')
+    : '<tr><td colspan="9" style="text-align:center;color:var(--mu);padding:16px;">No positive-pressure rooms configured</td></tr>';
+
+  // Section titles with counts + department counts
+  const negDepts = new Set(negRooms.map(r=>r.dept)).size;
+  const posDepts = new Set(posRooms.map(r=>r.dept)).size;
+  const nt = document.getElementById('ach-neg-title');
+  if (nt) nt.textContent = '🔴 Negative Pressure Rooms (' + negRooms.length + ' rooms · ' + negDepts + ' departments)';
+  const pt = document.getElementById('ach-pos-title');
+  if (pt) pt.textContent = '🔵 Positive Pressure Rooms (' + posRooms.length + ' rooms · ' + posDepts + ' departments)';
+
+  // Add-card visible only to Director/Maintenance
+  const addCard = document.getElementById('ach-add-card');
+  if (addCard) addCard.style.display = canEdit ? '' : 'none';
+  const editCard = document.getElementById('ach-edit-card');
+  if (editCard) editCard.style.display = canEdit ? '' : 'none';
+}
+
+// ── Add a new room / department ──
+function achAddRoom() {
+  if (!achCanEdit()) { toast('Adding rooms is Director/Maintenance only','#ef4444'); return; }
+  const id = (document.getElementById('ach-n-id').value||'').trim().toUpperCase();
+  if (!id) { toast('Room ID is required (must match the Google Form dropdown)','#f59e0b'); return; }
+  const rooms = achRooms();
+  if (rooms.some(r=>String(r.id).toUpperCase()===id)) { toast('A room with that ID already exists','#f59e0b'); return; }
+  const name = (document.getElementById('ach-n-name').value||'').trim() || id;
+  const dept = (document.getElementById('ach-n-dept').value||'').trim() || 'Unassigned';
+  const p = document.getElementById('ach-n-p').value;
+  const ach = parseFloat(document.getElementById('ach-n-ach').value)||12;
+  const tmin = parseFloat(document.getElementById('ach-n-tmin').value); 
+  const tmax = parseFloat(document.getElementById('ach-n-tmax').value);
+  const hmin = parseFloat(document.getElementById('ach-n-hmin').value);
+  const hmax = parseFloat(document.getElementById('ach-n-hmax').value);
+  rooms.push({ id, dept, name, p, ach,
+    t:[isFinite(tmin)?tmin:20, isFinite(tmax)?tmax:24],
+    h:[isFinite(hmin)?hmin:0, isFinite(hmax)?hmax:60] });
+  achSaveRooms(rooms);
+  ['ach-n-id','ach-n-name','ach-n-dept','ach-n-ach','ach-n-tmin','ach-n-tmax','ach-n-hmin','ach-n-hmax'].forEach(i2=>{const e=document.getElementById(i2); if(e) e.value='';});
+  achRender(); achRenderCompliByRoom(); achRenderInfographic();
+  toast('✅ Room '+id+' added — remember to add it to the Google Form dropdown','#10b981');
+}
+
+// ── Remove a room from monitoring (history is preserved) ──
+function achDeleteRoom(id) {
+  if (!achCanEdit()) { toast('Removing rooms is Director/Maintenance only','#ef4444'); return; }
+  const rooms = achRooms();
+  const rm = rooms.find(r=>String(r.id)===String(id));
+  if (!rm) return;
+  const readings = achReadings().filter(r=>String(r.room)===String(id));
+  const msg = 'Remove "' + rm.name + '" (' + rm.dept + ') from ACH monitoring?\n\n' +
+    '• It will no longer appear in the room list or in "Rooms Not Read Today"\n' +
+    '• It will stop counting toward the compliance rate\n' +
+    '• Its ' + readings.length + ' historical reading(s) are KEPT for audit evidence\n\n' +
+    'Use this when a department goes out of service. Continue?';
+  if (!confirm(msg)) return;
+  achSaveRooms(rooms.filter(r=>String(r.id)!==String(id)));
+  achRender(); achRenderCompliByRoom(); achRenderInfographic();
+  toast('🗑 '+rm.name+' removed from monitoring (readings preserved)','#10b981');
 }
 
 function achCanEdit(){ return (!CU.role || CU.role==='director' || CU.role==='maintenance'); }
