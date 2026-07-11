@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260707-1558';
+  var v = '20260707-1559';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260707-1558">
+<meta name="app-version" content="20260707-1559">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3594,7 +3594,7 @@ if ('caches' in window) {
       <div class="ch"><div class="ct" id="ach-neg-title">🔴 Negative Pressure Rooms</div></div>
       <div class="cb" style="padding:0;overflow-x:auto;">
         <table class="tbl" style="min-width:900px;"><thead><tr>
-          <th>Room</th><th>Department</th><th>Pressure</th><th>Min ACH</th><th>Temp °C</th><th>RH %</th><th>Compliance</th><th>Last Read</th><th>Actions</th>
+          <th>Room</th><th>Department</th><th>Status / Frequency</th><th>Pressure</th><th>Min ACH</th><th>Temp °C</th><th>RH %</th><th>Compliance</th><th>Last Read</th><th>Actions</th>
         </tr></thead><tbody id="ach-room-neg"></tbody></table>
       </div>
     </div>
@@ -3602,7 +3602,7 @@ if ('caches' in window) {
       <div class="ch"><div class="ct" id="ach-pos-title">🔵 Positive Pressure Rooms</div></div>
       <div class="cb" style="padding:0;overflow-x:auto;">
         <table class="tbl" style="min-width:900px;"><thead><tr>
-          <th>Room</th><th>Department</th><th>Pressure</th><th>Min ACH</th><th>Temp °C</th><th>RH %</th><th>Compliance</th><th>Last Read</th><th>Actions</th>
+          <th>Room</th><th>Department</th><th>Status / Frequency</th><th>Pressure</th><th>Min ACH</th><th>Temp °C</th><th>RH %</th><th>Compliance</th><th>Last Read</th><th>Actions</th>
         </tr></thead><tbody id="ach-room-pos"></tbody></table>
       </div>
     </div>
@@ -3648,7 +3648,7 @@ if ('caches' in window) {
       <div class="ch"><div class="ct" id="ach-log-neg-title">🔴 Negative Pressure Room Readings</div></div>
       <div class="cb" style="padding:0;overflow-x:auto;">
         <table class="tbl" style="min-width:820px;"><thead><tr>
-          <th>Date/Time</th><th>Room</th><th>Pressure (Pa)</th><th>ACH</th><th>Temp °C</th><th>RH %</th><th>By</th><th>Result</th>
+          <th>Date/Time</th><th>Room</th><th>Status</th><th>Pressure (Pa)</th><th>ACH</th><th>Temp °C</th><th>RH %</th><th>By</th><th>Result</th>
         </tr></thead><tbody id="ach-readings-neg"></tbody></table>
       </div>
     </div>
@@ -3656,7 +3656,7 @@ if ('caches' in window) {
       <div class="ch"><div class="ct" id="ach-log-pos-title">🔵 Positive Pressure Room Readings</div></div>
       <div class="cb" style="padding:0;overflow-x:auto;">
         <table class="tbl" style="min-width:820px;"><thead><tr>
-          <th>Date/Time</th><th>Room</th><th>Pressure (Pa)</th><th>ACH</th><th>Temp °C</th><th>RH %</th><th>By</th><th>Result</th>
+          <th>Date/Time</th><th>Room</th><th>Status</th><th>Pressure (Pa)</th><th>ACH</th><th>Temp °C</th><th>RH %</th><th>By</th><th>Result</th>
         </tr></thead><tbody id="ach-readings-pos"></tbody></table>
       </div>
     </div>
@@ -17463,12 +17463,12 @@ window.addEventListener('load', () => setTimeout(backupInit, 4000));
 
 // Default room thresholds (MOH-confirmed). p:'neg'|'pos', ach min, t[min,max], h[min,max]
 const ACH_ROOMS_DEFAULT = [
-  {id:'RM206', dept:'Station C', name:'RM206 (AIIR)', p:'neg', ach:12, t:[20,24], h:[0,60]},
-  {id:'RM207', dept:'Station C', name:'RM207 (AIIR)', p:'neg', ach:12, t:[20,24], h:[0,60]},
-  {id:'RM208', dept:'Station C', name:'RM208 (AIIR)', p:'neg', ach:12, t:[20,24], h:[0,60]},
-  {id:'RM209', dept:'Station C', name:'RM209 (AIIR)', p:'neg', ach:12, t:[20,24], h:[0,60]},
-  {id:'RM210', dept:'Station C', name:'RM210 (AIIR)', p:'neg', ach:12, t:[20,24], h:[0,60]},
-  {id:'RM211', dept:'Station C', name:'RM211 (AIIR)', p:'neg', ach:12, t:[20,24], h:[0,60]},
+  {id:'RM206', dept:'Station C', name:'RM206 (AIIR)', p:'neg', ach:12, t:[20,24], h:[0,60], occ:true},
+  {id:'RM207', dept:'Station C', name:'RM207 (AIIR)', p:'neg', ach:12, t:[20,24], h:[0,60], occ:true},
+  {id:'RM208', dept:'Station C', name:'RM208 (AIIR)', p:'neg', ach:12, t:[20,24], h:[0,60], occ:true},
+  {id:'RM209', dept:'Station C', name:'RM209 (AIIR)', p:'neg', ach:12, t:[20,24], h:[0,60], occ:true},
+  {id:'RM210', dept:'Station C', name:'RM210 (AIIR)', p:'neg', ach:12, t:[20,24], h:[0,60], occ:true},
+  {id:'RM211', dept:'Station C', name:'RM211 (AIIR)', p:'neg', ach:12, t:[20,24], h:[0,60], occ:true},
   {id:'OR1', dept:'Operating Rooms', name:'OR1', p:'pos', ach:20, t:[20,24], h:[20,60]},
   {id:'OR2', dept:'Operating Rooms', name:'OR2', p:'pos', ach:20, t:[20,24], h:[20,60]},
   {id:'OR3', dept:'Operating Rooms', name:'OR3', p:'pos', ach:20, t:[20,24], h:[20,60]},
@@ -17478,13 +17478,13 @@ const ACH_ROOMS_DEFAULT = [
   {id:'CSSD_DECON', dept:'CSSD', name:'Decontamination', p:'neg', ach:10, t:[18,22], h:[30,60]},
   {id:'CSSD_ASSY', dept:'CSSD', name:'Clean Assembly / Packing', p:'pos', ach:10, t:[20,23], h:[35,60]},
   {id:'CSSD_STORE', dept:'CSSD', name:'Sterile Storage', p:'pos', ach:10, t:[0,24], h:[0,70]},
-  {id:'ER1', dept:'Emergency Room', name:'ER1', p:'neg', ach:12, t:[20,24], h:[0,60]},
-  {id:'ER2', dept:'Emergency Room', name:'ER2', p:'neg', ach:12, t:[20,24], h:[0,60]},
-  {id:'ER_EXAM', dept:'Emergency Room', name:'ER Examination', p:'neg', ach:12, t:[20,24], h:[0,60]},
+  {id:'ER1', dept:'Emergency Room', name:'ER1', p:'neg', ach:12, t:[20,24], h:[0,60], occ:true},
+  {id:'ER2', dept:'Emergency Room', name:'ER2', p:'neg', ach:12, t:[20,24], h:[0,60], occ:true},
+  {id:'ER_EXAM', dept:'Emergency Room', name:'ER Examination', p:'neg', ach:12, t:[20,24], h:[0,60], occ:true},
   {id:'GASTRO', dept:'Gastro', name:'Gastro Room', p:'neg', ach:12, t:[20,23], h:[0,60]},
-  {id:'ICU_A7', dept:'ICU', name:'ICU A.7', p:'neg', ach:12, t:[21,24], h:[0,60]},
-  {id:'ICU_CSTA', dept:'ICU', name:'ICU C.ST.A', p:'neg', ach:12, t:[21,24], h:[0,60]},
-  {id:'NICU', dept:'NICU', name:'NICU Isolation', p:'neg', ach:12, t:[22,26], h:[30,60]},
+  {id:'ICU_A7', dept:'ICU', name:'ICU A.7', p:'neg', ach:12, t:[21,24], h:[0,60], occ:true},
+  {id:'ICU_CSTA', dept:'ICU', name:'ICU C.ST.A', p:'neg', ach:12, t:[21,24], h:[0,60], occ:true},
+  {id:'NICU', dept:'NICU', name:'NICU Isolation', p:'neg', ach:12, t:[22,26], h:[30,60], occ:true},
 ];
 
 const ACH_ROOMS_KEY = 'obeid3_ach_rooms';
@@ -17522,7 +17522,8 @@ function achNormalizeRow(raw) {
     ach: o['ach'] || o['air changes'] || o['air changes per hour'] || '',
     temp: o['temp'] || o['temperature'] || o['temperature (°c)'] || o['temperature (c)'] || '',
     humidity: o['humidity'] || o['humidity (%)'] || o['rh'] || o['relative humidity'] || '',
-    by: o['by'] || o['staff name'] || o['staff'] || o['name'] || ''
+    by: o['by'] || o['staff name'] || o['staff'] || o['name'] || '',
+    status: (o['status'] || o['room status'] || o['occupancy'] || o['room_status'] || '').toString().trim()
   };
   // Resolve room: exact match first, else strip label (take first token before space/dash)
   let rm = String(row.room||'').trim();
@@ -17542,6 +17543,9 @@ function achNormalizeRow(raw) {
   // (Google Sheets returns e.g. "Thu Jul 09 2026 10:15:56 GMT+0300 (...)")
   row._raw_date = row.date;
   row.date = achDateISO(row.date);
+  // Normalize occupancy to 'occupied' | 'vacant' | ''
+  const st = String(row.status||'').toLowerCase();
+  row.status = st.indexOf('occup')>=0 ? 'occupied' : st.indexOf('vacan')>=0 ? 'vacant' : '';
   return row;
 }
 
@@ -17589,15 +17593,63 @@ function achEval(r) {
 function achToday(){ return new Date().toISOString().slice(0,10); }
 
 // ── Compliance stats ──
+// ── Occupancy + required-frequency engine (MOH) ──
+// Occupancy-driven rooms (occ:true): Occupied = 2 readings/day · Vacant = 1 reading/7 days
+// All other rooms: 1 reading/day regardless.
+function achLatestStatus(roomId, readings) {
+  const rr = readings.filter(r => String(r.room)===String(roomId) && r.status)
+                     .sort((a,b)=>(b.date||'')>(a.date||'')?1:-1);
+  return rr.length ? rr[0].status : '';
+}
+
+function achDaysAgo(n) {
+  const d = new Date(); d.setDate(d.getDate()-n);
+  return d.toISOString().slice(0,10);
+}
+
+// Returns {need, done, ok, label, status} for one room today
+function achRoomRequirement(rm, readings) {
+  const today = achToday();
+  const mine = readings.filter(r => String(r.room)===String(rm.id));
+  const todays = mine.filter(r => (r.date||'').slice(0,10)===today);
+  const status = rm.occ ? achLatestStatus(rm.id, readings) : '';
+
+  if (rm.occ && status === 'vacant') {
+    // Vacant isolation room: 1 reading within the last 7 days
+    const cutoff = achDaysAgo(7);
+    const recent = mine.filter(r => (r.date||'').slice(0,10) >= cutoff);
+    return { need:1, done:recent.length, ok:recent.length>=1, freq:'weekly',
+             status:'vacant', label:'Vacant — 1 reading / 7 days' };
+  }
+  if (rm.occ && status === 'occupied') {
+    // Occupied isolation room: 2 readings today
+    return { need:2, done:todays.length, ok:todays.length>=2, freq:'2x-daily',
+             status:'occupied', label:'Occupied — 2 readings / day' };
+  }
+  // Fixed daily (ORs, CSSD, Pharmacy) OR occupancy-room with unknown status
+  return { need:1, done:todays.length, ok:todays.length>=1, freq:'daily',
+           status: status || (rm.occ ? 'unknown' : ''),
+           label: rm.occ ? 'Status not recorded — 1 reading / day (default)' : 'Daily — 1 reading / day' };
+}
+
 function achStats(readings) {
   const rooms = achRooms();
   const today = achToday();
   const todays = readings.filter(r => (r.date||'').slice(0,10) === today);
-  const roomsReadToday = new Set(todays.map(r=>String(r.room||r.roomId)));
-  const missing = rooms.filter(rm => !roomsReadToday.has(String(rm.id)));
+
+  // Frequency-aware gap list
+  const missing = [];       // rooms not meeting their requirement
+  let roomsMeeting = 0;
+  rooms.forEach(rm => {
+    const req = achRoomRequirement(rm, readings);
+    if (req.ok) roomsMeeting++;
+    else missing.push(Object.assign({}, rm, {_req: req}));
+  });
+
   let pass=0, fail=0;
   readings.forEach(r=>{ const e=achEval(r); if(e.overall==='pass')pass++; else if(e.overall==='fail')fail++; });
   const total = pass+fail;
+
   // Split compliance by pressure type
   const negIds = new Set(rooms.filter(r=>r.p==='neg').map(r=>String(r.id)));
   const posIds = new Set(rooms.filter(r=>r.p==='pos').map(r=>String(r.id)));
@@ -17609,18 +17661,28 @@ function achStats(readings) {
     else if(posIds.has(id)){ e.overall==='pass'?pp++:pf++; }
   });
   const negTot=np+nf, posTot=pp+pf;
+
+  // Occupancy summary (occupancy-driven rooms only)
+  const occRooms = rooms.filter(r=>r.occ);
+  let occupied=0, vacant=0, unknownOcc=0;
+  occRooms.forEach(rm=>{
+    const s = achLatestStatus(rm.id, readings);
+    if (s==='occupied') occupied++; else if (s==='vacant') vacant++; else unknownOcc++;
+  });
+
   return {
     totalReadings: readings.length,
     todayCount: todays.length,
     roomsTotal: rooms.length,
-    roomsReadToday: roomsReadToday.size,
+    roomsMeeting: roomsMeeting,
     missingToday: missing,
     passRate: total ? Math.round(pass/total*100) : 0,
     pass, fail,
     negRooms: negIds.size, posRooms: posIds.size,
     negRate: negTot ? Math.round(np/negTot*100) : null,
     posRate: posTot ? Math.round(pp/posTot*100) : null,
-    negReadings: negTot, posReadings: posTot
+    negReadings: negTot, posReadings: posTot,
+    occupied, vacant, unknownOcc, occRoomsTotal: occRooms.length
   };
 }
 
@@ -17629,27 +17691,56 @@ function achRender() {
   const readings = achReadings();
   const s = achStats(readings);
   const el = document.getElementById('ach-dash'); if (!el) return;
+
   const cards =
     '<div class="g g4" style="margin-bottom:14px;">' +
     achKpiCard('🏥', s.roomsTotal, 'Monitored Rooms') +
-    achKpiCard('✅', s.roomsReadToday + '/' + s.roomsTotal, "Read Today", s.roomsReadToday===s.roomsTotal?'#16a34a':'#d97706') +
-    achKpiCard('📊', s.passRate + '%', 'Compliance Rate', s.passRate>=90?'#16a34a':s.passRate>=75?'#d97706':'#dc2626') +
-    achKpiCard('⚠️', s.missingToday.length, 'Rooms Not Read Today', s.missingToday.length?'#dc2626':'#16a34a') +
+    achKpiCard('✅', s.roomsMeeting + '/' + s.roomsTotal, 'Meeting Reading Requirement', s.roomsMeeting===s.roomsTotal?'#16a34a':'#d97706') +
+    achKpiCard('📊', s.passRate + '%', 'Parameter Compliance Rate', s.passRate>=90?'#16a34a':s.passRate>=75?'#d97706':'#dc2626') +
+    achKpiCard('⚠️', s.missingToday.length, 'Rooms Below Required Frequency', s.missingToday.length?'#dc2626':'#16a34a') +
     '</div>' +
     '<div class="g g2" style="margin-bottom:14px;">' +
     achKpiCard('🔴', (s.negRate==null?'—':s.negRate+'%'), 'Negative Rooms Compliance (' + s.negRooms + ' rooms · ' + s.negReadings + ' readings)', s.negRate==null?'var(--mu)':s.negRate>=90?'#16a34a':s.negRate>=75?'#d97706':'#dc2626') +
     achKpiCard('🔵', (s.posRate==null?'—':s.posRate+'%'), 'Positive Rooms Compliance (' + s.posRooms + ' rooms · ' + s.posReadings + ' readings)', s.posRate==null?'var(--mu)':s.posRate>=90?'#16a34a':s.posRate>=75?'#d97706':'#dc2626') +
     '</div>';
+
+  // Occupancy status card (isolation rooms only)
+  let occCard = '';
+  if (s.occRoomsTotal > 0) {
+    occCard = '<div class="card" style="margin-bottom:14px;"><div class="ch"><div class="ct">🛏 Isolation Room Occupancy — drives required frequency (MOH)</div></div>' +
+      '<div class="cb"><div style="display:flex;gap:12px;flex-wrap:wrap;">' +
+      '<div style="flex:1;min-width:140px;background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:10px;text-align:center;">' +
+        '<div style="font-size:22px;font-weight:800;color:#dc2626;">'+s.occupied+'</div>' +
+        '<div style="font-size:9px;color:var(--mu);text-transform:uppercase;">Occupied · 2 readings/day</div></div>' +
+      '<div style="flex:1;min-width:140px;background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:10px;text-align:center;">' +
+        '<div style="font-size:22px;font-weight:800;color:#16a34a;">'+s.vacant+'</div>' +
+        '<div style="font-size:9px;color:var(--mu);text-transform:uppercase;">Vacant · 1 reading/7 days</div></div>' +
+      '<div style="flex:1;min-width:140px;background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:10px;text-align:center;">' +
+        '<div style="font-size:22px;font-weight:800;color:'+(s.unknownOcc?'#d97706':'var(--mu)')+';">'+s.unknownOcc+'</div>' +
+        '<div style="font-size:9px;color:var(--mu);text-transform:uppercase;">Status Not Recorded</div></div>' +
+      '</div>' +
+      (s.unknownOcc ? '<div style="margin-top:10px;font-size:10px;color:#d97706;">⚠ Rooms with no recorded status default to 1 reading/day. Ask staff to select Occupied/Vacant on the form.</div>' : '') +
+      '</div></div>';
+  }
+
+  // Gap list with per-room requirement detail
   let miss = '';
   if (s.missingToday.length) {
-    miss = '<div class="card" style="margin-bottom:14px;border-left:4px solid #dc2626;"><div class="ch"><div class="ct">⚠️ Rooms Not Yet Read Today ('+achToday()+')</div></div>' +
-      '<div class="cb"><div style="display:flex;flex-wrap:wrap;gap:6px;">' +
-      s.missingToday.map(rm=>'<span style="font-size:11px;background:var(--s2);border:1px solid #dc2626;border-radius:6px;padding:3px 8px;">'+rm.name+'</span>').join('') +
-      '</div></div></div>';
+    miss = '<div class="card" style="margin-bottom:14px;border-left:4px solid #dc2626;"><div class="ch"><div class="ct">⚠️ Rooms Below Required Reading Frequency ('+achToday()+')</div></div>' +
+      '<div class="cb"><table class="tbl"><thead><tr><th>Room</th><th>Department</th><th>Requirement</th><th>Done</th></tr></thead><tbody>' +
+      s.missingToday.map(rm=>{
+        const q = rm._req || {};
+        const badge = q.status==='occupied' ? '<span class="chip chip-red">Occupied</span>'
+                    : q.status==='vacant' ? '<span class="chip chip-green">Vacant</span>'
+                    : q.status==='unknown' ? '<span class="chip" style="background:#fef3c7;color:#92400e;">No status</span>' : '';
+        return '<tr><td style="font-size:11px;font-weight:600;">'+rm.name+' '+badge+'</td>'+
+          '<td style="font-size:10px;color:var(--mu);">'+rm.dept+'</td>'+
+          '<td style="font-size:10px;">'+(q.label||'—')+'</td>'+
+          '<td style="font-size:11px;font-weight:700;color:#dc2626;">'+(q.done||0)+' / '+(q.need||1)+'</td></tr>';
+      }).join('') +
+      '</tbody></table></div></div>';
   }
-  el.innerHTML = cards + miss;
-  achRenderReadings();
-  achRenderCompliByRoom();
+  el.innerHTML = cards + occCard + miss;
 }
 
 function achKpiCard(icon, val, lbl, col) {
@@ -17669,8 +17760,12 @@ function achRenderReadings() {
       : '<td style="color:'+(ok===true?'#16a34a':ok===false?'#dc2626':'var(--tx)')+';font-weight:'+(ok===false?'700':'400')+';">'+v+(ok===false?' ✕':'')+'</td>';
     const badge = e.overall==='pass'?'<span class="chip chip-green">✅ Pass</span>'
       : e.overall==='fail'?'<span class="chip chip-red">❌ Fail</span>':'<span class="chip">—</span>';
+    const stChip = r.status==='occupied' ? '<span class="chip chip-red" style="font-size:8px;">Occupied</span>'
+      : r.status==='vacant' ? '<span class="chip chip-green" style="font-size:8px;">Vacant</span>'
+      : '<span style="color:var(--mu);font-size:9px;">—</span>';
     return '<tr><td style="font-size:10px;">'+String(r.date||'—').slice(0,16).replace('T',' ')+'</td>'+
       '<td style="font-size:11px;font-weight:600;">'+(room?room.name:(r.room||'—'))+'</td>'+
+      '<td>'+stChip+'</td>'+
       cell(r.pressure, e.pressure)+cell(r.ach, e.ach)+cell(r.temp, e.temp)+cell(r.humidity, e.hum)+
       '<td style="font-size:10px;">'+(r.by||r.staff||'—')+'</td>'+
       '<td>'+badge+'</td></tr>';
@@ -17691,13 +17786,13 @@ function achRenderReadings() {
     ? neg.map(rowHtml).join('') + unknown.map(r =>
         '<tr style="opacity:.7;"><td style="font-size:10px;">'+String(r.date||'—').slice(0,16).replace('T',' ')+'</td>'+
         '<td style="font-size:11px;color:#d97706;">'+(r.room||'—')+' <span style="font-size:9px;">(room not in list — e.g. removed/out of service)</span></td>'+
-        '<td>'+(r.pressure||'—')+'</td><td>'+(r.ach||'—')+'</td><td>'+(r.temp||'—')+'</td><td>'+(r.humidity||'—')+'</td>'+
+        '<td>—</td><td>'+(r.pressure||'—')+'</td><td>'+(r.ach||'—')+'</td><td>'+(r.temp||'—')+'</td><td>'+(r.humidity||'—')+'</td>'+
         '<td style="font-size:10px;">'+(r.by||'—')+'</td><td><span class="chip">—</span></td></tr>').join('')
-    : '<tr><td colspan="8" style="text-align:center;color:var(--mu);padding:20px;">No negative-pressure readings yet — staff enter via the ACH Google Form (QR)</td></tr>';
+    : '<tr><td colspan="9" style="text-align:center;color:var(--mu);padding:20px;">No negative-pressure readings yet — staff enter via the ACH Google Form (QR)</td></tr>';
 
   const posEl = document.getElementById('ach-readings-pos');
   if (posEl) posEl.innerHTML = pos.length ? pos.map(rowHtml).join('')
-    : '<tr><td colspan="8" style="text-align:center;color:var(--mu);padding:20px;">No positive-pressure readings yet — staff enter via the ACH Google Form (QR)</td></tr>';
+    : '<tr><td colspan="9" style="text-align:center;color:var(--mu);padding:20px;">No positive-pressure readings yet — staff enter via the ACH Google Form (QR)</td></tr>';
 
   const nt = document.getElementById('ach-log-neg-title');
   if (nt) nt.textContent = '🔴 Negative Pressure Room Readings (' + neg.length + ')';
@@ -17718,8 +17813,15 @@ function achRenderCompliByRoom() {
     const rate = t?Math.round(p/t*100):null;
     const lastR = rr.slice().sort((a,b)=>(b.date||'')>(a.date||'')?1:-1)[0];
     const col = rate==null?'var(--mu)':rate>=90?'#16a34a':rate>=75?'#d97706':'#dc2626';
+    const req = achRoomRequirement(rm, readings);
+    const stChip = req.status==='occupied' ? '<span class="chip chip-red" style="font-size:8px;">Occupied</span>'
+      : req.status==='vacant' ? '<span class="chip chip-green" style="font-size:8px;">Vacant</span>'
+      : req.status==='unknown' ? '<span class="chip" style="font-size:8px;background:#fef3c7;color:#92400e;">No status</span>' : '';
+    const freqTxt = req.freq==='2x-daily' ? '2×/day' : req.freq==='weekly' ? '1×/7 days' : '1×/day';
+    const reqCol = req.ok ? '#16a34a' : '#dc2626';
     return '<tr><td style="font-size:11px;font-weight:600;">'+rm.name+'</td>'+
       '<td style="font-size:10px;color:var(--mu);">'+rm.dept+'</td>'+
+      '<td style="font-size:9px;">'+stChip+' <span style="color:'+reqCol+';font-weight:700;">'+req.done+'/'+req.need+'</span> <span style="color:var(--mu);">'+freqTxt+'</span></td>'+
       '<td style="font-size:10px;color:'+(rm.p==='neg'?'#D85A30':'#378ADD')+';font-weight:700;">'+(rm.p==='neg'?'NEG ≤−2.5':'POS ≥+2.5')+'</td>'+
       '<td style="font-size:10px;">≥'+rm.ach+'</td>'+
       '<td style="font-size:10px;">'+rm.t[0]+'–'+rm.t[1]+'°C</td>'+
@@ -17736,10 +17838,10 @@ function achRenderCompliByRoom() {
 
   const negEl = document.getElementById('ach-room-neg');
   if (negEl) negEl.innerHTML = negRooms.length ? negRooms.map(rowHtml).join('')
-    : '<tr><td colspan="9" style="text-align:center;color:var(--mu);padding:16px;">No negative-pressure rooms configured</td></tr>';
+    : '<tr><td colspan="10" style="text-align:center;color:var(--mu);padding:16px;">No negative-pressure rooms configured</td></tr>';
   const posEl = document.getElementById('ach-room-pos');
   if (posEl) posEl.innerHTML = posRooms.length ? posRooms.map(rowHtml).join('')
-    : '<tr><td colspan="9" style="text-align:center;color:var(--mu);padding:16px;">No positive-pressure rooms configured</td></tr>';
+    : '<tr><td colspan="10" style="text-align:center;color:var(--mu);padding:16px;">No positive-pressure rooms configured</td></tr>';
 
   // Section titles with counts + department counts
   const negDepts = new Set(negRooms.map(r=>r.dept)).size;
@@ -17853,7 +17955,7 @@ function achExport() {
     const e=achEval(r); const room=e.room;
     const mark=(v,ok)=> (v==null||v==='')?'—':(v+(ok===false?' ✗':ok===true?' ✓':''));
     const badge=e.overall==='pass'?'<span style="color:#16a34a;font-weight:700;">Pass</span>':e.overall==='fail'?'<span style="color:#dc2626;font-weight:700;">Fail</span>':'—';
-    return '<tr><td>'+(r.date||'—').slice(0,16).replace('T',' ')+'</td><td>'+(room?room.name:r.room)+'</td><td>'+(room?(room.p==='neg'?'Neg':'Pos'):'—')+'</td><td>'+mark(r.pressure,e.pressure)+'</td><td>'+mark(r.ach,e.ach)+'</td><td>'+mark(r.temp,e.temp)+'</td><td>'+mark(r.humidity,e.hum)+'</td><td>'+(r.by||r.staff||'—')+'</td><td>'+badge+'</td></tr>';
+    return '<tr><td>'+(r.date||'—').slice(0,16).replace('T',' ')+'</td><td>'+(room?room.name:r.room)+'</td><td>'+(room?(room.p==='neg'?'Neg':'Pos'):'—')+'</td><td>'+(r.status?r.status.charAt(0).toUpperCase()+r.status.slice(1):'—')+'</td><td>'+mark(r.pressure,e.pressure)+'</td><td>'+mark(r.ach,e.ach)+'</td><td>'+mark(r.temp,e.temp)+'</td><td>'+mark(r.humidity,e.hum)+'</td><td>'+(r.by||r.staff||'—')+'</td><td>'+badge+'</td></tr>';
   }).join('');
   const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ACH Room Pressure Compliance Report</title>'+
     '<style>body{font-family:Arial;margin:20px;font-size:11px;}h2{margin:0;font-size:16px;}h3{color:#1a3a5c;border-bottom:2px solid #0f766e;padding-bottom:4px;font-size:13px;margin-top:20px;}p{margin:3px 0 0;font-size:10px;opacity:.85;}'+
@@ -17866,7 +17968,7 @@ function achExport() {
     '<div class="k"><div class="v">'+s.passRate+'%</div><div class="l">Compliance Rate</div></div>'+
     '<div class="k"><div class="v">'+s.pass+'</div><div class="l">Compliant Readings</div></div>'+
     '<div class="k"><div class="v" style="color:#dc2626;">'+s.fail+'</div><div class="l">Non-Compliant</div></div></div>'+
-    '<h3>📋 Reading Log</h3><table><thead><tr><th>Date/Time</th><th>Room</th><th>Type</th><th>Pressure (Pa)</th><th>ACH</th><th>Temp °C</th><th>RH %</th><th>By</th><th>Result</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+    '<h3>📋 Reading Log</h3><table><thead><tr><th>Date/Time</th><th>Room</th><th>Type</th><th>Status</th><th>Pressure (Pa)</th><th>ACH</th><th>Temp °C</th><th>RH %</th><th>By</th><th>Result</th></tr></thead><tbody>'+rows+'</tbody></table>'+
     '<div class="sig"><div class="sl">Reviewed By: IPC Department<br><br>Signature: _______ Date: ____</div>'+
     '<div class="sl">Approved By: Mr. Ali K. Sobh — FMS Director<br><br>Signature: _______ Date: ____</div></div></body></html>';
   const b=new Blob([html],{type:'text/html'});const a=document.createElement('a');
