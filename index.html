@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260707-1562';
+  var v = '20260711-1563';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260707-1562">
+<meta name="app-version" content="20260711-1563">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -7212,7 +7212,7 @@ function renderDash(){
 }
 function buildAlerts(){
   const a=[],now=new Date(),today=now.toISOString().split('T')[0];
-  const todayLOX=ld('mg_lox').find(r=>r.date===today&&r._type==='lox'); if(!todayLOX)a.push({c:'alc',i:'🔴',t:'LOX Daily Checklist not submitted today',s:'Bashar — Biomedical'});
+  const todayLOX=(typeof loxCheckDone==='function')?loxCheckDone(today):ld('mg_lox').some(r=>String(r.date||'').slice(0,10)===today); if(!todayLOX)a.push({c:'alc',i:'🔴',t:'LOX Daily Checklist not submitted today',s:'Bashar — Biomedical'});
   const fd=ld('fireDrill').length;if(fd<4)a.push({c:'alw',i:'🟡',t:`Fire drills: ${fd}/4 this year`,s:'Moe — FMS.1.1.6'});
   const ec=ld('eoc').length;if(ec<12)a.push({c:'alw',i:'🟡',t:`EOC rounds: ${ec}/12 this year`,s:'Moe — FMS.1.1.1'});
   const td=ld('tldReview').length;if(td<4)a.push({c:'alw',i:'🟡',t:`TLD reviews: ${td}/4 this year`,s:'Bashar — FMS.9.7'});
@@ -8967,7 +8967,7 @@ function renderMGKPIs() {
     { name: 'Medical Air Refill Logs', count: ld('mg_airrefill').length, target: 4, color: '#10b981' },
   ];
 
-  const todayCheck = ld('mg_lox').some(r => r.date === today);
+  const todayCheck = (typeof loxCheckDone==='function') ? loxCheckDone(today) : ld('mg_lox').some(r => String(r.date||'').slice(0,10) === today);
   const issueCount = Object.keys(MG_DEFS).reduce((s, type) =>
     s + ld('mg_'+type).filter(r => detectIssue(type, r)).length, 0);
 
@@ -18176,6 +18176,28 @@ function repairCustomUserAccess() {
       console.log('🔧 repairCustomUserAccess: corrected ' + fixed + ' user(s)');
     }
   } catch(e) { console.warn('repairCustomUserAccess:', e.message); }
+}
+
+
+
+// ── Unified "was a LOX check done on <date>?" — the LOX Reserve Calculator
+//    saves to lox_gauge*, while the legacy Medical Gas checklist used mg_lox.
+//    Either one counts as today's check.
+function loxCheckDone(dateStr) {
+  const d = dateStr || new Date().toISOString().slice(0,10);
+  try {
+    // 1. LOX Reserve Calculator (gauge readings) — the live source
+    if (typeof loxGetReadings === 'function') {
+      const rs = loxGetReadings() || [];
+      if (rs.some(r => String(r.date||'').slice(0,10) === d)) return true;
+    }
+  } catch(e) {}
+  try {
+    // 2. Legacy Medical Gas LOX checklist
+    const mg = (typeof ld === 'function' ? (ld('mg_lox') || []) : []);
+    if (mg.some(r => String(r.date||'').slice(0,10) === d)) return true;
+  } catch(e) {}
+  return false;
 }
 
 </script>
