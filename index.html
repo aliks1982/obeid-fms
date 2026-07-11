@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260707-1561';
+  var v = '20260707-1562';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260707-1561">
+<meta name="app-version" content="20260707-1562">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -9636,7 +9636,7 @@ const PAGE_ACCESS = {
 
 function getEffectiveRole(role) {
   // For built-in roles, return as-is
-  const builtIn = ['director','maintenance','biomedical','safety','security'];
+  const builtIn = ['director','maintenance','biomedical','safety','security','ipc'];
   if (builtIn.includes(role)) return role;
   // For custom roles, look up their template role from extra_users
   try {
@@ -10059,12 +10059,17 @@ function settingsAddUser() {
   const pins  = getDynPINs(); pins[newRole]  = newPin;    saveDynPINs(pins);
   const names = getDynNames(); names[newRole] = newLabel;  saveDynNames(names);
 
-  // Add to runtime access maps
+  // Add to runtime access maps — NEVER silently fall back to another role's
+  // permissions (that previously gave an IPC user full Security access).
   if (typeof ROLE_ACCESS !== 'undefined') {
-    ROLE_ACCESS[newRole] = [...(ROLE_ACCESS[newAccess] || ROLE_ACCESS['security'] || [])];
+    if (!ROLE_ACCESS[newAccess]) {
+      toast('Access template "'+newAccess+'" is not defined — user not created','#ef4444');
+      return;
+    }
+    ROLE_ACCESS[newRole] = [...ROLE_ACCESS[newAccess]];
   }
   if (typeof PAGE_ACCESS !== 'undefined') {
-    PAGE_ACCESS[newRole] = [...(PAGE_ACCESS[newAccess] || PAGE_ACCESS['security'] || [])];
+    PAGE_ACCESS[newRole] = [...(PAGE_ACCESS[newAccess] || [])];
   }
   if (typeof RLBL !== 'undefined') {
     RLBL[newRole] = newLabel;
@@ -10726,6 +10731,8 @@ function doLogin() {
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
 
+  // Repair any custom user whose access was copied from a stale template
+  try { repairCustomUserAccess(); } catch(e) {}
   // Apply role-based access
   applyRBAC();
   // Log access event
@@ -18136,6 +18143,39 @@ function achTab(sub, btn) {
     else if (sub==='rooms') { achRenderCompliByRoom(); achRenderAudit(); }
     else if (sub==='log') { achRenderReadings(); }
   } catch(e) { console.warn('achTab render error:', e.message); }
+}
+
+
+
+// ── Repair custom users whose permissions were copied before their template
+//    existed (e.g. an IPC user created pre-v1560 inherited Security access). ──
+function repairCustomUserAccess() {
+  try {
+    const extras = JSON.parse(localStorage.getItem('obeid_extra_users') || '[]');
+    let fixed = 0;
+    extras.forEach(u => {
+      const tpl = u.templateRole;
+      if (!tpl || typeof ROLE_ACCESS === 'undefined') return;
+      if (!ROLE_ACCESS[tpl]) return; // template still unknown — leave alone
+      const current = JSON.stringify(ROLE_ACCESS[u.role] || []);
+      const correct = JSON.stringify(ROLE_ACCESS[tpl]);
+      if (current !== correct) {
+        ROLE_ACCESS[u.role] = [...ROLE_ACCESS[tpl]];
+        PAGE_ACCESS[u.role] = [...(PAGE_ACCESS[tpl] || [])];
+        u.access = tpl + ' access (same as ' + tpl + ')';
+        fixed++;
+        console.log('🔧 Repaired access for user "' + u.role + '" → template "' + tpl + '"');
+      } else {
+        // ensure runtime maps are populated even when already correct
+        ROLE_ACCESS[u.role] = [...ROLE_ACCESS[tpl]];
+        PAGE_ACCESS[u.role] = [...(PAGE_ACCESS[tpl] || [])];
+      }
+    });
+    if (fixed > 0) {
+      localStorage.setItem('obeid_extra_users', JSON.stringify(extras));
+      console.log('🔧 repairCustomUserAccess: corrected ' + fixed + ' user(s)');
+    }
+  } catch(e) { console.warn('repairCustomUserAccess:', e.message); }
 }
 
 </script>
