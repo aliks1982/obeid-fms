@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260711-1563';
+  var v = '20260711-1564';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260711-1563">
+<meta name="app-version" content="20260711-1564">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -659,7 +659,7 @@ if ('caches' in window) {
     <div class="nsc">Overview</div>
     <div class="ni active" onclick="gp('dash')" id="n-dash"><span class="ni-ic">⬡</span>Command Center</div>
     <div class="ni" onclick="gp('kpi')" id="n-kpi"><span class="ni-ic">📊</span>KPI Dashboard</div>
-    <div class="ni" onclick="gp('kpi2')" id="n-kpi2"><span class="ni-ic">🎯</span>FMS Indicators</div>
+    <!-- FMS Indicators (kpi2) RETIRED — consolidated into FMS Performance Sheet (pms). Data migrated. -->
     <div class="ni" onclick="gp('cbahi')" id="n-cbahi"><span class="ni-ic">✓</span>CBAHI Tracker</div>
     <div class="nsc">Maintenance Intelligence</div>
     <div class="ni" onclick="gp('mms')" id="n-mms"><span class="ni-ic">🔩</span>Maintenance Analytics</div>
@@ -5959,6 +5959,14 @@ if ('caches' in window) {
     <h1>📊 FMS Performance Management Sheet</h1>
     <p>All domain KPIs with formulas · CBAHI-aligned · Managed by FMS Director</p>
   </div>
+  <div class="card" style="margin-bottom:14px;border-left:4px solid #16a34a;" id="pms-migration-card">
+    <div class="cb" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+      <div style="font-size:11px;color:var(--mu);">
+        ✅ <b style="color:var(--tx);">Single source of truth.</b> The former "FMS Indicators" tab has been retired and all its KPI entries and evidence consolidated here. This is now the only place FMS KPIs are recorded.
+      </div>
+      <button class="btn bo" style="font-size:10px;white-space:nowrap;" onclick="pmsForceMigrate()">↻ Re-import from FMS Indicators</button>
+    </div>
+  </div>
 
   <!-- Domain filter tabs -->
   <div class="tb" style="flex-wrap:wrap;">
@@ -9612,11 +9620,11 @@ function eqDelAdded(ts) {
 const ROLE_ACCESS = {
   director:    ['ALL'],
   // Maintenance (Mostapha): fire systems, utilities, CBAHI reports — NO analytics/reports pages
-  maintenance: ['n-dash','n-kpi','n-kpi2','n-wo','n-utils','n-fire','n-cbahi','n-ckpi','n-settings','n-pms'],
-  biomedical:  ['n-dash','n-kpi','n-kpi2','n-equip','n-medgas','n-pmg','n-radiation','n-wo','n-cbahi','n-ckpi','n-settings','n-pms'],
+  maintenance: ['n-dash','n-kpi','n-wo','n-utils','n-fire','n-cbahi','n-ckpi','n-settings','n-pms'],
+  biomedical:  ['n-dash','n-kpi','n-equip','n-medgas','n-pmg','n-radiation','n-wo','n-cbahi','n-ckpi','n-settings','n-pms'],
   // Safety (Moe): CBAHI, safety, hazmat, emergency, fire — NO analytics/reports pages
-  safety:      ['n-dash','n-kpi','n-kpi2','n-cbahi','n-safety','n-hazmat','n-emergency','n-fire','n-wo','n-ckpi','n-docs','n-settings','n-pms'],
-  security:    ['n-dash','n-kpi','n-kpi2','n-security','n-wo','n-ckpi','n-settings'],
+  safety:      ['n-dash','n-kpi','n-cbahi','n-safety','n-hazmat','n-emergency','n-fire','n-wo','n-ckpi','n-docs','n-settings','n-pms'],
+  security:    ['n-dash','n-kpi','n-security','n-wo','n-ckpi','n-settings'],
   // IPC (Infection Prevention & Control): read-only ACH compliance monitoring
   ipc:         ['n-ach','n-settings'],   // IPC: ACH monitoring only (read-only)
 };
@@ -9624,10 +9632,10 @@ const ROLE_ACCESS = {
 // Page access — which pages each role can open
 const PAGE_ACCESS = {
   director:    ['ALL'],
-  maintenance: ['dash','kpi','kpi2','wo','utils','fire','cbahi','ckpi','settings','pms'],
-  biomedical:  ['dash','kpi','kpi2','equip','medgas','pmg','radiation','wo','cbahi','ckpi','settings','pms'],
-  safety:      ['dash','kpi','kpi2','cbahi','safety','hazmat','emergency','fire','wo','ckpi','docs','settings','pms'],
-  security:    ['dash','kpi','kpi2','security','wo','ckpi','settings'],
+  maintenance: ['dash','kpi','wo','utils','fire','cbahi','ckpi','settings','pms'],
+  biomedical:  ['dash','kpi','equip','medgas','pmg','radiation','wo','cbahi','ckpi','settings','pms'],
+  safety:      ['dash','kpi','cbahi','safety','hazmat','emergency','fire','wo','ckpi','docs','settings','pms'],
+  security:    ['dash','kpi','security','wo','ckpi','settings'],
   ipc:         ['ach','settings'],       // IPC: ACH page only (read-only)
 };
 
@@ -14004,6 +14012,34 @@ const PMS_KPIS = [
     src:'Waste Manifest Files', freq:'Monthly', color:'#84cc16',
     roles:['director','safety']
   },
+  // ── Migrated from FMS Indicators (retired) — Emergency & Fire drill KPIs ──
+  { id:'PMS-E1', domain:'safety', domainLabel:'Emergency', icon:'🚨',
+    name:'Code Drill Compliance Rate', standard:'FMS.1.1.4',
+    num:'Code drills conducted across all 4 code types',
+    den:'Minimum required drills (1 per code × 4 codes = 4/year)',
+    formula:'percent', target:100, hib:true, unit:'%',
+    objective:'Ensures every emergency code is drilled as required by the Internal/External Disaster Plans.',
+    src:'Code Drill Log — Emergency Page', freq:'Semi-Annual', color:'#f43f5e',
+    roles:['director','safety']
+  },
+  { id:'PMS-E2', domain:'safety', domainLabel:'Emergency', icon:'✅',
+    name:'Code Drill Pass Rate', standard:'FMS.1.1.5',
+    num:'Code drills with satisfactory outcome (staff passed)',
+    den:'Total code drills conducted',
+    formula:'percent', target:90, hib:true, unit:'%',
+    objective:'Measures effectiveness — not just that drills happened, but that staff performed correctly.',
+    src:'Code Drill Critique Reports', freq:'Quarterly', color:'#10b981',
+    roles:['director','safety']
+  },
+  { id:'PMS-F1', domain:'safety', domainLabel:'Fire Safety', icon:'🔥',
+    name:'Unit Level Fire Drill Compliance', standard:'FMS.1.1.6',
+    num:'Units completing required fire drills per schedule',
+    den:'Total units required to conduct drills per year',
+    formula:'percent', target:100, hib:true, unit:'%',
+    objective:'Confirms every clinical unit drills fire response per the Fire Safety Management Plan.',
+    src:'Unit Level Fire Drill Log — Fire Safety Page', freq:'Quarterly', color:'#ef4444',
+    roles:['director','safety']
+  },
 ];
 
 let PMS_DOMAIN_FILTER = 'all';
@@ -18199,6 +18235,101 @@ function loxCheckDone(dateStr) {
   } catch(e) {}
   return false;
 }
+
+
+
+// ══════════════════════════════════════════════════════════════
+// ONE-TIME MIGRATION: FMS Indicators (kpi2) → FMS Performance Sheet (pms)
+// Consolidates the two duplicate KPI systems into a single source of truth.
+// Entries + evidence are carried across; nothing is deleted from kpi2.
+// ══════════════════════════════════════════════════════════════
+const PMS_MIGRATION_KEY = 'obeid3_kpi2_to_pms_migrated_v1';
+
+// Map every kpi2 KPI id → its PMS equivalent
+const KPI2_TO_PMS = {
+  'KPI-001':'PMS-S1',  'KPI-002':'PMS-S2',  'KPI-003':'PMS-SEC1','KPI-004':'PMS-SEC2',
+  'KPI-005':'PMS-B1',  'KPI-006':'PMS-B2',  'KPI-007':'PMS-M1',  'KPI-008':'PMS-M2',
+  'KPI-009':'PMS-U1',  'KPI-010':'PMS-W1',  'KPI-011':'PMS-W2',
+  'KPI-012':'PMS-E1',  'KPI-013':'PMS-E2',  'KPI-014':'PMS-F1'
+};
+
+function migrateKpi2ToPms(force) {
+  try {
+    if (!force && localStorage.getItem(PMS_MIGRATION_KEY)) return { skipped:true };
+    if (typeof PMS_KPIS === 'undefined' || typeof kpi2GetEntries !== 'function') return { error:'not ready' };
+
+    const existing = (typeof ld === 'function' ? (ld('pms_entries') || []) : []);
+    // Signature of what's already in PMS so we never double-import
+    const seen = new Set(existing.map(e => String(e.kpiId)+'|'+String(e.period)+'|'+String(e.num)+'|'+String(e.den)));
+
+    let migrated = 0, skipped = 0;
+    const added = [];
+
+    Object.keys(KPI2_TO_PMS).forEach(oldId => {
+      const newId = KPI2_TO_PMS[oldId];
+      const k = PMS_KPIS.find(x => x.id === newId);
+      let entries = [];
+      try { entries = kpi2GetEntries(oldId) || []; } catch(e) { return; }
+
+      entries.forEach(e => {
+        const period = e.period || ((e.year && e.month) ? (e.year + '-' + String(e.month).padStart(2,'0')) : '');
+        if (!period) { skipped++; return; }
+        const sig = newId+'|'+period+'|'+String(e.num)+'|'+String(e.den);
+        if (seen.has(sig)) { skipped++; return; }   // already migrated
+        seen.add(sig);
+
+        const rec = {
+          _id: e._id || Date.now() + Math.floor(Math.random()*1000),
+          kpiId: newId,
+          kpiName: (k && k.name) || newId,
+          domain: (k && k.domain) || '',
+          period: period,
+          num: parseFloat(e.num),
+          den: parseFloat(e.den),
+          notes: (e.notes || '') + (e.notes ? ' ' : '') + '[migrated from FMS Indicators]',
+          fileKey: 'kpi2_' + oldId,          // evidence stays reachable at its original key
+          _by: e._by || 'Migration',
+          _ts: e._ts || new Date().toISOString(),
+          _migratedFrom: oldId
+        };
+        added.push(rec);
+        migrated++;
+      });
+    });
+
+    if (added.length) {
+      const arr = ld('pms_entries');
+      added.forEach(r => arr.unshift(r));
+      sv('pms_entries', arr);
+      // push to cloud so every device gets the consolidated data
+      added.forEach(r => { try { dbWrite('pms_entries', r); } catch(e) {} });
+    }
+
+    localStorage.setItem(PMS_MIGRATION_KEY, new Date().toISOString());
+    console.log('📦 kpi2→pms migration: ' + migrated + ' entries moved, ' + skipped + ' already present/skipped');
+    if (migrated > 0 && typeof toast === 'function') {
+      toast('📦 ' + migrated + ' KPI entries migrated to the FMS Performance Sheet', '#10b981');
+    }
+    if (typeof pmsRender === 'function') { try { pmsRender(); } catch(e) {} }
+    return { migrated, skipped };
+  } catch(err) {
+    console.warn('migrateKpi2ToPms:', err.message);
+    return { error: err.message };
+  }
+}
+
+// Manual re-run (Director) — safe: deduplicates, never double-imports
+function pmsForceMigrate() {
+  if (!confirm('Re-import all KPI entries from the retired FMS Indicators tab into the Performance Sheet?\n\nDuplicates are automatically skipped — this is safe to run more than once.')) return;
+  const r = migrateKpi2ToPms(true);
+  if (r && r.migrated !== undefined) {
+    toast('✅ Migration complete — ' + r.migrated + ' moved, ' + r.skipped + ' already present', '#10b981');
+  } else {
+    toast('Migration could not run: ' + ((r && r.error) || 'unknown'), '#ef4444');
+  }
+}
+
+window.addEventListener('load', () => setTimeout(() => migrateKpi2ToPms(false), 5000));
 
 </script>
 </body>
