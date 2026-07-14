@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260711-1564';
+  var v = '20260714-1565';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260711-1564">
+<meta name="app-version" content="20260714-1565">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6615,9 +6615,11 @@ async function dbLoadAll() {
           let added = 0;
           repRows.forEach(row => {
             if (!localIds.has(String(row._id))) {
-              if (typeof row.floors === 'string' && row.floors.trim().startsWith('[')) {
-                try { row.floors = JSON.parse(row.floors); } catch(e){}
-              }
+              ['floors','units'].forEach(function(f){
+                if (typeof row[f] === 'string' && row[f].trim().startsWith('[')) {
+                  try { row[f] = JSON.parse(row[f]); } catch(e){}
+                }
+              });
               localReps.push(row); added++;
             }
           });
@@ -15376,7 +15378,7 @@ function repRenderLog(type) {
   el.innerHTML = reps.map(r => {
     const resultClass = r.result === 'pass' ? 'rep-log-result-pass' : r.result === 'fail' ? 'rep-log-result-fail' : 'rep-log-result-partial';
     const resultLabel = r.result === 'pass' ? '✅ Pass' : r.result === 'fail' ? '❌ Fail' : r.result === 'partial' ? '⚠️ Partial' : '—';
-    const dateStr = r.date || r.month || '—';
+    const dateStr = repFmtDate(r.date) || r.month || '—';
     return `<div class="rep-log-entry">
       <div class="rep-log-badge">${REP_ICONS[type] || '📋'}</div>
       <div class="rep-log-info">
@@ -15454,9 +15456,11 @@ async function repSyncFromDB(verbose) {
     }
     const richness = r => Object.keys(r||{}).filter(k => r[k] !== '' && r[k] != null && k !== '_id').length;
     const normalize = row => {
-      if (typeof row.floors === 'string' && row.floors.trim().startsWith('[')) {
-        try { row.floors = JSON.parse(row.floors); } catch(e) {}
-      }
+      ['floors','units'].forEach(function(f){
+        if (typeof row[f] === 'string' && row[f].trim().startsWith('[')) {
+          try { row[f] = JSON.parse(row[f]); } catch(e) {}
+        }
+      });
       if (!row.type) row.type = repTypeOf(row); // repair lost type from _id
       return row;
     };
@@ -15583,10 +15587,37 @@ function repExport(type) {
   repExportById(latest._id);
 }
 
+// ── v1565 export hardening ──────────────────────────────────────────
+// Array fields (floors, units) come back from Google Sheets as JSON strings.
+// Calling .forEach on a string threw a TypeError and killed the export
+// silently (nothing downloaded). Coerce defensively, never throw.
+function repArr(v) {
+  if (Array.isArray(v)) return v;
+  if (typeof v === 'string' && v.trim().startsWith('[')) {
+    try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch(e) { return []; }
+  }
+  return [];
+}
+// Sheets returns dates as Date objects -> "Mon Jul 06 2026 00:00:00 GMT+0300".
+// Normalise to YYYY-MM-DD for display, filenames and printed reports.
+function repFmtDate(v) {
+  if (!v) return '';
+  const s = String(v).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;                 // already clean
+  if (/^\d{4}-\d{2}-\d{2}T/.test(s)) return s.slice(0, 10);    // ISO from Sheets
+  // "Mon Jul 06 2026 00:00:00 GMT+0300" — read the parts literally, never
+  // through new Date(), so the day cannot shift with the viewer's timezone.
+  const M = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',
+             Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+  const m = s.match(/^\w{3}\s+(\w{3})\s+(\d{1,2})\s+(\d{4})/);
+  if (m && M[m[1]]) return m[3] + '-' + M[m[1]] + '-' + String(m[2]).padStart(2,'0');
+  return s;
+}
 function repExportById(id) {
   const all = JSON.parse(localStorage.getItem('obeid3_fms_reports') || '[]');
-  const r = all.find(x => x._id === id);
+  const r = all.find(x => String(x._id) === String(id));
   if (!r) { toast('Record not found', '#f59e0b'); return; }
+  try {
   
   let body = '';
   const row = (label, val, highlight) => `<tr${highlight?' style="background:#fff7ed;"':''}>
@@ -15598,14 +15629,15 @@ function repExportById(id) {
   
   if (r.type === 'fa-inspection') {
     body += '<h3 style="color:#1e3a5c;margin:16px 0 8px;">General Information</h3><table style="width:100%;border-collapse:collapse;">';
-    body += row('Month / Year', r.month) + row('Inspection Date', r.date) + row('Inspected By', r.by) + row('Work Order', r.wo);
+    body += row('Month / Year', r.month) + row('Inspection Date', repFmtDate(r.date)) + row('Inspected By', r.by) + row('Work Order', r.wo);
     body += row('FACP Status', r.panel) + row('Battery Voltage', r.battery ? r.battery + ' V DC' : '—') + '</table>';
-    if (r.floors) {
-      body += '<h3 style="color:#1e3a5c;margin:16px 0 8px;">Room-by-Room Inspection Results ('+r.floors.length+' locations — 760 total detectors)</h3><table style="width:100%;border-collapse:collapse;">';
+    const _floors = repArr(r.floors);
+    if (_floors.length) {
+      body += '<h3 style="color:#1e3a5c;margin:16px 0 8px;">Room-by-Room Inspection Results ('+_floors.length+' locations — 760 total detectors)</h3><table style="width:100%;border-collapse:collapse;">';
       body += '<tr style="background:#1e3a5c;color:#fff;"><th style="padding:6px 10px;">Location</th><th>Det.</th><th>Cleaned</th><th>Panel</th><th>Battery</th><th>Audible</th><th>Functional</th><th>Faults</th><th colspan="2">Status</th></tr>';
       // Group by floor
       const floorGroups = {};
-      r.floors.forEach(f => { if(!floorGroups[f.floor]) floorGroups[f.floor]={rows:[],loop:f.loop}; floorGroups[f.floor].rows.push(f); });
+      _floors.forEach(f => { if(!floorGroups[f.floor]) floorGroups[f.floor]={rows:[],loop:f.loop}; floorGroups[f.floor].rows.push(f); });
       Object.entries(floorGroups).forEach(([floorName, fg]) => {
         body += `<tr style="background:#1e3a5c;color:#fff;"><td colspan="5" style="padding:6px 12px;font-weight:700;font-size:11px;">${floorName} — Loop ${fg.loop}</td><td colspan="5" style="padding:6px 12px;text-align:right;font-size:10px;">Rooms: ${fg.rows.length} | Total Detectors: ${fg.rows.reduce((a,x)=>a+parseInt(x.count||0),0)}</td></tr>`;
         fg.rows.forEach(f => {
@@ -15633,9 +15665,10 @@ function repExportById(id) {
   } else if (r.type === 'fm200') {
     body += '<table style="width:100%;border-collapse:collapse;">';
     body += row('Date',r.date)+row('Inspected By',r.by)+row('Month',r.month)+row('Contractor',r.contractor)+'</table>';
-    if (r.units) {
-      body += '<h3 style="color:#1e3a5c;margin:16px 0 8px;">FM-200 Units ('+r.units.length+')</h3><table style="width:100%;border-collapse:collapse;font-size:10px;"><tr style="background:#1e3a5c;color:#fff;"><th style="padding:6px;">Floor</th><th>Location</th><th>Battery</th><th>Pressure</th><th>Piping</th><th>Tag</th><th>Status</th></tr>';
-      r.units.forEach(u => {
+    const _units = repArr(r.units);
+    if (_units.length) {
+      body += '<h3 style="color:#1e3a5c;margin:16px 0 8px;">FM-200 Units ('+_units.length+')</h3><table style="width:100%;border-collapse:collapse;font-size:10px;"><tr style="background:#1e3a5c;color:#fff;"><th style="padding:6px;">Floor</th><th>Location</th><th>Battery</th><th>Pressure</th><th>Piping</th><th>Tag</th><th>Status</th></tr>';
+      _units.forEach(u => {
         const sc = u.status==='pass'?'#dcfce7':u.status==='fail'?'#fee2e2':'#fff';
         body += `<tr style="background:${sc};"><td style="padding:5px 8px;border:1px solid #e2e8f0;">${u.floor||''}</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">${u.loc||''}</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">${u.battery||'—'}</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">${u.pressure||'—'}</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">${u.piping||'—'}</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">${u.tag||'—'}</td><td style="padding:5px 8px;border:1px solid #e2e8f0;font-weight:700;">${u.status==='pass'?'✅ Pass':u.status==='fail'?'❌ Fail':'—'}</td></tr>`;
       });
@@ -15649,7 +15682,7 @@ function repExportById(id) {
   }
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Obeid Hospital — ${REP_TITLES[r.type]} — ${r.date||r.month||''}</title>
+  <title>Obeid Hospital — ${REP_TITLES[r.type]} — ${repFmtDate(r.date)||r.month||''}</title>
   <style>
     body{font-family:Arial,sans-serif;margin:0;padding:24px;font-size:12px;color:#1a1a1a;}
     .hdr{background:#1a3a5c;color:#fff;padding:18px 24px;border-radius:8px;margin-bottom:16px;}
@@ -15661,7 +15694,7 @@ function repExportById(id) {
     @media print{body{padding:0;}}
   </style></head><body>
   <div class="hdr"><h1>Obeid Specialized Hospital — Facilities Management</h1>
-  <p>${REP_TITLES[r.type]} &nbsp;|&nbsp; Date: ${r.date||r.month||'—'} &nbsp;|&nbsp; Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}</p></div>
+  <p>${REP_TITLES[r.type]} &nbsp;|&nbsp; Date: ${repFmtDate(r.date)||r.month||'—'} &nbsp;|&nbsp; Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}</p></div>
   ${body}
   <div class="result-badge">${resultLabel}</div>
   <div class="sig">
@@ -15674,9 +15707,15 @@ function repExportById(id) {
   const blob = new Blob([html], {type:'text/html'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'FMS_Report_' + r.type + '_' + (r.date||r.month||'').replace(/[^0-9\-]/g,'') + '.html';
+  a.download = 'FMS_Report_' + r.type + '_' + (repFmtDate(r.date)||r.month||'').replace(/[^0-9\-]/g,'') + '.html';
+  document.body.appendChild(a);
   a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   toast('✅ Report exported — open in browser and print to PDF', '#10b981', 4000);
+  } catch (err) {
+    console.error('Export failed:', err);
+    toast('❌ Export failed: ' + err.message, '#dc2626', 6000);
+  }
 }
 
 
