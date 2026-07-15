@@ -9748,7 +9748,8 @@ async function dbPushAll() {
     'eq_added','eq_relocations','contracts','evaluations','risk_register',
     'mg_lox','mg_o2backup','mg_n2o','mg_vacuum','mg_aircomp','mg_airbackup',
     'mg_ambulance','mg_cylinder','mg_o2refill','mg_airrefill',
-    'rad_tld','rad_apron','rad_shield'];
+    'rad_tld','rad_apron','rad_shield',
+    'fireDrills_code','unitFireDrills','pms_entries','customKPI'];
   let total = 0, pushed = 0;
   settingsPushToDB();
   toast('⟳ Pushing all local data to DB...');
