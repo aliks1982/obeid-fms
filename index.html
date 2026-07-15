@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260714-1565';
+  var v = '20260715-1566';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260714-1565">
+<meta name="app-version" content="20260715-1566">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -8885,7 +8885,7 @@ function renderLOXTrend() {
 function renderMGKPIs() {
   const el = document.getElementById('mg-kpi-content'); if (!el) return;
   const types = Object.keys(MG_DEFS);
-  const today = new Date().toISOString().split('T')[0];
+  const today = fmsLocalToday();
   const thisMonth = today.slice(0,7);
 
   const kpiData = types.map(type => {
@@ -8963,7 +8963,7 @@ function renderMGKPIs() {
     </div>`;
 }function renderMGKPIs() {
   const el = document.getElementById('mg-kpi-content'); if (!el) return;
-  const today = new Date().toISOString().split('T')[0];
+  const today = fmsLocalToday();
   const kpis = [
     { name: 'LOX Daily Entries — Target: 2/day (AM+PM)', count: ld('mg_lox').length, target: 60, color: '#3b82f6' },
     { name: 'O₂ Backup Manifold Checks', count: ld('mg_o2backup').length, target: 60, color: '#0070f3' },
@@ -17475,7 +17475,7 @@ function backupRestoreFromFile(input) {
 // ── Layer 2: automatic rolling daily snapshots (in-storage) ──
 function backupTakeSnapshot(tag) {
   try {
-    const today = new Date().toISOString().slice(0,10);
+    const today = fmsLocalToday();
     const key = BACKUP_SNAP_PREFIX + today + (tag ? ('_' + tag) : '');
     // Skip if today's auto-snapshot already exists (unless tagged pre-restore)
     if (!tag && localStorage.getItem(key)) return;
@@ -17681,17 +17681,25 @@ function achNormalizeRow(raw) {
 function achDateISO(v) {
   if (!v) return '';
   const s = String(v).trim();
-  // already ISO
+  // already ISO date (with or without a T-time) — take the calendar date as written
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
-  // try native Date parse (handles "Thu Jul 09 2026 ..." and "7/9/2026 10:15:57")
-  const d = new Date(s);
-  if (!isNaN(d.getTime())) {
-    const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
-    return y + '-' + m + '-' + day;
+  // "Thu Jul 09 2026 10:15:56 GMT+0300 (...)" — read parts literally so the day
+  // cannot shift with the viewer's timezone (matches achToday()'s local basis).
+  const M = {jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',
+             jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};
+  const m1 = s.match(/^\w{3}\s+(\w{3})\s+(\d{1,2})\s+(\d{4})/);
+  if (m1 && M[m1[1].toLowerCase()]) {
+    return m1[3] + '-' + M[m1[1].toLowerCase()] + '-' + String(m1[2]).padStart(2,'0');
   }
-  // fallback: M/D/YYYY manual
+  // M/D/YYYY
   const mm = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
   if (mm) return mm[3] + '-' + String(mm[1]).padStart(2,'0') + '-' + String(mm[2]).padStart(2,'0');
+  // last resort: native parse, local parts
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    const p = n => String(n).padStart(2,'0');
+    return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
+  }
   return s;
 }
 
@@ -17718,7 +17726,21 @@ function achEval(r) {
   return out;
 }
 
-function achToday(){ return new Date().toISOString().slice(0,10); }
+function fmsLocalToday(){
+  // Local calendar date (not UTC) — shared 'today' basis for all log filters so
+  // readings entered late at night or stored as UTC timestamps are not hidden.
+  const d = new Date();
+  const p = n => String(n).padStart(2,'0');
+  return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
+}
+function achToday(){
+  // Local date (not UTC). toISOString() shifts to UTC and, in GMT+3, reports
+  // "yesterday" between 00:00–03:00 and can hide today's readings. Build the
+  // date from local parts so the "today" boundary matches the viewer's clock.
+  const d = new Date();
+  const p = n => String(n).padStart(2,'0');
+  return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
+}
 
 // ── Compliance stats ──
 // ── Occupancy + required-frequency engine (MOH) ──
