@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260715-1566';
+  var v = '20260715-1567';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260715-1566">
+<meta name="app-version" content="20260715-1567">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -673,6 +673,7 @@ if ('caches' in window) {
     <div class="ni" onclick="gp('equip')" id="n-equip"><span class="ni-ic">⚕</span>Med. Equipment (FMS.1.1.7)</div>
     <div class="ni" onclick="gp('utils')" id="n-utils"><span class="ni-ic">⚡</span>Utilities (FMS.1.1.8)</div>
     <div class="ni" onclick="gp('ach')" id="n-ach"><span class="ni-ic">🌬</span>ACH / Room Pressure (IPC)</div>
+    <div class="ni" onclick="gp('temperature')" id="n-temperature"><span class="ni-ic">🌡</span>Temperature Log (IPC)</div>
     <div class="nsc">FMS Standards</div>
     <div class="ni" onclick="gp('medgas')" id="n-medgas"><span class="ni-ic">🫧</span>Medical Gas (FMS.32)</div>
     <div class="ni" onclick="gp('pmg')" id="n-pmg"><span class="ni-ic">📋</span>PMG PPM (FMS.32.1)</div>
@@ -3667,6 +3668,79 @@ if ('caches' in window) {
         <table class="tbl" style="min-width:820px;"><thead><tr>
           <th>Date/Time</th><th>Room</th><th>Status</th><th>Pressure (Pa)</th><th>ACH</th><th>Temp °C</th><th>RH %</th><th>By</th><th>Result</th>
         </tr></thead><tbody id="ach-readings-pos"></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="pg" id="page-temperature">
+  <div class="ph" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+    <div><h1>🌡 Temperature Log — Morgue &amp; Medical Waste (IPC)</h1><p>MOH IPC · Daily twice-daily temperature monitoring · Morgue refrigerators &amp; Medical Waste Room · IPC / FMS restricted</p></div>
+    <button class="btn bo" style="font-size:11px;padding:8px 16px;" onclick="tmpExport()">⬇ Export Temperature Compliance Report</button>
+  </div>
+  <div class="tb">
+    <button class="tbtn active" id="tmpTabBtn-dash" onclick="tmpTab('dash',this)">📊 Compliance Dashboard</button>
+    <button class="tbtn" id="tmpTabBtn-log" onclick="tmpTab('log',this)">📋 Reading Log</button>
+    <button class="tbtn" id="tmpTabBtn-cfg" onclick="tmpTab('cfg',this)">⚙ Assets &amp; Thresholds</button>
+  </div>
+
+  <div id="tmppanel-dash">
+    <div class="g g2" style="margin-bottom:14px;">
+      <div class="card">
+        <div class="ch"><div class="ct">📱 Morgue QR — scan to log morgue fridge temps</div></div>
+        <div class="cb" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+          <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAcIAAAHCAQAAAABUY/ToAAAD6ElEQVR4nO2dS4rkOBCGv2gJamnDHKCOorxBH6npI/UN7KPkAQbk5YBMzEJPZxU0NGUy3UQsTPnxkRb8hOMhqUT5M1u//SEIRhpppJEP5CbFbuwC7PmMVfoNkNvmqRf8897WyJcknaqqKuCUVTy6AIQIqhFYxZfHg6rmaxccp5HnkKhGV+QTolOYVAnx8MgyqerSboToVJdrjdPI80h/ONsFNp90nV1ivYECSIjl8DW/aeTfRR415JIwRQhxFkKcEaaIsv2TdBWXvuY3jfy7yKyhnuArmwBT8grJE5bdw5QgKMCkwPastzXyVcmaiAHIDaeE+5vKbXtT2N6UcPfIbfOUXG1+5tsa+WqkL64FKP6FXWBK6DojrO+J7IfW98RYkLzWOI08j2x5GRA0Ddl7TviXeqOm/5RHLC8zsppqFYguUyoFISbV7IyGaz39x3J7IwerAoFaFXI6lBdbzajXkYrgrjVOI88js1R0oRwGvWQh6UE+xS2ZHzJysOJuaiiUD0w1FGqPFPm0kMk0ZGS1LIsiGqdDeNSs9z+q4ExDRg6WVRJiD5gZ2q1ZVwsM0bXFQ0YerSdiJeyZUomkQ3VQ3UtlIrdgrzVOI88jS4SsXS+4oT4EHMLpZWofvmuN08jzyBYmpzE5GzJ67aFQ80NWHzJytKKSIShizNDyXKGa0Q/5vmnIyGql2tOLP9kjOS03asW6K8z8kJFH6yWfoZFRfFNrnw09NIuHjHy0gx/SeqBeywqLUCNu80NGPtpQRaQlXbnQ2BN8ev5WAiXTkJHNqlSqcpapftqg+JwcWJcWrMXURj7ag7sZbvSFHGUWiJofMvIzK2EyNc5p/bJyrSknf+nA+vZGPthYoj6opHzBssLc0FKzb5mRB/OwzXk1hwIq4dec7+T51ExRD6f/iT7vbY18RbLNhT3GQzUAqo3X5oxs/pCRH6x261U/T+bjWCkaC9jXGqeR55FDH6x4H6i5fQ2nD4VGq1Mb+Wi1LVYnmA2ehk+i66Yr05CR1QY/FHq1MbbyYouW+qoP80NGjpYX02tecr+R92cQpuSF6d+cg0lWzuYSbLMom09XG6eRp5J9H7Scfu1CuHtU7+OmICJzXY2fg6LLjdPIk8hDL7V9yxag7vbRVsG2QMnyMiNHy65GwCVgF4XdAy6xfgcFp8IUkRBnyc+GX896WyNfn3QqN8qkavlx98iNXVTvHv353ufk27fMyG4f99IDpPyVg2gEyDGSDMC1xmnkeeRhH7S8+xko7L42yDRvqFezthld5/iktzXyFckP+36MMXXdcAjaykTaI9cap5HnkaK/f+ZTs/+1YKSRRn4R+T+xZ+rhiR/3DgAAAABJRU5ErkJggg==" alt="Morgue Temperature Form QR" style="width:130px;height:130px;border:1px solid var(--bd);border-radius:10px;background:#fff;padding:6px;">
+          <div style="flex:1;min-width:180px;">
+            <div style="font-size:12px;color:var(--tx);font-weight:600;margin-bottom:6px;">Morgue — 4 refrigerators, AM &amp; PM</div>
+            <div style="font-size:11px;color:var(--mu);line-height:1.6;">Staff pick Date &amp; Shift (AM/PM), then enter all four fridge temperatures. Fridge 3 is the freezer (≤ −15 °C).</div>
+            <a href="https://docs.google.com/forms/d/1m2la1gjl6nS_tCoOfVQq0Ut8m6ieCGS3Hy1Q5VB9jk4/viewform" target="_blank" style="display:inline-block;margin-top:8px;font-size:11px;color:var(--ac);text-decoration:underline;">Open morgue form ↗</a>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch"><div class="ct">📱 Medical Waste QR — scan to log waste room temp</div></div>
+        <div class="cb" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+          <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUoAAAFKAQAAAABTUiuoAAACTklEQVR4nO2bQW7jMAxFHysBXdpAD5Cj2DcbzJHmBvZReoABrGUAGX8WkpyknUW6SCsg5MJw27f4gEDxk2ZN3Bnry70kOOqooy+QrMaczGxmN5tTxGag/Sl2ovXJUaQtSJLEJAmGTH0Qyu8Ksvy4VkcLWrMHYHp/FdN2ACXfHi3A0a+jKcI6gpYUYVL+bgGOfg3VAsCgz16xO63Ph5YL8H82XquFDIOA9DgBjn7RZbTXaQv6+KjhLqMLNNbsASCB1hETnE3rKd8k3Y9rdbQ5+JZH0nY8mstwB98LSmm1ALQQVM9oODqvEn5avaApAgTZPGRsTq8qxnDaoHXHDxXg6N3RxhiZeh0Ot6m2tTfPrX7QFLF5yEjbbgDYrw2u78RutD4vWs3EJOnSGGsZMlquWmTPrS7Q1m+VkzlcBvWKbBXMT6sXdMhoYTctQ8Zm6gmamVlJtd9jL1odheL/bKaWLAC0XBy8160+0HoTFqN+9X3r+BH3hP2gN+WpNcZahvoN8jIx9NPqAG0fIQmZdfwL05+Ybdr2CARUZ4ehB62ORkgjTNsbxgCCcyleIo0GYJq2tx60Ooquoox2Q1vEON58qtsPetl5YjdJZzM7ncs2hpUVqMcKcPTeiEAoTt0YcmSdQaSISG+IFDLgDr4jtO48Hbsz60liHXczG48erBOtz4xyqVbloOpyWhu/HwXN61Z3aBDrGGqLvJ4ywG5m43cJcPQOtM1yd2PS2aR3s7IHulpsW2udaH12dLc6wU2v9U78GD4n7AM1/48gRx19CPoPhiGXvgaEx+UAAAAASUVORK5CYII=" alt="Medical Waste Temperature Form QR" style="width:130px;height:130px;border:1px solid var(--bd);border-radius:10px;background:#fff;padding:6px;">
+          <div style="flex:1;min-width:180px;">
+            <div style="font-size:12px;color:var(--tx);font-weight:600;margin-bottom:6px;">Medical Waste Room — AM &amp; PM</div>
+            <div style="font-size:11px;color:var(--mu);line-height:1.6;">Staff pick Date &amp; Shift (AM/PM), then enter the room temperature. Required band 15–18 °C.</div>
+            <a href="https://forms.gle/vNZfcDf9stRskG296" target="_blank" style="display:inline-block;margin-top:8px;font-size:11px;color:var(--ac);text-decoration:underline;">Open waste form ↗</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="tmp-dash"></div>
+    <div id="tmp-infographic"></div>
+  </div>
+
+  <div id="tmppanel-log" style="display:none;">
+    <div class="card" style="margin-bottom:14px;">
+      <div class="ch"><div class="ct">📋 Morgue Reading Log</div></div>
+      <div class="cb" style="padding:0;overflow-x:auto;">
+        <table class="tbl" style="min-width:820px;"><thead><tr>
+          <th>Date</th><th>Shift</th><th>Fridge 1 (2–4°C)</th><th>Fridge 2 (2–4°C)</th><th>Fridge 3 ❄ (≤−15°C)</th><th>Fridge 4 (2–4°C)</th><th>By</th><th>Result</th><th></th>
+        </tr></thead><tbody id="tmp-log-morgue"></tbody></table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><div class="ct">📋 Medical Waste Room Reading Log</div></div>
+      <div class="cb" style="padding:0;overflow-x:auto;">
+        <table class="tbl" style="min-width:620px;"><thead><tr>
+          <th>Date</th><th>Shift</th><th>Room Temp (15–18°C)</th><th>By</th><th>Result</th><th></th>
+        </tr></thead><tbody id="tmp-log-waste"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <div id="tmppanel-cfg" style="display:none;">
+    <div class="card">
+      <div class="ch"><div class="ct">⚙ Monitored Assets &amp; Required Ranges (MOH)</div></div>
+      <div class="cb" style="padding:0;overflow-x:auto;">
+        <table class="tbl"><thead><tr><th>Location</th><th>Asset</th><th>Required Range</th><th>Rule</th></tr></thead>
+        <tbody id="tmp-cfg-tb"></tbody></table>
+      </div>
+      <div class="cb" style="font-size:10px;color:var(--mu);border-top:1px solid var(--bd);">
+        Ranges are fixed to MOH requirements. Morgue fridges 1, 2, 4: 2–4 °C. Morgue fridge 3 (long preservation freezer): −15 °C or colder. Medical Waste Room: 15–18 °C. Each asset requires an AM and a PM reading every day.
       </div>
     </div>
   </div>
@@ -7059,6 +7133,7 @@ function gp(id){
   if(id==='budget') setTimeout(function(){budgetBuildYearSelect();budgetRenderAll();},80);
   if(id==='settings') setTimeout(function(){try{backupInit();}catch(e){}},200);
   if(id==='ach') setTimeout(function(){try{achInit();}catch(e){}},120);
+  if(id==='temperature') setTimeout(function(){try{tmpInit();}catch(e){}},120);
   window.scrollTo(0,0);
 }
 function st(domain,sub,btn){
@@ -9628,7 +9703,7 @@ const ROLE_ACCESS = {
   safety:      ['n-dash','n-kpi','n-cbahi','n-safety','n-hazmat','n-emergency','n-fire','n-wo','n-ckpi','n-docs','n-settings','n-pms'],
   security:    ['n-dash','n-kpi','n-security','n-wo','n-ckpi','n-settings'],
   // IPC (Infection Prevention & Control): read-only ACH compliance monitoring
-  ipc:         ['n-ach','n-settings'],   // IPC: ACH monitoring only (read-only)
+  ipc:         ['n-ach','n-temperature','n-settings'],   // IPC: ACH + Temperature Log
 };
 
 // Page access — which pages each role can open
@@ -9638,7 +9713,7 @@ const PAGE_ACCESS = {
   biomedical:  ['dash','kpi','equip','medgas','pmg','radiation','wo','cbahi','ckpi','settings','pms'],
   safety:      ['dash','kpi','cbahi','safety','hazmat','emergency','fire','wo','ckpi','docs','settings','pms'],
   security:    ['dash','kpi','security','wo','ckpi','settings'],
-  ipc:         ['ach','settings'],       // IPC: ACH page only (read-only)
+  ipc:         ['ach','temperature','settings'], // IPC: ACH + Temperature Log
 };
 
 // Page access — which page IDs each role can visit
@@ -18140,6 +18215,7 @@ function achInit(){
   try { achRenderCompliByRoom(); } catch(e){}
   try { achRenderAudit(); } catch(e){}
   try { achRenderReadings(); } catch(e){}
+    try { if(document.getElementById('tmp-dash')) tmpInit(); } catch(e){}
   try { achRenderInfographic(); } catch(e){}
   // Ensure dashboard tab is the active/visible one on entry
   try { achTab('dash'); } catch(e){}
@@ -18394,5 +18470,261 @@ function pmsForceMigrate() {
 window.addEventListener('load', () => setTimeout(() => migrateKpi2ToPms(false), 5000));
 
 </script>
+
+<script>
+/* ===================== TEMPERATURE LOG (Morgue + Medical Waste) — IPC/FMS ===================== */
+/* Data: two Google Forms -> Sheets tabs temp_morgue / temp_waste -> dbLoadAll -> ld('temp_morgue'/'temp_waste') */
+
+const TMP_ASSETS = [
+  { loc:'Morgue', key:'f1', label:'Refrigerator 1',        min:2,  max:4,   rule:'band' },
+  { loc:'Morgue', key:'f2', label:'Refrigerator 2',        min:2,  max:4,   rule:'band' },
+  { loc:'Morgue', key:'f3', label:'Refrigerator 3 (Freezer)', max:-15,      rule:'atmost' }, // ≤ −15 °C
+  { loc:'Morgue', key:'f4', label:'Refrigerator 4',        min:2,  max:4,   rule:'band' },
+  { loc:'Medical Waste Room', key:'room', label:'Room Temperature', min:15, max:18, rule:'band' },
+];
+
+function tmpNum(v){ if(v==null||v==='') return null; const n=parseFloat(String(v).replace(/[^0-9.\-]/g,'')); return isNaN(n)?null:n; }
+function tmpEvalVal(asset, v){
+  const n=tmpNum(v);
+  if(n==null) return {v:null, ok:null};
+  if(asset.rule==='atmost') return {v:n, ok:(n<=asset.max)};
+  return {v:n, ok:(n>=asset.min && n<=asset.max)};
+}
+function tmpShift(raw){
+  const s=String(raw||'').trim().toLowerCase();
+  if(s.startsWith('am')||s.indexOf('morning')>=0) return 'AM';
+  if(s.startsWith('pm')||s.indexOf('evening')>=0||s.indexOf('after')>=0) return 'PM';
+  return String(raw||'').trim().toUpperCase().slice(0,2)==='PM'?'PM':(String(raw||'').trim()?'AM':'');
+}
+function tmpLowerKeys(raw){
+  const o={}; Object.keys(raw||{}).forEach(k=>{ let val=raw[k]; if(typeof val==='string')val=val.trim(); o[String(k).trim().toLowerCase()]=val; }); return o;
+}
+function tmpMorgueRows(){
+  try{
+    return (ld('temp_morgue')||[]).map(raw=>{
+      const o=tmpLowerKeys(raw);
+      return {
+        _id: raw._id, _raw: raw,
+        date: achDateISO(o['date']||o['timestamp']||''),
+        shift: tmpShift(o['shift']),
+        by: o['recorded by']||o['recordedby']||o['by']||o['name']||'',
+        f1: o['refrigerator 1 temp (°c)']||o['refrigerator 1 temp']||o['fridge 1']||o['refrigerator 1']||o['f1']||'',
+        f2: o['refrigerator 2 temp (°c)']||o['refrigerator 2 temp']||o['fridge 2']||o['refrigerator 2']||o['f2']||'',
+        f3: o['refrigerator 3 freezer temp (°c)']||o['refrigerator 3 temp']||o['freezer']||o['refrigerator 3']||o['f3']||'',
+        f4: o['refrigerator 4 temp (°c)']||o['refrigerator 4 temp']||o['fridge 4']||o['refrigerator 4']||o['f4']||'',
+        remarks: o['remarks']||''
+      };
+    }).filter(r=>r.date && (r.f1!==''||r.f2!==''||r.f3!==''||r.f4!==''));
+  }catch(e){ return []; }
+}
+function tmpWasteRows(){
+  try{
+    return (ld('temp_waste')||[]).map(raw=>{
+      const o=tmpLowerKeys(raw);
+      return {
+        _id: raw._id, _raw: raw,
+        date: achDateISO(o['date']||o['timestamp']||''),
+        shift: tmpShift(o['shift']),
+        by: o['recorded by']||o['recordedby']||o['by']||o['name']||'',
+        room: o['room temp (°c)']||o['room temp']||o['temperature']||o['temp']||o['room']||'',
+        remarks: o['remarks']||''
+      };
+    }).filter(r=>r.date && r.room!=='');
+  }catch(e){ return []; }
+}
+
+/* ---- stats: per-reading compliance + twice-daily completeness ---- */
+function tmpStats(){
+  const M=tmpMorgueRows(), W=tmpWasteRows();
+  let pass=0, fail=0, excursions=[];
+  const evalMorgue = r => ['f1','f2','f3','f4'].map(k=>{
+    const a=TMP_ASSETS.find(x=>x.key===k); const e=tmpEvalVal(a,r[k]);
+    if(e.ok===true)pass++; else if(e.ok===false){fail++; excursions.push({date:r.date,shift:r.shift,loc:'Morgue',asset:a.label,val:e.v,by:r.by});}
+    return e;
+  });
+  M.forEach(evalMorgue);
+  W.forEach(r=>{ const a=TMP_ASSETS.find(x=>x.key==='room'); const e=tmpEvalVal(a,r.room);
+    if(e.ok===true)pass++; else if(e.ok===false){fail++; excursions.push({date:r.date,shift:r.shift,loc:'Medical Waste Room',asset:a.label,val:e.v,by:r.by});} });
+  const total=pass+fail;
+  const rate = total? Math.round(pass/total*100) : null;
+
+  // completeness: distinct (date) rows with AM and PM present, per room
+  const daysM={}, daysW={};
+  M.forEach(r=>{ (daysM[r.date]=daysM[r.date]||new Set()).add(r.shift); });
+  W.forEach(r=>{ (daysW[r.date]=daysW[r.date]||new Set()).add(r.shift); });
+  const complete = obj => { let full=0,tot=0; Object.values(obj).forEach(set=>{tot++; if(set.has('AM')&&set.has('PM'))full++;}); return {full,tot}; };
+  const cM=complete(daysM), cW=complete(daysW);
+  const reqDays=cM.tot+cW.tot;
+  const fullDays=cM.full+cW.full;
+  const completeness = reqDays? Math.round(fullDays/reqDays*100) : null;
+
+  // today
+  const today=fmsLocalToday();
+  const todayShifts = {Morgue:new Set(), 'Medical Waste Room':new Set()};
+  M.filter(r=>r.date===today).forEach(r=>todayShifts.Morgue.add(r.shift));
+  W.filter(r=>r.date===today).forEach(r=>todayShifts['Medical Waste Room'].add(r.shift));
+
+  return { M, W, pass, fail, total, rate, excursions:excursions.sort((a,b)=>(b.date||'')>(a.date||'')?1:-1),
+           completeness, fullDays, reqDays, cM, cW, today, todayShifts };
+}
+
+function tmpKpiCard(icon,val,label,color){
+  return '<div class="card" style="text-align:center;padding:14px 10px;"><div style="font-size:22px;">'+icon+'</div>'+
+    '<div style="font-size:24px;font-weight:800;color:'+(color||'var(--tx)')+';margin:4px 0;">'+val+'</div>'+
+    '<div style="font-size:10px;color:var(--mu);line-height:1.3;">'+label+'</div></div>';
+}
+function tmpTodayChip(set){
+  const am=set.has('AM'), pm=set.has('PM');
+  const c=(ok,l)=> '<span class="chip '+(ok?'chip-green':'chip-red')+'" style="font-size:9px;">'+(ok?'✓ ':'✗ ')+l+'</span>';
+  return c(am,'AM')+' '+c(pm,'PM');
+}
+function tmpRender(){
+  const el=document.getElementById('tmp-dash'); if(!el) return;
+  const s=tmpStats();
+  const cards='<div class="g g4" style="margin-bottom:14px;">'+
+    tmpKpiCard('🌡', (s.rate==null?'—':s.rate+'%'), 'Temperature Compliance Rate ('+s.pass+'/'+s.total+' readings in range)', s.rate==null?'var(--mu)':s.rate>=95?'#16a34a':s.rate>=85?'#d97706':'#dc2626')+
+    tmpKpiCard('🗓', (s.completeness==null?'—':s.completeness+'%'), 'Twice-Daily Logging Completeness ('+s.fullDays+'/'+s.reqDays+' days AM+PM)', s.completeness==null?'var(--mu)':s.completeness>=90?'#16a34a':s.completeness>=75?'#d97706':'#dc2626')+
+    tmpKpiCard('⚠️', s.fail, 'Temperature Excursions (out of range)', s.fail?'#dc2626':'#16a34a')+
+    tmpKpiCard('📋', s.M.length+s.W.length, 'Total Readings Logged')+
+    '</div>';
+  const todayCard='<div class="card" style="margin-bottom:14px;"><div class="ch"><div class="ct">📅 Today ('+s.today+') — twice-daily status</div></div>'+
+    '<div class="cb" style="display:flex;gap:24px;flex-wrap:wrap;">'+
+      '<div><div style="font-size:11px;font-weight:600;margin-bottom:4px;">🧊 Morgue</div>'+tmpTodayChip(s.todayShifts.Morgue)+'</div>'+
+      '<div><div style="font-size:11px;font-weight:600;margin-bottom:4px;">♻ Medical Waste Room</div>'+tmpTodayChip(s.todayShifts['Medical Waste Room'])+'</div>'+
+    '</div></div>';
+  el.innerHTML=cards+todayCard;
+}
+function tmpRenderInfographic(){
+  const el=document.getElementById('tmp-infographic'); if(!el) return;
+  const s=tmpStats();
+  // per-asset compliance
+  const per={};
+  TMP_ASSETS.forEach(a=>per[a.key]={label:a.label,loc:a.loc,pass:0,fail:0});
+  s.M.forEach(r=>['f1','f2','f3','f4'].forEach(k=>{const a=TMP_ASSETS.find(x=>x.key===k);const e=tmpEvalVal(a,r[k]);if(e.ok===true)per[k].pass++;else if(e.ok===false)per[k].fail++;}));
+  s.W.forEach(r=>{const e=tmpEvalVal(TMP_ASSETS.find(x=>x.key==='room'),r.room);if(e.ok===true)per.room.pass++;else if(e.ok===false)per.room.fail++;});
+  let bars='';
+  Object.values(per).forEach(p=>{ const t=p.pass+p.fail; const rate=t?Math.round(p.pass/t*100):null;
+    const col=rate==null?'#9ca3af':rate>=95?'#16a34a':rate>=85?'#d97706':'#dc2626';
+    bars+='<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;"><span>'+p.label+' <span style="color:var(--mu);">· '+p.loc+'</span></span><span style="font-weight:700;color:'+col+';">'+(rate==null?'no data':rate+'%')+'</span></div>'+
+      '<div style="height:8px;background:var(--s2);border-radius:5px;overflow:hidden;"><div style="height:100%;width:'+(rate||0)+'%;background:'+col+';"></div></div></div>';
+  });
+  let exc='';
+  if(s.excursions.length){
+    exc='<div class="card"><div class="ch"><div class="ct">⚠️ Excursion Log — every out-of-range reading</div></div>'+
+      '<div class="cb" style="padding:0;overflow-x:auto;"><table class="tbl"><thead><tr><th>Date</th><th>Shift</th><th>Location</th><th>Asset</th><th>Value °C</th><th>By</th></tr></thead><tbody>'+
+      s.excursions.map(e=>'<tr><td>'+e.date+'</td><td>'+e.shift+'</td><td>'+e.loc+'</td><td>'+e.asset+'</td><td style="color:#dc2626;font-weight:700;">'+e.val+' ✕</td><td>'+(e.by||'—')+'</td></tr>').join('')+
+      '</tbody></table></div></div>';
+  } else {
+    exc='<div class="card"><div class="cb" style="text-align:center;color:#16a34a;font-size:12px;">✅ No temperature excursions on record.</div></div>';
+  }
+  el.innerHTML='<div class="card" style="margin-bottom:14px;"><div class="ch"><div class="ct">📊 Compliance by Asset</div></div><div class="cb">'+bars+'</div></div>'+exc;
+}
+
+function tmpResultBadge(oks){
+  const bad=oks.some(o=>o===false), any=oks.some(o=>o!=null);
+  if(!any) return '<span class="chip">—</span>';
+  return bad?'<span class="chip chip-red">❌ Fail</span>':'<span class="chip chip-green">✅ Pass</span>';
+}
+function tmpCell(e){
+  if(e.v==null) return '<td style="color:var(--mu);">—</td>';
+  return '<td style="color:'+(e.ok===true?'#16a34a':e.ok===false?'#dc2626':'var(--tx)')+';font-weight:'+(e.ok===false?'700':'400')+';">'+e.v+(e.ok===false?' ✕':'')+'</td>';
+}
+function tmpRenderLogs(){
+  const mb=document.getElementById('tmp-log-morgue'), wb=document.getElementById('tmp-log-waste');
+  if(mb){
+    const M=tmpMorgueRows().slice().sort((a,b)=>((b.date+b.shift)>(a.date+a.shift)?1:-1));
+    mb.innerHTML=M.map(r=>{
+      const e1=tmpEvalVal(TMP_ASSETS[0],r.f1),e2=tmpEvalVal(TMP_ASSETS[1],r.f2),e3=tmpEvalVal(TMP_ASSETS[2],r.f3),e4=tmpEvalVal(TMP_ASSETS[3],r.f4);
+      return '<tr><td>'+r.date+'</td><td><span class="chip" style="font-size:9px;">'+(r.shift||'—')+'</span></td>'+
+        tmpCell(e1)+tmpCell(e2)+tmpCell(e3)+tmpCell(e4)+'<td style="font-size:10px;">'+(r.by||'—')+'</td>'+
+        '<td>'+tmpResultBadge([e1.ok,e2.ok,e3.ok,e4.ok])+'</td>'+
+        '<td><button class="btn bo" style="font-size:9px;padding:3px 8px;" onclick="tmpDelete(\'temp_morgue\',\''+String(r._id)+'\')">🗑</button></td></tr>';
+    }).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--mu);padding:16px;">No morgue readings yet.</td></tr>';
+  }
+  if(wb){
+    const W=tmpWasteRows().slice().sort((a,b)=>((b.date+b.shift)>(a.date+a.shift)?1:-1));
+    wb.innerHTML=W.map(r=>{
+      const e=tmpEvalVal(TMP_ASSETS[4],r.room);
+      return '<tr><td>'+r.date+'</td><td><span class="chip" style="font-size:9px;">'+(r.shift||'—')+'</span></td>'+
+        tmpCell(e)+'<td style="font-size:10px;">'+(r.by||'—')+'</td>'+
+        '<td>'+tmpResultBadge([e.ok])+'</td>'+
+        '<td><button class="btn bo" style="font-size:9px;padding:3px 8px;" onclick="tmpDelete(\'temp_waste\',\''+String(r._id)+'\')">🗑</button></td></tr>';
+    }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--mu);padding:16px;">No waste room readings yet.</td></tr>';
+  }
+}
+function tmpRenderCfg(){
+  const tb=document.getElementById('tmp-cfg-tb'); if(!tb) return;
+  tb.innerHTML=TMP_ASSETS.map(a=>{
+    const range=a.rule==='atmost'? ('≤ '+a.max+' °C') : (a.min+' to '+a.max+' °C');
+    const rule=a.rule==='atmost'?'At most (freezer)':'Within band';
+    return '<tr><td>'+a.loc+'</td><td style="font-weight:600;">'+a.label+'</td><td>'+range+'</td><td style="font-size:10px;color:var(--mu);">'+rule+'</td></tr>';
+  }).join('');
+}
+
+function tmpDelete(table,id){
+  if(!confirm('Delete this temperature reading? This removes it locally; it remains in the Google Sheet unless deleted there too.')) return;
+  try{
+    const arr=(ld(table)||[]).filter(r=>String(r._id)!==String(id));
+    sv(table,arr);
+    tmpInit();
+    toast('Reading deleted','#10b981');
+  }catch(e){ toast('Delete failed: '+e.message,'#dc2626'); }
+}
+
+function tmpTab(which,btn){
+  ['dash','log','cfg'].forEach(t=>{
+    const p=document.getElementById('tmppanel-'+t); if(p)p.style.display=(t===which?'block':'none');
+    const b=document.getElementById('tmpTabBtn-'+t); if(b)b.classList.toggle('active',t===which);
+  });
+  if(btn){} // active handled above
+  if(which==='dash'){ tmpRender(); tmpRenderInfographic(); }
+  else if(which==='log'){ tmpRenderLogs(); }
+  else if(which==='cfg'){ tmpRenderCfg(); }
+}
+function tmpInit(){
+  try{ tmpRender(); }catch(e){ console.warn('tmpRender',e.message); }
+  try{ tmpRenderInfographic(); }catch(e){}
+  try{ tmpRenderLogs(); }catch(e){}
+  try{ tmpRenderCfg(); }catch(e){}
+  try{ tmpTab('dash'); }catch(e){}
+}
+
+function tmpExport(){
+  try{
+    const s=tmpStats();
+    const row=(l,v)=>'<tr><td style="padding:4px 10px;border:1px solid #ccc;font-weight:600;">'+l+'</td><td style="padding:4px 10px;border:1px solid #ccc;">'+v+'</td></tr>';
+    const mrows=tmpMorgueRows().slice().sort((a,b)=>((a.date+a.shift)>(b.date+b.shift)?1:-1)).map(r=>{
+      const e=['f1','f2','f3','f4'].map((k,i)=>tmpEvalVal(TMP_ASSETS[i],r[k]));
+      const td=x=>'<td style="padding:4px 8px;border:1px solid #ccc;color:'+(x.ok===false?'#c00':'#000')+';font-weight:'+(x.ok===false?'700':'400')+';">'+(x.v==null?'—':x.v)+(x.ok===false?' ✕':'')+'</td>';
+      return '<tr><td style="padding:4px 8px;border:1px solid #ccc;">'+r.date+'</td><td style="padding:4px 8px;border:1px solid #ccc;">'+r.shift+'</td>'+td(e[0])+td(e[1])+td(e[2])+td(e[3])+'<td style="padding:4px 8px;border:1px solid #ccc;">'+(r.by||'')+'</td></tr>';
+    }).join('');
+    const wrows=tmpWasteRows().slice().sort((a,b)=>((a.date+a.shift)>(b.date+b.shift)?1:-1)).map(r=>{
+      const e=tmpEvalVal(TMP_ASSETS[4],r.room);
+      return '<tr><td style="padding:4px 8px;border:1px solid #ccc;">'+r.date+'</td><td style="padding:4px 8px;border:1px solid #ccc;">'+r.shift+'</td><td style="padding:4px 8px;border:1px solid #ccc;color:'+(e.ok===false?'#c00':'#000')+';font-weight:'+(e.ok===false?'700':'400')+';">'+(e.v==null?'—':e.v)+(e.ok===false?' ✕':'')+'</td><td style="padding:4px 8px;border:1px solid #ccc;">'+(r.by||'')+'</td></tr>';
+    }).join('');
+    const html='<!doctype html><html><head><meta charset="utf-8"><title>Temperature Compliance Report — '+fmsLocalToday()+'</title></head>'+
+      '<body style="font-family:Arial,sans-serif;max-width:1000px;margin:20px auto;color:#222;">'+
+      '<h2 style="color:#1e3a5c;">Obeid Specialized Hospital — Temperature Compliance Report</h2>'+
+      '<p style="color:#555;">Morgue &amp; Medical Waste Room · MOH IPC · Generated '+fmsLocalToday()+'</p>'+
+      '<table style="border-collapse:collapse;margin:12px 0;">'+
+        row('Temperature Compliance Rate',(s.rate==null?'—':s.rate+'%')+' ('+s.pass+'/'+s.total+' readings in range)')+
+        row('Twice-Daily Logging Completeness',(s.completeness==null?'—':s.completeness+'%')+' ('+s.fullDays+'/'+s.reqDays+' days with AM+PM)')+
+        row('Temperature Excursions',s.fail)+
+      '</table>'+
+      '<h3 style="color:#1e3a5c;">Morgue Refrigerators (F1,F2,F4: 2–4°C · F3 freezer: ≤−15°C)</h3>'+
+      '<table style="border-collapse:collapse;width:100%;font-size:12px;"><thead><tr style="background:#1e3a5c;color:#fff;"><th style="padding:5px 8px;border:1px solid #ccc;">Date</th><th style="padding:5px 8px;border:1px solid #ccc;">Shift</th><th style="padding:5px 8px;border:1px solid #ccc;">Fridge 1</th><th style="padding:5px 8px;border:1px solid #ccc;">Fridge 2</th><th style="padding:5px 8px;border:1px solid #ccc;">Fridge 3 ❄</th><th style="padding:5px 8px;border:1px solid #ccc;">Fridge 4</th><th style="padding:5px 8px;border:1px solid #ccc;">By</th></tr></thead><tbody>'+(mrows||'<tr><td colspan="7" style="padding:8px;text-align:center;">No data</td></tr>')+'</tbody></table>'+
+      '<h3 style="color:#1e3a5c;margin-top:16px;">Medical Waste Room (15–18°C)</h3>'+
+      '<table style="border-collapse:collapse;width:100%;font-size:12px;"><thead><tr style="background:#1e3a5c;color:#fff;"><th style="padding:5px 8px;border:1px solid #ccc;">Date</th><th style="padding:5px 8px;border:1px solid #ccc;">Shift</th><th style="padding:5px 8px;border:1px solid #ccc;">Room Temp</th><th style="padding:5px 8px;border:1px solid #ccc;">By</th></tr></thead><tbody>'+(wrows||'<tr><td colspan="4" style="padding:8px;text-align:center;">No data</td></tr>')+'</tbody></table>'+
+      '<p style="margin-top:20px;font-size:11px;color:#888;">Obeid Specialized Hospital · FMS Command · Temperature Log · ✕ marks an out-of-range reading.</p>'+
+      '</body></html>';
+    const b=new Blob([html],{type:'text/html'}); const a=document.createElement('a');
+    a.href=URL.createObjectURL(b); a.download='Temperature_Compliance_'+fmsLocalToday()+'.html';
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
+    toast('✅ Temperature report exported','#10b981',3500);
+  }catch(err){ console.error(err); toast('❌ Export failed: '+err.message,'#dc2626',5000); }
+}
+</script>
+
 </body>
 </html>
