@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260716-1571';
+  var v = '20260716-1573';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260716-1571">
+<meta name="app-version" content="20260716-1573">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -7284,8 +7284,10 @@ const DC={safety:'var(--or)',security:'var(--rd)',biomedical:'var(--pu)',mainten
 const DL={safety:'🛡 Safety — Moe',security:'🔒 Security — Bader',biomedical:'⚕ Biomed — Bashar',maintenance:'🔧 Maint. — Mostapha',director:'⬡ FMS Director'};// ===== DASHBOARD =====
 function renderDash(){
   const wos=ld('workorders'),open=wos.filter(w=>w.status==='Open'||w.status==='In Progress').length;
-  const pT=ld('ppm').length,pD=ld('ppm').filter(r=>r.res==='done').length;
-  const pR=pT?Math.round((pD/pT)*100):0;
+  // PPM Completion Rate — SAME source as FMS Performance Sheet (PMS-B1):
+  // high-risk devices (ICU/CCU/OR/ER/Lab/Blood Bank) with ✅ VALID PPM in inventory.
+  const _pm = (typeof pmsPmAutoStats==='function') ? pmsPmAutoStats() : null;
+  const pR = _pm ? _pm.rate : 0;
   const {met,par,gap}=cbStats();const tot=met+par+gap;const ready=tot?Math.round((met/tot)*100):0;
   document.getElementById('d-wo').textContent=open;
   document.getElementById('d-ppm').textContent=pR+'%';
@@ -7350,7 +7352,7 @@ const KGS={
   '113':{lbl:'☣ FMS.1.1.3 — Hazmat (Moe)',kpis:[{n:'Chemicals Registered',k:'chemical',tgt:50,c:d=>d.length},{n:'SDS Coverage',k:'chemical',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.sds==='yes').length/t)*100):0;},unit:'%'},{n:'Waste Audits (4/yr)',k:'wasteAudit',tgt:4,c:d=>d.length},{n:'Avg Segregation Compliance',k:'wasteAudit',tgt:95,c:d=>{const v=d.map(r=>Number(r.pct||0)).filter(x=>x>0);return v.length?Math.round(v.reduce((a,b)=>a+b)/v.length):0;},unit:'%'}]},
   '1145':{lbl:'🚨 FMS.1.1.4/5 — Emergency (Moe)',kpis:[{n:'Emergency Drills (6/yr)',k:'emDrill',tgt:6,c:d=>d.length},{n:'Code Red Drills',k:'emDrill',tgt:4,c:d=>d.filter(r=>r.type?.includes('Red')).length},{n:'MCI Drills',k:'emDrill',tgt:1,c:d=>d.filter(r=>r.type?.includes('MCI')||r.type?.includes('Mass')).length},{n:'Night Shift Drills',k:'emDrill',tgt:2,c:d=>d.filter(r=>r.shift==='Night').length}]},
   '116':{lbl:'🔥 FMS.1.1.6 — Fire Safety (Moe+Mostapha)',kpis:[{n:'FA Monthly Inspections (12/yr)',k:'__fireInsp',tgt:12,c:d=>d.length},{n:'FA Testing Logs (12/yr)',k:'__fireTest',tgt:12,c:d=>d.length},{n:'Quarterly PPM — Civil Defense (4/yr)',k:'__firePPM',tgt:4,c:d=>d.length},{n:'FM-200 Inspections (12/yr)',k:'__fireFM200',tgt:12,c:d=>d.length},{n:'Fire Pump Weekly (48/yr)',k:'__firePump',tgt:48,c:d=>d.length},{n:'Wet Chemical Checks (12/yr)',k:'__fireWet',tgt:12,c:d=>d.length},{n:'Exit Inspections',k:'__fireExit',tgt:7,c:d=>d.length},{n:'Overall Pass Rate',k:'__fireAll',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>(r.result||r.res||'pass')==='pass').length/t)*100):0;},unit:'%'}]},
-  '117':{lbl:'⚕ FMS.1.1.7 — Equipment (Bashar)',kpis:[{n:'PPM Records Entered',k:'ppm',tgt:100,c:d=>d.length},{n:'PPM Completion Rate',k:'ppm',tgt:95,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.res==='done').length/t)*100):0;},unit:'%'},{n:'Equipment in Inventory',k:'inventory',tgt:200,c:d=>d.length},{n:'High-Risk Equipment',k:'inventory',tgt:50,c:d=>d.filter(r=>r.risk==='High Risk').length}]},
+  '117':{lbl:'⚕ FMS.1.1.7 — Equipment (Bashar)',kpis:[{n:'PPM Records Entered',k:'ppm',tgt:100,c:d=>d.length},{n:'PPM Completion Rate',k:'ppm',tgt:95,c:d=>{const s=(typeof pmsPmAutoStats==='function')?pmsPmAutoStats():null;return s?s.rate:0;},unit:'%'},{n:'Equipment in Inventory',k:'inventory',tgt:200,c:d=>d.length},{n:'High-Risk Equipment',k:'inventory',tgt:50,c:d=>d.filter(r=>r.risk==='High Risk').length}]},
   '118':{lbl:'⚡ FMS.1.1.8 — Utilities (Mostapha)',kpis:[{n:'Generator Tests (12/yr)',k:'genTest',tgt:12,c:d=>d.length},{n:'Generator Pass Rate',k:'genTest',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.res==='pass').length/t)*100):0;},unit:'%'},{n:'Water Safety Tests (4/yr)',k:'waterTest',tgt:4,c:d=>d.length},{n:'Hot Water Compliance ≥55°C',k:'waterTest',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>Number(r.hot)>=55).length/t)*100):0;},unit:'%'},{n:'PMG Daily Checklists (30/yr)',k:'pmgCheck',tgt:30,c:d=>d.length},{n:'Air Purity Tests (2/yr)',k:'airPurity',tgt:2,c:d=>d.length},{n:'Air Purity Pass Rate',k:'airPurity',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.res==='pass').length/t)*100):0;},unit:'%'},{n:'TLD Quarterly Reviews (4/yr)',k:'tldReview',tgt:4,c:d=>d.length}]},
 };
 let kpiPd='ytd';
@@ -12484,7 +12486,7 @@ function kpi2ShowHistory(kpiId) {
     const ss = KPI2_STATUS_STYLES[status];
     const fk = 'kpi2_' + kpiId;
     return `<tr>
-      <td style="font-weight:600;">${e.period||'—'}</td>
+      <td style="font-size:10px;">${pmsPeriodKey(e.period)}</td>
       <td>${e.num||'—'}</td>
       <td>${e.den||'—'}</td>
       <td style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:${ss.color};">${result!==null?result+k.unit:'—'}</td>
@@ -14181,14 +14183,16 @@ function pmsInit() {
   }
   // Build KPI select
   const kSel = document.getElementById('pms-kpi-sel');
-  if (kSel && kSel.options.length <= 1) {
-    const visibleKPIs = pmsVisibleKPIs();
-    visibleKPIs.forEach(k => {
+  if (kSel) {
+    const cur = kSel.value;
+    kSel.innerHTML = '<option value="">— Select KPI —</option>';
+    pmsVisibleKPIs().forEach(k => {
       const opt = document.createElement('option');
       opt.value = k.id;
       opt.textContent = k.icon + ' [' + k.standard + '] ' + k.name;
       kSel.appendChild(opt);
     });
+    if (cur) kSel.value = cur;   // keep selection if still valid
   }
   // Set default entry period
   const ep = document.getElementById('pms-entry-period');
@@ -14247,11 +14251,12 @@ function pmsGetEntry(kpiId, period) {
             .sort((a,b) => b._ts > a._ts ? 1 : -1)[0] || null;
   if (manual) return manual;
   if (kpiId === 'PMS-U1') { const a = pmsAchAutoEntry(pk); if (a) return a; }
+  if (kpiId === 'PMS-B1') { const a = pmsPmAutoEntry(pk); if (a) return a; }
   return null;
 }
 
 function pmsGetAllEntries() { return ld('pms_entries'); }
-function pmsGetAllEntries() { return ld('pms_entries'); }
+function pmsFindKpi(id){ return pmsEffectiveKPIs().find(x=>x.id===id) || PMS_KPIS.find(x=>x.id===id) || null; }
 /* One-time cleanup: remove entries for deleted KPIs + the corrupt header-row entry. */
 function pmsMigrateCleanup(){
   try{
@@ -14278,28 +14283,80 @@ function pmsMigrateCleanup(){
 // Denominator = distinct critical rooms tested in the period.
 function pmsAchAutoEntry(period){
   try{
-    if(typeof achReadings!=='function') return null;
+    if(typeof achReadings!=='function' || typeof achEval!=='function') return null;
     const pk=pmsPeriodKey(period);
-    const rows=achReadings().filter(r=>r.room && pmsPeriodKey(r.date)===pk);
+    // SAME evaluator as the ACH page's "Parameter Compliance Rate" (achStats):
+    // every reading in the period is scored pass/fail by achEval. No parallel logic.
+    const rows=achReadings().filter(r=>pmsPeriodKey(r.date)===pk);
     if(!rows.length) return null;
-    // latest reading per room in the period
-    const byRoom={};
-    rows.forEach(r=>{ const k=r.room; if(!byRoom[k] || String(r.date)>String(byRoom[k].date)) byRoom[k]=r; });
-    const rooms=Object.values(byRoom);
-    const den=rooms.length;
-    // "meets spec": prefer the page's own evaluator if present
-    let num=0;
-    rooms.forEach(r=>{
-      let ok=null;
-      try{ if(typeof achEval==='function'){ const e=achEval(r); ok=(e && (e.overall==='pass'||e.overall===true||e.pass===true)); } }catch(e){}
-      if(ok===null){ // fallback: ACH value present and >= 6 (generic critical min) — conservative
-        const a=parseFloat(String(r.ach).replace(/[^0-9.\-]/g,'')); ok=(!isNaN(a) && a>=6);
-      }
-      if(ok) num++;
-    });
-    return { auto:true, kpiId:'PMS-U1', period:pk, num:num, den:den,
-             notes:'Auto-calculated from ACH / Room Pressure Monitoring ('+den+' critical rooms tested)' };
+    let pass=0, fail=0;
+    rows.forEach(r=>{ const e=achEval(r); if(e.overall==='pass')pass++; else if(e.overall==='fail')fail++; });
+    if(pass+fail===0) return null;
+    return { auto:true, kpiId:'PMS-U1', period:pk, num:pass, den:pass+fail,
+             notes:'⚡ Auto — same calculation as ACH page Parameter Compliance Rate ('+(pass+fail)+' readings scored in '+pk+')' };
   }catch(e){ return null; }
+}
+
+/* ==================== PM COMPLETION AUTO (PMS-B1) — from Equipment Inventory ==================== */
+// High-risk = devices located in ICU, CCU, OR, ER, Laboratory, Blood Bank.
+// Completed = device's PPM Validity badge is ✅ VALID (next due > 30 days away),
+// replicating EXACTLY the inventory table's badge logic (incl. PPM overrides).
+const PMS_HIGH_RISK_DEPTS = ['icu','ccu','or','er','laboratory','lab','blood bank','bloodbank','operating room','operating theatre','emergency'];
+function pmsIsHighRiskDept(dept){
+  const d=String(dept||'').toLowerCase().trim();
+  if(!d) return false;
+  // token match so 'OR' doesn't hit 'radiOlogy' etc.
+  const toks=d.split(/[^a-z]+/).filter(Boolean);
+  const joined=d.replace(/[^a-z]+/g,' ').trim();
+  return PMS_HIGH_RISK_DEPTS.some(h=>{
+    if(h.indexOf(' ')>=0) return joined.indexOf(h)>=0;      // multi-word: substring on normalized
+    return toks.includes(h);                                 // single word: exact token
+  });
+}
+function pmsDeviceNextDue(r, ov){
+  const lp = ov.lastPPM || r.lastPPM || '';
+  let   np = ov.nextPPM || r.nextPPM || '';
+  if (!np && lp && (ov.ppmFreq || r.ppmFreq)) {
+    const d = new Date(lp);
+    if (!isNaN(d)) {
+      const f = (ov.ppmFreq || r.ppmFreq || '').toLowerCase();
+      if      (/month|30d/i.test(f))                  d.setMonth(d.getMonth() + 1);
+      else if (/quarter|3.?month|90/i.test(f))        d.setMonth(d.getMonth() + 3);
+      else if (/6.?month|semi|bi.?ann|180/i.test(f))  d.setMonth(d.getMonth() + 6);
+      else if (/annual|year|12.?month/i.test(f))      d.setFullYear(d.getFullYear() + 1);
+      else if (/2.?year/i.test(f))                    d.setFullYear(d.getFullYear() + 2);
+      np = d.toISOString().split('T')[0];
+    }
+  }
+  return np;
+}
+function pmsPmAutoStats(){
+  try{
+    if(typeof eqAll!=='function') return null;
+    const ovAll = (typeof getPPMOverrides==='function') ? getPPMOverrides() : {};
+    const hr = eqAll().filter(r=>{
+      const ov = ovAll[r.asset] || {};
+      const st = (ov.status || r.status || 'Active');
+      if (st === 'Condemned') return false;              // not due for PM
+      return pmsIsHighRiskDept(ov.dept || r.dept);
+    });
+    if(!hr.length) return null;
+    const today=new Date(); today.setHours(0,0,0,0);
+    let valid=0;
+    hr.forEach(r=>{
+      const ov = ovAll[r.asset] || {};
+      const np = pmsDeviceNextDue(r, ov);
+      if(!np) return;
+      const diff = Math.ceil((new Date(np) - today) / 864e5);
+      if (diff > 30) valid++;                            // ✅ VALID badge threshold
+    });
+    return { num:valid, den:hr.length, rate: Math.round(valid/hr.length*100) };
+  }catch(e){ return null; }
+}
+function pmsPmAutoEntry(period){
+  const st=pmsPmAutoStats(); if(!st) return null;
+  return { auto:true, kpiId:'PMS-B1', period:pmsPeriodKey(period), num:st.num, den:st.den,
+           notes:'⚡ Auto — from Equipment Inventory: '+st.den+' high-risk devices (ICU/CCU/OR/ER/Lab/Blood Bank), '+st.num+' with ✅ VALID PPM' };
 }
 
 
@@ -14389,6 +14446,17 @@ function pmsRender() {
                : Math.max(0, Math.min(100, Math.round((1 - Math.max(0,result-k.target)/k.target)*100))))
       : 0;
     const files  = entry?.fileKey ? (typeof fsGetFiles==='function' ? fsGetFiles(entry.fileKey) : []) : [];
+    // Provenance — exactly which record produced this number
+    let prov='';
+    if (entry) {
+      if (entry.auto) prov='⚡ Auto-calculated · '+(entry.notes||'live source');
+      else {
+        const who=entry._by?(' by '+entry._by):'';
+        const when=entry._ts?(' on '+String(entry._ts).slice(0,10)):'';
+        const mig=(entry.notes||'').indexOf('migrated')>=0?' · migrated from FMS Indicators':'';
+        prov='📌 Entry for '+pmsPeriodKey(entry.period)+who+when+mig;
+      }
+    } else prov='No entry for this period';
 
     return `<div style="background:var(--sf);border:1px solid ${ss.border};border-top:4px solid ${k.color};border-radius:12px;padding:16px;">
       <!-- Header -->
@@ -14439,7 +14507,8 @@ function pmsRender() {
         </div>
         <button class="btn bo" style="font-size:9px;padding:3px 10px;" onclick="pmsOpenEntry('${k.id}','${period}')">✏ Enter Value</button>
       </div>
-    </div>`;
+    </div>      <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--bd);font-size:9px;color:var(--mu);line-height:1.5;">${prov}</div>
+    `;
   }).join('');
 
   if (!kpis.length) {
@@ -14525,20 +14594,28 @@ function pmsSaveEntry() {
     _by: (typeof CU!=='undefined'?CU.name:''), _ts: new Date().toISOString()
   };
 
-  (async () => {
-    if (fi && fi.files.length) {
-      await fsStoreFiles(entry.fileKey, fi.files);
-      fi.value = '';
-    }
+  // Save the entry FIRST so a file/sync failure can never lose the data.
+  try {
     const arr = ld('pms_entries'); arr.unshift(entry); sv('pms_entries', arr);
-    dbWrite('pms_entries', entry);
-    // Clear form
-    ['pms-num-val','pms-den-val','pms-notes'].forEach(id=>{
-      const e=document.getElementById(id); if(e) e.value='';
-    });
-    document.getElementById('pms-result-preview').style.display = 'none';
-    pmsRenderHistory();
-    toast('✅ KPI entry saved — ' + (k?.name||sel) + ' for ' + per);
+  } catch (err) {
+    toast('❌ Save failed — storage error: ' + err.message + '. Free space via Settings → Backup, then retry.', '#dc2626', 7000);
+    return;
+  }
+  ['pms-num-val','pms-den-val','pms-notes'].forEach(id=>{
+    const e=document.getElementById(id); if(e) e.value='';
+  });
+  const pv=document.getElementById('pms-result-preview'); if(pv) pv.style.display='none';
+  pmsRenderHistory();
+  toast('✅ KPI entry saved — ' + (k?.name||sel) + ' for ' + per);
+  // Files and cloud sync afterwards — failures reported, never silent, never lose the entry.
+  (async () => {
+    try {
+      if (fi && fi.files.length) { await fsStoreFiles(entry.fileKey, fi.files); fi.value=''; }
+    } catch (err) {
+      toast('⚠️ Entry saved, but evidence files could not be stored: ' + err.message, '#f59e0b', 6000);
+    }
+    try { dbWrite('pms_entries', entry); }
+    catch (err) { toast('⚠️ Entry saved locally — cloud sync failed: ' + err.message, '#f59e0b', 6000); }
   })();
 }
 
