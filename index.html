@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260715-1569';
+  var v = '20260715-1570';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260715-1569">
+<meta name="app-version" content="20260715-1570">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3467,7 +3467,7 @@ if ('caches' in window) {
         </div>
         <div class="ff" style="grid-column:1/-1"><label>Remarks</label><textarea id="add-remarks" placeholder="Additional notes..."></textarea></div>
       </div>
-      <button class="btn bg" style="width:100%;margin-top:12px;" onclick="addEquipment()">✓ Add to Inventory</button>
+      <button class="btn bg" style="width:100%;margin-top:12px;" onclick="eqAddRecord()">✓ Add to Inventory</button>
     </div></div>
   </div>
 
@@ -9639,7 +9639,7 @@ function eqAddRecord() {
 
   const rec = {
     asset, inv: g('add-inv'), name: g('add-name'), desc,
-    dept: g('add-dept'), location: g('add-location'),
+    dept: g('add-dept'), location: g('add-loc'),
     model: g('add-model'), serial: g('add-serial'),
     mfr: g('add-mfr'), supplier: g('add-supplier'),
     installed: g('add-installed'), warranty: g('add-warranty'),
@@ -9655,8 +9655,9 @@ function eqAddRecord() {
   EQ_ALL = null; // reset cache so new record appears
 
   // Clear form
-  ['add-asset','add-inv','add-name','add-desc','add-dept','add-location',
-   'add-model','add-serial','add-mfr','add-supplier','add-remarks'].forEach(id => {
+  ['add-asset','add-inv','add-desc','add-dept','add-loc',
+   'add-model','add-serial','add-mfr','add-installed','add-warranty',
+   'add-coveredby','add-remarks'].forEach(id => {
     const e = document.getElementById(id); if(e) e.value='';
   });
   renderEqAdded();
