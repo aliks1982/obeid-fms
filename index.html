@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260715-1570';
+  var v = '20260716-1571';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260715-1570">
+<meta name="app-version" content="20260716-1571">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -718,7 +718,7 @@ if ('caches' in window) {
     <div class="sc" style="--c:var(--ac)"><div class="ico">📋</div><div class="val" id="d-wo">—</div><div class="lbl">Open Work Orders</div></div>
     <div class="sc" style="--c:var(--gn)"><div class="ico">✅</div><div class="val" id="d-ppm">—</div><div class="lbl">PPM Completion Rate</div></div>
     <div class="sc" style="--c:var(--or)"><div class="ico">🏆</div><div class="val" id="d-cbahi">—</div><div class="lbl">CBAHI Readiness</div></div>
-    <div class="sc" style="--c:#00d4aa"><div class="ico">🔩</div><div class="val" id="d-maint">230</div><div class="lbl">Maint. Tickets (Live)</div><div class="sub" id="d-maint-rate">from Google Sheet</div></div>
+    <div class="sc" style="--c:#00d4aa"><div class="ico">🔩</div><div class="val" id="d-maint">—</div><div class="lbl">Maint. Tickets (Live)</div><div class="sub" id="d-maint-rate">Live from Google Sheet</div></div>
   </div>
   <div class="g g2">
     <div class="card"><div class="ch"><div class="ct">Domain Readiness — Live</div></div><div class="cb" id="domBars"></div></div>
@@ -6052,6 +6052,8 @@ if ('caches' in window) {
     <button class="tbtn" onclick="pmsTab('utilities',this)">⚡ Utilities</button>
     <button class="tbtn" onclick="pmsTab('waste',this)">♻ Waste</button>
     <button class="tbtn" onclick="pmsTab('entry',this)">✏ Enter Values</button>
+    <button class="tbtn" onclick="pmsTab('info',this)">📊 Infographics</button>
+    <button class="tbtn" onclick="pmsTab('manage',this)" id="pms-manage-tab">⚙ Manage KPIs</button>
   </div>
 
   <!-- Header actions -->
@@ -6069,6 +6071,12 @@ if ('caches' in window) {
 
   <!-- KPI Cards Grid -->
   <div id="pms-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;margin-bottom:16px;"></div>
+
+  <!-- Infographics panel (hidden by default) -->
+  <div id="pms-info-panel" style="display:none;"></div>
+
+  <!-- Manage KPIs panel (hidden by default, director only) -->
+  <div id="pms-manage-panel" style="display:none;"></div>
 
   <!-- Entry form (hidden by default) -->
   <div id="pms-entry-panel" style="display:none;">
@@ -11951,7 +11959,6 @@ function invImport() {
 // ════════════════════════════════════════════════════════════════
 
 const FMS_KPIS = [
-  { id:'KPI-001', dept:'safety',      category:'Safety',      name:'Fire Drill Effectiveness',      standard:'FMS.7.2',  num:'Count of staff demonstrating RACE & PASS', den:'Total staff participating in drill', formula:'percent', target:100, unit:'%', hib:true,  src:'Fire Drill Critique Reports',  freq:'Quarterly', icon:'🔥', color:'#ef4444' },
   { id:'KPI-002', dept:'safety',      category:'Safety',      name:'Safety Round Closure Rate',     standard:'FMS.4.2',  num:'Safety deficiencies corrected on time',    den:'Total deficiencies identified',     formula:'percent', target:90,  unit:'%', hib:true,  src:'Facility Safety Round Logs',    freq:'Monthly',   icon:'🛡', color:'#f59e0b' },
   { id:'KPI-003', dept:'security',    category:'Security',    name:'Code Response Time',            standard:'FMS.5.1',  num:'Sum of (Arrival Time - Dispatch Time)',     den:'Total emergency calls',             formula:'ratio',   target:3,   unit:'mins', hib:false, src:'Security Command Center Log',  freq:'Monthly',   icon:'⏱', color:'#3b82f6' },
   { id:'KPI-004', dept:'security',    category:'Security',    name:'Staff ID Compliance',           standard:'FMS.5.2',  num:'Staff wearing valid ID badge',             den:'Total staff observed during audit', formula:'percent', target:100, unit:'%', hib:true,  src:'Security Audit Sheets',         freq:'Monthly',   icon:'🪪', color:'#6366f1' },
@@ -11962,8 +11969,6 @@ const FMS_KPIS = [
   { id:'KPI-009', dept:'maintenance', category:'Utilities',   name:'Critical Area ACH Compliance',  standard:'FMS.34.5', num:'Rooms meeting Air Change per Hour specs',  den:'Total critical rooms tested',       formula:'percent', target:100, unit:'%', hib:true,  src:'HVAC Airflow Reports',          freq:'Quarterly', icon:'💨', color:'#06b6d4' },
   { id:'KPI-010', dept:'safety',      category:'Waste/Hazmat',name:'Waste Segregation Compliance',  standard:'FMS.15.1', num:'Waste bins correctly segregated',          den:'Total waste bins audited',          formula:'percent', target:95,  unit:'%', hib:true,  src:'Safety Round Audit',            freq:'Monthly',   icon:'♻', color:'#84cc16' },
   { id:'KPI-011', dept:'safety',      category:'Waste/Hazmat',name:'Waste Manifest Accuracy',       standard:'FMS.16.1', num:'Manifests with final disposal signature',   den:'Total waste shipments sent',        formula:'percent', target:100, unit:'%', hib:true,  src:'Waste Manifest Files',          freq:'Monthly',   icon:'📋', color:'#a78bfa' },
-  { id:'KPI-012', dept:'safety',      category:'Emergency',   name:'Code Drill Compliance Rate',    standard:'FMS.1.1.4',num:'Code drills conducted across all 4 code types', den:'Minimum required drills (1 per code × 4 codes = 4/year)', formula:'percent', target:100, unit:'%', hib:true, src:'Code Drill Log — Emergency Page', freq:'Semi-Annual', icon:'🚨', color:'#f43f5e' },
-  { id:'KPI-013', dept:'safety',      category:'Emergency',   name:'Code Drill Pass Rate',          standard:'FMS.1.1.5',num:'Code drills with satisfactory outcome (staff passed)', den:'Total code drills conducted',      formula:'percent', target:90,  unit:'%', hib:true,  src:'Code Drill Critique Reports',   freq:'Quarterly', icon:'✅', color:'#10b981' },
   { id:'KPI-014', dept:'safety',      category:'Fire Safety', name:'Unit Level Fire Drill Compliance', standard:'FMS.1.1.6',num:'Units completing required fire drills per schedule', den:'Total units required to conduct drills per year', formula:'percent', target:100, unit:'%', hib:true, src:'Unit Level Fire Drill Log — Fire Safety Page', freq:'Quarterly', icon:'🔥', color:'#ef4444' },
 ];
 
@@ -13987,15 +13992,6 @@ function uploadSignedBudget(input) {
 
 const PMS_KPIS = [
   // ── SAFETY ──
-  { id:'PMS-S1', domain:'safety', domainLabel:'Safety', icon:'🛡',
-    name:'Fire Drill Effectiveness', standard:'FMS.7.2',
-    num:'Count of staff demonstrating RACE & PASS correctly',
-    den:'Total staff participating in drill',
-    formula:'percent', target:100, hib:true, unit:'%',
-    objective:'Measures staff readiness and knowledge during simulated fires.',
-    src:'Fire Drill Critique Reports', freq:'Quarterly', color:'#3b82f6',
-    roles:['director','safety']
-  },
   { id:'PMS-S2', domain:'safety', domainLabel:'Safety', icon:'🛡',
     name:'Safety Round Closure Rate', standard:'FMS.4.2',
     num:'Number of safety deficiencies corrected on time',
@@ -14091,25 +14087,7 @@ const PMS_KPIS = [
     src:'Waste Manifest Files', freq:'Monthly', color:'#84cc16',
     roles:['director','safety']
   },
-  // ── Migrated from FMS Indicators (retired) — Emergency & Fire drill KPIs ──
-  { id:'PMS-E1', domain:'safety', domainLabel:'Emergency', icon:'🚨',
-    name:'Code Drill Compliance Rate', standard:'FMS.1.1.4',
-    num:'Code drills conducted across all 4 code types',
-    den:'Minimum required drills (1 per code × 4 codes = 4/year)',
-    formula:'percent', target:100, hib:true, unit:'%',
-    objective:'Ensures every emergency code is drilled as required by the Internal/External Disaster Plans.',
-    src:'Code Drill Log — Emergency Page', freq:'Semi-Annual', color:'#f43f5e',
-    roles:['director','safety']
-  },
-  { id:'PMS-E2', domain:'safety', domainLabel:'Emergency', icon:'✅',
-    name:'Code Drill Pass Rate', standard:'FMS.1.1.5',
-    num:'Code drills with satisfactory outcome (staff passed)',
-    den:'Total code drills conducted',
-    formula:'percent', target:90, hib:true, unit:'%',
-    objective:'Measures effectiveness — not just that drills happened, but that staff performed correctly.',
-    src:'Code Drill Critique Reports', freq:'Quarterly', color:'#10b981',
-    roles:['director','safety']
-  },
+  // ── Migrated: Fire Safety ──
   { id:'PMS-F1', domain:'safety', domainLabel:'Fire Safety', icon:'🔥',
     name:'Unit Level Fire Drill Compliance', standard:'FMS.1.1.6',
     num:'Units completing required fire drills per schedule',
@@ -14123,8 +14101,61 @@ const PMS_KPIS = [
 
 let PMS_DOMAIN_FILTER = 'all';
 
+/* ==================== KPI ENGINE v2 — period matching, custom/override layer ==================== */
+
+// Canonicalize ANY period value to 'YYYY-MM' so old raw-Date entries, ISO strings,
+// and dropdown values all match. This fixes "No Data" where entries existed.
+function pmsPeriodKey(v){
+  if(v==null) return '';
+  const s=String(v).trim();
+  if(/^\d{4}-\d{2}$/.test(s)) return s;                       // 2026-06
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,7);       // 2026-06-01 -> 2026-06
+  const M={jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};
+  // "Mon Jun 01 2026 00:00:00 GMT+0300 (...)"
+  let m=s.match(/\b(\w{3})\s+\d{1,2}\s+(\d{4})/); if(m&&M[m[1].toLowerCase()]) return m[2]+'-'+M[m[1].toLowerCase()];
+  // "Jun 2026" or "June 2026"
+  m=s.match(/^([A-Za-z]{3,})\s+(\d{4})$/); if(m&&M[m[1].slice(0,3).toLowerCase()]) return m[2]+'-'+M[m[1].slice(0,3).toLowerCase()];
+  // "6/2026" or "06/2026"
+  m=s.match(/^(\d{1,2})\/(\d{4})$/); if(m) return m[2]+'-'+String(m[1]).padStart(2,'0');
+  // fallback: try Date
+  const d=new Date(s); if(!isNaN(d.getTime())) return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  return s;
+}
+
+// Custom KPI store: user-added definitions + overrides of built-ins + retirements.
+// Shape: { _id, mode:'add'|'override'|'retire', id, ...fields }
+function pmsCustomStore(){ try{ return ld('customKPI')||[]; }catch(e){ return []; } }
+function pmsSaveCustomStore(arr){ sv('customKPI', arr); }
+
+// The effective KPI list = built-ins (with overrides applied, retirements removed) + custom adds.
+function pmsEffectiveKPIs(){
+  const store=pmsCustomStore();
+  const retired=new Set(store.filter(c=>c.mode==='retire').map(c=>c.id));
+  const overrides={}; store.filter(c=>c.mode==='override').forEach(c=>{ overrides[c.id]=c; });
+  let list=PMS_KPIS.filter(k=>!retired.has(k.id)).map(k=>{
+    const ov=overrides[k.id];
+    return ov ? Object.assign({}, k, ov.fields||{}, {id:k.id, _overridden:true}) : k;
+  });
+  // custom additions
+  store.filter(c=>c.mode==='add').forEach(c=>{
+    if(retired.has(c.id)) return;
+    list.push(Object.assign({
+      id:c.id, domain:c.domain||'safety', domainLabel:c.domainLabel||(c.domain||'Custom'),
+      icon:c.icon||'📊', name:c.name||c.id, standard:c.standard||'—',
+      num:c.num||'Numerator', den:c.den||'Denominator', formula:c.formula||'percent',
+      target:(c.target!=null?c.target:100), hib:(c.hib!=null?c.hib:true), unit:c.unit||'%',
+      objective:c.objective||'', src:c.src||'Manual entry', freq:c.freq||'Monthly',
+      color:c.color||'#06b6d4', roles:c.roles||['director'], _custom:true
+    }, c.fields||{}));
+  });
+  return list;
+}
+
+
 // ── Init ──
 function pmsInit() {
+  try{ pmsMigrateCleanup(); }catch(e){}
+  try{ const mt=document.getElementById('pms-manage-tab'); if(mt) mt.style.display = (pmsCanManage()?'':'none'); }catch(e){}
   // Build year selector
   const ySel = document.getElementById('pms-year-sel');
   if (ySel && !ySel.options.length) {
@@ -14171,29 +14202,39 @@ function pmsInit() {
 // ── Role-based KPI visibility ──
 function pmsVisibleKPIs() {
   const role = typeof CU !== 'undefined' ? CU.role : 'director';
-  if (role === 'director') return PMS_KPIS;
-  return PMS_KPIS.filter(k => k.roles.includes(role));
+  const eff = pmsEffectiveKPIs();
+  if (role === 'director') return eff;
+  return eff.filter(k => (k.roles||['director']).includes(role));
 }
 
 // ── Tab switching ──
 function pmsTab(domain, btn) {
-  PMS_DOMAIN_FILTER = domain;
+  PMS_DOMAIN_FILTER = (['entry','info','manage'].includes(domain)) ? PMS_DOMAIN_FILTER : domain;
   if (btn) {
     btn.closest('.tb').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
   }
   const entryPanel = document.getElementById('pms-entry-panel');
+  const infoPanel  = document.getElementById('pms-info-panel');
+  const mgPanel    = document.getElementById('pms-manage-panel');
   const cards      = document.getElementById('pms-cards');
   const summary    = document.getElementById('pms-summary');
+  const hide = el => { if(el) el.style.display='none'; };
+  hide(entryPanel); hide(infoPanel); hide(mgPanel);
   if (domain === 'entry') {
     if (entryPanel) entryPanel.style.display = 'block';
-    if (cards)      cards.style.display = 'none';
-    if (summary)    summary.style.display = 'none';
+    if (cards) cards.style.display='none'; if (summary) summary.style.display='none';
     pmsRenderHistory();
+  } else if (domain === 'info') {
+    if (infoPanel) infoPanel.style.display = 'block';
+    if (cards) cards.style.display='none'; if (summary) summary.style.display='none';
+    pmsRenderInfographics();
+  } else if (domain === 'manage') {
+    if (mgPanel) mgPanel.style.display = 'block';
+    if (cards) cards.style.display='none'; if (summary) summary.style.display='none';
+    pmsRenderManage();
   } else {
-    if (entryPanel) entryPanel.style.display = 'none';
-    if (cards)      cards.style.display = 'grid';
-    if (summary)    summary.style.display = '';
+    if (cards) cards.style.display='grid'; if (summary) summary.style.display='';
     pmsRender();
   }
 }
@@ -14201,11 +14242,66 @@ function pmsTab(domain, btn) {
 // ── Get stored entries ──
 function pmsGetEntry(kpiId, period) {
   const all = ld('pms_entries');
-  return all.filter(e => e.kpiId === kpiId && e.period === period)
+  const pk = pmsPeriodKey(period);
+  const manual = all.filter(e => e.kpiId === kpiId && pmsPeriodKey(e.period) === pk)
             .sort((a,b) => b._ts > a._ts ? 1 : -1)[0] || null;
+  if (manual) return manual;
+  if (kpiId === 'PMS-U1') { const a = pmsAchAutoEntry(pk); if (a) return a; }
+  return null;
 }
 
 function pmsGetAllEntries() { return ld('pms_entries'); }
+function pmsGetAllEntries() { return ld('pms_entries'); }
+/* One-time cleanup: remove entries for deleted KPIs + the corrupt header-row entry. */
+function pmsMigrateCleanup(){
+  try{
+    const DELETED = new Set(['PMS-S1','PMS-E1','PMS-E2','KPI-001','KPI-012','KPI-013']);
+    const before = ld('pms_entries')||[];
+    const after = before.filter(e=>{
+      if(!e || typeof e!=='object') return false;
+      if(DELETED.has(e.kpiId)) return false;                        // deleted KPI history
+      if(e.kpiId==='kpiId' || e.period==='period' || e.kpiName==='kpiName') return false; // corrupt header row
+      if((e.num===undefined||e.num===null||e.num==='') && (e.den===undefined||e.den===null||e.den==='')) return false; // empty
+      return true;
+    });
+    if(after.length !== before.length){
+      sv('pms_entries', after);
+      if(typeof toast==='function') toast('Cleaned '+(before.length-after.length)+' obsolete KPI entr'+((before.length-after.length)===1?'y':'ies'),'#10b981',3000);
+    }
+    localStorage.setItem('pms_migrated_v2','1');
+  }catch(e){ console.warn('pmsMigrateCleanup', e.message); }
+}
+
+
+// Auto-source: Critical Area ACH Compliance (PMS-U1 / FMS.34.5) reads from ach_readings.
+// Numerator = distinct critical rooms whose latest reading in the period meets ACH spec;
+// Denominator = distinct critical rooms tested in the period.
+function pmsAchAutoEntry(period){
+  try{
+    if(typeof achReadings!=='function') return null;
+    const pk=pmsPeriodKey(period);
+    const rows=achReadings().filter(r=>r.room && pmsPeriodKey(r.date)===pk);
+    if(!rows.length) return null;
+    // latest reading per room in the period
+    const byRoom={};
+    rows.forEach(r=>{ const k=r.room; if(!byRoom[k] || String(r.date)>String(byRoom[k].date)) byRoom[k]=r; });
+    const rooms=Object.values(byRoom);
+    const den=rooms.length;
+    // "meets spec": prefer the page's own evaluator if present
+    let num=0;
+    rooms.forEach(r=>{
+      let ok=null;
+      try{ if(typeof achEval==='function'){ const e=achEval(r); ok=(e && (e.overall==='pass'||e.overall===true||e.pass===true)); } }catch(e){}
+      if(ok===null){ // fallback: ACH value present and >= 6 (generic critical min) — conservative
+        const a=parseFloat(String(r.ach).replace(/[^0-9.\-]/g,'')); ok=(!isNaN(a) && a>=6);
+      }
+      if(ok) num++;
+    });
+    return { auto:true, kpiId:'PMS-U1', period:pk, num:num, den:den,
+             notes:'Auto-calculated from ACH / Room Pressure Monitoring ('+den+' critical rooms tested)' };
+  }catch(e){ return null; }
+}
+
 
 // ── Calculate result ──
 function pmsCalcResult(kpi, entry) {
@@ -14379,7 +14475,7 @@ function pmsOpenEntry(kpiId, period) {
 function pmsKpiSelected() {
   const sel = document.getElementById('pms-kpi-sel');
   if (!sel?.value) return;
-  const k = PMS_KPIS.find(x=>x.id===sel.value); if (!k) return;
+  const k = pmsFindKpi(sel.value); if (!k) return;
   const nl = document.getElementById('pms-num-label');
   const dl = document.getElementById('pms-den-label');
   if (nl) nl.textContent = k.num;
@@ -14391,7 +14487,7 @@ function pmsKpiSelected() {
 function pmsCalcPreview() {
   const sel = document.getElementById('pms-kpi-sel');
   if (!sel?.value) return;
-  const k  = PMS_KPIS.find(x=>x.id===sel.value); if (!k) return;
+  const k  = pmsFindKpi(sel.value); if (!k) return;
   const n  = parseFloat(document.getElementById('pms-num-val')?.value);
   const d  = parseFloat(document.getElementById('pms-den-val')?.value);
   const pv = document.getElementById('pms-result-preview');
@@ -14420,7 +14516,7 @@ function pmsSaveEntry() {
   if (!per)  { toast('Select a reporting period','#f59e0b'); return; }
   if (nVal==='' || dVal==='') { toast('Enter numerator and denominator','#f59e0b'); return; }
 
-  const k = PMS_KPIS.find(x=>x.id===sel);
+  const k = pmsFindKpi(sel);
   const entry = {
     _id: Date.now(), kpiId: sel, kpiName: k?.name||sel,
     domain: k?.domain||'', period: per,
@@ -14458,7 +14554,7 @@ function pmsRenderHistory() {
   }
   if (!entries.length) { tb.innerHTML='<tr><td colspan="10" class="em">No entries yet</td></tr>'; return; }
   tb.innerHTML = entries.map(e => {
-    const k = PMS_KPIS.find(x=>x.id===e.kpiId);
+    const k = pmsFindKpi(e.kpiId);
     const result = k ? pmsCalcResult(k, e) : null;
     const status = k ? pmsStatus(k, result) : 'no_data';
     const ss = PMS_STATUS[status];
@@ -14489,6 +14585,165 @@ function pmsDeleteEntry(id) {
 }
 
 // ── Export report ──
+/* ==================== KPI INFOGRAPHICS ==================== */
+function pmsCurrentPeriod(){
+  const y=document.getElementById('pms-year-sel'), m=document.getElementById('pms-month-sel');
+  if(y&&m&&y.value&&m.value) return y.value+'-'+String(m.value).padStart(2,'0');
+  const n=new Date(); return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');
+}
+function pmsRenderInfographics(){
+  const el=document.getElementById('pms-info-panel'); if(!el) return;
+  const period=pmsCurrentPeriod();
+  const kpis=pmsVisibleKPIs();
+  const rows=kpis.map(k=>{ const e=pmsGetEntry(k.id,period); const r=pmsCalcResult(k,e); return {k,e,r,st:pmsStatus(k,r)}; });
+  const met=rows.filter(x=>x.st==='met').length, near=rows.filter(x=>x.st==='near').length,
+        gap=rows.filter(x=>x.st==='gap').length, nod=rows.filter(x=>x.st==='no_data').length;
+  const scored=met+near+gap;
+  const score=kpis.length?Math.round((met/kpis.length)*100):0;
+  const sc=score>=80?'#00d4aa':score>=60?'#f59e0b':'#ef4444';
+
+  // donut
+  const seg=[['#00d4aa',met],['#f59e0b',near],['#ef4444',gap],['#4b5563',nod]];
+  const tot=seg.reduce((a,b)=>a+b[1],0)||1; let acc=0;
+  const grad=seg.filter(s=>s[1]>0).map(s=>{const a=Math.round(acc/tot*360),b=Math.round((acc+s[1])/tot*360);acc+=s[1];return s[0]+' '+a+'deg '+b+'deg';}).join(',');
+  const donut='<div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:center;">'+
+    '<div style="width:150px;height:150px;border-radius:50%;background:conic-gradient('+grad+');position:relative;">'+
+      '<div style="position:absolute;inset:26px;background:var(--s1);border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;">'+
+      '<div style="font-family:\'Rajdhani\',sans-serif;font-size:30px;font-weight:800;color:'+sc+';">'+score+'%</div>'+
+      '<div style="font-size:9px;color:var(--mu);">Overall Score</div></div></div>'+
+    '<div style="font-size:12px;line-height:2;">'+
+      '<div><span style="display:inline-block;width:12px;height:12px;background:#00d4aa;border-radius:3px;margin-right:8px;"></span>✅ Target Met — <b>'+met+'</b></div>'+
+      '<div><span style="display:inline-block;width:12px;height:12px;background:#f59e0b;border-radius:3px;margin-right:8px;"></span>⚠️ Near Target — <b>'+near+'</b></div>'+
+      '<div><span style="display:inline-block;width:12px;height:12px;background:#ef4444;border-radius:3px;margin-right:8px;"></span>❌ Below Target — <b>'+gap+'</b></div>'+
+      '<div><span style="display:inline-block;width:12px;height:12px;background:#4b5563;border-radius:3px;margin-right:8px;"></span>— No Data — <b>'+nod+'</b></div>'+
+    '</div></div>';
+
+  // per-KPI bars (only scored)
+  const bars=rows.filter(x=>x.r!=null).map(x=>{
+    const pct=x.k.formula==='average'? Math.min(100,Math.round((x.k.hib? x.r/x.k.target : x.k.target/x.r)*100)) : Math.min(100,x.r);
+    const col=x.st==='met'?'#00d4aa':x.st==='near'?'#f59e0b':'#ef4444';
+    return '<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;"><span>'+x.k.icon+' '+x.k.name+' <span style="color:var(--mu);">'+x.k.standard+'</span></span><span style="font-weight:700;color:'+col+';">'+x.r+x.k.unit+' / '+x.k.target+x.k.unit+'</span></div>'+
+      '<div style="height:8px;background:var(--s2);border-radius:5px;overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:'+col+';"></div></div></div>';
+  }).join('') || '<div style="text-align:center;color:var(--mu);padding:20px;">No scored KPIs for '+period+'. Enter values, or pick another period.</div>';
+
+  // per-domain rollup
+  const domMap={};
+  rows.forEach(x=>{ const d=x.k.domainLabel||x.k.domain; if(!domMap[d])domMap[d]={met:0,tot:0}; if(x.r!=null){domMap[d].tot++; if(x.st==='met')domMap[d].met++;} });
+  const domBars=Object.keys(domMap).map(d=>{const o=domMap[d];const p=o.tot?Math.round(o.met/o.tot*100):null;const col=p==null?'#6b7280':p>=80?'#00d4aa':p>=50?'#f59e0b':'#ef4444';
+    return '<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;font-size:11px;"><span>'+d+'</span><span style="font-weight:700;color:'+col+';">'+(p==null?'—':p+'%')+'</span></div><div style="height:6px;background:var(--s2);border-radius:4px;overflow:hidden;"><div style="height:100%;width:'+(p||0)+'%;background:'+col+';"></div></div></div>';
+  }).join('');
+
+  el.innerHTML=
+    '<div class="card" style="margin-bottom:14px;"><div class="ch"><div class="ct">📊 KPI Scorecard — '+period+'</div></div><div class="cb">'+donut+'</div></div>'+
+    '<div class="g g2">'+
+      '<div class="card"><div class="ch"><div class="ct">Performance by KPI</div></div><div class="cb">'+bars+'</div></div>'+
+      '<div class="card"><div class="ch"><div class="ct">Compliance by Domain</div></div><div class="cb">'+domBars+'</div></div>'+
+    '</div>';
+}
+
+/* ==================== MANAGE KPIs (add / modify / cancel) ==================== */
+function pmsCanManage(){ return (typeof CU==='undefined') || CU.role==='director'; }
+function pmsRenderManage(){
+  const el=document.getElementById('pms-manage-panel'); if(!el) return;
+  if(!pmsCanManage()){ el.innerHTML='<div class="card"><div class="cb" style="text-align:center;color:var(--mu);">⚙ KPI management is restricted to the FMS Director.</div></div>'; return; }
+  const store=pmsCustomStore();
+  const retired=new Set(store.filter(c=>c.mode==='retire').map(c=>c.id));
+  const eff=pmsEffectiveKPIs();
+  const rowsHtml=PMS_KPIS.concat(store.filter(c=>c.mode==='add').map(c=>({id:c.id,name:c.name,standard:c.standard,domainLabel:c.domainLabel||c.domain,_custom:true,target:c.target,unit:c.unit||'%'})))
+    .map(k=>{
+      const isRet=retired.has(k.id);
+      const cur=eff.find(x=>x.id===k.id);
+      const tgt=cur?cur.target+(cur.unit||''):'—';
+      return '<tr style="opacity:'+(isRet?'0.5':'1')+';"><td style="font-size:11px;">'+(k.icon||'📊')+' '+k.name+(k._custom?' <span style="color:#06b6d4;">(custom)</span>':'')+'</td>'+
+        '<td style="font-size:10px;">'+(k.standard||'—')+'</td><td style="font-size:10px;">'+(k.domainLabel||k.domain||'')+'</td>'+
+        '<td style="font-size:11px;font-weight:700;">'+tgt+'</td>'+
+        '<td>'+(isRet?'<span class="chip chip-red" style="font-size:9px;">Retired</span>':'<span class="chip chip-green" style="font-size:9px;">Active</span>')+'</td>'+
+        '<td style="white-space:nowrap;">'+
+          '<button class="btn bo" style="font-size:9px;padding:3px 8px;" onclick="pmsEditKpi(\''+k.id+'\')">✏ Modify</button> '+
+          (isRet? '<button class="btn bg" style="font-size:9px;padding:3px 8px;" onclick="pmsRestoreKpi(\''+k.id+'\')">↺ Restore</button>'
+                : '<button class="btn bo" style="font-size:9px;padding:3px 8px;color:#ef4444;border-color:#ef4444;" onclick="pmsRetireKpi(\''+k.id+'\')">⊘ Cancel</button>')+
+        '</td></tr>';
+    }).join('');
+  el.innerHTML=
+    '<div class="card" style="margin-bottom:14px;"><div class="ch"><div class="ct">➕ Add a New KPI</div></div><div class="cb">'+
+      '<div class="g g2" style="gap:10px;">'+
+        pmsField('nk-name','KPI Name','text','e.g. Hand Hygiene Compliance')+
+        pmsField('nk-standard','CBAHI Standard','text','e.g. IPC.5.1')+
+        pmsSelectField('nk-domain','Domain',['safety','security','biomed','maintenance','utilities','waste'])+
+        pmsField('nk-num','Numerator (what you count)','text','e.g. Compliant observations')+
+        pmsField('nk-den','Denominator (out of)','text','e.g. Total observations')+
+        pmsSelectField('nk-formula','Formula',['percent','average'])+
+        pmsField('nk-target','Target','number','e.g. 90')+
+        pmsField('nk-unit','Unit','text','% or min')+
+        pmsSelectField('nk-hib','Direction',['Higher is better','Lower is better'])+
+        pmsSelectField('nk-freq','Frequency',['Monthly','Quarterly','Semi-Annual','Annual'])+
+        pmsField('nk-src','Source of Data','text','e.g. IPC Audit Sheets')+
+      '</div>'+
+      '<button class="btn bg" style="margin-top:12px;" onclick="pmsAddKpi()">➕ Add KPI</button>'+
+    '</div></div>'+
+    '<div class="card"><div class="ch"><div class="ct">⚙ Existing KPIs — Modify target/settings or Cancel</div></div>'+
+    '<div class="cb" style="padding:0;overflow-x:auto;"><table class="tbl"><thead><tr><th>KPI</th><th>Standard</th><th>Domain</th><th>Target</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+rowsHtml+'</tbody></table></div>'+
+    '<div class="cb" style="font-size:10px;color:var(--mu);border-top:1px solid var(--bd);">Modifying a built-in KPI stores an override (reversible). Cancel soft-retires it — history is kept and it disappears from the dashboard until restored.</div></div>';
+}
+function pmsField(id,label,type,ph){ return '<div><label style="font-size:10px;color:var(--mu);display:block;margin-bottom:3px;">'+label+'</label><input id="'+id+'" type="'+(type||'text')+'" placeholder="'+(ph||'')+'" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:7px;background:var(--s2);color:var(--tx);font-size:11px;"></div>'; }
+function pmsSelectField(id,label,opts){ return '<div><label style="font-size:10px;color:var(--mu);display:block;margin-bottom:3px;">'+label+'</label><select id="'+id+'" style="width:100%;padding:7px;border:1px solid var(--bd);border-radius:7px;background:var(--s2);color:var(--tx);font-size:11px;">'+opts.map(o=>'<option value="'+o+'">'+o+'</option>').join('')+'</select></div>'; }
+
+function pmsAddKpi(){
+  const g=id=>document.getElementById(id)?document.getElementById(id).value.trim():'';
+  const name=g('nk-name'); if(!name){ toast('Enter a KPI name','#f59e0b'); return; }
+  const store=pmsCustomStore();
+  const newId='CUSTOM-'+Date.now();
+  store.push({ _id:newId, mode:'add', id:newId,
+    name, standard:g('nk-standard')||'—', domain:g('nk-domain')||'safety',
+    domainLabel:(g('nk-domain')||'safety').charAt(0).toUpperCase()+(g('nk-domain')||'safety').slice(1),
+    num:g('nk-num')||'Numerator', den:g('nk-den')||'Denominator',
+    formula:g('nk-formula')||'percent', target:parseFloat(g('nk-target'))||100,
+    unit:g('nk-unit')|| (g('nk-formula')==='average'?' min':'%'),
+    hib: g('nk-hib')!=='Lower is better',
+    freq:g('nk-freq')||'Monthly', src:g('nk-src')||'Manual entry',
+    icon:'📊', color:'#06b6d4', roles:['director']
+  });
+  pmsSaveCustomStore(store);
+  try{ dbWrite('customKPI', store[store.length-1]); }catch(e){}
+  toast('✅ KPI added: '+name,'#10b981');
+  pmsRenderManage(); pmsRefreshKpiSelect();
+}
+function pmsEditKpi(id){
+  const cur=pmsEffectiveKPIs().find(x=>x.id===id); if(!cur) return;
+  const nt=prompt('New target for "'+cur.name+'" (current '+cur.target+cur.unit+'):', cur.target);
+  if(nt===null) return;
+  const val=parseFloat(nt); if(isNaN(val)){ toast('Invalid number','#f59e0b'); return; }
+  const dir=confirm('OK = Higher is better (✅ at or above target)\nCancel = Lower is better (✅ at or below target)\n\nCurrent: '+(cur.hib?'Higher is better':'Lower is better'));
+  const store=pmsCustomStore().filter(c=>!(c.mode==='override'&&c.id===id));
+  store.push({ _id:'ov-'+id, mode:'override', id, fields:{ target:val, hib:dir } });
+  pmsSaveCustomStore(store);
+  try{ dbWrite('customKPI', store[store.length-1]); }catch(e){}
+  toast('✅ Updated: '+cur.name,'#10b981');
+  pmsRenderManage(); pmsRefreshKpiSelect();
+}
+function pmsRetireKpi(id){
+  const cur=pmsEffectiveKPIs().find(x=>x.id===id);
+  if(!confirm('Cancel (retire) "'+(cur?cur.name:id)+'"? It will be hidden from the dashboard. History is kept and you can Restore it later.')) return;
+  const store=pmsCustomStore().filter(c=>!(c.mode==='retire'&&c.id===id));
+  store.push({ _id:'ret-'+id, mode:'retire', id });
+  pmsSaveCustomStore(store);
+  try{ dbWrite('customKPI', store[store.length-1]); }catch(e){}
+  toast('KPI retired','#f59e0b');
+  pmsRenderManage(); pmsRefreshKpiSelect();
+}
+function pmsRestoreKpi(id){
+  pmsSaveCustomStore(pmsCustomStore().filter(c=>!(c.mode==='retire'&&c.id===id)));
+  toast('KPI restored','#10b981');
+  pmsRenderManage(); pmsRefreshKpiSelect();
+}
+function pmsRefreshKpiSelect(){
+  const kSel=document.getElementById('pms-kpi-sel'); if(!kSel) return;
+  const cur=kSel.value;
+  kSel.innerHTML='<option value="">— Select KPI —</option>';
+  pmsVisibleKPIs().forEach(k=>{ const o=document.createElement('option'); o.value=k.id; o.textContent=k.icon+' ['+k.standard+'] '+k.name; kSel.appendChild(o); });
+  if(cur) kSel.value=cur;
+}
+
 function pmsExportReport() {
   const ySel = document.getElementById('pms-year-sel');
   const mSel = document.getElementById('pms-month-sel');
