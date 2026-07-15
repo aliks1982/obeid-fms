@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260715-1567';
+  var v = '20260715-1569';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260715-1567">
+<meta name="app-version" content="20260715-1569">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -17717,16 +17717,26 @@ function achNormalizeRow(raw) {
     if (typeof val === 'string') val = val.trim();
     o[key] = val;
   });
-  // header aliases
+  // Positional fallback: the Google Form sheet columns are, in order,
+  // Timestamp | Room | Pressure | ACH | Temp | Humidity | By | Status.
+  // If a header doesn't match an alias (Form titles vary), read by position.
+  // We ignore synthetic (_id, _ts…) and known-meta keys when indexing.
+  const okeys = Object.keys(o).filter(k => k && k[0] !== '_');
+  const pos = i => (okeys[i] != null ? o[okeys[i]] : '');
+  const firstMatch = (aliases, idx) => {
+    for (const a of aliases) { if (o[a] !== undefined && o[a] !== '') return o[a]; }
+    return pos(idx);
+  };
+  // header aliases, with positional fallback
   const row = {
-    date: o['date'] || o['timestamp'] || o['date & time'] || o['datetime'] || '',
-    room: o['room'] || o['roomid'] || o['room id'] || '',
-    pressure: o['pressure'] || o['pressure (pa)'] || o['pressure(pa)'] || '',
-    ach: o['ach'] || o['air changes'] || o['air changes per hour'] || '',
-    temp: o['temp'] || o['temperature'] || o['temperature (°c)'] || o['temperature (c)'] || '',
-    humidity: o['humidity'] || o['humidity (%)'] || o['rh'] || o['relative humidity'] || '',
-    by: o['by'] || o['staff name'] || o['staff'] || o['name'] || '',
-    status: (o['status'] || o['room status'] || o['occupancy'] || o['room_status'] || '').toString().trim()
+    date: firstMatch(['date','timestamp','date & time','datetime'], 0),
+    room: firstMatch(['room','roomid','room id'], 1),
+    pressure: firstMatch(['pressure','pressure (pa)','pressure(pa)'], 2),
+    ach: firstMatch(['ach','air changes','air changes per hour','air changes/hour'], 3),
+    temp: firstMatch(['temp','temperature','temperature (°c)','temperature (c)'], 4),
+    humidity: firstMatch(['humidity','humidity (%)','rh','relative humidity'], 5),
+    by: firstMatch(['by','staff name','staff','name','recorded by'], 6),
+    status: String(firstMatch(['status','room status','occupancy','room_status'], 7) || '').trim()
   };
   // Resolve room: exact match first, else strip label (take first token before space/dash)
   let rm = String(row.room||'').trim();
@@ -18499,19 +18509,32 @@ function tmpShift(raw){
 function tmpLowerKeys(raw){
   const o={}; Object.keys(raw||{}).forEach(k=>{ let val=raw[k]; if(typeof val==='string')val=val.trim(); o[String(k).trim().toLowerCase()]=val; }); return o;
 }
+function tmpPickDate(o, okeys){
+  // Prefer an explicit date/timestamp header; else scan cells for the first that
+  // looks like a date (contains a digit and a - or / separator). Falls back to col 1 then 0.
+  for(const a of ['date','timestamp','date & time','datetime']){ if(o[a]) return o[a]; }
+  const looksDate = v => /\d/.test(String(v)) && /[-\/]/.test(String(v));
+  for(let i=0;i<okeys.length;i++){ const v=o[okeys[i]]; if(looksDate(v)) return v; }
+  return (okeys[1]!=null?o[okeys[1]]:'') || (okeys[0]!=null?o[okeys[0]]:'');
+}
 function tmpMorgueRows(){
   try{
     return (ld('temp_morgue')||[]).map(raw=>{
       const o=tmpLowerKeys(raw);
+      // Positional fallback for Form sheets whose headers differ from the spec.
+      // Column order: Timestamp | Date | Shift | Recorded By | F1 | F2 | F3 | F4 | Remarks
+      const okeys=Object.keys(o).filter(k=>k && k[0]!=='_');
+      const pos=i=>(okeys[i]!=null?o[okeys[i]]:'');
+      const pick=(aliases,idx)=>{ for(const a of aliases){ if(o[a]!==undefined && o[a]!=='') return o[a]; } return pos(idx); };
       return {
         _id: raw._id, _raw: raw,
-        date: achDateISO(o['date']||o['timestamp']||''),
-        shift: tmpShift(o['shift']),
-        by: o['recorded by']||o['recordedby']||o['by']||o['name']||'',
-        f1: o['refrigerator 1 temp (°c)']||o['refrigerator 1 temp']||o['fridge 1']||o['refrigerator 1']||o['f1']||'',
-        f2: o['refrigerator 2 temp (°c)']||o['refrigerator 2 temp']||o['fridge 2']||o['refrigerator 2']||o['f2']||'',
-        f3: o['refrigerator 3 freezer temp (°c)']||o['refrigerator 3 temp']||o['freezer']||o['refrigerator 3']||o['f3']||'',
-        f4: o['refrigerator 4 temp (°c)']||o['refrigerator 4 temp']||o['fridge 4']||o['refrigerator 4']||o['f4']||'',
+        date: achDateISO(tmpPickDate(o, okeys)),
+        shift: tmpShift(pick(['shift'],2)),
+        by: pick(['recorded by','recordedby','by','name'],3),
+        f1: pick(['refrigerator 1 temp (°c)','refrigerator 1 temp','fridge 1','refrigerator 1','f1'],4),
+        f2: pick(['refrigerator 2 temp (°c)','refrigerator 2 temp','fridge 2','refrigerator 2','f2'],5),
+        f3: pick(['refrigerator 3 freezer temp (°c)','refrigerator 3 temp','freezer','refrigerator 3','f3'],6),
+        f4: pick(['refrigerator 4 temp (°c)','refrigerator 4 temp','fridge 4','refrigerator 4','f4'],7),
         remarks: o['remarks']||''
       };
     }).filter(r=>r.date && (r.f1!==''||r.f2!==''||r.f3!==''||r.f4!==''));
@@ -18521,12 +18544,16 @@ function tmpWasteRows(){
   try{
     return (ld('temp_waste')||[]).map(raw=>{
       const o=tmpLowerKeys(raw);
+      // Column order: Timestamp | Date | Shift | Recorded By | Room Temp | Remarks
+      const okeys=Object.keys(o).filter(k=>k && k[0]!=='_');
+      const pos=i=>(okeys[i]!=null?o[okeys[i]]:'');
+      const pick=(aliases,idx)=>{ for(const a of aliases){ if(o[a]!==undefined && o[a]!=='') return o[a]; } return pos(idx); };
       return {
         _id: raw._id, _raw: raw,
-        date: achDateISO(o['date']||o['timestamp']||''),
-        shift: tmpShift(o['shift']),
-        by: o['recorded by']||o['recordedby']||o['by']||o['name']||'',
-        room: o['room temp (°c)']||o['room temp']||o['temperature']||o['temp']||o['room']||'',
+        date: achDateISO(tmpPickDate(o, okeys)),
+        shift: tmpShift(pick(['shift'],2)),
+        by: pick(['recorded by','recordedby','by','name'],3),
+        room: pick(['room temp (°c)','room temp','temperature','temp','room'],4),
         remarks: o['remarks']||''
       };
     }).filter(r=>r.date && r.room!=='');
