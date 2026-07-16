@@ -1,11 +1,11 @@
-<thead style="position:sticky;top:0;background:var(--sf);z-index:2;"><tr style="font-size:10px;"><th style="min-width:80px;cursor:pointer;" onclick="eqSort('asset')">Asset No.</th><th style="min-width:60px;cursor:pointer;" onclick="eqSort('inv')">Inv. No.</th><th style="min-width:160px;cursor:pointer;" onclick="eqSort('desc')">Equipment Description</th><th style="min-width:120px;cursor:pointer;" onclick="eqSort('dept')">Department</th><th style="min-width:90px;">Location</th><th style="min-width:90px;">Model No.</th><th style="min-width:110px;">Serial No.</th><th style="min-width:110px;cursor:pointer;" onclick="eqSort('mfr')">Manufacturer</th><th style="min-width:80px;">Installed</th><th style="min-width:90px;">Covered By</th><th style="min-width:70px;">PPM Freq.</th><th style="min-width:100px;cursor:pointer;" onclick="eqSort('lastPPM')">Last PPM Date</th><th style="min-width:100px;cursor:pointer;" onclick="eqSort('nextPPM')">Next Due Date</th><th style="min-width:100px;">PPM Validity</th><th style="min-width:90px;">PPM Performed By</th><th style="min-width:110px;cursor:pointer;" onclick="eqSort('warranty')">Warranty</th><th style="min-width:80px;cursor:pointer;" onclick="eqSort('status')">Status</th><th style="min-width:50px;">Docs</th><th style="min-width:80px;">Actions</th></tr></thead><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260716-1575';
+  var v = '20260717-1576';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260716-1575">
+<meta name="app-version" content="20260717-1576">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3654,22 +3654,19 @@ if ('caches' in window) {
   </div>
 
   <div id="achpanel-log" style="display:none;">
-    <div class="card" style="margin-bottom:14px;border-left:4px solid #D85A30;">
-      <div class="ch"><div class="ct" id="ach-log-neg-title">🔴 Negative Pressure Room Readings</div></div>
-      <div class="cb" style="padding:0;overflow-x:auto;">
-        <table class="tbl" style="min-width:820px;"><thead><tr>
-          <th>Date/Time</th><th>Room</th><th>Status</th><th>Pressure (Pa)</th><th>ACH</th><th>Temp °C</th><th>RH %</th><th>By</th><th>Result</th>
-        </tr></thead><tbody id="ach-readings-neg"></tbody></table>
+    <div class="card" style="margin-bottom:14px;">
+      <div class="cb" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+        <div><label style="font-size:10px;color:var(--mu);display:block;margin-bottom:3px;">From</label>
+          <input type="date" id="ach-log-from" onchange="achRenderReadings()" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:7px 10px;color:var(--tx);font-size:11px;"></div>
+        <div><label style="font-size:10px;color:var(--mu);display:block;margin-bottom:3px;">To</label>
+          <input type="date" id="ach-log-to" onchange="achRenderReadings()" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:7px 10px;color:var(--tx);font-size:11px;"></div>
+        <div><label style="font-size:10px;color:var(--mu);display:block;margin-bottom:3px;">Department</label>
+          <select id="ach-log-dept" onchange="achRenderReadings()" style="background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:7px 10px;color:var(--tx);font-size:11px;"><option value="">All Departments</option></select></div>
+        <button class="btn bo" style="font-size:10px;padding:7px 14px;" onclick="achLogClearRange()">✕ Clear</button>
+        <button class="btn bg" style="font-size:10px;padding:7px 14px;margin-left:auto;" onclick="achExportLogRange()">⬇ Export This View</button>
       </div>
     </div>
-    <div class="card" style="border-left:4px solid #378ADD;">
-      <div class="ch"><div class="ct" id="ach-log-pos-title">🔵 Positive Pressure Room Readings</div></div>
-      <div class="cb" style="padding:0;overflow-x:auto;">
-        <table class="tbl" style="min-width:820px;"><thead><tr>
-          <th>Date/Time</th><th>Room</th><th>Status</th><th>Pressure (Pa)</th><th>ACH</th><th>Temp °C</th><th>RH %</th><th>By</th><th>Result</th>
-        </tr></thead><tbody id="ach-readings-pos"></tbody></table>
-      </div>
-    </div>
+    <div id="ach-log-view"></div>
   </div>
 </div>
 
@@ -18106,7 +18103,11 @@ function achNormalizeRow(raw) {
   const okeys = Object.keys(o).filter(k => k && k[0] !== '_');
   const pos = i => (okeys[i] != null ? o[okeys[i]] : '');
   const firstMatch = (aliases, idx) => {
-    for (const a of aliases) { if (o[a] !== undefined && o[a] !== '') return o[a]; }
+    // If ANY alias header exists, honour it — even when the cell is empty. The
+    // positional fallback is only for sheets whose headers match no alias at all;
+    // falling back on empty cells stole the neighbouring column's value
+    // (an empty Pressure grabbed "Vacant" from Room Status).
+    for (const a of aliases) { if (o[a] !== undefined) return o[a]; }
     return pos(idx);
   };
   // header aliases, with positional fallback
@@ -18118,8 +18119,26 @@ function achNormalizeRow(raw) {
     temp: firstMatch(['temp','temperature','temperature (°c)','temperature (c)'], 4),
     humidity: firstMatch(['humidity','humidity (%)','rh','relative humidity'], 5),
     by: firstMatch(['by','staff name','staff','name','recorded by'], 6),
-    status: String(firstMatch(['status','room status','occupancy','room_status'], 7) || '').trim()
+    status: ''
   };
+  // ── Room Status resolution (IPC checkbox semantics) ──
+  // The form's "Room Status" is a CHECKBOX: checked → "Vacant" text in the cell,
+  // UNCHECKED → EMPTY cell → OCCUPIED. Old dropdown rows carry explicit
+  // "Occupied"/"Vacant" text. Everything is matched case-insensitively — the old
+  // code compared === 'vacant' against capitalized "Vacant" and never matched.
+  const stKey = okeys.find(k => /vacan|room\s*status|^status$|occupan/.test(k));
+  if (stKey !== undefined) {
+    const v = String(o[stKey] == null ? '' : o[stKey]).trim().toLowerCase();
+    if (v.indexOf('vacan') >= 0 || v === 'true' || v === 'yes' || v === 'checked') row.status = 'vacant';
+    else if (v.indexOf('occup') >= 0 || v === 'false' || v === '') row.status = 'occupied';
+    else row.status = v;
+  } else {
+    row.status = String(pos(7) || '').trim().toLowerCase();
+  }
+  // Parameter-bearing flag: a status-only submission (vacant tick, no values) is a
+  // STATUS RECORD, not a reading — it must not count toward reading frequency.
+  row._hasParams = [row.pressure, row.ach, row.temp, row.humidity]
+    .some(v => v !== '' && v != null && String(v).trim() !== '');
   // Resolve room: exact match first, else strip label (take first token before space/dash)
   let rm = String(row.room||'').trim();
   const ids = achKnownIds();
@@ -18225,18 +18244,26 @@ function achDaysAgo(n) {
 }
 
 // Returns {need, done, ok, label, status} for one room today
+function achHasParams(r){
+  if (r && r._hasParams !== undefined) return !!r._hasParams;
+  return [r&&r.pressure, r&&r.ach, r&&r.temp, r&&r.humidity]
+    .some(v => v !== '' && v != null && String(v).trim() !== '');
+}
 function achRoomRequirement(rm, readings) {
   const today = achToday();
-  const mine = readings.filter(r => String(r.room)===String(rm.id));
-  const todays = mine.filter(r => (r.date||'').slice(0,10)===today);
+  const mine   = readings.filter(r => String(r.room)===String(rm.id));
+  // Only parameter-bearing rows are "readings"; status-only ticks set occupancy but
+  // never satisfy a reading requirement.
+  const mineP  = mine.filter(achHasParams);
+  const todays = mineP.filter(r => (r.date||'').slice(0,10)===today);
   const status = rm.occ ? achLatestStatus(rm.id, readings) : '';
 
   if (rm.occ && status === 'vacant') {
     // Vacant isolation room: 1 reading within the last 7 days
     const cutoff = achDaysAgo(7);
-    const recent = mine.filter(r => (r.date||'').slice(0,10) >= cutoff);
+    const recent = mineP.filter(r => (r.date||'').slice(0,10) >= cutoff);
     return { need:1, done:recent.length, ok:recent.length>=1, freq:'weekly',
-             status:'vacant', label:'Vacant — 1 reading / 7 days' };
+             status:'vacant', label:'Vacant — 1 full reading / 7 days (MOH)' };
   }
   if (rm.occ && status === 'occupied') {
     // Occupied isolation room: 2 readings today
@@ -18367,54 +18394,127 @@ function achKpiCard(icon, val, lbl, col) {
     '<div style="font-size:9px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;">'+lbl+'</div></div>';
 }
 
-function achRenderReadings() {
-  const readings = achReadings().slice().sort((a,b)=>(b.date||'')>(a.date||'')?1:-1);
-
-  const rowHtml = r => {
-    const e = achEval(r);
-    const room = e.room;
-    const cell = (v,ok)=> (v==null||v==='') ? '<td style="color:var(--mu);">—</td>'
-      : '<td style="color:'+(ok===true?'#16a34a':ok===false?'#dc2626':'var(--tx)')+';font-weight:'+(ok===false?'700':'400')+';">'+v+(ok===false?' ✕':'')+'</td>';
-    const badge = e.overall==='pass'?'<span class="chip chip-green">✅ Pass</span>'
-      : e.overall==='fail'?'<span class="chip chip-red">❌ Fail</span>':'<span class="chip">—</span>';
-    const stChip = r.status==='occupied' ? '<span class="chip chip-red" style="font-size:8px;">Occupied</span>'
-      : r.status==='vacant' ? '<span class="chip chip-green" style="font-size:8px;">Vacant</span>'
-      : '<span style="color:var(--mu);font-size:9px;">—</span>';
-    return '<tr><td style="font-size:10px;">'+String(r.date||'—').slice(0,16).replace('T',' ')+'</td>'+
-      '<td style="font-size:11px;font-weight:600;">'+(room?room.name:(r.room||'—'))+'</td>'+
-      '<td>'+stChip+'</td>'+
-      cell(r.pressure, e.pressure)+cell(r.ach, e.ach)+cell(r.temp, e.temp)+cell(r.humidity, e.hum)+
-      '<td style="font-size:10px;">'+(r.by||r.staff||'—')+'</td>'+
-      '<td>'+badge+'</td></tr>';
-  };
-
-  // Split by the room's configured pressure type; unknown rooms go to negative table
-  // with a note (so nothing is silently hidden).
-  const neg = [], pos = [], unknown = [];
-  readings.forEach(r => {
-    const rm = achRoomById(r.room);
-    if (!rm) unknown.push(r);
-    else if (rm.p === 'pos') pos.push(r);
-    else neg.push(r);
+function achLogClearRange(){
+  ['ach-log-from','ach-log-to'].forEach(id=>{const e=document.getElementById(id); if(e)e.value='';});
+  const d=document.getElementById('ach-log-dept'); if(d)d.value='';
+  achRenderReadings();
+}
+function achLogFiltered(){
+  const from=(document.getElementById('ach-log-from')||{}).value||'';
+  const to=(document.getElementById('ach-log-to')||{}).value||'';
+  const dept=(document.getElementById('ach-log-dept')||{}).value||'';
+  return achReadings().filter(r=>{
+    const d=achDateISO(r.date);
+    if(from && d<from) return false;
+    if(to && d>to) return false;
+    if(dept){ const rm=achRoomById(r.room); if(!rm||rm.dept!==dept) return false; }
+    return true;
+  }).sort((a,b)=>(achDateISO(b.date)+String(b.date))>(achDateISO(a.date)+String(a.date))?1:-1);
+}
+function achLogRowHtml(r){
+  const e = achEval(r);
+  const room = e.room;
+  const cell=(v,ok)=>(v==null||v==='')?'<td style="color:var(--mu);">—</td>'
+    :'<td style="color:'+(ok===true?'#16a34a':ok===false?'#dc2626':'var(--tx)')+';font-weight:'+(ok===false?'700':'400')+';">'+v+(ok===false?' ✕':'')+'</td>';
+  const statusOnly=!achHasParams(r);
+  const badge = statusOnly ? '<span class="chip" style="font-size:8px;">📋 Status only</span>'
+    : e.overall==='pass'?'<span class="chip chip-green">✅ Pass</span>'
+    : e.overall==='fail'?'<span class="chip chip-red">❌ Fail</span>':'<span class="chip">—</span>';
+  const stChip = r.status==='occupied' ? '<span class="chip chip-red" style="font-size:8px;">Occupied</span>'
+    : r.status==='vacant' ? '<span class="chip chip-green" style="font-size:8px;">Vacant</span>'
+    : '<span style="color:var(--mu);font-size:9px;">—</span>';
+  return '<tr'+(statusOnly?' style="opacity:.75;"':'')+'><td style="font-size:10px;">'+String(r.date||'—').slice(0,16).replace('T',' ')+'</td>'+
+    '<td style="font-size:11px;font-weight:600;">'+(room?room.name:(r.room||'—'))+'</td>'+
+    '<td>'+stChip+'</td>'+
+    cell(r.pressure,e.pressure)+cell(r.ach,e.ach)+cell(r.temp,e.temp)+cell(r.humidity,e.hum)+
+    '<td style="font-size:10px;">'+(r.by||r.staff||'—')+'</td>'+
+    '<td>'+badge+'</td></tr>';
+}
+const ACH_MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+function achRenderReadings(){
+  // fill dept filter once
+  const dsel=document.getElementById('ach-log-dept');
+  if(dsel && dsel.options.length<=1){
+    [...new Set(achRooms().map(r=>r.dept))].sort().forEach(d=>{
+      const o=document.createElement('option'); o.value=d; o.textContent=d; dsel.appendChild(o);
+    });
+  }
+  const el=document.getElementById('ach-log-view'); if(!el) return;
+  const rows=achLogFiltered();
+  if(!rows.length){ el.innerHTML='<div class="card"><div class="cb" style="text-align:center;color:var(--mu);padding:20px;">No readings in the selected range.</div></div>'; return; }
+  // group: year -> month -> day -> department
+  const tree={};
+  rows.forEach(r=>{
+    const d=achDateISO(r.date); if(!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+    const [y,m,day]=[d.slice(0,4),d.slice(5,7),d];
+    const rm=achRoomById(r.room);
+    const dept=rm?rm.dept:'— Unlisted rooms —';
+    (((tree[y]=tree[y]||{})[m]=tree[y][m]||{})[day]=tree[y][m][day]||{});
+    (tree[y][m][day][dept]=tree[y][m][day][dept]||[]).push(r);
   });
-
-  const negEl = document.getElementById('ach-readings-neg');
-  if (negEl) negEl.innerHTML = (neg.length||unknown.length)
-    ? neg.map(rowHtml).join('') + unknown.map(r =>
-        '<tr style="opacity:.7;"><td style="font-size:10px;">'+String(r.date||'—').slice(0,16).replace('T',' ')+'</td>'+
-        '<td style="font-size:11px;color:#d97706;">'+(r.room||'—')+' <span style="font-size:9px;">(room not in list — e.g. removed/out of service)</span></td>'+
-        '<td>—</td><td>'+(r.pressure||'—')+'</td><td>'+(r.ach||'—')+'</td><td>'+(r.temp||'—')+'</td><td>'+(r.humidity||'—')+'</td>'+
-        '<td style="font-size:10px;">'+(r.by||'—')+'</td><td><span class="chip">—</span></td></tr>').join('')
-    : '<tr><td colspan="9" style="text-align:center;color:var(--mu);padding:20px;">No negative-pressure readings yet — staff enter via the ACH Google Form (QR)</td></tr>';
-
-  const posEl = document.getElementById('ach-readings-pos');
-  if (posEl) posEl.innerHTML = pos.length ? pos.map(rowHtml).join('')
-    : '<tr><td colspan="9" style="text-align:center;color:var(--mu);padding:20px;">No positive-pressure readings yet — staff enter via the ACH Google Form (QR)</td></tr>';
-
-  const nt = document.getElementById('ach-log-neg-title');
-  if (nt) nt.textContent = '🔴 Negative Pressure Room Readings (' + neg.length + ')';
-  const pt = document.getElementById('ach-log-pos-title');
-  if (pt) pt.textContent = '🔵 Positive Pressure Room Readings (' + pos.length + ')';
+  const TH='<thead><tr><th>Date/Time</th><th>Room</th><th>Status</th><th>Pressure (Pa)</th><th>ACH</th><th>Temp °C</th><th>RH %</th><th>By</th><th>Result</th></tr></thead>';
+  let html='';
+  Object.keys(tree).sort().reverse().forEach(y=>{
+    html+='<details open style="margin-bottom:10px;"><summary style="cursor:pointer;font-family:\'Rajdhani\',sans-serif;font-size:18px;font-weight:800;color:var(--ac);padding:6px 4px;">📅 '+y+'</summary>';
+    Object.keys(tree[y]).sort().reverse().forEach(m=>{
+      const mrows=Object.values(tree[y][m]).reduce((a,dd)=>a+Object.values(dd).reduce((x,arr)=>x+arr.length,0),0);
+      html+='<details open style="margin:6px 0 10px 14px;"><summary style="cursor:pointer;font-size:14px;font-weight:700;color:var(--tx);padding:4px;">'+ACH_MONTHS[parseInt(m,10)-1]+' '+y+' <span style="font-size:10px;color:var(--mu);">('+mrows+' records)</span></summary>';
+      Object.keys(tree[y][m]).sort().reverse().forEach(day=>{
+        const depts=tree[y][m][day];
+        const dayCount=Object.values(depts).reduce((a,arr)=>a+arr.length,0);
+        html+='<details style="margin:4px 0 8px 14px;" '+(Object.keys(tree[y][m]).length<=3?'open':'')+'><summary style="cursor:pointer;font-size:12px;font-weight:600;padding:3px;">🗓 '+day+' <span style="font-size:9px;color:var(--mu);">('+dayCount+' records)</span></summary>';
+        Object.keys(depts).sort().forEach(dept=>{
+          html+='<div class="card" style="margin:6px 0 8px 14px;">'+
+            '<div class="ch"><div class="ct" style="font-size:11px;">🏥 '+dept+' <span style="font-size:9px;color:var(--mu);">('+depts[dept].length+')</span></div></div>'+
+            '<div class="cb" style="padding:0;overflow-x:auto;"><table class="tbl" style="min-width:820px;">'+TH+'<tbody>'+
+            depts[dept].map(achLogRowHtml).join('')+'</tbody></table></div></div>';
+        });
+        html+='</details>';
+      });
+      html+='</details>';
+    });
+    html+='</details>';
+  });
+  el.innerHTML=html;
+}
+function achExportLogRange(){
+  try{
+    const rows=achLogFiltered();
+    if(!rows.length){ toast('No readings in the selected range','#f59e0b'); return; }
+    const from=(document.getElementById('ach-log-from')||{}).value||'(all)';
+    const to=(document.getElementById('ach-log-to')||{}).value||'(all)';
+    const dept=(document.getElementById('ach-log-dept')||{}).value||'All Departments';
+    // group by day -> dept for the export
+    const tree={};
+    rows.forEach(r=>{ const d=achDateISO(r.date); const rm=achRoomById(r.room);
+      const dp=rm?rm.dept:'Unlisted';
+      ((tree[d]=tree[d]||{})[dp]=tree[d][dp]||[]).push(r); });
+    const td=(v,fail)=>'<td style="padding:4px 8px;border:1px solid #ccc;color:'+(fail?'#c00':'#000')+';font-weight:'+(fail?'700':'400')+';">'+(v==null||v===''?'—':v)+(fail?' ✕':'')+'</td>';
+    let body='';
+    Object.keys(tree).sort().forEach(d=>{
+      body+='<h3 style="color:#1e3a5c;margin:14px 0 6px;">🗓 '+d+'</h3>';
+      Object.keys(tree[d]).sort().forEach(dp=>{
+        body+='<h4 style="color:#0F766E;margin:8px 0 4px;">'+dp+'</h4>'+
+        '<table style="border-collapse:collapse;width:100%;font-size:11px;"><thead><tr style="background:#1e3a5c;color:#fff;">'+
+        ['Time','Room','Status','Pressure (Pa)','ACH','Temp °C','RH %','By','Result'].map(h=>'<th style="padding:5px 8px;border:1px solid #ccc;">'+h+'</th>').join('')+'</tr></thead><tbody>'+
+        tree[d][dp].map(r=>{ const e=achEval(r); const rm=e.room; const so=!achHasParams(r);
+          return '<tr>'+td(String(r.date||'').slice(11,16)||'—')+td(rm?rm.name:r.room)+td(r.status||'—')+
+            td(r.pressure,e.pressure===false)+td(r.ach,e.ach===false)+td(r.temp,e.temp===false)+td(r.humidity,e.hum===false)+
+            td(r.by||'—')+td(so?'Status only':(e.overall==='pass'?'PASS':e.overall==='fail'?'FAIL':'—'),e.overall==='fail')+'</tr>';
+        }).join('')+'</tbody></table>';
+      });
+    });
+    const html='<!doctype html><html><head><meta charset="utf-8"><title>ACH Reading Log '+from+' to '+to+'</title></head>'+
+      '<body style="font-family:Arial,sans-serif;max-width:1050px;margin:20px auto;color:#222;">'+
+      '<h2 style="color:#1e3a5c;">Obeid Specialized Hospital — ACH / Room Pressure Reading Log</h2>'+
+      '<p style="color:#555;">Range: '+from+' → '+to+' · Department: '+dept+' · '+rows.length+' records · Generated '+fmsLocalToday()+'</p>'+body+
+      '<p style="margin-top:18px;font-size:10px;color:#888;">✕ marks an out-of-range value · "Status only" rows record occupancy without parameters and are excluded from compliance.</p></body></html>';
+    const b=new Blob([html],{type:'text/html'}); const a=document.createElement('a');
+    a.href=URL.createObjectURL(b); a.download='ACH_Log_'+(from==='(all)'?'all':from)+'_to_'+(to==='(all)'?'all':to)+'.html';
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
+    toast('✅ Log exported ('+rows.length+' records)','#10b981',3500);
+  }catch(err){ toast('❌ Export failed: '+err.message,'#dc2626',5000); }
 }
 
 function achRenderCompliByRoom() {
@@ -18660,12 +18760,17 @@ function achRenderInfographic() {
     if ((r.date||'').slice(0,10)===today) depts[rm.dept].read.add(r.room);
   });
 
-  // Parameter failure counts
-  let pf=0, af=0, tf=0, hf=0, okAll=0;
+  // Parameter failures as % of readings where that parameter was actually evaluated
+  let pf=0, af=0, tf=0, hf=0, okAll=0, evAll=0;
+  let pe=0, ae=0, te=0, he=0;
   readings.forEach(r=>{ const e=achEval(r);
-    if(e.pressure===false)pf++; if(e.ach===false)af++; if(e.temp===false)tf++; if(e.hum===false)hf++;
-    if(e.overall==='pass')okAll++;
+    if(e.pressure!==null){pe++; if(e.pressure===false)pf++;}
+    if(e.ach!==null){ae++; if(e.ach===false)af++;}
+    if(e.temp!==null){te++; if(e.temp===false)tf++;}
+    if(e.hum!==null){he++; if(e.hum===false)hf++;}
+    if(e.overall!=='na'){evAll++; if(e.overall==='pass')okAll++;}
   });
+  const pct=(f,n)=> n? Math.round(f/n*1000)/10 : 0;
 
   const deptBars = Object.keys(depts).sort().map(dn=>{
     const d = depts[dn];
@@ -18682,7 +18787,7 @@ function achRenderInfographic() {
   const paramMax = Math.max(pf,af,tf,hf,1);
   const paramBar = (lbl,val,color)=>'<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">'+
     '<div style="font-size:13px;font-weight:800;color:'+(val>0?color:'var(--mu)')+';">'+val+'</div>'+
-    '<div style="width:60%;background:'+(val>0?color:'var(--bd)')+';border-radius:4px 4px 0 0;height:'+Math.max(4,Math.round(val/paramMax*70))+'px;"></div>'+
+    '<div style="width:60%;background:'+(val>0?color:'var(--bd)')+';border-radius:4px 4px 0 0;height:'+Math.max(4,Math.round(val/100*70))+'px;"></div>'+
     '<div style="font-size:9px;color:var(--mu);text-align:center;">'+lbl+'</div></div>';
 
   el.innerHTML =
@@ -18690,8 +18795,11 @@ function achRenderInfographic() {
     '<div class="cb">'+deptBars+'</div></div>'+
     '<div class="card" style="margin-bottom:14px;"><div class="ch"><div class="ct">⚠️ Non-Compliance by Parameter (which failed most)</div></div>'+
     '<div class="cb"><div style="display:flex;align-items:flex-end;gap:8px;height:100px;padding:6px 10px;">'+
-    paramBar('Pressure',pf,'#dc2626')+paramBar('ACH',af,'#d97706')+paramBar('Temp',tf,'#2563eb')+paramBar('Humidity',hf,'#7c3aed')+
-    '</div><div style="font-size:10px;color:var(--mu);text-align:center;margin-top:6px;">Total compliant readings: <b style="color:#16a34a;">'+okAll+'</b> of '+readings.length+'</div></div></div>';
+    paramBar('Pressure — '+pct(pf,pe)+'% ('+pf+'/'+pe+')',pct(pf,pe),'#dc2626')+
+    paramBar('ACH — '+pct(af,ae)+'% ('+af+'/'+ae+')',pct(af,ae),'#d97706')+
+    paramBar('Temp — '+pct(tf,te)+'% ('+tf+'/'+te+')',pct(tf,te),'#2563eb')+
+    paramBar('Humidity — '+pct(hf,he)+'% ('+hf+'/'+he+')',pct(hf,he),'#7c3aed')+
+    '</div><div style="font-size:10px;color:var(--mu);text-align:center;margin-top:6px;">Bars show % of evaluated readings failing that parameter · Overall compliant: <b style="color:#16a34a;">'+(evAll?Math.round(okAll/evAll*100):0)+'%</b> ('+okAll+' of '+evAll+' evaluated readings)</div></div></div>';
 }
 
 
@@ -18907,7 +19015,7 @@ function tmpMorgueRows(){
       // Column order: Timestamp | Date | Shift | Recorded By | F1 | F2 | F3 | F4 | Remarks
       const okeys=Object.keys(o).filter(k=>k && k[0]!=='_');
       const pos=i=>(okeys[i]!=null?o[okeys[i]]:'');
-      const pick=(aliases,idx)=>{ for(const a of aliases){ if(o[a]!==undefined && o[a]!=='') return o[a]; } return pos(idx); };
+      const pick=(aliases,idx)=>{ for(const a of aliases){ if(o[a]!==undefined) return o[a]; } return pos(idx); };
       return {
         _id: raw._id, _raw: raw,
         date: achDateISO(tmpPickDate(o, okeys)),
@@ -18929,7 +19037,7 @@ function tmpWasteRows(){
       // Column order: Timestamp | Date | Shift | Recorded By | Room Temp | Remarks
       const okeys=Object.keys(o).filter(k=>k && k[0]!=='_');
       const pos=i=>(okeys[i]!=null?o[okeys[i]]:'');
-      const pick=(aliases,idx)=>{ for(const a of aliases){ if(o[a]!==undefined && o[a]!=='') return o[a]; } return pos(idx); };
+      const pick=(aliases,idx)=>{ for(const a of aliases){ if(o[a]!==undefined) return o[a]; } return pos(idx); };
       return {
         _id: raw._id, _raw: raw,
         date: achDateISO(tmpPickDate(o, okeys)),
