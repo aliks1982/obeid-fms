@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260716-1574';
+  var v = '20260716-1575';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260716-1574">
+<meta name="app-version" content="20260716-1575">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -9842,9 +9842,9 @@ function canAccessPage(pageId) {
 function getDynPINs() {
   try {
     return JSON.parse(localStorage.getItem('obeid_pins') || 'null') || {
-      director:'1234', maintenance:'2222', biomedical:'3333', safety:'4444', security:'5555'
+      director:'1234', maintenance:'2222', biomedical:'3333', safety:'4444', security:'5555', ipc:'6666'
     };
-  } catch(e) { return {director:'1234',maintenance:'2222',biomedical:'3333',safety:'4444',security:'5555'}; }
+  } catch(e) { return {director:'1234',maintenance:'2222',biomedical:'3333',safety:'4444',security:'5555',ipc:'6666'}; }
 }
 function saveDynPINs(pins) { localStorage.setItem('obeid_pins', JSON.stringify(pins)); }
 
@@ -9852,9 +9852,9 @@ const USER_NAMES_KEY = 'obeid_user_names';
 function getDynNames() {
   try {
     return JSON.parse(localStorage.getItem(USER_NAMES_KEY) || 'null') || {
-      director:'FMS Director', maintenance:'Mostapha', biomedical:'Bashar', safety:'Moe', security:'Bader'
+      director:'FMS Director', maintenance:'Mostapha', biomedical:'Bashar', safety:'Moe', security:'Bader', ipc:'IPC'
     };
-  } catch(e) { return {director:'FMS Director',maintenance:'Mostapha',biomedical:'Bashar',safety:'Moe',security:'Bader'}; }
+  } catch(e) { return {director:'FMS Director',maintenance:'Mostapha',biomedical:'Bashar',safety:'Moe',security:'Bader',ipc:'IPC'}; }
 }
 function saveDynNames(names) { localStorage.setItem(USER_NAMES_KEY, JSON.stringify(names)); }
 
@@ -10129,10 +10129,13 @@ function getDynUsers() {
     {role:'biomedical',  label:'Biomedical Engineer',  defaultName:'Bashar',   access:'Equipment · Medical Gas · Radiation', custom:false},
     {role:'safety',      label:'Safety Officer',       defaultName:'Moe',      access:'Safety · Hazmat · Emergency · Fire',  custom:false},
     {role:'security',    label:'Security Manager',     defaultName:'Bader',    access:'Security',                            custom:false},
+    {role:'ipc',         label:'Infection Prevention & Control (IPC)', defaultName:'IPC', access:'ACH monitoring · Temperature Log', custom:false},
   ];
   try {
     const extra = JSON.parse(localStorage.getItem('obeid_extra_users')||'[]');
-    return [...defaults, ...extra];
+    // dedupe: a synced extra user must not duplicate a built-in role (e.g. legacy 'ipc' extras)
+    const builtin = new Set(defaults.map(d=>d.role));
+    return [...defaults, ...extra.filter(x=>!builtin.has(x.role))];
   } catch(e) { return defaults; }
 }
 
