@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260716-1573';
+  var v = '20260716-1574';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260716-1573">
+<meta name="app-version" content="20260716-1574">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3448,7 +3448,7 @@ if ('caches' in window) {
         <div class="ff"><label>Asset No.</label><input type="text" id="add-asset" placeholder="e.g. BM-001"></div>
         <div class="ff"><label>Inventory No.</label><input type="text" id="add-inv" placeholder="e.g. 9999"></div>
         <div class="ff" style="grid-column:1/-1"><label>Equipment Description</label><input type="text" id="add-desc" placeholder="e.g. Infusion Pump"></div>
-        <div class="ff"><label>Department</label><input type="text" id="add-dept" placeholder="Department name"></div>
+        <div class="ff"><label>Department</label><select id="add-dept"><option value="">— Select department —</option></select><input type="text" id="add-dept-new" placeholder="Type NEW department name" style="display:none;margin-top:6px;"></div>
         <div class="ff"><label>Location</label><input type="text" id="add-loc" placeholder="Room / area"></div>
         <div class="ff"><label>Model No.</label><input type="text" id="add-model"></div>
         <div class="ff"><label>Serial No.</label><input type="text" id="add-serial"></div>
@@ -9280,7 +9280,29 @@ function eqTab(tab, btn) {
 }
 
 // ── Initialise filter dropdowns ──
+function eqDeptMigrate(){
+  try{
+    if(localStorage.getItem('eq_dept_migrated_v1')) return;
+    const added=ld('eq_added')||[];
+    // canonical set from BASE inventory only (added rows are the suspects)
+    const baseDepts={};
+    (typeof EQ_PAYLOAD!=='undefined'?EQ_PAYLOAD.r.map(eqDecode):[]).forEach(r=>{
+      if(r.dept) baseDepts[String(r.dept).trim().toLowerCase().replace(/\s+/g,' ')]=r.dept;
+    });
+    let fixed=0;
+    added.forEach(r=>{
+      if(!r.dept) return;
+      const key=String(r.dept).trim().toLowerCase().replace(/\s+/g,' ');
+      const canon=baseDepts[key];
+      if(canon && canon!==r.dept){ r.dept=canon; fixed++; try{ dbWrite('eq_added', r); }catch(e){} }
+    });
+    if(fixed){ sv('eq_added',added); if(typeof EQ_ALL!=='undefined') EQ_ALL=null;
+      if(typeof toast==='function') toast('Normalized '+fixed+' equipment department name'+(fixed===1?'':'s')+' (case duplicates merged)','#10b981',3500); }
+    localStorage.setItem('eq_dept_migrated_v1','1');
+  }catch(e){ console.warn('eqDeptMigrate',e.message); }
+}
 function eqInitFilters() {
+  eqDeptMigrate();
   const all   = eqAll();
   const depts = [...new Set(all.map(r => r.dept).filter(Boolean))].sort();
   const types = [...new Set(all.map(r => r.desc).filter(Boolean))].sort();
@@ -9294,6 +9316,19 @@ function eqInitFilters() {
       opts.map(v => `<option value="${v}"${v===prev?' selected':''}>${v}</option>`).join('');
   }
   rebuild('eq-dept-filter',    depts, 'All Departments');
+  // Add-Equipment department dropdown — SAME canonical list as the filter, plus a
+  // controlled "new department" option so free typing can't create case-duplicates.
+  (function(){
+    const el=document.getElementById('add-dept'); if(!el) return;
+    const prev=el.value;
+    el.innerHTML='<option value="">— Select department —</option>'+
+      depts.map(v=>'<option value="'+v+'"'+(v===prev?' selected':'')+'>'+v+'</option>').join('')+
+      '<option value="__NEW__">➕ New department…</option>';
+    el.onchange=function(){
+      const nw=document.getElementById('add-dept-new');
+      if(nw) nw.style.display = (el.value==='__NEW__') ? 'block' : 'none';
+    };
+  })();
   rebuild('eq-type-filter',    types, 'All Equipment Types');
 }
 
@@ -9641,6 +9676,17 @@ function relAutoFill(assetNo) {
 
 
 // ── Add new equipment ──
+// Canonical department: case/space-insensitive match against existing inventory
+// departments — returns the EXISTING spelling so 'Blood Bank' can never create a
+// duplicate of 'BLOOD BANK'.
+function eqCanonicalDept(v){
+  const raw=String(v||'').trim();
+  if(!raw) return raw;
+  const norm=raw.toLowerCase().replace(/\s+/g,' ');
+  const existing=[...new Set(eqAll().map(r=>r.dept).filter(Boolean))];
+  const hit=existing.find(d=>String(d).trim().toLowerCase().replace(/\s+/g,' ')===norm);
+  return hit || raw;
+}
 function eqAddRecord() {
   const g = id => document.getElementById(id)?.value?.trim() || '';
   const asset = g('add-asset');
@@ -9649,7 +9695,7 @@ function eqAddRecord() {
 
   const rec = {
     asset, inv: g('add-inv'), name: g('add-name'), desc,
-    dept: g('add-dept'), location: g('add-loc'),
+    dept: eqCanonicalDept(g('add-dept')==='__NEW__' ? g('add-dept-new') : g('add-dept')), location: g('add-loc'),
     model: g('add-model'), serial: g('add-serial'),
     mfr: g('add-mfr'), supplier: g('add-supplier'),
     installed: g('add-installed'), warranty: g('add-warranty'),
