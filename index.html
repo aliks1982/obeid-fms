@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260718-1578';
+  var v = '20260718-1579';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260718-1578">
+<meta name="app-version" content="20260718-1579">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -7423,13 +7423,25 @@ function renderCBAHI(){
 
 // ===== KPI =====
 const KGS={
-  '111':{lbl:'🛡 FMS.1.1.1 — Safety (Moe)',kpis:[{n:'ESR Rounds (4/yr)',k:'eoc',tgt:4,c:d=>d.length},{n:'EOC Closure Rate',k:'eoc',tgt:100,c:d=>{const t=d.reduce((s,r)=>s+Number(r.findings||0),0),cl=d.reduce((s,r)=>s+Number(r.closed||0),0);return t?Math.round((cl/t)*100):0;},unit:'%'},{n:'Training Sessions (4/yr)',k:'training',tgt:4,c:d=>d.length},{n:'Total Staff Trained',k:'training',tgt:100,c:d=>d.reduce((s,r)=>s+Number(r.count||0),0)},{n:'Incidents Logged',k:'incident',tgt:0,c:d=>d.length,lb:true}]},
+  '111':{lbl:'🛡 FMS.1.1.1 — Safety (Moe)',kpis:[{n:'ESR Rounds (4/yr)',k:'eoc',tgt:4,c:d=>d.length},{n:'Training Sessions (4/yr)',k:'training',tgt:4,c:d=>d.length},{n:'Total Staff Trained',k:'training',tgt:100,c:d=>d.reduce((s,r)=>s+Number(r.count||0),0)},{n:'Incidents Logged',k:'incident',tgt:0,c:d=>d.length,lb:true}]},
   '112':{lbl:'🔒 FMS.1.1.2 — Security (Bader)',kpis:[{n:'Security Incidents',k:'secInc',tgt:0,c:d=>d.length,lb:true},{n:'Security Drills (2/yr)',k:'secDrill',tgt:2,c:d=>d.length},{n:'Infant Abduction Drills (1/yr)',k:'secDrill',tgt:1,c:d=>d.filter(r=>r.type?.includes('Infant')).length}]},
   '113':{lbl:'☣ FMS.1.1.3 — Hazmat (Moe)',kpis:[{n:'Chemicals Registered',k:'chemical',tgt:50,c:d=>d.length},{n:'SDS Coverage',k:'chemical',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.sds==='yes').length/t)*100):0;},unit:'%'},{n:'Waste Audits (4/yr)',k:'wasteAudit',tgt:4,c:d=>d.length},{n:'Avg Segregation Compliance',k:'wasteAudit',tgt:95,c:d=>{const v=d.map(r=>Number(r.pct||0)).filter(x=>x>0);return v.length?Math.round(v.reduce((a,b)=>a+b)/v.length):0;},unit:'%'}]},
-  '1145':{lbl:'🚨 FMS.1.1.4/5 — Emergency (Moe)',kpis:[{n:'Emergency Drills (6/yr)',k:'emDrill',tgt:6,c:d=>d.length},{n:'Code Red Drills',k:'emDrill',tgt:4,c:d=>d.filter(r=>r.type?.includes('Red')).length},{n:'MCI Drills',k:'emDrill',tgt:1,c:d=>d.filter(r=>r.type?.includes('MCI')||r.type?.includes('Mass')).length},{n:'Night Shift Drills',k:'emDrill',tgt:2,c:d=>d.filter(r=>r.shift==='Night').length}]},
-  '116':{lbl:'🔥 FMS.1.1.6 — Fire Safety (Moe+Mostapha)',kpis:[{n:'FA Monthly Inspections (12/yr)',k:'__fireInsp',tgt:12,c:d=>d.length},{n:'FA Testing Logs (12/yr)',k:'__fireTest',tgt:12,c:d=>d.length},{n:'Quarterly PPM — Civil Defense (4/yr)',k:'__firePPM',tgt:4,c:d=>d.length},{n:'FM-200 Inspections (12/yr)',k:'__fireFM200',tgt:12,c:d=>d.length},{n:'Fire Pump Weekly (48/yr)',k:'__firePump',tgt:48,c:d=>d.length},{n:'Wet Chemical Checks (12/yr)',k:'__fireWet',tgt:12,c:d=>d.length},{n:'Exit Inspections',k:'__fireExit',tgt:7,c:d=>d.length},{n:'Overall Pass Rate',k:'__fireAll',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>(r.result||r.res||'pass')==='pass').length/t)*100):0;},unit:'%'}]},
-  '117':{lbl:'⚕ FMS.1.1.7 — Equipment (Bashar)',kpis:[{n:'PPM Records Entered',k:'ppm',tgt:100,c:d=>d.length},{n:'PPM Completion Rate',k:'ppm',tgt:95,c:d=>{const s=(typeof pmsPmAutoStats==='function')?pmsPmAutoStats():null;return s?s.rate:0;},unit:'%'},{n:'Equipment in Inventory',k:'inventory',tgt:200,c:d=>d.length},{n:'High-Risk Equipment',k:'inventory',tgt:50,c:d=>d.filter(r=>r.risk==='High Risk').length}]},
-  '118':{lbl:'⚡ FMS.1.1.8 — Utilities (Mostapha)',kpis:[{n:'Generator Tests (12/yr)',k:'genTest',tgt:12,c:d=>d.length},{n:'Generator Pass Rate',k:'genTest',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.res==='pass').length/t)*100):0;},unit:'%'},{n:'Water Safety Tests (4/yr)',k:'waterTest',tgt:4,c:d=>d.length},{n:'Hot Water Compliance ≥55°C',k:'waterTest',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>Number(r.hot)>=55).length/t)*100):0;},unit:'%'},{n:'PMG Daily Checklists (30/yr)',k:'pmgCheck',tgt:30,c:d=>d.length},{n:'Air Purity Tests (2/yr)',k:'airPurity',tgt:2,c:d=>d.length},{n:'Air Purity Pass Rate',k:'airPurity',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.res==='pass').length/t)*100):0;},unit:'%'},{n:'TLD Quarterly Reviews (4/yr)',k:'tldReview',tgt:4,c:d=>d.length}]},
+  '1145':{lbl:'🚨 FMS.1.1.4/5 — Emergency (Moe)',kpis:[
+    {n:'Codes Completed (of 4 · 1/yr each)',k:'fireDrills_code',tgt:4,c:d=>{const per={};d.forEach(r=>{if(r.code)per[r.code]=1;});return Object.keys(per).length;}},
+    {n:'Code Drills Logged',k:'fireDrills_code',tgt:4,c:d=>d.length},
+    {n:'Code Drill Pass Rate',k:'fireDrills_code',tgt:100,c:d=>{const t=d.length;return t?Math.round(d.filter(r=>r.outcome==='pass').length/t*100):0;},unit:'%'}]},
+  '116':{lbl:'🔥 FMS.1.1.6 — Fire Safety (Moe+Mostapha)',kpis:[
+    {n:'Unit Level Fire Drill Compliance (live)',k:'unitFireDrills',tgt:100,c:d=>{const u=(typeof ufdComplianceStats==='function')?ufdComplianceStats():null;return u?u.rate:0;},unit:'%'},
+    {n:'Unit Fire Drills Logged (59 req/yr)',k:'unitFireDrills',tgt:59,c:d=>d.length},
+    {n:'FA Monthly Inspections (12/yr)',k:'fireAlarm',tgt:12,c:d=>d.filter(r=>r.type?.includes('Monthly')).length},
+    {n:'FA Quarterly PPM — Civil Defense (4/yr)',k:'fireAlarm',tgt:4,c:d=>d.filter(r=>r.type?.includes('PPM')).length},
+    {n:'Suppression System PPM (8/yr)',k:'fireSup',tgt:8,c:d=>d.length},
+    {n:'Fire Exit Inspections (4/yr)',k:'fireExit',tgt:4,c:d=>d.length}]},
+  '117':{lbl:'⚕ FMS.1.1.7 — Equipment (Bashar)',kpis:[
+    {n:'PM Completion Rate — High-Risk (live)',k:'eq_added',tgt:95,c:d=>{const s2=(typeof pmsPmAutoStats==='function')?pmsPmAutoStats():null;return s2?s2.rate:0;},unit:'%'},
+    {n:'High-Risk Devices (configured depts)',k:'eq_added',tgt:1,c:d=>{const s2=(typeof pmsPmAutoStats==='function')?pmsPmAutoStats():null;return s2?s2.den:0;}},
+    {n:'High-Risk Devices with ✅ VALID PPM',k:'eq_added',tgt:1,c:d=>{const s2=(typeof pmsPmAutoStats==='function')?pmsPmAutoStats():null;return s2?s2.num:0;}}]},
+  '118':{lbl:'⚡ FMS.1.1.8 — Utilities (Mostapha)',kpis:[{n:'Generator Tests (12/yr)',k:'genTest',tgt:12,c:d=>d.length},{n:'Generator Pass Rate',k:'genTest',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.res==='pass').length/t)*100):0;},unit:'%'},{n:'Water Safety Tests (4/yr)',k:'waterTest',tgt:4,c:d=>d.length},{n:'Hot Water Compliance ≥55°C',k:'waterTest',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>Number(r.hot)>=55).length/t)*100):0;},unit:'%'},{n:'PMG Daily Checklist Coverage',k:'pmgCheck',tgt:100,c:d=>{const days=Math.max(1,Math.ceil((Date.now()-new Date(new Date().getFullYear(),0,1))/864e5));return Math.min(100,Math.round(d.length/days*100));},unit:'%'},{n:'Air Purity Tests (2/yr)',k:'airPurity',tgt:2,c:d=>d.length},{n:'Air Purity Pass Rate',k:'airPurity',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.res==='pass').length/t)*100):0;},unit:'%'},{n:'TLD Quarterly Reviews (4/yr)',k:'tldReview',tgt:4,c:d=>d.length}]},
 };
 let kpiPd='ytd';
 function setKpiPd(p,btn){kpiPd=p;renderKPI();if(btn){btn.closest('.pb').querySelectorAll('.pbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}}
@@ -9987,7 +9999,8 @@ function dbClearAndResync() {
   const toDelete = [];
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
-    if (!keepKeys.some(kk => k === kk) && k.startsWith('obeid3_')) {
+    if (!keepKeys.some(kk => k === kk) && k.startsWith('obeid3_')
+        && !k.startsWith('obeid3_cbahi_')) {   // CBAHI checklist keys are tiny — never purge
       toDelete.push(k);
     }
   }
