@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260717-1576';
+  var v = '20260717-1577';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260717-1576">
+<meta name="app-version" content="20260717-1577">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3016,7 +3016,7 @@ if ('caches' in window) {
       </div></div>
 
       <div class="card"><div class="ch"><div class="ct">Code Drill Log</div>
-        <div style="font-size:10px;color:var(--mu);">Target: min. 2 drills/year per code · CBAHI FMS.1.1.4</div>
+        <div style="font-size:10px;color:var(--mu);">Target: min. 1 drill/year per code · CBAHI FMS.1.1.4/5</div>
       </div>
         <div class="cb" style="padding:0;max-height:500px;overflow-y:auto;">
           <table class="tbl">
@@ -5661,6 +5661,33 @@ if ('caches' in window) {
       <tbody id="access-log-tb"></tbody>
     </table></div>
   </div>
+
+  <div class="card director-settings-only" style="margin-top:14px;border-left:4px solid #7c3aed;">
+    <div class="ch"><div class="ct">🛠 Master Platform Editor <span style="font-size:9px;color:var(--mu);font-weight:400;">director only · edit any component without a developer</span></div></div>
+    <div class="cb">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--ac);margin-bottom:8px;">⚙ Compliance Targets</div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px;">
+        <div><label style="font-size:10px;color:var(--mu);display:block;margin-bottom:3px;">Code drills / year per code (FMS.1.1.4/5)</label>
+          <input type="number" id="me-codedrill" min="1" style="width:120px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:7px;color:var(--tx);font-size:11px;"></div>
+        <div><label style="font-size:10px;color:var(--mu);display:block;margin-bottom:3px;">ESR rounds / year (FMS.1.1.1)</label>
+          <input type="number" id="me-esr" min="1" style="width:120px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:7px;color:var(--tx);font-size:11px;"></div>
+        <button class="btn bg" style="font-size:10px;padding:8px 16px;" onclick="meSaveCfg()">💾 Save Targets</button>
+      </div>
+      <div style="font-size:9px;color:var(--mu);margin-bottom:14px;">Targets drive: Emergency drill cards · Active Alerts · Domain Readiness · Annual Plans dashboard — one source, no duplication.</div>
+      <div style="border-top:1px solid var(--bd);padding-top:12px;">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--ac);margin-bottom:8px;">🗄 Raw Data Editor <span style="font-size:9px;color:#ef4444;font-weight:400;">advanced — a backup is downloaded automatically before every save or delete</span></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px;">
+          <div><label style="font-size:10px;color:var(--mu);display:block;margin-bottom:3px;">Store</label>
+            <select id="me-store" onchange="meLoadStore()" style="min-width:220px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:7px;color:var(--tx);font-size:11px;"><option value="">— Select a data store —</option></select></div>
+          <button class="btn bo" style="font-size:10px;padding:8px 14px;" onclick="meLoadStore()">↻ Reload</button>
+          <button class="btn bg" style="font-size:10px;padding:8px 14px;" onclick="meSaveStore()">💾 Validate &amp; Save</button>
+          <button class="btn bo" style="font-size:10px;padding:8px 14px;color:#ef4444;border-color:#ef4444;" onclick="meDeleteStore()">🗑 Delete Store</button>
+        </div>
+        <textarea id="me-json" spellcheck="false" style="width:100%;min-height:220px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:10px;color:var(--tx);font-size:10px;font-family:monospace;" placeholder="Select a store to view and edit its records as JSON…"></textarea>
+        <div id="me-status" style="font-size:10px;color:var(--mu);margin-top:6px;"></div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ===== FMS KPI DASHBOARD ===== -->
@@ -7139,6 +7166,7 @@ function gp(id){
   if(id==='settings') setTimeout(function(){try{backupInit();}catch(e){}},200);
   if(id==='ach') setTimeout(function(){try{achInit();}catch(e){}},120);
   if(id==='temperature') setTimeout(function(){try{tmpInit();}catch(e){}},120);
+  if(id==='settings') setTimeout(function(){try{meInit();}catch(e){}},120);
   window.scrollTo(0,0);
 }
 function st(domain,sub,btn){
@@ -7302,27 +7330,70 @@ function renderDash(){
   const aE=document.getElementById('dashAct');
   if(aE)aE.innerHTML=acts.length?`<table class="tbl"><thead><tr><th>Action</th><th>By</th><th>Time</th></tr></thead><tbody>${acts.map(a=>`<tr><td style="font-size:11px;">${a.l}</td><td style="font-size:10px;">${a.by}</td><td style="font-size:9px;color:var(--mu);">${a.ts?.slice(0,16).replace('T',' ')||'—'}</td></tr>`).join('')}</tbody></table>`:'<div class="em">Enter data to see activity here</div>';
 }
+// ── Platform configuration (editable via Settings → Master Platform Editor) ──
+const PLAT_CFG_DEFAULTS = { codeDrillTarget: 1, esrTarget: 4 };
+function platCfg(){
+  try{
+    const o = (ld('platform_settings')||[]).find(x=>x && x._id==='plat_cfg');
+    return Object.assign({}, PLAT_CFG_DEFAULTS, (o && o.cfg) || {});
+  }catch(e){ return Object.assign({}, PLAT_CFG_DEFAULTS); }
+}
+function platCfgSave(cfg){
+  const arr=(ld('platform_settings')||[]).filter(x=>!(x&&x._id==='plat_cfg'));
+  const rec={_id:'plat_cfg', cfg, _ts:new Date().toISOString()};
+  arr.push(rec); sv('platform_settings',arr);
+  try{ dbWrite('platform_settings', rec); }catch(e){}
+}
+
+// ── Unit Level Fire Drill Compliance — SHARED stats (page, KPI sheet, alerts, readiness) ──
+function ufdComplianceStats(){
+  try{
+    const year=new Date().getFullYear();
+    const yearData=(ld('unitFireDrills')||[]).filter(r=>String(r.year)===String(year));
+    const reqMap={};
+    UFD_DEPTS.quarterly.forEach(d=>reqMap[d]=4);
+    UFD_DEPTS.semi.forEach(d=>reqMap[d]=2);
+    UFD_DEPTS.annual.forEach(d=>reqMap[d]=1);
+    const totalRequired=Object.values(reqMap).reduce((s,v)=>s+v,0);
+    const done={}; yearData.forEach(r=>{ done[r.unit]=(done[r.unit]||0)+1; });
+    let totalDone=0;
+    UFD_ALL.forEach(d=>{ totalDone+=Math.min(done[d]||0, reqMap[d]||1); });
+    return { num:totalDone, den:totalRequired,
+             rate: totalRequired?Math.round(totalDone/totalRequired*100):0 };
+  }catch(e){ return null; }
+}
+// Code drills this year, per code (fireDrills_code)
+function codeDrillsThisYear(){
+  const year=String(new Date().getFullYear());
+  const data=(ld('fireDrills_code')||[]).filter(r=>String(r.date||'').slice(0,4)===year);
+  const per={}; ['Code Red','Code Yellow','Code Pink','Code Brown'].forEach(c=>per[c]=data.filter(r=>r.code===c).length);
+  return per;
+}
 function buildAlerts(){
   const a=[],now=new Date(),today=now.toISOString().split('T')[0];
   const todayLOX=(typeof loxCheckDone==='function')?loxCheckDone(today):ld('mg_lox').some(r=>String(r.date||'').slice(0,10)===today); if(!todayLOX)a.push({c:'alc',i:'🔴',t:'LOX Daily Checklist not submitted today',s:'Bashar — Biomedical'});
-  const fd=ld('fireDrill').length;if(fd<4)a.push({c:'alw',i:'🟡',t:`Fire drills: ${fd}/4 this year`,s:'Moe — FMS.1.1.6'});
-  const ec=ld('eoc').length;if(ec<12)a.push({c:'alw',i:'🟡',t:`EOC rounds: ${ec}/12 this year`,s:'Moe — FMS.1.1.1'});
+  const _u=ufdComplianceStats();
+  if(_u && _u.rate<100)a.push({c:'alw',i:'🟡',t:`Unit Level Fire Drill Compliance: ${_u.rate}% (${_u.num}/${_u.den} drills)`,s:'Moe — FMS.1.1.6'});
+  const _cfg=platCfg();
+  const ec=ld('eoc').length;if(ec<_cfg.esrTarget)a.push({c:'alw',i:'🟡',t:`ESR rounds: ${ec}/${_cfg.esrTarget} this year`,s:'Moe — FMS.1.1.1'});
   const td=ld('tldReview').length;if(td<4)a.push({c:'alw',i:'🟡',t:`TLD reviews: ${td}/4 this year`,s:'Bashar — FMS.9.7'});
   const ex2=ld('shieldCert').filter(r=>r.expiry&&new Date(r.expiry)<now);if(ex2.length)a.push({c:'alc',i:'🔴',t:`${ex2.length} shielding cert(s) expired`,s:'Bashar — FMS.9.5'});
   const hi=ld('workorders').filter(w=>w.prio==='high'&&w.status==='Open').length;if(hi)a.push({c:'alc',i:'🔴',t:`${hi} emergency WO(s) open`,s:'Mostapha — Maintenance'});
-  const em2=ld('emDrill').length;if(em2<6)a.push({c:'alw',i:'🟡',t:`Emergency drills: ${em2}/6 this year`,s:'Moe — FMS.1.1.4/5'});
+  const _cd=codeDrillsThisYear(), _t=platCfg().codeDrillTarget;
+  const _missing=Object.keys(_cd).filter(c=>_cd[c]<_t);
+  if(_missing.length)a.push({c:'alw',i:'🟡',t:`Code drills pending (${_t}/yr each): ${_missing.join(', ')}`,s:'Moe — FMS.1.1.4/5'});
   const gt=ld('genTest').length;if(gt<12)a.push({c:'ali',i:'🔵',t:`Generator tests: ${gt}/12 this year`,s:'Mostapha — FMS.1.1.8'});
   return a;
 }
-function dPct(d){const f={safety:()=>Math.min(100,Math.round((ld('eoc').length/12)*60+(ld('training').length/4)*40)),security:()=>Math.min(100,Math.round((ld('secDrill').length/2)*70+(ld('secInc').length>0?30:0))),hazmat:()=>Math.min(100,Math.round((ld('chemical').length>0?Math.min(50,ld('chemical').length*2):0)+(ld('wasteAudit').length/4)*50)),emergency:()=>Math.min(100,Math.round((ld('emDrill').length/6)*100)),fire:()=>Math.min(100,Math.round((ld('fireAlarm').length/12)*30+(ld('fireDrill').length/4)*30+(ld('fireSup').length/4)*20+(ld('fireExit').length/4)*20)),equip:()=>{const t=ld('ppm').length;return t?Math.min(100,Math.round((ld('ppm').filter(r=>r.res==='done').length/t)*100)):0;},utils:()=>Math.min(100,Math.round((ld('genTest').length/12)*40+(ld('waterTest').length/4)*30+(ld('pmgCheck').length/30)*30))};return(f[d]&&f[d]())||0;}
+function dPct(d){const f={safety:()=>Math.min(100,Math.round((ld('eoc').length/platCfg().esrTarget)*60+(ld('training').length/4)*40)),security:()=>Math.min(100,Math.round((ld('secDrill').length/2)*70+(ld('secInc').length>0?30:0))),hazmat:()=>Math.min(100,Math.round((ld('chemical').length>0?Math.min(50,ld('chemical').length*2):0)+(ld('wasteAudit').length/4)*50)),emergency:()=>{const per=codeDrillsThisYear(),t=platCfg().codeDrillTarget;const codes=Object.keys(per);const done=codes.filter(c=>per[c]>=t).length;return Math.round(done/codes.length*100);},fire:()=>{const u=ufdComplianceStats();return Math.min(100,Math.round((ld('fireAlarm').length/12)*30+((u?u.rate:0)/100)*30+(ld('fireSup').length/4)*20+(ld('fireExit').length/4)*20));},equip:()=>{const t=ld('ppm').length;return t?Math.min(100,Math.round((ld('ppm').filter(r=>r.res==='done').length/t)*100)):0;},utils:()=>Math.min(100,Math.round((ld('genTest').length/12)*40+(ld('waterTest').length/4)*30+(ld('pmgCheck').length/30)*30))};return(f[d]&&f[d]())||0;}
 
 // ===== CBAHI =====
 const CBD=[
-  {code:'FMS.1.1.1',title:'Building safety — EOC rounds (12/year)',k:'eoc',tgt:12,chk:d=>d.length>=12},
+  {code:'FMS.1.1.1',title:'Building safety — ESR rounds (4/year, quarterly)',k:'eoc',tgt:4,chk:d=>d.length>=4},
   {code:'FMS.1.1.2',title:'Security drills (2/year)',k:'secDrill',tgt:2,chk:d=>d.length>=2},
   {code:'FMS.1.1.3',title:'Hazmat — chemicals + waste audits',k:'chemical',tgt:10,chk:d=>d.length>=10&&ld('wasteAudit').length>=4},
-  {code:'FMS.1.1.4/5',title:'Emergency drills (6/year)',k:'emDrill',tgt:6,chk:d=>d.length>=6},
-  {code:'FMS.1.1.6',title:'Fire drills (4/year)',k:'fireDrill',tgt:4,chk:d=>d.length>=4},
+  {code:'FMS.1.1.4/5',title:'Code drills — 4 codes × 1/year',k:'fireDrills_code',tgt:4,chk:d=>{const per=codeDrillsThisYear();return Object.values(per).every(n=>n>=platCfg().codeDrillTarget);}},
+  {code:'FMS.1.1.6',title:'Unit level fire drills — 100% compliance',k:'unitFireDrills',tgt:59,chk:d=>{const u=ufdComplianceStats();return !!u&&u.rate>=100;}},
   {code:'FMS.1.1.7',title:'Medical equipment PPM records',k:'ppm',tgt:50,chk:d=>d.length>=50&&d.filter(r=>r.res==='done').length>=45},
   {code:'FMS.1.1.8',title:'Generator monthly tests (12/year)',k:'genTest',tgt:12,chk:d=>d.length>=12},
   {code:'FMS.9.5',title:'Shielding certs — valid (KACST)',k:'shieldCert',tgt:3,chk:d=>d.length>=3&&d.filter(r=>!r.expiry||new Date(r.expiry)>=new Date()).length>=3},
@@ -7344,7 +7415,7 @@ function renderCBAHI(){
 
 // ===== KPI =====
 const KGS={
-  '111':{lbl:'🛡 FMS.1.1.1 — Safety (Moe)',kpis:[{n:'ESR Rounds (12/yr)',k:'eoc',tgt:12,c:d=>d.length},{n:'EOC Closure Rate',k:'eoc',tgt:100,c:d=>{const t=d.reduce((s,r)=>s+Number(r.findings||0),0),cl=d.reduce((s,r)=>s+Number(r.closed||0),0);return t?Math.round((cl/t)*100):0;},unit:'%'},{n:'Training Sessions (4/yr)',k:'training',tgt:4,c:d=>d.length},{n:'Total Staff Trained',k:'training',tgt:100,c:d=>d.reduce((s,r)=>s+Number(r.count||0),0)},{n:'Incidents Logged',k:'incident',tgt:0,c:d=>d.length,lb:true}]},
+  '111':{lbl:'🛡 FMS.1.1.1 — Safety (Moe)',kpis:[{n:'ESR Rounds (4/yr)',k:'eoc',tgt:4,c:d=>d.length},{n:'EOC Closure Rate',k:'eoc',tgt:100,c:d=>{const t=d.reduce((s,r)=>s+Number(r.findings||0),0),cl=d.reduce((s,r)=>s+Number(r.closed||0),0);return t?Math.round((cl/t)*100):0;},unit:'%'},{n:'Training Sessions (4/yr)',k:'training',tgt:4,c:d=>d.length},{n:'Total Staff Trained',k:'training',tgt:100,c:d=>d.reduce((s,r)=>s+Number(r.count||0),0)},{n:'Incidents Logged',k:'incident',tgt:0,c:d=>d.length,lb:true}]},
   '112':{lbl:'🔒 FMS.1.1.2 — Security (Bader)',kpis:[{n:'Security Incidents',k:'secInc',tgt:0,c:d=>d.length,lb:true},{n:'Security Drills (2/yr)',k:'secDrill',tgt:2,c:d=>d.length},{n:'Infant Abduction Drills (1/yr)',k:'secDrill',tgt:1,c:d=>d.filter(r=>r.type?.includes('Infant')).length}]},
   '113':{lbl:'☣ FMS.1.1.3 — Hazmat (Moe)',kpis:[{n:'Chemicals Registered',k:'chemical',tgt:50,c:d=>d.length},{n:'SDS Coverage',k:'chemical',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.sds==='yes').length/t)*100):0;},unit:'%'},{n:'Waste Audits (4/yr)',k:'wasteAudit',tgt:4,c:d=>d.length},{n:'Avg Segregation Compliance',k:'wasteAudit',tgt:95,c:d=>{const v=d.map(r=>Number(r.pct||0)).filter(x=>x>0);return v.length?Math.round(v.reduce((a,b)=>a+b)/v.length):0;},unit:'%'}]},
   '1145':{lbl:'🚨 FMS.1.1.4/5 — Emergency (Moe)',kpis:[{n:'Emergency Drills (6/yr)',k:'emDrill',tgt:6,c:d=>d.length},{n:'Code Red Drills',k:'emDrill',tgt:4,c:d=>d.filter(r=>r.type?.includes('Red')).length},{n:'MCI Drills',k:'emDrill',tgt:1,c:d=>d.filter(r=>r.type?.includes('MCI')||r.type?.includes('Mass')).length},{n:'Night Shift Drills',k:'emDrill',tgt:2,c:d=>d.filter(r=>r.shift==='Night').length}]},
@@ -13609,7 +13680,7 @@ function renderDrillInfographics() {
 
   const codes = ['Code Red','Code Yellow','Code Pink','Code Brown'];
   const codeColors = {'Code Red':'#ef4444','Code Yellow':'#f59e0b','Code Pink':'#ec4899','Code Brown':'#92400e'};
-  const totalTarget = 4; // 4 drills per year per type minimum
+  const totalTarget = platCfg().codeDrillTarget; // drills per year per code (MOH/CBAHI: 1)
 
   el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:13px;">
     ${codes.map(code => {
@@ -13619,12 +13690,12 @@ function renderDrillInfographics() {
       const pct   = totalTarget > 0 ? Math.min(100, Math.round((recs.length/totalTarget)*100)) : 0;
       const codeDescriptions = {
         'Code Red':    'Fire emergency — evacuation + RACE/PASS response',
-        'Code Yellow': 'Internal disaster / mass casualty incident',
+        'Code Yellow': 'External disaster / mass casualty incident',
         'Code Pink':   'Infant / child abduction',
-        'Code Brown':  'Chemical / hazardous material spill'
+        'Code Brown':  'Utility failure — power / water / HVAC / communications / IT'
       };
       return `<div style="background:var(--sf);border:1px solid ${cc}44;border-top:3px solid ${cc};border-radius:12px;padding:14px;text-align:center;">
-        <div style="font-size:28px;margin-bottom:6px;">${code==='Code Red'?'🔥':code==='Code Yellow'?'⚠️':code==='Code Pink'?'👶':'☣️'}</div>
+        <div style="font-size:28px;margin-bottom:6px;">${code==='Code Red'?'🔥':code==='Code Yellow'?'⚠️':code==='Code Pink'?'👶':'⚡'}</div>
         <div style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:${cc};">${code}</div>
         <div style="font-size:9px;color:var(--mu);margin-bottom:10px;line-height:1.4;">${codeDescriptions[code]}</div>
         <div style="font-family:'Rajdhani',sans-serif;font-size:36px;font-weight:700;color:${pct>=100?'#00d4aa':pct>=75?'#f59e0b':cc};">${recs.length}</div>
@@ -14298,6 +14369,11 @@ function pmsGetEntry(kpiId, period) {
   if (manual) return manual;
   if (kpiId === 'PMS-U1') { const a = pmsAchAutoEntry(pk); if (a) return a; }
   if (kpiId === 'PMS-B1') { const a = pmsPmAutoEntry(pk); if (a) return a; }
+  if (kpiId === 'PMS-F1') {
+    const u = (typeof ufdComplianceStats==='function') ? ufdComplianceStats() : null;
+    if (u && u.den) return { auto:true, kpiId:'PMS-F1', period:pk, num:u.num, den:u.den,
+      notes:'⚡ Auto — same calculation as Fire Safety page (FMS.1.1.6): '+u.num+'/'+u.den+' required unit drills done, year-to-date' };
+  }
   return null;
 }
 
@@ -19240,6 +19316,69 @@ function tmpExport(){
     setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
     toast('✅ Temperature report exported','#10b981',3500);
   }catch(err){ console.error(err); toast('❌ Export failed: '+err.message,'#dc2626',5000); }
+}
+</script>
+
+
+<script>
+/* ============ MASTER PLATFORM EDITOR (Settings, director-only) ============ */
+const ME_STORES=['eoc','training','incident','secInc','secDrill','chemical','wasteAudit','emDrill',
+ 'fireAlarm','fireSup','fireExit','fireDrill','fireDrills_code','unitFireDrills','ppm','genTest',
+ 'waterTest','pmgCheck','airPurity','tldReview','leadApron','shieldCert','doc','workorders',
+ 'eq_added','eq_relocations','contracts','evaluations','risk_register','pms_entries','customKPI',
+ 'ach_readings','temp_morgue','temp_waste','platform_settings','act'];
+function meInit(){
+  const cfg=platCfg();
+  const c=document.getElementById('me-codedrill'), e=document.getElementById('me-esr');
+  if(c)c.value=cfg.codeDrillTarget; if(e)e.value=cfg.esrTarget;
+  const sel=document.getElementById('me-store');
+  if(sel && sel.options.length<=1) ME_STORES.forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=k+' ('+((ld(k)||[]).length)+' records)';sel.appendChild(o);});
+}
+function meSaveCfg(){
+  const c=parseInt(document.getElementById('me-codedrill').value,10);
+  const e=parseInt(document.getElementById('me-esr').value,10);
+  if(!(c>=1)||!(e>=1)){ toast('Targets must be ≥ 1','#f59e0b'); return; }
+  platCfgSave({codeDrillTarget:c, esrTarget:e});
+  toast('✅ Targets saved — dashboards will use them immediately','#10b981',3500);
+  try{ renderDash(); }catch(x){}
+  try{ renderDrillInfographics(); }catch(x){}
+}
+function meBackup(store,data){
+  try{
+    const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(b);
+    a.download='BACKUP_'+store+'_'+fmsLocalToday()+'.json';
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},800);
+  }catch(e){}
+}
+function meLoadStore(){
+  const k=document.getElementById('me-store').value; const ta=document.getElementById('me-json'), st=document.getElementById('me-status');
+  if(!k){ ta.value=''; st.textContent=''; return; }
+  const data=ld(k)||[];
+  ta.value=JSON.stringify(data,null,2);
+  st.textContent=k+' — '+data.length+' records loaded. Edit carefully; Validate & Save checks JSON before writing.';
+}
+function meSaveStore(){
+  const k=document.getElementById('me-store').value; const ta=document.getElementById('me-json'), st=document.getElementById('me-status');
+  if(!k){ toast('Select a store first','#f59e0b'); return; }
+  let parsed;
+  try{ parsed=JSON.parse(ta.value); }
+  catch(err){ st.textContent='❌ Invalid JSON: '+err.message; toast('Invalid JSON — nothing saved','#dc2626',4500); return; }
+  if(!Array.isArray(parsed)){ st.textContent='❌ Top level must be an ARRAY of records.'; toast('Top level must be an array','#dc2626'); return; }
+  meBackup(k, ld(k)||[]);
+  sv(k, parsed);
+  st.textContent='✅ Saved '+parsed.length+' records to '+k+' (backup downloaded). Refresh affected pages to see changes.';
+  toast('✅ '+k+' saved — backup downloaded first','#10b981',4000);
+}
+function meDeleteStore(){
+  const k=document.getElementById('me-store').value;
+  if(!k){ toast('Select a store first','#f59e0b'); return; }
+  if(!confirm('DELETE ALL records in "'+k+'"? A backup file will be downloaded first. This clears the store locally; records already synced to Google Sheets remain there.')) return;
+  meBackup(k, ld(k)||[]);
+  sv(k, []);
+  meLoadStore();
+  toast('🗑 '+k+' cleared (backup downloaded)','#f59e0b',4000);
 }
 </script>
 
