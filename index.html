@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260717-1577';
+  var v = '20260718-1578';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260717-1577">
+<meta name="app-version" content="20260718-1578">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -5674,6 +5674,13 @@ if ('caches' in window) {
         <button class="btn bg" style="font-size:10px;padding:8px 16px;" onclick="meSaveCfg()">💾 Save Targets</button>
       </div>
       <div style="font-size:9px;color:var(--mu);margin-bottom:14px;">Targets drive: Emergency drill cards · Active Alerts · Domain Readiness · Annual Plans dashboard — one source, no duplication.</div>
+      <div style="border-top:1px solid var(--bd);padding-top:12px;margin-bottom:14px;">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--ac);margin-bottom:6px;">⚕ High-Risk Departments — PM Completion Rate (FMS.1.1.7)</div>
+        <div style="font-size:9px;color:var(--mu);margin-bottom:8px;">Tick the departments whose devices count in the PM Completion Rate KPI. Drives the Performance Sheet KPI AND the Command Center PPM tile — one source.</div>
+        <div id="me-hr-depts" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:4px;max-height:200px;overflow-y:auto;border:1px solid var(--bd);border-radius:8px;padding:10px;background:var(--s2);margin-bottom:8px;"></div>
+        <button class="btn bg" style="font-size:10px;padding:8px 16px;" onclick="meSaveHrDepts()">💾 Save High-Risk Departments</button>
+        <span id="me-hr-status" style="font-size:10px;color:var(--mu);margin-left:10px;"></span>
+      </div>
       <div style="border-top:1px solid var(--bd);padding-top:12px;">
         <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--ac);margin-bottom:8px;">🗄 Raw Data Editor <span style="font-size:9px;color:#ef4444;font-weight:400;">advanced — a backup is downloaded automatically before every save or delete</span></div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px;">
@@ -7338,7 +7345,8 @@ function platCfg(){
     return Object.assign({}, PLAT_CFG_DEFAULTS, (o && o.cfg) || {});
   }catch(e){ return Object.assign({}, PLAT_CFG_DEFAULTS); }
 }
-function platCfgSave(cfg){
+function platCfgSave(partial){
+  const cfg=Object.assign({}, platCfg(), partial);   // merge — partial saves never clobber other knobs
   const arr=(ld('platform_settings')||[]).filter(x=>!(x&&x._id==='plat_cfg'));
   const rec={_id:'plat_cfg', cfg, _ts:new Date().toISOString()};
   arr.push(rec); sv('platform_settings',arr);
@@ -9371,6 +9379,7 @@ function eqDeptMigrate(){
 }
 function eqInitFilters() {
   eqDeptMigrate();
+  ppmOverrideRepair();
   const all   = eqAll();
   const depts = [...new Set(all.map(r => r.dept).filter(Boolean))].sort();
   const types = [...new Set(all.map(r => r.desc).filter(Boolean))].sort();
@@ -9555,8 +9564,10 @@ function eqRender() {
     const ov = getPPMData(r.asset) || {};
 
     // Dates: PPM override first, then base record
-    const lp = ov.lastPPM || r.lastPPM || '';
-    let   np = ov.nextPPM || r.nextPPM || '';
+    let lp = ov.lastPPM || r.lastPPM || '';
+    let np = ov.nextPPM || r.nextPPM || '';
+    if (lp && !ppmIsDate(lp)) lp = '';   // legacy shifted values must not render as dates
+    if (np && !ppmIsDate(np)) np = '';
 
     // Auto-calculate Next Due from Last PPM + Frequency
     if (!np && lp && (ov.ppmFreq || r.ppmFreq)) {
@@ -11628,6 +11639,85 @@ function saveSinglePPMOverride(assetNo, data) {
     _ts:   ts
   });
   dbWrite('app_settings', row);
+}
+
+// Date sanity: a PPM date must look like a date — "In-house" / "Annual PPM" etc.
+// (from a legacy field-shift bug) must never be treated as one.
+function ppmIsDate(v){
+  if(!v) return false;
+  const s=String(v).trim();
+  if(!/\d{4}/.test(s)) return false;
+  return !isNaN(new Date(s).getTime());
+}
+
+// ── Save PPM Entry (button was calling a function that no longer existed) ──
+function savePPMEntry(){
+  try{
+    const g=id=>{const e=document.getElementById(id);return e?String(e.value).trim():'';};
+    const asset=g('ppm-asset');
+    if(!asset){ toast('Enter the Asset No.','#f59e0b'); return; }
+    const dev=eqAll().find(r=>String(r.asset)===String(asset));
+    if(!dev){ toast('Asset '+asset+' not found in the inventory','#f59e0b'); return; }
+    const date=g('ppm-date');
+    if(!ppmIsDate(date)){ toast('Select the PPM date','#f59e0b'); return; }
+    const ov=getPPMOverrides();
+    const cur=ov[asset]||{};
+    const rec={ lastPPM:date, ppmType:g('ppm-type'), ppmBy:g('ppm-by'),
+                status:g('ppm-status')||cur.status||'', notes:g('ppm-notes'),
+                ppmFreq:cur.ppmFreq||dev.ppmFreq||'', fileKey:cur.fileKey||('ppmf_'+asset),
+                updatedBy:(typeof CU!=='undefined'&&CU.name)||'', updatedAt:new Date().toISOString() };
+    // next due from frequency
+    if(rec.ppmFreq){
+      const d=new Date(date);
+      const f=rec.ppmFreq.toLowerCase();
+      if      (/month|30d/.test(f) && !/3|6|12/.test(f)) d.setMonth(d.getMonth()+1);
+      else if (/quarter|3.?month|90/.test(f))            d.setMonth(d.getMonth()+3);
+      else if (/6.?month|semi|bi.?ann|180/.test(f))      d.setMonth(d.getMonth()+6);
+      else if (/2.?year/.test(f))                        d.setFullYear(d.getFullYear()+2);
+      else                                               d.setFullYear(d.getFullYear()+1); // annual default
+      rec.nextPPM=d.toISOString().split('T')[0];
+    }
+    ov[asset]=Object.assign({},cur,rec);
+    savePPMOverrides(ov);
+    try{ saveSinglePPMOverride(asset, ov[asset]); }catch(e){}
+    const fi=document.getElementById('ppm-files');
+    (async()=>{ try{ if(fi&&fi.files.length){ await fsStoreFiles(rec.fileKey, fi.files); fi.value=''; } }
+      catch(err){ toast('⚠️ PPM saved — files failed to store: '+err.message,'#f59e0b',5000); } })();
+    ['ppm-asset','ppm-desc','ppm-dept','ppm-date','ppm-notes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    try{ eqRender(); }catch(e){}
+    try{ if(typeof renderDash==='function') renderDash(); }catch(e){}
+    toast('✅ PPM saved for '+asset+' — next due '+(rec.nextPPM||'—'),'#10b981',4000);
+  }catch(err){ toast('❌ PPM save failed: '+err.message,'#dc2626',5000); }
+}
+
+// ── Repair legacy corrupted overrides (ppmBy landed in lastPPM, ppmFreq in nextPPM) ──
+function ppmOverrideRepair(){
+  try{
+    const ov=getPPMOverrides(); let fixed=0;
+    Object.keys(ov).forEach(asset=>{
+      const o=ov[asset]; if(!o||typeof o!=='object') return;
+      const bad = (o.lastPPM && !ppmIsDate(o.lastPPM)) || (o.nextPPM && !ppmIsDate(o.nextPPM));
+      if(!bad) return;
+      const salvage={};
+      // hunt for the biomed's real date anywhere in the row
+      const dateFields=Object.keys(o).filter(k=>!['_id','_ts','updatedAt'].includes(k)&&ppmIsDate(o[k])&&/^\d{4}-\d{2}-\d{2}/.test(String(o[k])));
+      if(o.lastPPM && !ppmIsDate(o.lastPPM)){
+        const v=String(o.lastPPM);
+        if(/in.?house|manufactur|contract/i.test(v) && !o.ppmBy) salvage.ppmBy=v;   // shifted value back to its true field
+        if(dateFields.length) salvage.lastPPM=o[dateFields[0]]; else salvage.lastPPM='';
+      }
+      if(o.nextPPM && !ppmIsDate(o.nextPPM)){
+        const v=String(o.nextPPM);
+        if(/annual|month|quarter|semi|year/i.test(v) && !o.ppmFreq) salvage.ppmFreq=v.replace(/\s*ppm\s*$/i,'');
+        salvage.nextPPM='';                        // renderer recomputes from lastPPM + freq
+      }
+      ov[asset]=Object.assign({},o,salvage);
+      fixed++;
+      try{ saveSinglePPMOverride(asset, ov[asset]); }catch(e){}
+    });
+    if(fixed){ savePPMOverrides(ov);
+      toast('🔧 Repaired '+fixed+' corrupted PPM record'+(fixed===1?'':'s')+' (shifted fields restored)','#10b981',4500); }
+  }catch(e){ console.warn('ppmOverrideRepair',e.message); }
 }
 
 function getPPMData(assetNo) {
@@ -14424,20 +14514,38 @@ function pmsAchAutoEntry(period){
 // Completed = device's PPM Validity badge is ✅ VALID (next due > 30 days away),
 // replicating EXACTLY the inventory table's badge logic (incl. PPM overrides).
 const PMS_HIGH_RISK_DEPTS = ['icu','ccu','or','er','laboratory','lab','blood bank','bloodbank','operating room','operating theatre','emergency'];
-function pmsIsHighRiskDept(dept){
+function pmsHrNorm(d){ return String(d||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim(); }
+function pmsHrTokenMatch(dept){
   const d=String(dept||'').toLowerCase().trim();
   if(!d) return false;
-  // token match so 'OR' doesn't hit 'radiOlogy' etc.
   const toks=d.split(/[^a-z]+/).filter(Boolean);
   const joined=d.replace(/[^a-z]+/g,' ').trim();
   return PMS_HIGH_RISK_DEPTS.some(h=>{
-    if(h.indexOf(' ')>=0) return joined.indexOf(h)>=0;      // multi-word: substring on normalized
-    return toks.includes(h);                                 // single word: exact token
+    if(h.indexOf(' ')>=0) return joined.indexOf(h)>=0;
+    return toks.includes(h);
   });
 }
+// Effective high-risk department list — EXPLICIT and editable via the Master Editor.
+// Default: token-matched inventory departments + CS-ICU + NICU/PICU (per FMS Director).
+function pmsHighRiskDeptList(){
+  const cfg=platCfg();
+  if(Array.isArray(cfg.highRiskDepts) && cfg.highRiskDepts.length) return cfg.highRiskDepts;
+  try{
+    const all=[...new Set(eqAll().map(r=>r.dept).filter(Boolean))];
+    const seed=all.filter(d=>pmsHrTokenMatch(d) || /cs\s*-?\s*icu|nicu|picu/i.test(d));
+    return seed;
+  }catch(e){ return []; }
+}
+function pmsIsHighRiskDept(dept){
+  const n=pmsHrNorm(dept);
+  if(!n) return false;
+  return pmsHighRiskDeptList().some(d=>pmsHrNorm(d)===n);
+}
 function pmsDeviceNextDue(r, ov){
-  const lp = ov.lastPPM || r.lastPPM || '';
-  let   np = ov.nextPPM || r.nextPPM || '';
+  let lp = ov.lastPPM || r.lastPPM || '';
+  let np = ov.nextPPM || r.nextPPM || '';
+  if (lp && !ppmIsDate(lp)) lp = '';
+  if (np && !ppmIsDate(np)) np = '';
   if (!np && lp && (ov.ppmFreq || r.ppmFreq)) {
     const d = new Date(lp);
     if (!isNaN(d)) {
@@ -14472,13 +14580,13 @@ function pmsPmAutoStats(){
       const diff = Math.ceil((new Date(np) - today) / 864e5);
       if (diff > 30) valid++;                            // ✅ VALID badge threshold
     });
-    return { num:valid, den:hr.length, rate: Math.round(valid/hr.length*100) };
+    return { num:valid, den:hr.length, rate: Math.round(valid/hr.length*1000)/10 };
   }catch(e){ return null; }
 }
 function pmsPmAutoEntry(period){
   const st=pmsPmAutoStats(); if(!st) return null;
   return { auto:true, kpiId:'PMS-B1', period:pmsPeriodKey(period), num:st.num, den:st.den,
-           notes:'⚡ Auto — from Equipment Inventory: '+st.den+' high-risk devices (ICU/CCU/OR/ER/Lab/Blood Bank), '+st.num+' with ✅ VALID PPM' };
+           notes:'⚡ Auto — from Equipment Inventory: '+st.den+' high-risk devices ('+pmsHighRiskDeptList().join(', ')+'), '+st.num+' with ✅ VALID PPM' };
 }
 
 
@@ -19333,6 +19441,27 @@ function meInit(){
   if(c)c.value=cfg.codeDrillTarget; if(e)e.value=cfg.esrTarget;
   const sel=document.getElementById('me-store');
   if(sel && sel.options.length<=1) ME_STORES.forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=k+' ('+((ld(k)||[]).length)+' records)';sel.appendChild(o);});
+  try{ meRenderHrDepts(); }catch(e){}
+}
+function meRenderHrDepts(){
+  const box=document.getElementById('me-hr-depts'); if(!box) return;
+  const current=new Set(pmsHighRiskDeptList().map(pmsHrNorm));
+  const all=[...new Set(eqAll().map(r=>r.dept).filter(Boolean))].sort();
+  box.innerHTML=all.map(d=>{
+    const on=current.has(pmsHrNorm(d));
+    return '<label style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--tx);cursor:pointer;">'+
+      '<input type="checkbox" class="me-hr-cb" value="'+d.replace(/"/g,'&quot;')+'"'+(on?' checked':'')+'> '+d+'</label>';
+  }).join('');
+  const st=document.getElementById('me-hr-status');
+  if(st){ const s2=pmsPmAutoStats(); st.textContent = s2? ('Current KPI base: '+s2.den+' devices · '+s2.num+' VALID · '+s2.rate+'%') : ''; }
+}
+function meSaveHrDepts(){
+  const picked=[...document.querySelectorAll('.me-hr-cb:checked')].map(c=>c.value);
+  if(!picked.length){ toast('Select at least one department','#f59e0b'); return; }
+  platCfgSave({highRiskDepts:picked});
+  toast('✅ High-risk departments saved ('+picked.length+') — KPI recalculates now','#10b981',4000);
+  meRenderHrDepts();
+  try{ renderDash(); }catch(e){}
 }
 function meSaveCfg(){
   const c=parseInt(document.getElementById('me-codedrill').value,10);
