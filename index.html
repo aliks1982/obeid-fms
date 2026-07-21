@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260719-1581';
+  var v = '20260719-1582';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260719-1581">
+<meta name="app-version" content="20260719-1582">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -7268,7 +7268,65 @@ commTest:r=>`<td>${r.date||'—'}</td><td style="font-size:10px;">${r.sys||'—'
 function renderLog(type){
   // Some tables use short tbody ids — map them so the renderer never no-ops silently.
   const LOG_TB_ALIAS={training:'tr-tb', incident:'si-tb'};
-  const e=document.getElementById(LOG_TB_ALIAS[type]||type+'-tb');if(!e)return;const d=ld(type);if(!d.length){e.innerHTML='<tr><td colspan="12" class="em">No records yet</td></tr>';return;}const fn=LRS[type];if(!fn)return;e.innerHTML=d.map(r=>`<tr>${fn(r)}</tr>`).join('');}
+  const e=document.getElementById(LOG_TB_ALIAS[type]||type+'-tb');if(!e)return;
+  // ── PLATFORM RULE: every log table gets Edit / Delete per row + an Export button ──
+  const tbl=e.closest('table');
+  if(tbl){
+    const hr=tbl.querySelector('thead tr');
+    if(hr && !hr.querySelector('.log-actions-th')){
+      const th=document.createElement('th'); th.className='log-actions-th'; th.textContent='Actions'; hr.appendChild(th);
+    }
+    const card=tbl.closest('.card');
+    if(card){
+      const ch=card.querySelector('.ch');
+      if(ch && !ch.querySelector('.log-export-btn')){
+        const b=document.createElement('button');
+        b.className='btn bo log-export-btn';
+        b.style.cssText='font-size:9px;padding:4px 10px;margin-left:auto;';
+        b.textContent='⬇ Export';
+        b.onclick=()=>logExport(type);
+        ch.style.display='flex'; ch.style.alignItems='center'; ch.appendChild(b);
+      }
+    }
+  }
+  const d=ld(type);
+  if(!d.length){e.innerHTML='<tr><td colspan="12" class="em">No records yet</td></tr>';return;}
+  const fn=LRS[type];if(!fn)return;
+  e.innerHTML=d.map(r=>`<tr>${fn(r)}<td style="white-space:nowrap;">`+
+    `<button class="btn bo" style="font-size:8px;padding:2px 7px;" onclick="logEdit('${type}','${String(r._id)}')">✏</button> `+
+    `<button class="btn bo" style="font-size:8px;padding:2px 7px;color:#ef4444;border-color:#ef4444;" onclick="logDelete('${type}','${String(r._id)}')">🗑</button></td></tr>`).join('');
+}
+let LOG_EDITING=null;
+function logDelete(type,id){
+  if(!confirm('Delete this record? It is removed from the platform; any row already synced to Google Sheets stays there for audit.')) return;
+  sv(type,(ld(type)||[]).filter(r=>String(r._id)!==String(id)));
+  renderLog(type); try{renderAll();}catch(e){}
+  toast('🗑 Record deleted','#f59e0b');
+}
+function logEdit(type,id){
+  const rec=(ld(type)||[]).find(r=>String(r._id)===String(id));
+  const d=RD[type];
+  if(!rec||!d){ toast('Cannot edit this record','#f59e0b'); return; }
+  d.f.forEach(f=>{const [k,fid]=f.split(':');const el=document.getElementById(fid);
+    if(el && el.type!=='file' && rec[k]!==undefined) el.value=rec[k];});
+  LOG_EDITING={type,id};
+  toast('✏ Editing record — change the fields above and press Save to update','#3b82f6',4500);
+}
+function logExport(type){
+  try{
+    const d=ld(type)||[];
+    if(!d.length){ toast('No records to export','#f59e0b'); return; }
+    const cols=(RD[type]?RD[type].f.map(f=>f.split(':')[0]):Object.keys(d[0])).filter(k=>k!=='file');
+    const esc=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+    const csv=[cols.join(','),...d.map(r=>cols.map(c=>esc(r[c])).join(','))].join('\n');
+    const b=new Blob(['\ufeff'+csv],{type:'text/csv'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(b);
+    a.download=type+'_log_'+fmsLocalToday()+'.csv';
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},800);
+    toast('✅ Exported '+d.length+' records','#10b981');
+  }catch(err){ toast('❌ Export failed: '+err.message,'#dc2626'); }
+}
 function renderAll(){Object.keys(RD).forEach(t=>renderLog(t));renderWO();woBadge();renderDash();}
 
 // ===== WORK ORDERS =====
@@ -11208,7 +11266,14 @@ async function saveWithFiles(type, prefix) {
 
   // Save the record FIRST — a file-storage failure must never lose the entry.
   try {
-    const arr = ld(type); arr.unshift(rec); sv(type, arr);
+    const arr = ld(type);
+    if (LOG_EDITING && LOG_EDITING.type === type) {
+      const i = arr.findIndex(r => String(r._id) === String(LOG_EDITING.id));
+      if (i >= 0) { rec._id = arr[i]._id; rec.fileKey = arr[i].fileKey || rec.fileKey; arr[i] = rec; }
+      else arr.unshift(rec);
+      LOG_EDITING = null;
+    } else arr.unshift(rec);
+    sv(type, arr);
   } catch (err) {
     toast('❌ Save failed — storage full: ' + err.message + '. Free space in Settings → Storage, then retry.', '#dc2626', 7000);
     return;
