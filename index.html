@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260718-1579';
+  var v = '20260719-1580';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260718-1579">
+<meta name="app-version" content="20260719-1580">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -7373,7 +7373,8 @@ function ufdComplianceStats(){
 // Code drills this year, per code (fireDrills_code)
 function codeDrillsThisYear(){
   const year=String(new Date().getFullYear());
-  const data=(ld('fireDrills_code')||[]).filter(r=>String(r.date||'').slice(0,4)===year);
+  const yr=v=>{ const d=(typeof achDateISO==='function')?achDateISO(v):String(v||''); return String(d).slice(0,4); };
+  const data=(ld('fireDrills_code')||[]).filter(r=>yr(r.date)===year);
   const per={}; ['Code Red','Code Yellow','Code Pink','Code Brown'].forEach(c=>per[c]=data.filter(r=>r.code===c).length);
   return per;
 }
@@ -7393,7 +7394,7 @@ function buildAlerts(){
   const gt=ld('genTest').length;if(gt<12)a.push({c:'ali',i:'🔵',t:`Generator tests: ${gt}/12 this year`,s:'Mostapha — FMS.1.1.8'});
   return a;
 }
-function dPct(d){const f={safety:()=>Math.min(100,Math.round((ld('eoc').length/platCfg().esrTarget)*60+(ld('training').length/4)*40)),security:()=>Math.min(100,Math.round((ld('secDrill').length/2)*70+(ld('secInc').length>0?30:0))),hazmat:()=>Math.min(100,Math.round((ld('chemical').length>0?Math.min(50,ld('chemical').length*2):0)+(ld('wasteAudit').length/4)*50)),emergency:()=>{const per=codeDrillsThisYear(),t=platCfg().codeDrillTarget;const codes=Object.keys(per);const done=codes.filter(c=>per[c]>=t).length;return Math.round(done/codes.length*100);},fire:()=>{const u=ufdComplianceStats();return Math.min(100,Math.round((ld('fireAlarm').length/12)*30+((u?u.rate:0)/100)*30+(ld('fireSup').length/4)*20+(ld('fireExit').length/4)*20));},equip:()=>{const t=ld('ppm').length;return t?Math.min(100,Math.round((ld('ppm').filter(r=>r.res==='done').length/t)*100)):0;},utils:()=>Math.min(100,Math.round((ld('genTest').length/12)*40+(ld('waterTest').length/4)*30+(ld('pmgCheck').length/30)*30))};return(f[d]&&f[d]())||0;}
+function dPct(d){const f={safety:()=>Math.min(100,Math.round((ld('eoc').length/platCfg().esrTarget)*60+(ld('training').length/4)*40)),security:()=>Math.min(100,Math.round((ld('secDrill').length/2)*70+(ld('secInc').length>0?30:0))),hazmat:()=>Math.min(100,Math.round((ld('chemical').length>0?Math.min(50,ld('chemical').length*2):0)+(ld('wasteAudit').length/4)*50)),emergency:()=>{const per=codeDrillsThisYear(),t=platCfg().codeDrillTarget;const codes=Object.keys(per);const done=codes.filter(c=>per[c]>=t).length;return Math.round(done/codes.length*100);},fire:()=>{const u=ufdComplianceStats();return Math.min(100,Math.round((ld('fireAlarm').length/12)*30+((u?u.rate:0)/100)*30+(ld('fireSup').length/4)*20+(ld('fireExit').length/4)*20));},equip:()=>{const s2=(typeof pmsPmAutoStats==='function')?pmsPmAutoStats():null;return s2?s2.rate:0;},utils:()=>Math.min(100,Math.round((ld('genTest').length/12)*40+(ld('waterTest').length/4)*30+(ld('pmgCheck').length/30)*30))};return(f[d]&&f[d]())||0;}
 
 // ===== CBAHI =====
 const CBD=[
@@ -11202,16 +11203,26 @@ async function saveWithFiles(type, prefix) {
   const miss = d.r.filter(r => !rec[r] || rec[r] === '');
   if (miss.length) { toast('⚠️ Fill: ' + miss.join(', '),'#f59e0b'); return; }
 
-  // Handle multi-file upload from widget
-  const widgetInput = document.querySelector(`#${prefix}-upload-widget input[type=file]`) ||
-                      document.querySelector(`[id$="-upload-widget"] input[type=file]`);
-  if (widgetInput && widgetInput.files.length) {
-    await fsStoreFiles(rec.fileKey, widgetInput.files);
-    widgetInput.value = '';
+  // Save the record FIRST — a file-storage failure must never lose the entry.
+  try {
+    const arr = ld(type); arr.unshift(rec); sv(type, arr);
+  } catch (err) {
+    toast('❌ Save failed — storage full: ' + err.message + '. Free space in Settings → Storage, then retry.', '#dc2626', 7000);
+    return;
   }
-
-  const arr = ld(type); arr.unshift(rec); sv(type, arr);
-  dbWrite(type, rec);
+  try { dbWrite(type, rec); }
+  catch (err) { toast('⚠️ Saved locally — cloud sync failed: ' + err.message, '#f59e0b', 5000); }
+  // Files afterwards — reported, never silent, never lose the record.
+  try {
+    const widgetInput = document.querySelector(`#${prefix}-upload-widget input[type=file]`) ||
+                        document.querySelector(`[id$="-upload-widget"] input[type=file]`);
+    if (widgetInput && widgetInput.files.length) {
+      await fsStoreFiles(rec.fileKey, widgetInput.files);
+      widgetInput.value = '';
+    }
+  } catch (err) {
+    toast('⚠️ Record saved, but attachments could not be stored: ' + err.message, '#f59e0b', 6000);
+  }
   // Clear text fields
   d.f.filter(f=>!f.includes('file')).forEach(f=>{const e=document.getElementById(f.split(':')[1]);if(e&&e.type!=='select-one')e.value='';});
   logA(type); renderLog(type); renderAll();
@@ -14469,7 +14480,9 @@ function pmsGetEntry(kpiId, period) {
   const pk = pmsPeriodKey(period);
   const manual = all.filter(e => e.kpiId === kpiId && pmsPeriodKey(e.period) === pk)
             .sort((a,b) => b._ts > a._ts ? 1 : -1)[0] || null;
-  if (manual) return manual;
+  // Auto-linked KPIs mirror their live pages — the auto figure ALWAYS wins so the
+  // sheet can never contradict the source page (a stray manual 1/1 was showing 100%
+  // while the ACH page showed 66%). Manual entries remain in history for audit.
   if (kpiId === 'PMS-U1') { const a = pmsAchAutoEntry(pk); if (a) return a; }
   if (kpiId === 'PMS-B1') { const a = pmsPmAutoEntry(pk); if (a) return a; }
   if (kpiId === 'PMS-F1') {
@@ -14477,6 +14490,12 @@ function pmsGetEntry(kpiId, period) {
     if (u && u.den) return { auto:true, kpiId:'PMS-F1', period:pk, num:u.num, den:u.den,
       notes:'⚡ Auto — same calculation as Fire Safety page (FMS.1.1.6): '+u.num+'/'+u.den+' required unit drills done, year-to-date' };
   }
+  if (manual) return manual;
+  // Carry-forward: no entry for this period → show the LATEST prior entry, clearly
+  // labelled, so a monitored KPI never reads "No Data" just because the month turned.
+  const prior = all.filter(e => e.kpiId === kpiId && pmsPeriodKey(e.period) && pmsPeriodKey(e.period) < pk)
+    .sort((a,b) => pmsPeriodKey(b.period) > pmsPeriodKey(a.period) ? 1 : -1)[0] || null;
+  if (prior) return Object.assign({}, prior, { _carried:true, _carriedFrom:pmsPeriodKey(prior.period) });
   return null;
 }
 
@@ -14693,6 +14712,7 @@ function pmsRender() {
     let prov='';
     if (entry) {
       if (entry.auto) prov='⚡ Auto-calculated · '+(entry.notes||'live source');
+      else if (entry._carried) prov='📌 Latest entry '+entry._carriedFrom+(entry._by?(' by '+entry._by):'')+' — no entry yet for the selected period';
       else {
         const who=entry._by?(' by '+entry._by):'';
         const when=entry._ts?(' on '+String(entry._ts).slice(0,10)):'';
