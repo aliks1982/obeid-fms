@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260719-1583';
+  var v = '20260719-1584';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260719-1583">
+<meta name="app-version" content="20260719-1584">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -720,6 +720,8 @@ if ('caches' in window) {
     <div class="sc" style="--c:var(--or)"><div class="ico">🏆</div><div class="val" id="d-cbahi">—</div><div class="lbl">CBAHI Readiness</div></div>
     <div class="sc" style="--c:#00d4aa"><div class="ico">🔩</div><div class="val" id="d-maint">—</div><div class="lbl">Maint. Tickets (Live)</div><div class="sub" id="d-maint-rate">Live from Google Sheet</div></div>
   </div>
+  <div class="card" style="margin-bottom:16px;"><div class="ch"><div class="ct">🛢 Critical Reserves — Live Levels</div><div style="font-size:9px;color:var(--mu);">LOX · Bashar &nbsp;|&nbsp; Water &amp; Diesel · Mostapha</div></div>
+    <div class="cb"><div id="dashTanks" style="display:flex;gap:22px;justify-content:space-around;flex-wrap:wrap;"></div></div></div>
   <div class="g g2">
     <div class="card"><div class="ch"><div class="ct">Domain Readiness — Live</div></div><div class="cb" id="domBars"></div></div>
     <div class="card"><div class="ch"><div class="ct">🚨 Active Alerts</div></div><div class="cb" id="dashAlerts"></div></div>
@@ -3509,12 +3511,12 @@ if ('caches' in window) {
 <!-- ===== UTILITIES ===== -->
 <div class="pg" id="page-utils">
   <div class="ph" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;"><div><h1>⚡ Utility Systems — FMS.1.1.8</h1><p>Manager: Mostapha (Maintenance Manager) · PIN: 2222</p></div><button class="btn bo" style="font-size:11px;padding:8px 16px;" onclick="utilsExportAll()">⬇ Export Utility Systems Report</button></div>
-  <div class="tb"><button class="tbtn active" onclick="st('utils','gen',this)">Generator Tests</button><button class="tbtn" onclick="st('utils','water',this)">Water Safety</button><button class="tbtn" onclick="st('utils','comm',this)">📡 Communication Test (FMS 39.2)</button><button class="tbtn" onclick="st('utils','kpi',this)">KPIs</button></div>
+  <div class="tb"><button class="tbtn active" onclick="st('utils','gen',this)">Generator Tests</button><button class="tbtn" onclick="st('utils','wtank',this)">💧 Water Tank</button><button class="tbtn" onclick="st('utils','dtank',this)">⛽ Diesel Tank</button><button class="tbtn" onclick="st('utils','water',this)">Water Safety</button><button class="tbtn" onclick="st('utils','comm',this)">📡 Communication Test (FMS 39.2)</button><button class="tbtn" onclick="st('utils','kpi',this)">KPIs</button></div>
   <div id="utils-gen"><div class="g g2">
     <div class="card"><div class="ch"><div class="ct">Log Generator Test</div></div><div class="cb">
       <div class="fg fg2">
         <div class="ff"><label>Date</label><input type="date" id="gen-date"></div>
-        <div class="ff"><label>Generator</label><select id="gen-unit"><option>GEN-1 500kVA Main</option><option>GEN-2 500kVA Backup</option><option>GEN-3 250kVA CSSD</option><option>GEN-4 250kVA ICU</option></select></div>
+        <div class="ff"><label>Generator</label><select id="gen-unit"><option>GEN-1 — 110V/220V · 625 kVA</option><option>GEN-2 — 220V/380V · 688 kVA</option></select></div>
         <div class="ff"><label>Transfer Time (sec)</label><input type="number" id="gen-tr" placeholder="8"></div>
         <div class="ff"><label>Load (%)</label><input type="number" id="gen-load" placeholder="70"></div>
         <div class="ff"><label>Fuel Level (%)</label><input type="number" id="gen-fuel" placeholder="85"></div>
@@ -3527,6 +3529,84 @@ if ('caches' in window) {
     </div></div>
     <div class="card"><div class="ch"><div class="ct">Generator Test Log (12/year)</div></div><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>Date</th><th>Unit</th><th>Transfer</th><th>Load</th><th>Fuel</th><th>Result</th><th>By</th><th>Doc</th></tr></thead><tbody id="genTest-tb"></tbody></table></div></div>
   </div></div>
+
+  <div id="utils-wtank" style="display:none;">
+    <div class="g g2">
+      <div class="card" style="border-left:4px solid #0ea5e9;"><div class="ch"><div class="ct">💧 Water Tank — Stick Level Entry</div></div><div class="cb">
+        <div style="background:rgba(59,130,246,.06);border:1px solid var(--bd);border-radius:10px;padding:9px 14px;margin-bottom:12px;font-size:10px;color:var(--mu);">
+          <b style="color:#0ea5e9;">Capacity: 90,000 L</b> · Reading by leveled stick · <span id="wt-freq-note">1 reading every <b>2 days</b> (configurable)</span>
+        </div>
+        <div class="fg fg2">
+          <div class="ff"><label>Date</label><input type="date" id="wt-date"></div>
+          <div class="ff"><label>Checked By</label><input type="text" id="wt-by" placeholder="Maintenance staff name"></div>
+          <div class="ff" style="grid-column:1/-1"><label>Stick Level Reading</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;" id="wt-fracs">
+              <button type="button" onclick="tankPick('wtank',0.25,this)" style="flex:1;min-width:62px;padding:14px 0;font-size:17px;font-weight:800;border:2px solid var(--bd);border-radius:10px;background:var(--s2);color:var(--tx);cursor:pointer;">¼</button>
+              <button type="button" onclick="tankPick('wtank',0.5,this)" style="flex:1;min-width:62px;padding:14px 0;font-size:17px;font-weight:800;border:2px solid var(--bd);border-radius:10px;background:var(--s2);color:var(--tx);cursor:pointer;">½</button>
+              <button type="button" onclick="tankPick('wtank',0.75,this)" style="flex:1;min-width:62px;padding:14px 0;font-size:17px;font-weight:800;border:2px solid var(--bd);border-radius:10px;background:var(--s2);color:var(--tx);cursor:pointer;">¾</button>
+              <button type="button" onclick="tankPick('wtank',1,this)" style="flex:1;min-width:62px;padding:14px 0;font-size:15px;font-weight:800;border:2px solid var(--bd);border-radius:10px;background:var(--s2);color:var(--tx);cursor:pointer;">FULL</button>
+            </div>
+            <div id="wt-liters" style="text-align:center;margin-top:8px;font-size:16px;font-weight:700;color:#0ea5e9;">— select level —</div>
+          </div>
+          <div class="ff" style="grid-column:1/-1"><label>Notes</label><textarea id="wt-notes" placeholder="Refill done, abnormality, leak..."></textarea></div>
+        </div>
+        <button class="btn bg" style="margin-top:12px;width:100%;" onclick="tankSaveReading('wtank')">✓ Save Water Tank Reading</button>
+      </div></div>
+      <div class="card"><div class="ch"><div class="ct">💧 Current Level</div></div><div class="cb" style="text-align:center;padding:20px;">
+        <div style="width:88px;height:200px;border:3px solid var(--bd);border-radius:14px;position:relative;overflow:hidden;margin:0 auto;background:var(--s2);">
+          <div id="wt-fill" style="position:absolute;bottom:0;left:0;right:0;height:0%;transition:height .6s;"></div>
+        </div>
+        <div id="wt-pct" style="font-size:28px;font-weight:800;margin-top:10px;color:var(--tx);">—</div>
+        <div id="wt-label" style="font-size:10px;color:var(--mu);">No readings yet</div>
+        <div id="wt-stale" style="font-size:10px;font-weight:700;margin-top:4px;"></div>
+      </div></div>
+    </div>
+    <div class="card"><div class="ch"><div class="ct">Water Tank Reading Log</div><button class="btn bp" style="font-size:10px;" onclick="tankExport('wtank')">⬇ Export Report</button></div>
+      <div class="cb" style="padding:0;max-height:420px;overflow-y:auto;">
+        <table class="tbl"><thead><tr><th>Date</th><th>Stick Level</th><th>Liters</th><th>%</th><th>By</th><th>Notes</th><th>Actions</th></tr></thead>
+        <tbody id="wt-tb"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <div id="utils-dtank" style="display:none;">
+    <div class="g g2">
+      <div class="card" style="border-left:4px solid #f59e0b;"><div class="ch"><div class="ct">⛽ Diesel Tank — Stick Level Entry</div></div><div class="cb">
+        <div style="background:rgba(59,130,246,.06);border:1px solid var(--bd);border-radius:10px;padding:9px 14px;margin-bottom:12px;font-size:10px;color:var(--mu);">
+          <b style="color:#f59e0b;">Capacity: 1,148 L</b> · Reading by leveled stick · <span id="dt-freq-note">1 reading every <b>7 days</b> (configurable)</span> · Feeds <b>Generator 1 (110V/220V · 625 kVA)</b> and <b>Generator 2 (220V/380V · 688 kVA)</b>
+        </div>
+        <div class="fg fg2">
+          <div class="ff"><label>Date</label><input type="date" id="dt-date"></div>
+          <div class="ff"><label>Checked By</label><input type="text" id="dt-by" placeholder="Maintenance staff name"></div>
+          <div class="ff" style="grid-column:1/-1"><label>Stick Level Reading</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;" id="dt-fracs">
+              <button type="button" onclick="tankPick('dtank',0.25,this)" style="flex:1;min-width:62px;padding:14px 0;font-size:17px;font-weight:800;border:2px solid var(--bd);border-radius:10px;background:var(--s2);color:var(--tx);cursor:pointer;">¼</button>
+              <button type="button" onclick="tankPick('dtank',0.5,this)" style="flex:1;min-width:62px;padding:14px 0;font-size:17px;font-weight:800;border:2px solid var(--bd);border-radius:10px;background:var(--s2);color:var(--tx);cursor:pointer;">½</button>
+              <button type="button" onclick="tankPick('dtank',0.75,this)" style="flex:1;min-width:62px;padding:14px 0;font-size:17px;font-weight:800;border:2px solid var(--bd);border-radius:10px;background:var(--s2);color:var(--tx);cursor:pointer;">¾</button>
+              <button type="button" onclick="tankPick('dtank',1,this)" style="flex:1;min-width:62px;padding:14px 0;font-size:15px;font-weight:800;border:2px solid var(--bd);border-radius:10px;background:var(--s2);color:var(--tx);cursor:pointer;">FULL</button>
+            </div>
+            <div id="dt-liters" style="text-align:center;margin-top:8px;font-size:16px;font-weight:700;color:#f59e0b;">— select level —</div>
+          </div>
+          <div class="ff" style="grid-column:1/-1"><label>Notes</label><textarea id="dt-notes" placeholder="Refill done, abnormality, leak..."></textarea></div>
+        </div>
+        <button class="btn bg" style="margin-top:12px;width:100%;" onclick="tankSaveReading('dtank')">✓ Save Diesel Tank Reading</button>
+      </div></div>
+      <div class="card"><div class="ch"><div class="ct">⛽ Current Level</div></div><div class="cb" style="text-align:center;padding:20px;">
+        <div style="width:88px;height:200px;border:3px solid var(--bd);border-radius:14px;position:relative;overflow:hidden;margin:0 auto;background:var(--s2);">
+          <div id="dt-fill" style="position:absolute;bottom:0;left:0;right:0;height:0%;transition:height .6s;"></div>
+        </div>
+        <div id="dt-pct" style="font-size:28px;font-weight:800;margin-top:10px;color:var(--tx);">—</div>
+        <div id="dt-label" style="font-size:10px;color:var(--mu);">No readings yet</div>
+        <div id="dt-stale" style="font-size:10px;font-weight:700;margin-top:4px;"></div>
+      </div></div>
+    </div>
+    <div class="card"><div class="ch"><div class="ct">Diesel Tank Reading Log</div><button class="btn bp" style="font-size:10px;" onclick="tankExport('dtank')">⬇ Export Report</button></div>
+      <div class="cb" style="padding:0;max-height:420px;overflow-y:auto;">
+        <table class="tbl"><thead><tr><th>Date</th><th>Stick Level</th><th>Liters</th><th>%</th><th>By</th><th>Notes</th><th>Actions</th></tr></thead>
+        <tbody id="dt-tb"></tbody></table>
+      </div>
+    </div>
+  </div>
   <div id="utils-water" style="display:none;"><div class="g g2">
     <div class="card"><div class="ch"><div class="ct">Log Water Safety Test</div></div><div class="cb">
       <div class="fg fg2">
@@ -5671,6 +5751,12 @@ if ('caches' in window) {
           <input type="number" id="me-codedrill" min="1" style="width:120px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:7px;color:var(--tx);font-size:11px;"></div>
         <div><label style="font-size:10px;color:var(--mu);display:block;margin-bottom:3px;">ESR rounds / year (FMS.1.1.1)</label>
           <input type="number" id="me-esr" min="1" style="width:120px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:7px;color:var(--tx);font-size:11px;"></div>
+        <div><label style="font-size:10px;color:var(--mu);display:block;margin-bottom:3px;">🫧 LOX reading every (days)</label>
+          <input type="number" id="me-loxfreq" min="1" style="width:110px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:7px;color:var(--tx);font-size:11px;"></div>
+        <div><label style="font-size:10px;color:var(--mu);display:block;margin-bottom:3px;">💧 Water Tank every (days)</label>
+          <input type="number" id="me-waterfreq" min="1" style="width:110px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:7px;color:var(--tx);font-size:11px;"></div>
+        <div><label style="font-size:10px;color:var(--mu);display:block;margin-bottom:3px;">⛽ Diesel Tank every (days)</label>
+          <input type="number" id="me-dieselfreq" min="1" style="width:110px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:7px;color:var(--tx);font-size:11px;"></div>
         <button class="btn bg" style="font-size:10px;padding:8px 16px;" onclick="meSaveCfg()">💾 Save Targets</button>
       </div>
       <div style="font-size:9px;color:var(--mu);margin-bottom:14px;">Targets drive: Emergency drill cards · Active Alerts · Domain Readiness · Annual Plans dashboard — one source, no duplication.</div>
@@ -6467,6 +6553,7 @@ const DB_VALID_TYPES = new Set([
   'risks','contracts','customKPI','fireDrills_unit','docs',
   'wo','lox_refill','air_refill','wo_parts','access_log',
   'kpi2_entries','platform_settings','app_settings',
+  'waterTank','dieselTank',
   'fireDrills_code','unitFireDrills',
 ]);
 
@@ -7429,7 +7516,7 @@ function renderDash(){
   if(aE)aE.innerHTML=acts.length?`<table class="tbl"><thead><tr><th>Action</th><th>By</th><th>Time</th></tr></thead><tbody>${acts.map(a=>`<tr><td style="font-size:11px;">${a.l}</td><td style="font-size:10px;">${a.by}</td><td style="font-size:9px;color:var(--mu);">${a.ts?.slice(0,16).replace('T',' ')||'—'}</td></tr>`).join('')}</tbody></table>`:'<div class="em">Enter data to see activity here</div>';
 }
 // ── Platform configuration (editable via Settings → Master Platform Editor) ──
-const PLAT_CFG_DEFAULTS = { codeDrillTarget: 1, esrTarget: 4 };
+const PLAT_CFG_DEFAULTS = { codeDrillTarget: 1, esrTarget: 4, loxFreqDays: 1, waterFreqDays: 2, dieselFreqDays: 7 };
 function platCfg(){
   try{
     const o = (ld('platform_settings')||[]).find(x=>x && x._id==='plat_cfg');
@@ -7533,7 +7620,7 @@ const KGS={
     {n:'PM Completion Rate — High-Risk (live)',k:'eq_added',tgt:95,c:d=>{const s2=(typeof pmsPmAutoStats==='function')?pmsPmAutoStats():null;return s2?s2.rate:0;},unit:'%'},
     {n:'High-Risk Devices (configured depts)',k:'eq_added',tgt:1,c:d=>{const s2=(typeof pmsPmAutoStats==='function')?pmsPmAutoStats():null;return s2?s2.den:0;}},
     {n:'High-Risk Devices with ✅ VALID PPM',k:'eq_added',tgt:1,c:d=>{const s2=(typeof pmsPmAutoStats==='function')?pmsPmAutoStats():null;return s2?s2.num:0;}}]},
-  '118':{lbl:'⚡ FMS.1.1.8 — Utilities (Mostapha)',kpis:[{n:'Generator Tests (12/yr)',k:'genTest',tgt:12,c:d=>d.length},{n:'Generator Pass Rate',k:'genTest',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.res==='pass').length/t)*100):0;},unit:'%'},{n:'Water Safety Tests (4/yr)',k:'waterTest',tgt:4,c:d=>d.length},{n:'Hot Water Compliance ≥55°C',k:'waterTest',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>Number(r.hot)>=55).length/t)*100):0;},unit:'%'},{n:'PMG Daily Checklist Coverage',k:'pmgCheck',tgt:100,c:d=>{const days=Math.max(1,Math.ceil((Date.now()-new Date(new Date().getFullYear(),0,1))/864e5));return Math.min(100,Math.round(d.length/days*100));},unit:'%'},{n:'Air Purity Tests (2/yr)',k:'airPurity',tgt:2,c:d=>d.length},{n:'Air Purity Pass Rate',k:'airPurity',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.res==='pass').length/t)*100):0;},unit:'%'},{n:'TLD Quarterly Reviews (4/yr)',k:'tldReview',tgt:4,c:d=>d.length}]},
+  '118':{lbl:'⚡ FMS.1.1.8 — Utilities (Mostapha)',kpis:[{n:'Generator Tests (12/yr)',k:'genTest',tgt:12,c:d=>d.length},{n:'Generator Pass Rate',k:'genTest',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.res==='pass').length/t)*100):0;},unit:'%'},{n:'Water Safety Tests (4/yr)',k:'waterTest',tgt:4,c:d=>d.length},{n:'Hot Water Compliance ≥55°C',k:'waterTest',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>Number(r.hot)>=55).length/t)*100):0;},unit:'%'},{n:'PMG Daily Checklist Coverage',k:'pmgCheck',tgt:100,c:d=>{const days=Math.max(1,Math.ceil((Date.now()-new Date(new Date().getFullYear(),0,1))/864e5));return Math.min(100,Math.round(d.length/days*100));},unit:'%'},{n:'Water Tank Logging (every '+(platCfg().waterFreqDays||2)+'d)',k:'waterTank',tgt:100,c:d=>{const f=Number(platCfg().waterFreqDays)||2;const days=Math.max(1,Math.ceil((Date.now()-new Date(new Date().getFullYear(),0,1))/864e5));const exp=Math.max(1,Math.floor(days/f));return Math.min(100,Math.round(d.length/exp*100));},unit:'%'},{n:'Diesel Tank Logging (every '+(platCfg().dieselFreqDays||7)+'d)',k:'dieselTank',tgt:100,c:d=>{const f=Number(platCfg().dieselFreqDays)||7;const days=Math.max(1,Math.ceil((Date.now()-new Date(new Date().getFullYear(),0,1))/864e5));const exp=Math.max(1,Math.floor(days/f));return Math.min(100,Math.round(d.length/exp*100));},unit:'%'},{n:'Air Purity Tests (2/yr)',k:'airPurity',tgt:2,c:d=>d.length},{n:'Air Purity Pass Rate',k:'airPurity',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.res==='pass').length/t)*100):0;},unit:'%'},{n:'TLD Quarterly Reviews (4/yr)',k:'tldReview',tgt:4,c:d=>d.length}]},
 };
 let kpiPd='ytd';
 function setKpiPd(p,btn){kpiPd=p;renderKPI();if(btn){btn.closest('.pb').querySelectorAll('.pbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}}
@@ -10064,7 +10151,7 @@ async function dbPushAll() {
     'mg_lox','mg_o2backup','mg_n2o','mg_vacuum','mg_aircomp','mg_airbackup',
     'mg_ambulance','mg_cylinder','mg_o2refill','mg_airrefill',
     'rad_tld','rad_apron','rad_shield',
-    'fireDrills_code','unitFireDrills','pms_entries','customKPI'];
+    'fireDrills_code','unitFireDrills','pms_entries','customKPI','waterTank','dieselTank'];
   let total = 0, pushed = 0;
   settingsPushToDB();
   toast('⟳ Pushing all local data to DB...');
@@ -19565,11 +19652,13 @@ const ME_STORES=['eoc','training','incident','secInc','secDrill','chemical','was
  'fireAlarm','fireSup','fireExit','fireDrill','fireDrills_code','unitFireDrills','ppm','genTest',
  'waterTest','pmgCheck','airPurity','tldReview','leadApron','shieldCert','doc','workorders',
  'eq_added','eq_relocations','contracts','evaluations','risk_register','pms_entries','customKPI',
- 'ach_readings','temp_morgue','temp_waste','platform_settings','act'];
+ 'ach_readings','temp_morgue','temp_waste','waterTank','dieselTank','platform_settings','act'];
 function meInit(){
   const cfg=platCfg();
   const c=document.getElementById('me-codedrill'), e=document.getElementById('me-esr');
   if(c)c.value=cfg.codeDrillTarget; if(e)e.value=cfg.esrTarget;
+  ;['loxfreq','waterfreq','dieselfreq'].forEach((id,ix)=>{const el2=document.getElementById('me-'+id);
+    if(el2)el2.value=cfg[['loxFreqDays','waterFreqDays','dieselFreqDays'][ix]];});
   const sel=document.getElementById('me-store');
   if(sel && sel.options.length<=1) ME_STORES.forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=k+' ('+((ld(k)||[]).length)+' records)';sel.appendChild(o);});
   try{ meRenderHrDepts(); }catch(e){}
@@ -19597,8 +19686,12 @@ function meSaveHrDepts(){
 function meSaveCfg(){
   const c=parseInt(document.getElementById('me-codedrill').value,10);
   const e=parseInt(document.getElementById('me-esr').value,10);
-  if(!(c>=1)||!(e>=1)){ toast('Targets must be ≥ 1','#f59e0b'); return; }
-  platCfgSave({codeDrillTarget:c, esrTarget:e});
+  const lf=parseInt((document.getElementById('me-loxfreq')||{}).value,10)||1;
+  const wf=parseInt((document.getElementById('me-waterfreq')||{}).value,10)||2;
+  const df=parseInt((document.getElementById('me-dieselfreq')||{}).value,10)||7;
+  if(!(c>=1)||!(e>=1)||!(lf>=1)||!(wf>=1)||!(df>=1)){ toast('Targets must be ≥ 1','#f59e0b'); return; }
+  platCfgSave({codeDrillTarget:c, esrTarget:e, loxFreqDays:lf, waterFreqDays:wf, dieselFreqDays:df});
+  try{tankFreqNotes();}catch(x){}
   toast('✅ Targets saved — dashboards will use them immediately','#10b981',3500);
   try{ renderDash(); }catch(x){}
   try{ renderDrillInfographics(); }catch(x){}
@@ -19642,5 +19735,200 @@ function meDeleteStore(){
 }
 </script>
 
+
+<script>
+/* ============ TANK LEVEL MONITORING (Water + Diesel) — v1584 ============ */
+const TANKS={
+  water:{store:'waterTank',cap:90000,icon:'💧',label:'Water Tank',color:'#0ea5e9',cfgKey:'waterFreqDays',defFreq:2,pfx:'wt'},
+  diesel:{store:'dieselTank',cap:1148,icon:'⛽',label:'Diesel Tank',color:'#f59e0b',cfgKey:'dieselFreqDays',defFreq:7,pfx:'dt'}
+};
+const TANK_FRAC_LBL={'0.25':'¼','0.5':'½','0.75':'¾','1':'Full'};
+let TANK_SEL={water:null,diesel:null};
+function tankFreq(kind){const t=TANKS[kind];return Number(platCfg()[t.cfgKey])||t.defFreq;}
+function tankGet(kind){const t=TANKS[kind];
+  return (ld(t.store)||[]).filter(r=>r&&r.date).sort((a,b)=>a.date<b.date?1:-1);}
+function tankPick(kind,frac,btn){
+  TANK_SEL[kind]=frac;const t=TANKS[kind];
+  btn.parentElement.querySelectorAll('button').forEach(b=>{b.style.background='var(--s2)';b.style.color='var(--tx)';b.style.borderColor='var(--bd)';});
+  btn.style.background=t.color;btn.style.color='#fff';btn.style.borderColor=t.color;
+  const L=Math.round(t.cap*frac);
+  const el2=document.getElementById(t.pfx+'-liters');
+  if(el2)el2.textContent=L.toLocaleString()+' L  ('+Math.round(frac*100)+'% of '+t.cap.toLocaleString()+' L)';
+}
+function tankSaveReading(kind){
+  try{
+    const t=TANKS[kind];
+    const date=(document.getElementById(t.pfx+'-date')||{}).value;
+    const by=((document.getElementById(t.pfx+'-by')||{}).value||'').trim();
+    const notes=((document.getElementById(t.pfx+'-notes')||{}).value||'').trim();
+    const frac=TANK_SEL[kind];
+    if(!date){toast('Select a date','#f59e0b');return;}
+    if(!frac){toast('Tap a stick level: ¼ ½ ¾ or Full','#f59e0b');return;}
+    const liters=Math.round(t.cap*frac), pct=Math.round(frac*100);
+    const rec={_id:t.store+'_'+date,date:date,frac:frac,level:TANK_FRAC_LBL[String(frac)]||pct+'%',
+      liters:liters,pct:pct,notes:notes,
+      _by:by||((typeof CU!=='undefined'&&CU&&CU.name)||'Maintenance'),_ts:new Date().toISOString()};
+    const arr=tankGet(kind).filter(r=>r.date!==date); arr.push(rec);
+    localStorage.setItem(PX+t.store,JSON.stringify(arr));
+    try{dbWrite(t.store,rec);}catch(e){toast('⚠ Saved locally — DB sync failed: '+e.message,'#f59e0b',4000);}
+    TANK_SEL[kind]=null;
+    ['-by','-notes'].forEach(sf=>{const e2=document.getElementById(t.pfx+sf);if(e2)e2.value='';});
+    const fr=document.getElementById(t.pfx+'-fracs');
+    if(fr)fr.querySelectorAll('button').forEach(b=>{b.style.background='var(--s2)';b.style.color='var(--tx)';b.style.borderColor='var(--bd)';});
+    const ltr=document.getElementById(t.pfx+'-liters'); if(ltr)ltr.textContent='— select level —';
+    toast('✅ '+t.label+' reading saved — '+date+' · '+rec.level+' ('+liters.toLocaleString()+' L)','#10b981',3500);
+    tankRender(kind); try{dashRenderTanks();}catch(e){}
+  }catch(err){toast('❌ Save failed: '+err.message,'#dc2626');}
+}
+function tankEdit(kind,date){
+  const t=TANKS[kind]; const r=tankGet(kind).find(x=>x.date===date); if(!r)return;
+  const d=document.getElementById(t.pfx+'-date'); if(d)d.value=r.date;
+  const by=document.getElementById(t.pfx+'-by'); if(by)by.value=r._by||'';
+  const no=document.getElementById(t.pfx+'-notes'); if(no)no.value=r.notes||'';
+  const fr=document.getElementById(t.pfx+'-fracs');
+  if(fr){const btns=fr.querySelectorAll('button');const order=[0.25,0.5,0.75,1];
+    btns.forEach((b,i)=>{if(order[i]===Number(r.frac))tankPick(kind,order[i],b);});}
+  toast('✏ Editing '+t.label+' reading '+date+' — press Save to update','#3b82f6',3000);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function tankDelete(kind,date){
+  if(!confirm('Delete this reading ('+date+')?'))return;
+  const t=TANKS[kind];
+  localStorage.setItem(PX+t.store,JSON.stringify(tankGet(kind).filter(r=>r.date!==date)));
+  try{dbDelete(t.store,t.store+'_'+date);}catch(e){}
+  toast('Reading deleted');
+  tankRender(kind); try{dashRenderTanks();}catch(e){}
+}
+function tankGaugeColor(pct,base){
+  return pct>=50?'linear-gradient(180deg,'+base+'cc,'+base+')':pct>=25?'linear-gradient(180deg,#fbbf24,#d97706)':'linear-gradient(180deg,#f87171,#dc2626)';
+}
+function tankRender(kind){
+  const t=TANKS[kind]; const rs=tankGet(kind); const last=rs[0];
+  const fill=document.getElementById(t.pfx+'-fill'), pEl=document.getElementById(t.pfx+'-pct'),
+        lEl=document.getElementById(t.pfx+'-label'), stEl=document.getElementById(t.pfx+'-stale');
+  if(fill){
+    const pct=last?last.pct:0;
+    fill.style.height=pct+'%'; fill.style.background=tankGaugeColor(pct,t.color);
+    if(pEl)pEl.textContent=last?pct+'%':'—';
+    if(lEl)lEl.textContent=last?last.liters.toLocaleString()+' L · '+last.date:'No readings yet';
+    if(stEl){
+      if(last){const days=Math.floor((Date.now()-new Date(last.date+'T00:00:00'))/864e5);
+        const f=tankFreq(kind);
+        stEl.textContent=days>f?'⚠ Reading overdue ('+days+'d ago · every '+f+'d)':'✓ Up to date';
+        stEl.style.color=days>f?'#ef4444':'#10b981';
+      } else stEl.textContent='';
+    }
+  }
+  const tb=document.getElementById(t.pfx+'-tb');
+  if(tb){
+    tb.innerHTML=rs.length?rs.map(r=>'<tr><td>'+r.date+'</td><td style="font-weight:800;color:'+t.color+';">'+
+      (r.level||'')+'</td><td>'+Number(r.liters).toLocaleString()+' L</td><td>'+r.pct+'%</td><td>'+(r._by||'—')+
+      '</td><td style="font-size:10px;color:var(--mu);">'+(r.notes||'—')+'</td>'+
+      '<td style="white-space:nowrap;"><button class="btn bo" style="font-size:9px;padding:3px 8px;" onclick="tankEdit(\''+kind+'\',\''+r.date+'\')">✏</button> '+
+      '<button class="btn br" style="font-size:9px;padding:3px 8px;" onclick="tankDelete(\''+kind+'\',\''+r.date+'\')">🗑</button></td></tr>').join('')
+      :'<tr><td colspan="7" style="text-align:center;color:var(--mu);padding:16px;">No readings yet — maintenance enters the first stick reading above</td></tr>';
+  }
+  const fn=document.getElementById(t.pfx+'-freq-note');
+  if(fn)fn.innerHTML='1 reading every <b>'+tankFreq(kind)+' day'+(tankFreq(kind)>1?'s':'')+'</b> (configurable)';
+}
+function tankFreqNotes(){try{tankRender('water');tankRender('diesel');}catch(e){}}
+function tankInit(kind){
+  const t=TANKS[kind]; const d=document.getElementById(t.pfx+'-date');
+  if(d&&!d.value)d.value=(typeof fmsLocalToday==='function')?fmsLocalToday():new Date().toISOString().slice(0,10);
+  tankRender(kind);
+}
+function tankExport(kind){
+  try{
+    const t=TANKS[kind]; const rs=tankGet(kind);
+    if(!rs.length){toast('No readings to export','#f59e0b');return;}
+    const title=t.icon+' '+t.label+' Level Log — FMS.1.1.8';
+    const extra=kind==='diesel'?'<div style="font-size:10px;color:#555;margin-top:2px;">Serves Generator 1 (110V/220V · 625 kVA) &amp; Generator 2 (220V/380V · 688 kVA) · Tank capacity 1,148 L</div>':'<div style="font-size:10px;color:#555;margin-top:2px;">Tank capacity 90,000 L · Leveled-stick readings</div>';
+    const rows=rs.map(r=>'<tr><td style="padding:5px 9px;border:1px solid #ccc;">'+r.date+'</td><td style="padding:5px 9px;border:1px solid #ccc;font-weight:700;">'+(r.level||'')+'</td><td style="padding:5px 9px;border:1px solid #ccc;">'+Number(r.liters).toLocaleString()+' L</td><td style="padding:5px 9px;border:1px solid #ccc;">'+r.pct+'%</td><td style="padding:5px 9px;border:1px solid #ccc;">'+(r._by||'—')+'</td><td style="padding:5px 9px;border:1px solid #ccc;">'+(r.notes||'—')+'</td></tr>').join('');
+    const html='<!doctype html><html><head><meta charset="utf-8"><title>'+title+'</title><style>@media print{button{display:none}}</style></head>'+
+      '<body style="font-family:Arial,sans-serif;max-width:1000px;margin:22px auto;color:#222;">'+
+      '<div style="text-align:center;border-bottom:3px solid #1e3a5c;padding-bottom:10px;margin-bottom:14px;">'+
+      '<div style="font-size:20px;font-weight:800;color:#1e3a5c;">OBEID SPECIALIZED HOSPITAL</div>'+
+      '<div style="font-size:11px;color:#555;">Riyadh, KSA · Facility Management &amp; Safety · CBAHI 2026</div>'+
+      '<div style="font-size:15px;font-weight:700;color:#7B2436;margin-top:8px;">'+title+'</div>'+extra+
+      '<div style="font-size:10px;color:#777;">Generated '+fmsLocalToday()+' · '+rs.length+' readings · FMS Command Platform</div></div>'+
+      '<button onclick="window.print()" style="background:#1e3a5c;color:#fff;border:none;border-radius:6px;padding:8px 18px;font-size:12px;cursor:pointer;margin-bottom:12px;">🖨 Print / Save as PDF</button>'+
+      '<table style="border-collapse:collapse;width:100%;font-size:11px;"><thead><tr style="background:#1e3a5c;color:#fff;">'+
+      '<th style="padding:6px 9px;border:1px solid #ccc;">Date</th><th style="padding:6px 9px;border:1px solid #ccc;">Stick Level</th><th style="padding:6px 9px;border:1px solid #ccc;">Liters</th><th style="padding:6px 9px;border:1px solid #ccc;">%</th><th style="padding:6px 9px;border:1px solid #ccc;">Checked By</th><th style="padding:6px 9px;border:1px solid #ccc;">Notes</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+      '<div style="margin-top:26px;display:flex;justify-content:space-between;font-size:11px;">'+
+      '<div>Prepared by: ____________________<br><span style="color:#777;">'+((typeof CU!=='undefined'&&CU&&CU.name)||'')+'</span></div>'+
+      '<div>Reviewed by: ____________________<br><span style="color:#777;">FMS Director</span></div></div>'+
+      '<p style="margin-top:16px;font-size:9px;color:#999;">Obeid Specialized Hospital · FMS Command · Generated from live platform records.</p></body></html>';
+    const b=new Blob([html],{type:'text/html'}); const a=document.createElement('a');
+    a.href=URL.createObjectURL(b); a.download=t.store+'_log_'+fmsLocalToday()+'.html';
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},800);
+    toast('✅ Report exported — open it and press Print / Save as PDF','#10b981',4000);
+  }catch(err){toast('❌ Export failed: '+err.message,'#dc2626');}
+}
+/* ── Command Center: 3 reserve gauges (LOX · Water · Diesel) ── */
+function dashTankGauge(icon,label,pct,sub,base,stale){
+  const has=pct!=null;
+  const h=has?Math.max(0,Math.min(100,pct)):0;
+  return '<div style="text-align:center;min-width:120px;">'+
+    '<div style="font-size:11px;font-weight:700;color:var(--tx);margin-bottom:6px;">'+icon+' '+label+'</div>'+
+    '<div style="width:64px;height:130px;border:3px solid var(--bd);border-radius:11px;position:relative;overflow:hidden;margin:0 auto;background:var(--s2);">'+
+    '<div style="position:absolute;bottom:0;left:0;right:0;height:'+h+'%;background:'+tankGaugeColor(h,base)+';transition:height .6s;"></div></div>'+
+    '<div style="font-size:20px;font-weight:800;margin-top:6px;color:'+(has?(h>=50?'var(--tx)':h>=25?'#f59e0b':'#ef4444'):'var(--mu)')+';">'+(has?h+'%':'—')+'</div>'+
+    '<div style="font-size:9px;color:var(--mu);">'+sub+'</div>'+
+    (stale?'<div style="font-size:9px;font-weight:700;color:#ef4444;">'+stale+'</div>':'')+
+    '</div>';
+}
+function dashRenderTanks(){
+  const box=document.getElementById('dashTanks'); if(!box)return;
+  const cfg=platCfg(); let out='';
+  // LOX — from physical gauge readings
+  try{
+    const lr=(typeof loxGetReadings==='function')?loxGetReadings():[];
+    const l=lr[0]||null;
+    const lp=(l&&l.litres!=null)?Math.round(l.litres/LOX_MAX_LITRES*100):null;
+    let st='';
+    if(l){const dys=Math.floor((Date.now()-new Date(l.date+'T00:00:00'))/864e5);
+      const lf=Number(cfg.loxFreqDays)||1; if(dys>lf)st='⚠ '+dys+'d ago';}
+    out+=dashTankGauge('🫧','LOX',lp,l?Number(l.litres).toLocaleString()+' L · '+l.date:'No readings','#3b82f6',st);
+  }catch(e){out+=dashTankGauge('🫧','LOX',null,'No readings','#3b82f6','');}
+  // Water + Diesel
+  Object.keys(TANKS).forEach(k=>{
+    const t=TANKS[k]; const rs=tankGet(k); const r=rs[0]||null; let st='';
+    if(r){const dys=Math.floor((Date.now()-new Date(r.date+'T00:00:00'))/864e5);
+      if(dys>tankFreq(k))st='⚠ '+dys+'d ago';}
+    out+=dashTankGauge(t.icon,t.label,r?r.pct:null,r?Number(r.liters).toLocaleString()+' L · '+r.date:'No readings',t.color,st);
+  });
+  box.innerHTML=out;
+}
+/* ── Hooks: dashboard render · tab open · alerts ── */
+if(typeof renderDash==='function'){
+  const _tk_origRenderDash=renderDash;
+  renderDash=function(){_tk_origRenderDash(); try{dashRenderTanks();}catch(e){}};
+}
+if(typeof st==='function'){
+  const _tk_origSt=st;
+  st=function(domain,sub,btn){_tk_origSt(domain,sub,btn);
+    if(domain==='utils'&&sub==='wtank'){try{tankInit('water');}catch(e){}}
+    if(domain==='utils'&&sub==='dtank'){try{tankInit('diesel');}catch(e){}}
+  };
+}
+if(typeof buildAlerts==='function'){
+  const _tk_origAlerts=buildAlerts;
+  buildAlerts=function(){
+    const a=_tk_origAlerts();
+    try{
+      Object.keys(TANKS).forEach(k=>{
+        const t=TANKS[k]; const rs=tankGet(k); const f=tankFreq(k);
+        if(!rs.length){a.push({c:'alw',i:'🟡',t:t.icon+' '+t.label+': no level readings logged yet (every '+f+'d)',s:'Mostapha — FMS.1.1.8'});return;}
+        const last=rs[0]; const days=Math.floor((Date.now()-new Date(last.date+'T00:00:00'))/864e5);
+        if(days>f)a.push({c:'alw',i:'🟡',t:t.icon+' '+t.label+' reading overdue — last '+last.date+' ('+days+'d ago · every '+f+'d)',s:'Mostapha — FMS.1.1.8'});
+        if(Number(last.frac)<=0.25)a.push({c:'alc',i:'🔴',t:t.icon+' '+t.label+' at '+last.level+' ('+Number(last.liters).toLocaleString()+' L) — refill required',s:'Mostapha — FMS.1.1.8'});
+      });
+    }catch(e){}
+    return a;
+  };
+}
+try{tankRender('water');tankRender('diesel');dashRenderTanks();}catch(e){}
+</script>
 </body>
 </html>
