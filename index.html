@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260719-1582';
+  var v = '20260719-1583';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260719-1582">
+<meta name="app-version" content="20260719-1583">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -7316,15 +7316,45 @@ function logExport(type){
   try{
     const d=ld(type)||[];
     if(!d.length){ toast('No records to export','#f59e0b'); return; }
+    const TITLES={eoc:'Environmental Safety Rounds (ESR) Log — FMS.1.1.1',
+      training:'Safety Training Log — FMS.1.1.1', incident:'Incident Log — FMS.1.1.1',
+      secInc:'Security Incident Log — FMS.1.1.2', secDrill:'Security Drill Log — FMS.1.1.2',
+      chemical:'Chemical Inventory Log — FMS.1.1.3', wasteAudit:'Waste Audit Log — FMS.1.1.3',
+      emDrill:'Emergency Drill Log — FMS.1.1.4/5', fireAlarm:'Fire Alarm Inspection Log — FMS.1.1.6',
+      fireSup:'Fire Suppression PPM Log — FMS.1.1.6', fireExit:'Fire Exit Inspection Log — FMS.1.1.6',
+      genTest:'Generator Test Log — FMS.1.1.8', waterTest:'Water Safety Test Log — FMS.1.1.8',
+      commTest:'Communication Test Log — FMS.1.1.8'};
+    const title=TITLES[type]||((type.charAt(0).toUpperCase()+type.slice(1))+' Log');
     const cols=(RD[type]?RD[type].f.map(f=>f.split(':')[0]):Object.keys(d[0])).filter(k=>k!=='file');
-    const esc=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
-    const csv=[cols.join(','),...d.map(r=>cols.map(c=>esc(r[c])).join(','))].join('\n');
-    const b=new Blob(['\ufeff'+csv],{type:'text/csv'});
-    const a=document.createElement('a'); a.href=URL.createObjectURL(b);
-    a.download=type+'_log_'+fmsLocalToday()+'.csv';
+    const label=c=>c.charAt(0).toUpperCase()+c.slice(1);
+    const th=cols.map(c=>'<th style="padding:6px 9px;border:1px solid #ccc;">'+label(c)+'</th>').join('')+
+             '<th style="padding:6px 9px;border:1px solid #ccc;">Entered By</th>';
+    const rows=d.slice().reverse().map(r=>'<tr>'+cols.map(c=>'<td style="padding:5px 9px;border:1px solid #ccc;">'+
+      (r[c]==null||r[c]===''?'—':String(r[c]))+'</td>').join('')+
+      '<td style="padding:5px 9px;border:1px solid #ccc;">'+(r._by||'—')+'</td></tr>').join('');
+    const html='<!doctype html><html><head><meta charset="utf-8"><title>'+title+'</title>'+
+      '<style>@media print{button{display:none}}</style></head>'+
+      '<body style="font-family:Arial,sans-serif;max-width:1000px;margin:22px auto;color:#222;">'+
+      '<div style="text-align:center;border-bottom:3px solid #1e3a5c;padding-bottom:10px;margin-bottom:14px;">'+
+        '<div style="font-size:20px;font-weight:800;color:#1e3a5c;">OBEID SPECIALIZED HOSPITAL</div>'+
+        '<div style="font-size:11px;color:#555;">Riyadh, KSA · Facility Management &amp; Safety · CBAHI 2026</div>'+
+        '<div style="font-size:15px;font-weight:700;color:#7B2436;margin-top:8px;">'+title+'</div>'+
+        '<div style="font-size:10px;color:#777;">Generated '+fmsLocalToday()+' · '+d.length+' records · FMS Command Platform</div>'+
+      '</div>'+
+      '<button onclick="window.print()" style="background:#1e3a5c;color:#fff;border:none;border-radius:6px;padding:8px 18px;font-size:12px;cursor:pointer;margin-bottom:12px;">🖨 Print / Save as PDF</button>'+
+      '<table style="border-collapse:collapse;width:100%;font-size:11px;"><thead><tr style="background:#1e3a5c;color:#fff;">'+th+'</tr></thead>'+
+      '<tbody>'+rows+'</tbody></table>'+
+      '<div style="margin-top:26px;display:flex;justify-content:space-between;font-size:11px;">'+
+        '<div>Prepared by: ____________________<br><span style="color:#777;">'+((typeof CU!=='undefined'&&CU.name)||'')+'</span></div>'+
+        '<div>Reviewed by: ____________________<br><span style="color:#777;">FMS Director</span></div>'+
+      '</div>'+
+      '<p style="margin-top:16px;font-size:9px;color:#999;">Obeid Specialized Hospital · FMS Command · This report was generated from live platform records.</p>'+
+      '</body></html>';
+    const b=new Blob([html],{type:'text/html'}); const a=document.createElement('a');
+    a.href=URL.createObjectURL(b); a.download=type+'_log_'+fmsLocalToday()+'.html';
     document.body.appendChild(a); a.click();
     setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},800);
-    toast('✅ Exported '+d.length+' records','#10b981');
+    toast('✅ Report exported ('+d.length+' records) — open it and press Print / Save as PDF','#10b981',4500);
   }catch(err){ toast('❌ Export failed: '+err.message,'#dc2626'); }
 }
 function renderAll(){Object.keys(RD).forEach(t=>renderLog(t));renderWO();woBadge();renderDash();}
