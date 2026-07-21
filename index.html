@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260719-1584';
+  var v = '20260719-1585';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260719-1584">
+<meta name="app-version" content="20260719-1585">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3541,16 +3541,16 @@ if ('caches' in window) {
           <div class="ff"><label>Checked By</label><input type="text" id="wt-by" placeholder="Maintenance staff name"></div>
           <div class="ff" style="grid-column:1/-1"><label>Stick Level Reading</label>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;" id="wt-fracs">
-              <button type="button" onclick="tankPick('wtank',0.25,this)" style="flex:1;min-width:62px;padding:14px 0;font-size:17px;font-weight:800;border:2px solid var(--bd);border-radius:10px;background:var(--s2);color:var(--tx);cursor:pointer;">¼</button>
-              <button type="button" onclick="tankPick('wtank',0.5,this)" style="flex:1;min-width:62px;padding:14px 0;font-size:17px;font-weight:800;border:2px solid var(--bd);border-radius:10px;background:var(--s2);color:var(--tx);cursor:pointer;">½</button>
-              <button type="button" onclick="tankPick('wtank',0.75,this)" style="flex:1;min-width:62px;padding:14px 0;font-size:17px;font-weight:800;border:2px solid var(--bd);border-radius:10px;background:var(--s2);color:var(--tx);cursor:pointer;">¾</button>
-              <button type="button" onclick="tankPick('wtank',1,this)" style="flex:1;min-width:62px;padding:14px 0;font-size:15px;font-weight:800;border:2px solid var(--bd);border-radius:10px;background:var(--s2);color:var(--tx);cursor:pointer;">FULL</button>
+              <button type="button" onclick="tankPick('water',0.25,this)" style="flex:1;min-width:62px;padding:14px 0;font-size:17px;font-weight:800;border:2px solid var(--bd);border-radius:10px;background:var(--s2);color:var(--tx);cursor:pointer;">¼</button>
+              <button type="button" onclick="tankPick('water',0.5,this)" style="flex:1;min-width:62px;padding:14px 0;font-size:17px;font-weight:800;border:2px solid var(--bd);border-radius:10px;background:var(--s2);color:var(--tx);cursor:pointer;">½</button>
+              <button type="button" onclick="tankPick('water',0.75,this)" style="flex:1;min-width:62px;padding:14px 0;font-size:17px;font-weight:800;border:2px solid var(--bd);border-radius:10px;background:var(--s2);color:var(--tx);cursor:pointer;">¾</button>
+              <button type="button" onclick="tankPick('water',1,this)" style="flex:1;min-width:62px;padding:14px 0;font-size:15px;font-weight:800;border:2px solid var(--bd);border-radius:10px;background:var(--s2);color:var(--tx);cursor:pointer;">FULL</button>
             </div>
             <div id="wt-liters" style="text-align:center;margin-top:8px;font-size:16px;font-weight:700;color:#0ea5e9;">— select level —</div>
           </div>
           <div class="ff" style="grid-column:1/-1"><label>Notes</label><textarea id="wt-notes" placeholder="Refill done, abnormality, leak..."></textarea></div>
         </div>
-        <button class="btn bg" style="margin-top:12px;width:100%;" onclick="tankSaveReading('wtank')">✓ Save Water Tank Reading</button>
+        <button class="btn bg" style="margin-top:12px;width:100%;" onclick="tankSaveReading('water')">✓ Save Water Tank Reading</button>
       </div></div>
       <div class="card"><div class="ch"><div class="ct">💧 Current Level</div></div><div class="cb" style="text-align:center;padding:20px;">
         <div style="width:88px;height:200px;border:3px solid var(--bd);border-radius:14px;position:relative;overflow:hidden;margin:0 auto;background:var(--s2);">
@@ -3561,7 +3561,7 @@ if ('caches' in window) {
         <div id="wt-stale" style="font-size:10px;font-weight:700;margin-top:4px;"></div>
       </div></div>
     </div>
-    <div class="card"><div class="ch"><div class="ct">Water Tank Reading Log</div><button class="btn bp" style="font-size:10px;" onclick="tankExport('wtank')">⬇ Export Report</button></div>
+    <div class="card"><div class="ch"><div class="ct">Water Tank Reading Log</div><button class="btn bp" style="font-size:10px;" onclick="tankExport('water')">⬇ Export Report</button></div>
       <div class="cb" style="padding:0;max-height:420px;overflow-y:auto;">
         <table class="tbl"><thead><tr><th>Date</th><th>Stick Level</th><th>Liters</th><th>%</th><th>By</th><th>Notes</th><th>Actions</th></tr></thead>
         <tbody id="wt-tb"></tbody></table>
@@ -3580,16 +3580,16 @@ if ('caches' in window) {
           <div class="ff"><label>Checked By</label><input type="text" id="dt-by" placeholder="Maintenance staff name"></div>
           <div class="ff" style="grid-column:1/-1"><label>Stick Level Reading</label>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;" id="dt-fracs">
-              <button type="button" onclick="tankPick('dtank',0.25,this)" style="flex:1;min-width:62px;padding:14px 0;font-size:17px;font-weight:800;border:2px solid var(--bd);border-radius:10px;background:var(--s2);color:var(--tx);cursor:pointer;">¼</button>
-              <button type="button" onclick="tankPick('dtank',0.5,this)" style="flex:1;min-width:62px;padding:14px 0;font-size:17px;font-weight:800;border:2px solid var(--bd);border-radius:10px;background:var(--s2);color:var(--tx);cursor:pointer;">½</button>
-              <button type="button" onclick="tankPick('dtank',0.75,this)" style="flex:1;min-width:62px;padding:14px 0;font-size:17px;font-weight:800;border:2px solid var(--bd);border-radius:10px;background:var(--s2);color:var(--tx);cursor:pointer;">¾</button>
-              <button type="button" onclick="tankPick('dtank',1,this)" style="flex:1;min-width:62px;padding:14px 0;font-size:15px;font-weight:800;border:2px solid var(--bd);border-radius:10px;background:var(--s2);color:var(--tx);cursor:pointer;">FULL</button>
+              <button type="button" onclick="tankPick('diesel',0.25,this)" style="flex:1;min-width:62px;padding:14px 0;font-size:17px;font-weight:800;border:2px solid var(--bd);border-radius:10px;background:var(--s2);color:var(--tx);cursor:pointer;">¼</button>
+              <button type="button" onclick="tankPick('diesel',0.5,this)" style="flex:1;min-width:62px;padding:14px 0;font-size:17px;font-weight:800;border:2px solid var(--bd);border-radius:10px;background:var(--s2);color:var(--tx);cursor:pointer;">½</button>
+              <button type="button" onclick="tankPick('diesel',0.75,this)" style="flex:1;min-width:62px;padding:14px 0;font-size:17px;font-weight:800;border:2px solid var(--bd);border-radius:10px;background:var(--s2);color:var(--tx);cursor:pointer;">¾</button>
+              <button type="button" onclick="tankPick('diesel',1,this)" style="flex:1;min-width:62px;padding:14px 0;font-size:15px;font-weight:800;border:2px solid var(--bd);border-radius:10px;background:var(--s2);color:var(--tx);cursor:pointer;">FULL</button>
             </div>
             <div id="dt-liters" style="text-align:center;margin-top:8px;font-size:16px;font-weight:700;color:#f59e0b;">— select level —</div>
           </div>
           <div class="ff" style="grid-column:1/-1"><label>Notes</label><textarea id="dt-notes" placeholder="Refill done, abnormality, leak..."></textarea></div>
         </div>
-        <button class="btn bg" style="margin-top:12px;width:100%;" onclick="tankSaveReading('dtank')">✓ Save Diesel Tank Reading</button>
+        <button class="btn bg" style="margin-top:12px;width:100%;" onclick="tankSaveReading('diesel')">✓ Save Diesel Tank Reading</button>
       </div></div>
       <div class="card"><div class="ch"><div class="ct">⛽ Current Level</div></div><div class="cb" style="text-align:center;padding:20px;">
         <div style="width:88px;height:200px;border:3px solid var(--bd);border-radius:14px;position:relative;overflow:hidden;margin:0 auto;background:var(--s2);">
@@ -3600,7 +3600,7 @@ if ('caches' in window) {
         <div id="dt-stale" style="font-size:10px;font-weight:700;margin-top:4px;"></div>
       </div></div>
     </div>
-    <div class="card"><div class="ch"><div class="ct">Diesel Tank Reading Log</div><button class="btn bp" style="font-size:10px;" onclick="tankExport('dtank')">⬇ Export Report</button></div>
+    <div class="card"><div class="ch"><div class="ct">Diesel Tank Reading Log</div><button class="btn bp" style="font-size:10px;" onclick="tankExport('diesel')">⬇ Export Report</button></div>
       <div class="cb" style="padding:0;max-height:420px;overflow-y:auto;">
         <table class="tbl"><thead><tr><th>Date</th><th>Stick Level</th><th>Liters</th><th>%</th><th>By</th><th>Notes</th><th>Actions</th></tr></thead>
         <tbody id="dt-tb"></tbody></table>
