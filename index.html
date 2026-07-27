@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260719-1585';
+  var v = '20260719-1586';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260719-1585">
+<meta name="app-version" content="20260719-1586">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -717,7 +717,7 @@ if ('caches' in window) {
   <div class="g g4">
     <div class="sc" style="--c:var(--ac)"><div class="ico">📋</div><div class="val" id="d-wo">—</div><div class="lbl">Open Work Orders</div></div>
     <div class="sc" style="--c:var(--gn)"><div class="ico">✅</div><div class="val" id="d-ppm">—</div><div class="lbl">PPM Completion Rate</div></div>
-    <div class="sc" style="--c:var(--or)"><div class="ico">🏆</div><div class="val" id="d-cbahi">—</div><div class="lbl">CBAHI Readiness</div></div>
+    <div class="sc" style="--c:var(--or)"><div class="ico">🏆</div><div class="val" id="d-cbahi">—</div><div class="lbl">CBAHI Readiness</div><div class="sub" id="d-cbahi-sub">auto-checks · all live modules</div></div>
     <div class="sc" style="--c:#00d4aa"><div class="ico">🔩</div><div class="val" id="d-maint">—</div><div class="lbl">Maint. Tickets (Live)</div><div class="sub" id="d-maint-rate">Live from Google Sheet</div></div>
   </div>
   <div class="card" style="margin-bottom:16px;"><div class="ch"><div class="ct">🛢 Critical Reserves — Live Levels</div><div style="font-size:9px;color:var(--mu);">LOX · Bashar &nbsp;|&nbsp; Water &amp; Diesel · Mostapha</div></div>
@@ -2732,7 +2732,7 @@ if ('caches' in window) {
   <div class="tb" style="flex-wrap:wrap;">
     <button class="tbtn active" onclick="st('safety','eoc',this)">🔍 ESR Rounds</button>
     <button class="tbtn" onclick="st('safety','tr',this)">📚 Training</button>
-    <button class="tbtn" onclick="st('safety','inc',this)">🚨 Incidents</button>
+    <button class="tbtn" onclick="st('safety','inc',this)">🚨 Incidents</button><button class="tbtn" onclick="st('safety','doors',this)">🚪 Fire Exit Doors</button>
     <button class="tbtn" onclick="st('safety','kpi',this)">📊 KPIs</button>
   </div>
 
@@ -2841,6 +2841,48 @@ if ('caches' in window) {
   </div>
 
   <!-- ══ KPIs ══ -->
+
+  <!-- ══ EMERGENCY FIRE EXIT DOORS — FMS 23.3 / 23.4 / 23.6 ══ -->
+  <div id="safety-doors" style="display:none;">
+    <div style="background:rgba(59,130,246,.06);border:1px solid var(--bd);border-radius:10px;padding:9px 14px;margin-bottom:12px;font-size:10px;color:var(--mu);">
+      <b style="color:var(--ac);">Emergency Fire Exit Door Inventory &amp; Inspection</b> · CBAHI <b>FMS 23.3</b> (opens in direction of egress, panic hardware functional) · <b>FMS 23.4</b> (unlocked &amp; unobstructed from egress side, self-closing/latching) · <b>FMS 23.6</b> (exit sign illuminated, emergency lighting functional) · Quarterly per-door inspection · <span id="exd-chips"></span>
+    </div>
+    <div class="g g2">
+      <div class="card"><div class="ch"><div class="ct">🚪 Add / Edit Door</div></div><div class="cb">
+        <div class="fg fg2">
+          <div class="ff"><label>Door ID</label><input type="text" id="exd-id" placeholder="FED-01"></div>
+          <div class="ff"><label>Floor</label><select id="exd-floor"><option>Basement</option><option>Ground Floor</option><option>First Floor</option><option>Second Floor</option><option>Roof</option></select></div>
+          <div class="ff" style="grid-column:1/-1"><label>Location / Description</label><input type="text" id="exd-loc" placeholder="e.g. ER ambulance bay exit"></div>
+          <div class="ff" style="grid-column:1/-1"><label>Notes</label><input type="text" id="exd-notes" placeholder="Panic bar type, remarks..."></div>
+        </div>
+        <button class="btn bg" style="margin-top:10px;width:100%;" onclick="exdSaveDoor()">✓ Save Door</button>
+      </div></div>
+      <div class="card" id="exd-insp-card" style="border-left:4px solid #f59e0b;"><div class="ch"><div class="ct">🧾 Quarterly Inspection — <span id="exdi-door-label" style="color:var(--ac);">select a door (🧾 button)</span></div></div><div class="cb">
+        <input type="hidden" id="exdi-door">
+        <div class="fg fg2">
+          <div class="ff"><label>Date</label><input type="date" id="exdi-date"></div>
+          <div class="ff"><label>Inspected By</label><input type="text" id="exdi-by" placeholder="Name"></div>
+          <div class="ff" style="grid-column:1/-1"><label>FMS 23.3 — Opens in direction of egress · panic hardware operates freely</label><select id="exdi-c33"><option value="">— select —</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option></select></div>
+          <div class="ff" style="grid-column:1/-1"><label>FMS 23.4 — Unlocked from egress side · unobstructed · self-closing &amp; latching functional</label><select id="exdi-c34"><option value="">— select —</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option></select></div>
+          <div class="ff" style="grid-column:1/-1"><label>FMS 23.6 — Exit sign illuminated · emergency lighting at door functional</label><select id="exdi-c36"><option value="">— select —</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option></select></div>
+          <div class="ff" style="grid-column:1/-1"><label>Findings / Corrective Action</label><textarea id="exdi-notes" placeholder="Deficiencies, WO raised, corrective action..."></textarea></div>
+        </div>
+        <button class="btn bg" style="margin-top:10px;width:100%;" onclick="exdiSave()">✓ Save Inspection</button>
+      </div></div>
+    </div>
+    <div class="card"><div class="ch"><div class="ct">Door Inventory</div><button class="btn bp" style="font-size:10px;" onclick="exdExport()">⬇ Export Report (FMS 23)</button></div>
+      <div class="cb" style="padding:0;max-height:380px;overflow-y:auto;">
+        <table class="tbl"><thead><tr><th>Door ID</th><th>Floor</th><th>Location</th><th>Last Inspection</th><th>23.3</th><th>23.4</th><th>23.6</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="exd-tb"></tbody></table>
+      </div>
+    </div>
+    <div class="card"><div class="ch"><div class="ct">Inspection Log</div></div>
+      <div class="cb" style="padding:0;max-height:340px;overflow-y:auto;">
+        <table class="tbl"><thead><tr><th>Date</th><th>Door</th><th>23.3</th><th>23.4</th><th>23.6</th><th>Result</th><th>By</th><th>Notes</th><th>Actions</th></tr></thead>
+        <tbody id="exdi-tb"></tbody></table>
+      </div>
+    </div>
+  </div>
   <div id="safety-kpi" style="display:none;"><div id="safety-kpi-out"></div></div>
 </div>
 
@@ -6553,7 +6595,7 @@ const DB_VALID_TYPES = new Set([
   'risks','contracts','customKPI','fireDrills_unit','docs',
   'wo','lox_refill','air_refill','wo_parts','access_log',
   'kpi2_entries','platform_settings','app_settings',
-  'waterTank','dieselTank',
+  'waterTank','dieselTank','exitDoors','exitDoorInsp',
   'fireDrills_code','unitFireDrills',
 ]);
 
@@ -7502,6 +7544,7 @@ function renderDash(){
   document.getElementById('d-wo').textContent=open;
   document.getElementById('d-ppm').textContent=pR+'%';
   document.getElementById('d-cbahi').textContent=ready+'%';
+  var _cs=document.getElementById('d-cbahi-sub'); if(_cs)_cs.textContent=met+' Met · '+par+' Partial · '+gap+' Gap — '+tot+' auto-checks';
   // domain bars
   const doms=[{n:'🛡 Safety',p:dPct('safety'),s:'FMS.1.1.1'},{n:'🔒 Security',p:dPct('security'),s:'FMS.1.1.2'},{n:'☣ Hazmat',p:dPct('hazmat'),s:'FMS.1.1.3'},{n:'🚨 Emergency',p:dPct('emergency'),s:'FMS.1.1.4/5'},{n:'🔥 Fire',p:dPct('fire'),s:'FMS.1.1.6'},{n:'⚕ Equip.',p:dPct('equip'),s:'FMS.1.1.7'},{n:'⚡ Utilities',p:dPct('utils'),s:'FMS.1.1.8'}];
   const dE=document.getElementById('domBars');
@@ -7576,25 +7619,37 @@ function dPct(d){const f={safety:()=>Math.min(100,Math.round((ld('eoc').length/p
 
 // ===== CBAHI =====
 const CBD=[
-  {code:'FMS.1.1.1',title:'Building safety — ESR rounds (4/year, quarterly)',k:'eoc',tgt:4,chk:d=>d.length>=4},
+  {code:'FMS.1.1.1',title:'Building safety — ESR rounds (4/year, quarterly)',k:'eoc',tgt:4,chk:d=>d.length>=platCfg().esrTarget},
   {code:'FMS.1.1.2',title:'Security drills (2/year)',k:'secDrill',tgt:2,chk:d=>d.length>=2},
-  {code:'FMS.1.1.3',title:'Hazmat — chemicals + waste audits',k:'chemical',tgt:10,chk:d=>d.length>=10&&ld('wasteAudit').length>=4},
-  {code:'FMS.1.1.4/5',title:'Code drills — 4 codes × 1/year',k:'fireDrills_code',tgt:4,chk:d=>{const per=codeDrillsThisYear();return Object.values(per).every(n=>n>=platCfg().codeDrillTarget);}},
-  {code:'FMS.1.1.6',title:'Unit level fire drills — 100% compliance',k:'unitFireDrills',tgt:59,chk:d=>{const u=ufdComplianceStats();return !!u&&u.rate>=100;}},
-  {code:'FMS.1.1.7',title:'Medical equipment PPM records',k:'ppm',tgt:50,chk:d=>d.length>=50&&d.filter(r=>r.res==='done').length>=45},
+  {code:'FMS.1.1.3',title:'Hazmat — chemicals registered + waste audits (4/yr)',k:'chemical',tgt:10,chk:d=>d.length>=10&&ld('wasteAudit').length>=4},
+  {code:'FMS.1.1.4/5',title:'Code drills — 4 codes × target/yr · source: 📋 Annual Plans & Code Drills tab',k:'fireDrills_code',tgt:4,chk:d=>{const per=codeDrillsThisYear();return Object.values(per).every(n=>n>=platCfg().codeDrillTarget);},pct:()=>{const per=codeDrillsThisYear(),t=platCfg().codeDrillTarget;const c=Object.keys(per);return Math.round(c.filter(x=>per[x]>=t).length/c.length*100);}},
+  {code:'FMS.1.1.6',title:'Unit level fire drills — 100% compliance (59 units)',k:'unitFireDrills',tgt:59,chk:()=>{const u=ufdComplianceStats();return !!u&&u.rate>=100;},pct:()=>{const u=ufdComplianceStats();return u?u.rate:0;}},
+  {code:'FMS.1.1.7',title:'High-risk device PM completion ≥90% · source: ⚕ Equipment Inventory (same as PPM tile)',pct:()=>{const s2=(typeof pmsPmAutoStats==='function')?pmsPmAutoStats():null;return s2?s2.rate:0;},chk:()=>{const s2=(typeof pmsPmAutoStats==='function')?pmsPmAutoStats():null;return !!s2&&s2.rate>=90;}},
   {code:'FMS.1.1.8',title:'Generator monthly tests (12/year)',k:'genTest',tgt:12,chk:d=>d.length>=12},
+  {code:'FMS.1.1.8',title:'Water safety tests (4/year)',k:'waterTest',tgt:4,chk:d=>d.length>=4},
+  {code:'FMS.1.1.8',title:'Communication system tests (4/year)',k:'commTest',tgt:4,chk:d=>d.length>=4},
+  {code:'FMS.1.1.8',title:'💧 Water tank level readings current · source: Utilities → Water Tank',pct:()=>(typeof tankGet==='function')?(function(){const rs=tankGet('water');if(!rs.length)return 0;const dys=Math.floor((Date.now()-new Date(rs[0].date+'T00:00:00'))/864e5);return dys<=tankFreq('water')?100:Math.max(0,100-((dys-tankFreq('water'))*10));})():0,chk:()=>(typeof tankGet==='function')&&(function(){const rs=tankGet('water');if(!rs.length)return false;return Math.floor((Date.now()-new Date(rs[0].date+'T00:00:00'))/864e5)<=tankFreq('water');})()},
+  {code:'FMS.1.1.8',title:'⛽ Diesel fuel reserve monitored (GEN-1 & GEN-2) · source: Utilities → Diesel Tank',pct:()=>(typeof tankGet==='function')?(function(){const rs=tankGet('diesel');if(!rs.length)return 0;const dys=Math.floor((Date.now()-new Date(rs[0].date+'T00:00:00'))/864e5);return dys<=tankFreq('diesel')?100:Math.max(0,100-((dys-tankFreq('diesel'))*10));})():0,chk:()=>(typeof tankGet==='function')&&(function(){const rs=tankGet('diesel');if(!rs.length)return false;return Math.floor((Date.now()-new Date(rs[0].date+'T00:00:00'))/864e5)<=tankFreq('diesel');})()},
   {code:'FMS.9.5',title:'Shielding certs — valid (KACST)',k:'shieldCert',tgt:3,chk:d=>d.length>=3&&d.filter(r=>!r.expiry||new Date(r.expiry)>=new Date()).length>=3},
   {code:'FMS.9.6',title:'Lead apron annual testing',k:'leadApron',tgt:1,chk:d=>d.length>=1},
   {code:'FMS.9.7',title:'TLD quarterly reviews by RSO (4/year)',k:'tldReview',tgt:4,chk:d=>d.length>=4},
   {code:'FMS.21.1',title:'Fire alarm monthly inspections (12/year)',k:'fireAlarm',tgt:12,chk:d=>d.filter(r=>r.type?.includes('Monthly')).length>=12},
   {code:'FMS.21.3',title:'Fire alarm quarterly PPM — Civil Defense (4/year)',k:'fireAlarm',tgt:4,chk:d=>d.filter(r=>r.type?.includes('PPM')).length>=4},
   {code:'FMS.22',title:'Suppression system PPM records (8/year)',k:'fireSup',tgt:8,chk:d=>d.length>=8},
-  {code:'FMS.23',title:'Fire exit inspections — all 5 criteria',k:'fireExit',tgt:4,chk:d=>d.length>=4&&d.filter(r=>r.c1==='pass'&&r.c2==='pass'&&r.c3==='pass'&&r.c4==='pass'&&r.c6==='pass').length>=2},
+  {code:'FMS.23',title:'Fire exit route inspections — all 5 criteria (4/year)',k:'fireExit',tgt:4,chk:d=>d.length>=4&&d.filter(r=>r.c1==='pass'&&r.c2==='pass'&&r.c3==='pass'&&r.c4==='pass'&&r.c6==='pass').length>=2},
+  {code:'FMS.23.3/4/6',title:'🚪 Exit doors — 100% with passing quarterly inspection · source: 🛡 Safety → Fire Exit Doors',pct:()=>(typeof exdCbdPct==='function')?exdCbdPct():0,chk:()=>(typeof exdCbdOk==='function')&&exdCbdOk()},
+  {code:'FMS.27',title:'🌡 Temperature control — morgue & waste room in-range ≥90% · source: Temperature Log',pct:()=>{const t=(typeof tmpStats==='function')?tmpStats():null;return (t&&t.rate!=null)?t.rate:0;},chk:()=>{const t=(typeof tmpStats==='function')?tmpStats():null;return !!t&&t.rate!=null&&t.rate>=90;}},
   {code:'FMS.32.1',title:'PMG daily checklists (30+)',k:'pmgCheck',tgt:30,chk:d=>d.length>=30},
   {code:'FMS.32.3',title:'Air purity tests (2/year)',k:'airPurity',tgt:2,chk:d=>d.length>=2&&d.some(r=>r.res==='pass')},
-  {code:'FMS.32.8',title:'O₂ reserve ≥48h documented',k:'pmgCheck',tgt:4,chk:d=>d.length>=4},
+  {code:'FMS.32.8',title:'🫧 LOX reserve — daily physical gauge reading current & ≥25% · source: Medical Gas → LOX',pct:()=>{try{const lr=loxGetReadings();if(!lr.length||lr[0].litres==null)return 0;return Math.round(lr[0].litres/LOX_MAX_LITRES*100);}catch(e){return 0;}},chk:()=>{try{const lr=loxGetReadings();if(!lr.length||lr[0].litres==null)return false;const dys=Math.floor((Date.now()-new Date(lr[0].date+'T00:00:00'))/864e5);return dys<=(Number(platCfg().loxFreqDays)||1)&&(lr[0].litres/LOX_MAX_LITRES)>=0.25;}catch(e){return false;}}},
+  {code:'FMS.34.5',title:'💨 Critical-area ACH compliance ≥90% (this month) · source: ACH module (same as PMS-U1)',pct:()=>{try{const e=pmsAchAutoEntry(fmsLocalToday());return e?Math.round(e.num/e.den*100):0;}catch(x){return 0;}},chk:()=>{try{const e=pmsAchAutoEntry(fmsLocalToday());return !!e&&(e.num/e.den)>=0.9;}catch(x){return false;}}},
 ];
-function cbStats(){let met=0,par=0,gap=0;CBD.forEach(def=>{const d=ld(def.k),p=Math.min(100,Math.round((d.length/def.tgt)*100));if(def.chk(d))met++;else if(p>=40)par++;else gap++;});return{met,par,gap};}
+function cbStats(){let met=0,par=0,gap=0;CBD.forEach(def=>{try{
+  const d=def.k?ld(def.k):[];
+  const p=def.pct?Math.max(0,Math.min(100,Math.round(def.pct()||0)))
+                 :Math.min(100,Math.round((d.length/(def.tgt||1))*100));
+  if(def.chk(d))met++;else if(p>=40)par++;else gap++;
+}catch(e){gap++;}});return{met,par,gap};}
 function renderCBAHI(){
   // New CBAHI FMS module — delegate to renderCbahi()
   setTimeout(renderCbahi, 50);
@@ -10151,7 +10206,7 @@ async function dbPushAll() {
     'mg_lox','mg_o2backup','mg_n2o','mg_vacuum','mg_aircomp','mg_airbackup',
     'mg_ambulance','mg_cylinder','mg_o2refill','mg_airrefill',
     'rad_tld','rad_apron','rad_shield',
-    'fireDrills_code','unitFireDrills','pms_entries','customKPI','waterTank','dieselTank'];
+    'fireDrills_code','unitFireDrills','pms_entries','customKPI','waterTank','dieselTank','exitDoors','exitDoorInsp'];
   let total = 0, pushed = 0;
   settingsPushToDB();
   toast('⟳ Pushing all local data to DB...');
@@ -19652,7 +19707,7 @@ const ME_STORES=['eoc','training','incident','secInc','secDrill','chemical','was
  'fireAlarm','fireSup','fireExit','fireDrill','fireDrills_code','unitFireDrills','ppm','genTest',
  'waterTest','pmgCheck','airPurity','tldReview','leadApron','shieldCert','doc','workorders',
  'eq_added','eq_relocations','contracts','evaluations','risk_register','pms_entries','customKPI',
- 'ach_readings','temp_morgue','temp_waste','waterTank','dieselTank','platform_settings','act'];
+ 'ach_readings','temp_morgue','temp_waste','waterTank','dieselTank','exitDoors','exitDoorInsp','platform_settings','act'];
 function meInit(){
   const cfg=platCfg();
   const c=document.getElementById('me-codedrill'), e=document.getElementById('me-esr');
@@ -19929,6 +19984,209 @@ if(typeof buildAlerts==='function'){
   };
 }
 try{tankRender('water');tankRender('diesel');dashRenderTanks();}catch(e){}
+</script>
+
+<script>
+/* ============ EMERGENCY FIRE EXIT DOORS — FMS 23.3/23.4/23.6 — v1586 ============ */
+const EXD_SEED=[
+ {id:'FED-01',floor:'Basement',loc:'Kitchen service corridor exit'},
+ {id:'FED-02',floor:'Basement',loc:'Laundry / mechanical area exit'},
+ {id:'FED-03',floor:'Ground Floor',loc:'Main lobby side emergency exit'},
+ {id:'FED-04',floor:'Ground Floor',loc:'Emergency Room (ER) exit'},
+ {id:'FED-05',floor:'Ground Floor',loc:'OPD corridor exit'},
+ {id:'FED-06',floor:'Ground Floor',loc:'Kitchen ramp / service exit'},
+ {id:'FED-07',floor:'First Floor',loc:'Stairwell A (east) fire door'},
+ {id:'FED-08',floor:'First Floor',loc:'Stairwell B (west) fire door'},
+ {id:'FED-09',floor:'Second Floor',loc:'Stairwell A (east) fire door'},
+ {id:'FED-10',floor:'Second Floor',loc:'Stairwell B (west) fire door'},
+ {id:'FED-11',floor:'Second Floor',loc:'Ward corridor exit (Station side)'},
+ {id:'FED-12',floor:'Roof',loc:'Roof access fire door'}
+];
+function exdAll(){return (ld('exitDoors')||[]).filter(r=>r&&r.id).sort((a,b)=>a.id>b.id?1:-1);}
+function exdiAll(){return (ld('exitDoorInsp')||[]).filter(r=>r&&r.door&&r.date).sort((a,b)=>a.date<b.date?1:-1);}
+function exdSeedIfEmpty(){
+  if(exdAll().length) return;
+  const arr=EXD_SEED.map(d=>({_id:'exd_'+d.id,id:d.id,floor:d.floor,loc:d.loc,notes:'',_seed:true,_ts:new Date().toISOString()}));
+  localStorage.setItem(PX+'exitDoors',JSON.stringify(arr));
+  arr.forEach(r=>{try{dbWrite('exitDoors',r);}catch(e){}});
+  toast('🚪 '+arr.length+' exit doors seeded from your list — edit any door to correct it','#3b82f6',5000);
+}
+function exdSaveDoor(){
+  try{
+    const id=((document.getElementById('exd-id')||{}).value||'').trim().toUpperCase();
+    const floor=(document.getElementById('exd-floor')||{}).value;
+    const loc=((document.getElementById('exd-loc')||{}).value||'').trim();
+    const notes=((document.getElementById('exd-notes')||{}).value||'').trim();
+    if(!id){toast('Door ID required','#f59e0b');return;}
+    if(!loc){toast('Location required','#f59e0b');return;}
+    const rec={_id:'exd_'+id,id:id,floor:floor,loc:loc,notes:notes,_ts:new Date().toISOString()};
+    const arr=exdAll().filter(r=>r.id!==id); arr.push(rec);
+    localStorage.setItem(PX+'exitDoors',JSON.stringify(arr));
+    try{dbWrite('exitDoors',rec);}catch(e){}
+    ['exd-id','exd-loc','exd-notes'].forEach(i=>{const e=document.getElementById(i);if(e)e.value='';});
+    toast('✅ Door '+id+' saved','#10b981'); exdRender();
+  }catch(err){toast('❌ '+err.message,'#dc2626');}
+}
+function exdEdit(id){
+  const r=exdAll().find(x=>x.id===id); if(!r)return;
+  document.getElementById('exd-id').value=r.id;
+  document.getElementById('exd-floor').value=r.floor||'Ground Floor';
+  document.getElementById('exd-loc').value=r.loc||'';
+  document.getElementById('exd-notes').value=r.notes||'';
+  toast('✏ Editing '+id+' — press Save Door to update','#3b82f6');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function exdDelete(id){
+  if(!confirm('Delete door '+id+'? Its inspection history stays in the log.'))return;
+  localStorage.setItem(PX+'exitDoors',JSON.stringify(exdAll().filter(r=>r.id!==id)));
+  try{dbDelete('exitDoors','exd_'+id);}catch(e){}
+  toast('Door deleted'); exdRender();
+}
+function exdInspOpen(id){
+  document.getElementById('exdi-door').value=id;
+  document.getElementById('exdi-door-label').textContent=id;
+  const d=document.getElementById('exdi-date'); if(d&&!d.value)d.value=fmsLocalToday();
+  document.getElementById('exd-insp-card').scrollIntoView({behavior:'smooth',block:'center'});
+  toast('🧾 Inspecting '+id+' — complete the FMS 23 checklist','#3b82f6');
+}
+function exdiSave(){
+  try{
+    const door=(document.getElementById('exdi-door')||{}).value;
+    const date=(document.getElementById('exdi-date')||{}).value;
+    const c33=(document.getElementById('exdi-c33')||{}).value;
+    const c34=(document.getElementById('exdi-c34')||{}).value;
+    const c36=(document.getElementById('exdi-c36')||{}).value;
+    const by=((document.getElementById('exdi-by')||{}).value||'').trim();
+    const notes=((document.getElementById('exdi-notes')||{}).value||'').trim();
+    if(!door){toast('Select a door first (🧾 button in the inventory)','#f59e0b');return;}
+    if(!date){toast('Date required','#f59e0b');return;}
+    if(!c33||!c34||!c36){toast('All three FMS 23 criteria must be answered','#f59e0b');return;}
+    const rec={_id:'exdi_'+door+'_'+date,door:door,date:date,c33:c33,c34:c34,c36:c36,
+      result:(c33==='pass'&&c34==='pass'&&c36==='pass')?'pass':'fail',
+      notes:notes,_by:by||((typeof CU!=='undefined'&&CU&&CU.name)||''),_ts:new Date().toISOString()};
+    const arr=exdiAll().filter(r=>!(r.door===door&&r.date===date)); arr.push(rec);
+    localStorage.setItem(PX+'exitDoorInsp',JSON.stringify(arr));
+    try{dbWrite('exitDoorInsp',rec);}catch(e){}
+    ['exdi-c33','exdi-c34','exdi-c36','exdi-notes','exdi-by'].forEach(i=>{const e=document.getElementById(i);if(e)e.value='';});
+    toast(rec.result==='pass'?'✅ '+door+' inspection saved — PASS':'⚠ '+door+' inspection saved — FAIL recorded (raise WO)',rec.result==='pass'?'#10b981':'#f59e0b',4000);
+    exdRender(); try{renderDash();}catch(e){}
+  }catch(err){toast('❌ '+err.message,'#dc2626');}
+}
+function exdiEdit(door,date){
+  const r=exdiAll().find(x=>x.door===door&&x.date===date); if(!r)return;
+  exdInspOpen(door);
+  document.getElementById('exdi-date').value=r.date;
+  document.getElementById('exdi-c33').value=r.c33||''; document.getElementById('exdi-c34').value=r.c34||'';
+  document.getElementById('exdi-c36').value=r.c36||''; document.getElementById('exdi-by').value=r._by||'';
+  document.getElementById('exdi-notes').value=r.notes||'';
+}
+function exdiDelete(door,date){
+  if(!confirm('Delete inspection '+door+' / '+date+'?'))return;
+  localStorage.setItem(PX+'exitDoorInsp',JSON.stringify(exdiAll().filter(r=>!(r.door===door&&r.date===date))));
+  try{dbDelete('exitDoorInsp','exdi_'+door+'_'+date);}catch(e){}
+  toast('Inspection deleted'); exdRender(); try{renderDash();}catch(e){}
+}
+function exdLatest(door){return exdiAll().find(r=>r.door===door)||null;}
+function exdCurrentQ(door){
+  const r=exdLatest(door); if(!r)return null;
+  const days=Math.floor((Date.now()-new Date(r.date+'T00:00:00'))/864e5);
+  return {insp:r,current:days<=92,days:days};
+}
+function exdStats(){
+  const doors=exdAll(); let inspected=0,compliant=0;
+  doors.forEach(d=>{const q=exdCurrentQ(d.id);
+    if(q&&q.current){inspected++; if(q.insp.result==='pass')compliant++;}});
+  return {total:doors.length,inspected:inspected,compliant:compliant};
+}
+function exdCbdPct(){const st=exdStats();return st.total?Math.round(st.compliant/st.total*100):0;}
+function exdCbdOk(){const st=exdStats();return st.total>0&&st.compliant===st.total;}
+function exdBadge(v){return v==='pass'?'<span style="color:#10b981;font-weight:800;">✓</span>':v==='fail'?'<span style="color:#ef4444;font-weight:800;">✗</span>':'<span style="color:var(--mu);">—</span>';}
+function exdRender(){
+  const tb=document.getElementById('exd-tb'); if(!tb)return;
+  const doors=exdAll();
+  tb.innerHTML=doors.length?doors.map(d=>{
+    const q=exdCurrentQ(d.id); const li=q?q.insp:null;
+    const status=!li?'<span style="color:var(--mu);font-size:10px;">Never inspected</span>'
+      :!q.current?'<span style="color:#ef4444;font-size:10px;font-weight:700;">⚠ Overdue ('+q.days+'d)</span>'
+      :li.result==='pass'?'<span style="color:#10b981;font-size:10px;font-weight:700;">✅ Compliant</span>'
+      :'<span style="color:#ef4444;font-size:10px;font-weight:700;">❌ Deficient</span>';
+    return '<tr><td style="font-weight:700;">'+d.id+'</td><td>'+(d.floor||'—')+'</td><td style="font-size:10px;">'+(d.loc||'—')+
+      '</td><td>'+(li?li.date:'—')+'</td><td>'+exdBadge(li&&li.c33)+'</td><td>'+exdBadge(li&&li.c34)+'</td><td>'+exdBadge(li&&li.c36)+
+      '</td><td>'+status+'</td><td style="white-space:nowrap;">'+
+      '<button class="btn bg" style="font-size:9px;padding:3px 8px;" onclick="exdInspOpen(\''+d.id+'\')">🧾</button> '+
+      '<button class="btn bo" style="font-size:9px;padding:3px 8px;" onclick="exdEdit(\''+d.id+'\')">✏</button> '+
+      '<button class="btn br" style="font-size:9px;padding:3px 8px;" onclick="exdDelete(\''+d.id+'\')">🗑</button></td></tr>';
+  }).join(''):'<tr><td colspan="9" style="text-align:center;color:var(--mu);padding:16px;">No doors — add the first door above</td></tr>';
+  const it=document.getElementById('exdi-tb');
+  if(it){const insp=exdiAll();
+    it.innerHTML=insp.length?insp.map(r=>'<tr><td>'+r.date+'</td><td style="font-weight:700;">'+r.door+'</td><td>'+exdBadge(r.c33)+'</td><td>'+exdBadge(r.c34)+'</td><td>'+exdBadge(r.c36)+
+      '</td><td>'+(r.result==='pass'?'<span style="color:#10b981;font-weight:700;">PASS</span>':'<span style="color:#ef4444;font-weight:700;">FAIL</span>')+
+      '</td><td>'+(r._by||'—')+'</td><td style="font-size:10px;color:var(--mu);">'+(r.notes||'—')+'</td>'+
+      '<td style="white-space:nowrap;"><button class="btn bo" style="font-size:9px;padding:3px 8px;" onclick="exdiEdit(\''+r.door+'\',\''+r.date+'\')">✏</button> '+
+      '<button class="btn br" style="font-size:9px;padding:3px 8px;" onclick="exdiDelete(\''+r.door+'\',\''+r.date+'\')">🗑</button></td></tr>').join('')
+    :'<tr><td colspan="9" style="text-align:center;color:var(--mu);padding:16px;">No inspections logged yet</td></tr>';}
+  const ch=document.getElementById('exd-chips');
+  if(ch){const st=exdStats();
+    ch.innerHTML='<b style="color:var(--ac);">'+st.total+' doors</b> · <b style="color:'+(st.inspected===st.total?'#10b981':'#f59e0b')+';">'+st.inspected+' inspected this quarter</b> · <b style="color:'+(st.compliant===st.total?'#10b981':'#ef4444')+';">'+st.compliant+' fully compliant</b>';}
+}
+function exdExport(){
+  try{
+    const doors=exdAll(); if(!doors.length){toast('No doors to export','#f59e0b');return;}
+    const st=exdStats(); const insp=exdiAll();
+    const title='🚪 Emergency Fire Exit Door Inventory & Inspection Report — FMS 23.3 / 23.4 / 23.6';
+    const rows=doors.map(d=>{const q=exdCurrentQ(d.id);const li=q?q.insp:null;
+      const b=v=>v==='pass'?'✓ Pass':v==='fail'?'✗ FAIL':'—';
+      const stat=!li?'Never inspected':!q.current?'OVERDUE ('+q.days+'d since last)':li.result==='pass'?'COMPLIANT':'DEFICIENT';
+      return '<tr><td style="padding:5px 9px;border:1px solid #ccc;font-weight:700;">'+d.id+'</td><td style="padding:5px 9px;border:1px solid #ccc;">'+(d.floor||'—')+'</td><td style="padding:5px 9px;border:1px solid #ccc;">'+(d.loc||'—')+'</td><td style="padding:5px 9px;border:1px solid #ccc;">'+(li?li.date:'—')+'</td><td style="padding:5px 9px;border:1px solid #ccc;">'+b(li&&li.c33)+'</td><td style="padding:5px 9px;border:1px solid #ccc;">'+b(li&&li.c34)+'</td><td style="padding:5px 9px;border:1px solid #ccc;">'+b(li&&li.c36)+'</td><td style="padding:5px 9px;border:1px solid #ccc;font-weight:700;">'+stat+'</td></tr>';}).join('');
+    const irows=insp.map(r=>'<tr><td style="padding:5px 9px;border:1px solid #ccc;">'+r.date+'</td><td style="padding:5px 9px;border:1px solid #ccc;">'+r.door+'</td><td style="padding:5px 9px;border:1px solid #ccc;">'+(r.c33==='pass'?'✓':'✗')+'</td><td style="padding:5px 9px;border:1px solid #ccc;">'+(r.c34==='pass'?'✓':'✗')+'</td><td style="padding:5px 9px;border:1px solid #ccc;">'+(r.c36==='pass'?'✓':'✗')+'</td><td style="padding:5px 9px;border:1px solid #ccc;font-weight:700;">'+String(r.result||'').toUpperCase()+'</td><td style="padding:5px 9px;border:1px solid #ccc;">'+(r._by||'—')+'</td><td style="padding:5px 9px;border:1px solid #ccc;">'+(r.notes||'—')+'</td></tr>').join('');
+    const html='<!doctype html><html><head><meta charset="utf-8"><title>Fire Exit Door Report</title><style>@media print{button{display:none}}</style></head>'+
+      '<body style="font-family:Arial,sans-serif;max-width:1050px;margin:22px auto;color:#222;">'+
+      '<div style="text-align:center;border-bottom:3px solid #1e3a5c;padding-bottom:10px;margin-bottom:14px;">'+
+      '<div style="font-size:20px;font-weight:800;color:#1e3a5c;">OBEID SPECIALIZED HOSPITAL</div>'+
+      '<div style="font-size:11px;color:#555;">Riyadh, KSA · Facility Management &amp; Safety · CBAHI 2026</div>'+
+      '<div style="font-size:14px;font-weight:700;color:#7B2436;margin-top:8px;">Emergency Fire Exit Door Inventory &amp; Inspection Report</div>'+
+      '<div style="font-size:10px;color:#555;margin-top:2px;">CBAHI FMS 23.3 — Egress direction &amp; panic hardware · FMS 23.4 — Unlocked, unobstructed, self-closing/latching · FMS 23.6 — Exit signage &amp; emergency lighting</div>'+
+      '<div style="font-size:10px;color:#777;">Generated '+fmsLocalToday()+' · '+st.total+' doors · '+st.inspected+' inspected this quarter · '+st.compliant+' fully compliant ('+(st.total?Math.round(st.compliant/st.total*100):0)+'%)</div></div>'+
+      '<button onclick="window.print()" style="background:#1e3a5c;color:#fff;border:none;border-radius:6px;padding:8px 18px;font-size:12px;cursor:pointer;margin-bottom:12px;">🖨 Print / Save as PDF</button>'+
+      '<div style="font-size:12px;font-weight:800;color:#1e3a5c;margin:8px 0 6px;">A. Door Inventory — Latest Inspection Status</div>'+
+      '<table style="border-collapse:collapse;width:100%;font-size:11px;"><thead><tr style="background:#1e3a5c;color:#fff;"><th style="padding:6px 9px;border:1px solid #ccc;">Door ID</th><th style="padding:6px 9px;border:1px solid #ccc;">Floor</th><th style="padding:6px 9px;border:1px solid #ccc;">Location</th><th style="padding:6px 9px;border:1px solid #ccc;">Last Insp.</th><th style="padding:6px 9px;border:1px solid #ccc;">23.3</th><th style="padding:6px 9px;border:1px solid #ccc;">23.4</th><th style="padding:6px 9px;border:1px solid #ccc;">23.6</th><th style="padding:6px 9px;border:1px solid #ccc;">Status</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+      '<div style="font-size:12px;font-weight:800;color:#1e3a5c;margin:16px 0 6px;">B. Inspection Log — Full History</div>'+
+      '<table style="border-collapse:collapse;width:100%;font-size:11px;"><thead><tr style="background:#1e3a5c;color:#fff;"><th style="padding:6px 9px;border:1px solid #ccc;">Date</th><th style="padding:6px 9px;border:1px solid #ccc;">Door</th><th style="padding:6px 9px;border:1px solid #ccc;">23.3</th><th style="padding:6px 9px;border:1px solid #ccc;">23.4</th><th style="padding:6px 9px;border:1px solid #ccc;">23.6</th><th style="padding:6px 9px;border:1px solid #ccc;">Result</th><th style="padding:6px 9px;border:1px solid #ccc;">By</th><th style="padding:6px 9px;border:1px solid #ccc;">Findings</th></tr></thead><tbody>'+(irows||'<tr><td colspan="8" style="padding:8px;border:1px solid #ccc;text-align:center;">No inspections logged</td></tr>')+'</tbody></table>'+
+      '<div style="margin-top:26px;display:flex;justify-content:space-between;font-size:11px;">'+
+      '<div>Prepared by: ____________________<br><span style="color:#777;">'+((typeof CU!=='undefined'&&CU&&CU.name)||'')+' — Safety Officer</span></div>'+
+      '<div>Reviewed by: ____________________<br><span style="color:#777;">FMS Director</span></div></div>'+
+      '<p style="margin-top:16px;font-size:9px;color:#999;">Obeid Specialized Hospital · FMS Command · Generated from live platform records.</p></body></html>';
+    const b=new Blob([html],{type:'text/html'}); const a=document.createElement('a');
+    a.href=URL.createObjectURL(b); a.download='fire_exit_doors_FMS23_'+fmsLocalToday()+'.html';
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},800);
+    toast('✅ FMS 23 report exported — open it and press Print / Save as PDF','#10b981',4000);
+  }catch(err){toast('❌ Export failed: '+err.message,'#dc2626');}
+}
+/* hooks: tab open + alerts */
+if(typeof st==='function'){
+  const _exd_origSt=st;
+  st=function(domain,sub,btn){_exd_origSt(domain,sub,btn);
+    if(domain==='safety'&&sub==='doors'){try{exdSeedIfEmpty();exdRender();}catch(e){}}
+  };
+}
+if(typeof buildAlerts==='function'){
+  const _exd_origAlerts=buildAlerts;
+  buildAlerts=function(){
+    const a=_exd_origAlerts();
+    try{
+      const doors=exdAll();
+      if(doors.length){
+        const due=doors.filter(d=>{const q=exdCurrentQ(d.id);return !q||!q.current;});
+        if(due.length)a.push({c:'alw',i:'🟡',t:'🚪 '+due.length+' fire exit door(s) missing quarterly FMS 23 inspection: '+due.slice(0,4).map(d=>d.id).join(', ')+(due.length>4?'…':''),s:'Moe — FMS 23.3/23.4/23.6'});
+        const def=doors.filter(d=>{const q=exdCurrentQ(d.id);return q&&q.current&&q.insp.result==='fail';});
+        if(def.length)a.push({c:'alc',i:'🔴',t:'🚪 '+def.length+' fire exit door(s) DEFICIENT on last inspection: '+def.map(d=>d.id).join(', '),s:'Moe — FMS 23 · raise WO'});
+      }
+    }catch(e){}
+    return a;
+  };
+}
+try{exdRender();}catch(e){}
 </script>
 </body>
 </html>
