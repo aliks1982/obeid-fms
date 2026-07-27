@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260719-1586';
+  var v = '20260719-1587';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260719-1586">
+<meta name="app-version" content="20260719-1587">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -2851,7 +2851,7 @@ if ('caches' in window) {
       <div class="card"><div class="ch"><div class="ct">🚪 Add / Edit Door</div></div><div class="cb">
         <div class="fg fg2">
           <div class="ff"><label>Door ID</label><input type="text" id="exd-id" placeholder="FED-01"></div>
-          <div class="ff"><label>Floor</label><select id="exd-floor"><option>Basement</option><option>Ground Floor</option><option>First Floor</option><option>Second Floor</option><option>Roof</option></select></div>
+          <div class="ff"><label>Floor</label><select id="exd-floor"><option>Basement</option><option>Ground Floor</option><option>First Floor</option><option>Second Floor</option><option>Third Floor</option><option>Roof</option></select></div>
           <div class="ff" style="grid-column:1/-1"><label>Location / Description</label><input type="text" id="exd-loc" placeholder="e.g. ER ambulance bay exit"></div>
           <div class="ff" style="grid-column:1/-1"><label>Notes</label><input type="text" id="exd-notes" placeholder="Panic bar type, remarks..."></div>
         </div>
@@ -19988,28 +19988,63 @@ try{tankRender('water');tankRender('diesel');dashRenderTanks();}catch(e){}
 
 <script>
 /* ============ EMERGENCY FIRE EXIT DOORS — FMS 23.3/23.4/23.6 — v1586 ============ */
+const EXD_SEED_V=2;
 const EXD_SEED=[
- {id:'FED-01',floor:'Basement',loc:'Kitchen service corridor exit'},
- {id:'FED-02',floor:'Basement',loc:'Laundry / mechanical area exit'},
- {id:'FED-03',floor:'Ground Floor',loc:'Main lobby side emergency exit'},
- {id:'FED-04',floor:'Ground Floor',loc:'Emergency Room (ER) exit'},
- {id:'FED-05',floor:'Ground Floor',loc:'OPD corridor exit'},
- {id:'FED-06',floor:'Ground Floor',loc:'Kitchen ramp / service exit'},
- {id:'FED-07',floor:'First Floor',loc:'Stairwell A (east) fire door'},
- {id:'FED-08',floor:'First Floor',loc:'Stairwell B (west) fire door'},
- {id:'FED-09',floor:'Second Floor',loc:'Stairwell A (east) fire door'},
- {id:'FED-10',floor:'Second Floor',loc:'Stairwell B (west) fire door'},
- {id:'FED-11',floor:'Second Floor',loc:'Ward corridor exit (Station side)'},
- {id:'FED-12',floor:'Roof',loc:'Roof access fire door'}
+ {id:'FED-01',floor:'Basement',dept:'Emergency Exit Door',pos:'Beside QM'},
+ {id:'FED-02',floor:'Basement',dept:'MRD',pos:'Beside MRD'},
+ {id:'FED-03',floor:'Basement',dept:'Mr. Saleh Office',pos:'Beside Mr. Saleh Office'},
+ {id:'FED-04',floor:'Ground Floor',dept:'Urology & Surgery',pos:'Beside Clinic 8'},
+ {id:'FED-05',floor:'Ground Floor',dept:'ENT',pos:'Beside HK'},
+ {id:'FED-09',floor:'Ground Floor',dept:'Cardiology',pos:'Beside Clinic 10'},
+ {id:'FED-10',floor:'Ground Floor',dept:'OB-GYN / Cardiology Clinics',pos:'Main Area'},
+ {id:'FED-11',floor:'First Floor',dept:'ST-G',pos:'Beside HK Office'},
+ {id:'FED-12',floor:'First Floor',dept:'ST-E',pos:'Beside Reception'},
+ {id:'FED-13',floor:'First Floor',dept:'ST-B',pos:'Beside Elevator'},
+ {id:'FED-14',floor:'First Floor',dept:'ST-A',pos:'Beside Elevator'},
+ {id:'FED-15',floor:'First Floor',dept:'L&D',pos:'Beside Room 3'},
+ {id:'FED-16',floor:'Second Floor',dept:'ST-C',pos:'Beside Elevator 1'},
+ {id:'FED-17',floor:'Second Floor',dept:'ST-D',pos:'Beside Elevators 2 & 3'},
+ {id:'FED-18',floor:'Second Floor',dept:'ST-H',pos:'Beside HK Office'},
+ {id:'FED-19',floor:'Second Floor',dept:'ST-F',pos:'Beside Reception'},
+ {id:'FED-20',floor:'Second Floor',dept:'Operating Room (OR)',pos:'Inside the Unit, Beside Anesthesia'},
+ {id:'FED-21',floor:'Second Floor',dept:'Recovery Room',pos:'Beside Recovery Room'},
+ {id:'FED-22',floor:'Third Floor',dept:'Oncology',pos:'In front of entrance'}
 ];
 function exdAll(){return (ld('exitDoors')||[]).filter(r=>r&&r.id).sort((a,b)=>a.id>b.id?1:-1);}
 function exdiAll(){return (ld('exitDoorInsp')||[]).filter(r=>r&&r.door&&r.date).sort((a,b)=>a.date<b.date?1:-1);}
 function exdSeedIfEmpty(){
-  if(exdAll().length) return;
-  const arr=EXD_SEED.map(d=>({_id:'exd_'+d.id,id:d.id,floor:d.floor,loc:d.loc,notes:'',_seed:true,_ts:new Date().toISOString()}));
+  const cur=exdAll();
+  const oldPlaceholder=cur.length&&cur.every(r=>r._seed===true&&!r._seedv);   // v1586 photo-guess seed, untouched
+  if(cur.length&&!oldPlaceholder){ exdiSeedIfEmpty(); return; }               // real/edited data — never clobber
+  if(oldPlaceholder){
+    cur.forEach(r=>{try{dbDelete('exitDoors',r._id);}catch(e){}});
+    toast('🔄 Placeholder door list replaced with the official hospital list','#3b82f6',4000);
+  }
+  const arr=EXD_SEED.map(d2=>({_id:'exd_'+d2.id,id:d2.id,floor:d2.floor,
+    loc:d2.dept+' — '+d2.pos,notes:'Official Exit Door No. '+d2.id.replace('FED-','').replace(/^0/,''),
+    _seed:true,_seedv:EXD_SEED_V,_ts:new Date().toISOString()}));
   localStorage.setItem(PX+'exitDoors',JSON.stringify(arr));
   arr.forEach(r=>{try{dbWrite('exitDoors',r);}catch(e){}});
-  toast('🚪 '+arr.length+' exit doors seeded from your list — edit any door to correct it','#3b82f6',5000);
+  toast('🚪 '+arr.length+' exit doors seeded from the official hospital list','#10b981',4500);
+  exdiSeedIfEmpty();
+}
+function exdiSeedIfEmpty(){
+  if(exdiAll().length) return;
+  const doors=exdAll(); if(!doors.length) return;
+  const rounds=[{q:'Q1',d1:'2026-01-13',d2:'2026-01-14'},{q:'Q2',d1:'2026-04-13',d2:'2026-04-14'},{q:'Q3',d1:'2026-07-13',d2:'2026-07-14'}];
+  const recs=[];
+  rounds.forEach(r=>{
+    doors.forEach(dr=>{
+      const date=(dr.floor==='Basement'||dr.floor==='Ground Floor')?r.d1:r.d2;
+      recs.push({_id:'exdi_'+dr.id+'_'+date,door:dr.id,date:date,
+        c33:'pass',c34:'pass',c36:'pass',result:'pass',
+        notes:'Backfilled '+fmsLocalToday()+' from '+r.q+' 2026 quarterly paper inspection record',
+        _by:'Moe',_seed:true,_ts:new Date().toISOString()});
+    });
+  });
+  localStorage.setItem(PX+'exitDoorInsp',JSON.stringify(recs));
+  recs.forEach(r=>{try{dbWrite('exitDoorInsp',r);}catch(e){}});
+  toast('🧾 '+recs.length+' quarterly inspections backfilled (Q1–Q3 2026, all doors, all PASS)','#10b981',5000);
 }
 function exdSaveDoor(){
   try{
