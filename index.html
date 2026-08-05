@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260719-1587';
+  var v = '20260719-1588';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260719-1587">
+<meta name="app-version" content="20260719-1588">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3011,7 +3011,7 @@ if ('caches' in window) {
   <div id="emergency-codeplans" style="display:none;">
     <div style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:12px 16px;margin-bottom:14px;">
       <b style="color:var(--rd);font-size:12px;">📋 Annual Emergency Plans & Code Drills — CBAHI FMS.1.1.4 / FMS.1.1.5</b>
-      <div style="font-size:10px;color:var(--mu);margin-top:4px;">Code-specific drills must be conducted and documented · Plans must be reviewed annually · CBAHI surveyors check schedules, critique reports, and KPI compliance</div>
+      <div style="font-size:10px;color:var(--mu);margin-top:4px;">Code-specific drills must be conducted and documented · Plans must be reviewed annually · CBAHI surveyors check schedules, critique reports, and KPI compliance · <b>Compliance window: rolling last 12 months</b> (same window as Command Center &amp; CBAHI Readiness)</div>
     </div>
 
     <!-- Infographic KPI summary -->
@@ -7592,10 +7592,19 @@ function ufdComplianceStats(){
   }catch(e){ return null; }
 }
 // Code drills this year, per code (fireDrills_code)
+function codeDrillWindowRows(){
+  // ONE compliance window for the whole platform: rolling 365 days.
+  // CBAHI surveyors examine the last year of evidence — a calendar-year filter
+  // wrongly zeroes Q4 drills every 1 January; all-time counting never expires.
+  const cutoff=Date.now()-365*864e5;
+  const iso=v=>(typeof achDateISO==='function')?achDateISO(v):String(v||'').slice(0,10);
+  return (ld('fireDrills_code')||[]).filter(r=>{
+    const d=new Date(iso(r.date)+'T00:00:00');
+    return isFinite(d)&&d.getTime()>=cutoff;
+  });
+}
 function codeDrillsThisYear(){
-  const year=String(new Date().getFullYear());
-  const yr=v=>{ const d=(typeof achDateISO==='function')?achDateISO(v):String(v||''); return String(d).slice(0,4); };
-  const data=(ld('fireDrills_code')||[]).filter(r=>yr(r.date)===year);
+  const data=codeDrillWindowRows();
   const per={}; ['Code Red','Code Yellow','Code Pink','Code Brown'].forEach(c=>per[c]=data.filter(r=>r.code===c).length);
   return per;
 }
@@ -7661,7 +7670,7 @@ const KGS={
   '112':{lbl:'🔒 FMS.1.1.2 — Security (Bader)',kpis:[{n:'Security Incidents',k:'secInc',tgt:0,c:d=>d.length,lb:true},{n:'Security Drills (2/yr)',k:'secDrill',tgt:2,c:d=>d.length},{n:'Infant Abduction Drills (1/yr)',k:'secDrill',tgt:1,c:d=>d.filter(r=>r.type?.includes('Infant')).length}]},
   '113':{lbl:'☣ FMS.1.1.3 — Hazmat (Moe)',kpis:[{n:'Chemicals Registered',k:'chemical',tgt:50,c:d=>d.length},{n:'SDS Coverage',k:'chemical',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.sds==='yes').length/t)*100):0;},unit:'%'},{n:'Waste Audits (4/yr)',k:'wasteAudit',tgt:4,c:d=>d.length},{n:'Avg Segregation Compliance',k:'wasteAudit',tgt:95,c:d=>{const v=d.map(r=>Number(r.pct||0)).filter(x=>x>0);return v.length?Math.round(v.reduce((a,b)=>a+b)/v.length):0;},unit:'%'}]},
   '1145':{lbl:'🚨 FMS.1.1.4/5 — Emergency (Moe)',kpis:[
-    {n:'Codes Completed (of 4 · 1/yr each)',k:'fireDrills_code',tgt:4,c:d=>{const per={};d.forEach(r=>{if(r.code)per[r.code]=1;});return Object.keys(per).length;}},
+    {n:'Codes Completed (of 4 · last 12 mo)',k:'fireDrills_code',tgt:4,c:d=>{const per=codeDrillsThisYear(),t=platCfg().codeDrillTarget;return Object.keys(per).filter(c2=>per[c2]>=t).length;}},
     {n:'Code Drills Logged',k:'fireDrills_code',tgt:4,c:d=>d.length},
     {n:'Code Drill Pass Rate',k:'fireDrills_code',tgt:100,c:d=>{const t=d.length;return t?Math.round(d.filter(r=>r.outcome==='pass').length/t*100):0;},unit:'%'}]},
   '116':{lbl:'🔥 FMS.1.1.6 — Fire Safety (Moe+Mostapha)',kpis:[
@@ -14038,7 +14047,8 @@ function renderDrillInfographics() {
 
   el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:13px;">
     ${codes.map(code => {
-      const recs  = data.filter(r=>r.code===code);
+      const wrows = (typeof codeDrillWindowRows==='function') ? codeDrillWindowRows() : data;
+      const recs  = wrows.filter(r=>r.code===code);
       const pass  = recs.filter(r=>r.outcome==='pass').length;
       const cc    = codeColors[code];
       const pct   = totalTarget > 0 ? Math.min(100, Math.round((recs.length/totalTarget)*100)) : 0;
@@ -14053,7 +14063,7 @@ function renderDrillInfographics() {
         <div style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:${cc};">${code}</div>
         <div style="font-size:9px;color:var(--mu);margin-bottom:10px;line-height:1.4;">${codeDescriptions[code]}</div>
         <div style="font-family:'Rajdhani',sans-serif;font-size:36px;font-weight:700;color:${pct>=100?'#00d4aa':pct>=75?'#f59e0b':cc};">${recs.length}</div>
-        <div style="font-size:9px;color:var(--mu);">drills / ${totalTarget} target</div>
+        <div style="font-size:9px;color:var(--mu);">drills / ${totalTarget} target · last 12 months</div>
         <div style="margin:8px 0;height:7px;background:var(--s3);border-radius:4px;overflow:hidden;">
           <div style="height:100%;width:${pct}%;background:${pct>=100?'#00d4aa':pct>=75?'#f59e0b':cc};border-radius:4px;"></div>
         </div>
