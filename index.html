@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260719-1588';
+  var v = '20260719-1589';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260719-1588">
+<meta name="app-version" content="20260719-1589">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -717,7 +717,7 @@ if ('caches' in window) {
   <div class="g g4">
     <div class="sc" style="--c:var(--ac)"><div class="ico">📋</div><div class="val" id="d-wo">—</div><div class="lbl">Open Work Orders</div></div>
     <div class="sc" style="--c:var(--gn)"><div class="ico">✅</div><div class="val" id="d-ppm">—</div><div class="lbl">PPM Completion Rate</div></div>
-    <div class="sc" style="--c:var(--or)"><div class="ico">🏆</div><div class="val" id="d-cbahi">—</div><div class="lbl">CBAHI Readiness</div><div class="sub" id="d-cbahi-sub">auto-checks · all live modules</div></div>
+    <div class="sc" style="--c:var(--or);cursor:pointer;" onclick="cbdShowBreakdown()" title="Click for the full check-by-check breakdown"><div class="ico">🏆</div><div class="val" id="d-cbahi">—</div><div class="lbl">CBAHI Readiness</div><div class="sub" id="d-cbahi-sub">auto-checks · tap for breakdown</div></div>
     <div class="sc" style="--c:#00d4aa"><div class="ico">🔩</div><div class="val" id="d-maint">—</div><div class="lbl">Maint. Tickets (Live)</div><div class="sub" id="d-maint-rate">Live from Google Sheet</div></div>
   </div>
   <div class="card" style="margin-bottom:16px;"><div class="ch"><div class="ct">🛢 Critical Reserves — Live Levels</div><div style="font-size:9px;color:var(--mu);">LOX · Bashar &nbsp;|&nbsp; Water &amp; Diesel · Mostapha</div></div>
@@ -7653,12 +7653,21 @@ const CBD=[
   {code:'FMS.32.8',title:'🫧 LOX reserve — daily physical gauge reading current & ≥25% · source: Medical Gas → LOX',pct:()=>{try{const lr=loxGetReadings();if(!lr.length||lr[0].litres==null)return 0;return Math.round(lr[0].litres/LOX_MAX_LITRES*100);}catch(e){return 0;}},chk:()=>{try{const lr=loxGetReadings();if(!lr.length||lr[0].litres==null)return false;const dys=Math.floor((Date.now()-new Date(lr[0].date+'T00:00:00'))/864e5);return dys<=(Number(platCfg().loxFreqDays)||1)&&(lr[0].litres/LOX_MAX_LITRES)>=0.25;}catch(e){return false;}}},
   {code:'FMS.34.5',title:'💨 Critical-area ACH compliance ≥90% (this month) · source: ACH module (same as PMS-U1)',pct:()=>{try{const e=pmsAchAutoEntry(fmsLocalToday());return e?Math.round(e.num/e.den*100):0;}catch(x){return 0;}},chk:()=>{try{const e=pmsAchAutoEntry(fmsLocalToday());return !!e&&(e.num/e.den)>=0.9;}catch(x){return false;}}},
 ];
-function cbStats(){let met=0,par=0,gap=0;CBD.forEach(def=>{try{
-  const d=def.k?ld(def.k):[];
-  const p=def.pct?Math.max(0,Math.min(100,Math.round(def.pct()||0)))
-                 :Math.min(100,Math.round((d.length/(def.tgt||1))*100));
-  if(def.chk(d))met++;else if(p>=40)par++;else gap++;
-}catch(e){gap++;}});return{met,par,gap};}
+function cbStats(){
+  let met=0,par=0,gap=0; const rows=[];
+  CBD.forEach(def=>{
+    let p=0,st='gap';
+    try{
+      const d=def.k?ld(def.k):[];
+      p=def.pct?Math.max(0,Math.min(100,Math.round(def.pct()||0)))
+               :Math.min(100,Math.round((d.length/(def.tgt||1))*100));
+      st=def.chk(d)?'met':(p>=40?'par':'gap');
+    }catch(e){st='gap';p=0;}
+    if(st==='met')met++;else if(st==='par')par++;else gap++;
+    rows.push({code:def.code,title:def.title,status:st,pct:p});
+  });
+  return{met,par,gap,rows};
+}
 function renderCBAHI(){
   // New CBAHI FMS module — delegate to renderCbahi()
   setTimeout(renderCbahi, 50);
@@ -20232,6 +20241,65 @@ if(typeof buildAlerts==='function'){
   };
 }
 try{exdRender();}catch(e){}
+</script>
+
+<script>
+/* ============ CBAHI READINESS BREAKDOWN — v1589 ============ */
+const CBD_ACTIONS={
+ 'FMS.1.1.1':'Log ESR rounds on 🛡 Safety page — quarterly (target from Master Editor)',
+ 'FMS.1.1.2':'Bader logs security drills on 🔒 Security page (2/yr, incl. infant abduction)',
+ 'FMS.1.1.3':'Register chemicals (≥10) + log waste audits (4/yr) on ☣ Hazmat page',
+ 'FMS.1.1.4/5':'Run & log the missing code drill(s) in 📋 Annual Plans & Code Drills — Code Brown is the usual gap',
+ 'FMS.1.1.6':'Log unit-level fire drills until all 59 units hit their frequency (🔥 Fire page)',
+ 'FMS.1.1.7':'Bashar updates PPM done/next-due dates in ⚕ Equipment so high-risk devices show ✅ VALID',
+ 'FMS.9.5':'Upload/refresh 3 valid KACST shielding certificates',
+ 'FMS.9.6':'Log the annual lead apron test',
+ 'FMS.9.7':'RSO logs TLD reviews quarterly (4/yr)',
+ 'FMS.21.1':'Log fire alarm MONTHLY inspections — need 12/yr with type "Monthly"',
+ 'FMS.21.3':'Log fire alarm quarterly PPM (Civil Defense) — 4/yr with type "PPM"',
+ 'FMS.22':'Log suppression system PPM records — 8/yr',
+ 'FMS.23':'Log quarterly fire exit ROUTE inspections (4/yr, all 5 criteria pass)',
+ 'FMS.23.3/4/6':'Keep every door on a passing quarterly inspection in 🚪 Fire Exit Doors',
+ 'FMS.27':'Keep morgue & waste temperature readings in range (AM+PM daily via QR forms)',
+ 'FMS.32.1':'PMG submits daily checklists — need 30+ on record',
+ 'FMS.32.3':'Log air purity tests — 2/yr with a pass',
+ 'FMS.32.8':'Bashar enters the LOX physical gauge reading daily; keep level ≥25%',
+ 'FMS.34.5':'Enter ACH readings this month; fix rooms failing achEval to reach ≥90%',
+ 'FMS.1.1.8':'See row: generators 12/yr · water tests 4/yr · comm tests 4/yr · tank stick readings on schedule'
+};
+function cbdShowBreakdown(){
+  try{
+    const st2=cbStats(); const tot=st2.met+st2.par+st2.gap;
+    const strict=tot?Math.round(st2.met/tot*100):0;
+    const weighted=tot?Math.round((st2.met+0.5*st2.par)/tot*100):0;
+    const order={gap:0,par:1,met:2};
+    const rows=st2.rows.slice().sort((a,b)=>order[a.status]-order[b.status]||a.code.localeCompare(b.code));
+    const chip=r=>r.status==='met'?'<span style="background:#10b98122;color:#10b981;border:1px solid #10b98155;border-radius:6px;padding:2px 8px;font-size:9px;font-weight:800;">✅ MET</span>'
+      :r.status==='par'?'<span style="background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b55;border-radius:6px;padding:2px 8px;font-size:9px;font-weight:800;">🟠 PARTIAL</span>'
+      :'<span style="background:#ef444422;color:#ef4444;border:1px solid #ef444455;border-radius:6px;padding:2px 8px;font-size:9px;font-weight:800;">🔴 GAP</span>';
+    const trs=rows.map(r=>'<tr style="border-bottom:1px solid var(--bd);">'+
+      '<td style="padding:7px 8px;white-space:nowrap;font-weight:700;font-size:10px;">'+r.code+'</td>'+
+      '<td style="padding:7px 8px;font-size:10px;">'+r.title+
+        (r.status!=='met'?'<div style="font-size:9px;color:var(--ac);margin-top:3px;">→ '+(CBD_ACTIONS[r.code]||'')+'</div>':'')+'</td>'+
+      '<td style="padding:7px 8px;text-align:center;">'+chip(r)+'</td>'+
+      '<td style="padding:7px 8px;text-align:right;font-family:Rajdhani,sans-serif;font-weight:700;font-size:13px;color:'+(r.pct>=100?'#10b981':r.pct>=40?'#f59e0b':'#ef4444')+';">'+r.pct+'%</td></tr>').join('');
+    let ov=document.getElementById('cbd-breakdown-ov');
+    if(ov)ov.remove();
+    ov=document.createElement('div'); ov.id='cbd-breakdown-ov';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:9000;display:flex;align-items:center;justify-content:center;padding:18px;';
+    ov.innerHTML='<div style="background:var(--sf,#111827);border:1px solid var(--bd);border-radius:16px;max-width:860px;width:100%;max-height:88vh;display:flex;flex-direction:column;">'+
+      '<div style="padding:14px 18px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;">'+
+      '<div><div style="font-family:Rajdhani,sans-serif;font-size:17px;font-weight:700;color:var(--tx);">🏆 CBAHI Readiness — Check-by-Check Breakdown</div>'+
+      '<div style="font-size:10px;color:var(--mu);margin-top:2px;">Strict (fully Met only): <b style="color:var(--or);">'+strict+'%</b> · Weighted (Partial = half credit): <b style="color:#f59e0b;">'+weighted+'%</b> · '+st2.met+' Met · '+st2.par+' Partial · '+st2.gap+' Gap of '+tot+'</div></div>'+
+      '<button onclick="document.getElementById(\'cbd-breakdown-ov\').remove()" style="background:var(--s2);border:1px solid var(--bd);color:var(--tx);border-radius:8px;padding:6px 13px;cursor:pointer;font-size:12px;">✕ Close</button></div>'+
+      '<div style="overflow-y:auto;padding:6px 10px;">'+
+      '<table style="width:100%;border-collapse:collapse;"><thead><tr style="color:var(--mu);font-size:9px;text-transform:uppercase;"><th style="padding:6px 8px;text-align:left;">Standard</th><th style="padding:6px 8px;text-align:left;">Check · what closes it</th><th style="padding:6px 8px;">Status</th><th style="padding:6px 8px;text-align:right;">Progress</th></tr></thead>'+
+      '<tbody>'+trs+'</tbody></table></div>'+
+      '<div style="padding:10px 18px;border-top:1px solid var(--bd);font-size:9px;color:var(--mu);">Gaps first · Every check reads live module data — closing a gap updates the tile on next dashboard refresh · Headline tile uses the strict score.</div></div>';
+    ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+    document.body.appendChild(ov);
+  }catch(err){toast('❌ '+err.message,'#dc2626');}
+}
 </script>
 </body>
 </html>
