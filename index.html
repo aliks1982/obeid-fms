@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260719-1589';
+  var v = '20260719-1590';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260719-1589">
+<meta name="app-version" content="20260719-1590">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6899,7 +6899,7 @@ async function dbLoadAll() {
       const loxTab = document.getElementById('mg-o2calc');
       if (loxTab && loxTab.style.display !== 'none') setTimeout(loxRenderDashboard, 100);
     }
-    sanitizeEqAdded(); if (typeof kpi2RenderAll==='function' && document.getElementById('page-kpi2') && document.getElementById('page-kpi2').classList.contains('active')) { try{kpi2RenderAll();}catch(e){} } console.log('✅ DB sync complete —', totalRecords, 'records loaded');
+    sanitizeEqAdded(); if (typeof kpi2RenderAll==='function' && document.getElementById('page-kpi2') && document.getElementById('page-kpi2').classList.contains('active')) { try{kpi2RenderAll();}catch(e){} } console.log('✅ DB sync complete —', totalRecords, 'records loaded'); try{ setTimeout(function(){ if(typeof exdSeedIfEmpty==='function') exdSeedIfEmpty(); if(typeof renderDash==='function'&&document.getElementById('page-dash')) try{renderDash();}catch(e2){} }, 1500); }catch(e){}
     return true;
   } catch(e) {
     DB_ONLINE = false;
@@ -7630,20 +7630,20 @@ function dPct(d){const f={safety:()=>Math.min(100,Math.round((ld('eoc').length/p
 const CBD=[
   {code:'FMS.1.1.1',title:'Building safety — ESR rounds (4/year, quarterly)',k:'eoc',tgt:4,chk:d=>d.length>=platCfg().esrTarget},
   {code:'FMS.1.1.2',title:'Security drills (2/year)',k:'secDrill',tgt:2,chk:d=>d.length>=2},
-  {code:'FMS.1.1.3',title:'Hazmat — chemicals registered + waste audits (4/yr)',k:'chemical',tgt:10,chk:d=>d.length>=10&&ld('wasteAudit').length>=4},
+  {code:'FMS.1.1.3',title:'Hazmat — chemicals registered (≥10) + waste audits (4/yr)',k:'chemical',tgt:10,chk:d=>d.length>=10&&ld('wasteAudit').length>=4,pct:()=>Math.min(Math.min(100,Math.round(ld('chemical').length/10*100)),Math.min(100,Math.round(ld('wasteAudit').length/4*100)))},
   {code:'FMS.1.1.4/5',title:'Code drills — 4 codes × target/yr · source: 📋 Annual Plans & Code Drills tab',k:'fireDrills_code',tgt:4,chk:d=>{const per=codeDrillsThisYear();return Object.values(per).every(n=>n>=platCfg().codeDrillTarget);},pct:()=>{const per=codeDrillsThisYear(),t=platCfg().codeDrillTarget;const c=Object.keys(per);return Math.round(c.filter(x=>per[x]>=t).length/c.length*100);}},
   {code:'FMS.1.1.6',title:'Unit level fire drills — 100% compliance (59 units)',k:'unitFireDrills',tgt:59,chk:()=>{const u=ufdComplianceStats();return !!u&&u.rate>=100;},pct:()=>{const u=ufdComplianceStats();return u?u.rate:0;}},
   {code:'FMS.1.1.7',title:'High-risk device PM completion ≥90% · source: ⚕ Equipment Inventory (same as PPM tile)',pct:()=>{const s2=(typeof pmsPmAutoStats==='function')?pmsPmAutoStats():null;return s2?s2.rate:0;},chk:()=>{const s2=(typeof pmsPmAutoStats==='function')?pmsPmAutoStats():null;return !!s2&&s2.rate>=90;}},
-  {code:'FMS.1.1.8',title:'Generator monthly tests (12/year)',k:'genTest',tgt:12,chk:d=>d.length>=12},
-  {code:'FMS.1.1.8',title:'Water safety tests (4/year)',k:'waterTest',tgt:4,chk:d=>d.length>=4},
-  {code:'FMS.1.1.8',title:'Communication system tests (4/year)',k:'commTest',tgt:4,chk:d=>d.length>=4},
-  {code:'FMS.1.1.8',title:'💧 Water tank level readings current · source: Utilities → Water Tank',pct:()=>(typeof tankGet==='function')?(function(){const rs=tankGet('water');if(!rs.length)return 0;const dys=Math.floor((Date.now()-new Date(rs[0].date+'T00:00:00'))/864e5);return dys<=tankFreq('water')?100:Math.max(0,100-((dys-tankFreq('water'))*10));})():0,chk:()=>(typeof tankGet==='function')&&(function(){const rs=tankGet('water');if(!rs.length)return false;return Math.floor((Date.now()-new Date(rs[0].date+'T00:00:00'))/864e5)<=tankFreq('water');})()},
-  {code:'FMS.1.1.8',title:'⛽ Diesel fuel reserve monitored (GEN-1 & GEN-2) · source: Utilities → Diesel Tank',pct:()=>(typeof tankGet==='function')?(function(){const rs=tankGet('diesel');if(!rs.length)return 0;const dys=Math.floor((Date.now()-new Date(rs[0].date+'T00:00:00'))/864e5);return dys<=tankFreq('diesel')?100:Math.max(0,100-((dys-tankFreq('diesel'))*10));})():0,chk:()=>(typeof tankGet==='function')&&(function(){const rs=tankGet('diesel');if(!rs.length)return false;return Math.floor((Date.now()-new Date(rs[0].date+'T00:00:00'))/864e5)<=tankFreq('diesel');})()},
+  {code:'FMS.1.1.8',title:'Generator monthly tests (12/year)',k:'genTest',tgt:12,act:'Log monthly GEN-1/GEN-2 tests on ⚡ Utilities → Generator Tests (12/yr)',chk:d=>d.length>=12},
+  {code:'FMS.1.1.8',title:'Water safety tests (4/year)',k:'waterTest',tgt:4,act:'Start the water safety test log — ⚡ Utilities → Water Safety (4/yr; first entry moves this to Partial)',chk:d=>d.length>=4},
+  {code:'FMS.1.1.8',title:'Communication system tests (4/year)',k:'commTest',tgt:4,act:'Log communication system tests — ⚡ Utilities → Communication (4/yr)',chk:d=>d.length>=4},
+  {code:'FMS.1.1.8',title:'💧 Water tank level readings current · source: Utilities → Water Tank',act:'Mostapha taps today\'s stick level in ⚡ Utilities → 💧 Water Tank — one tap flips this to Met',pct:()=>(typeof tankGet==='function')?(function(){const rs=tankGet('water');if(!rs.length)return 0;const dys=Math.floor((Date.now()-new Date(rs[0].date+'T00:00:00'))/864e5);return dys<=tankFreq('water')?100:Math.max(0,100-((dys-tankFreq('water'))*10));})():0,chk:()=>(typeof tankGet==='function')&&(function(){const rs=tankGet('water');if(!rs.length)return false;return Math.floor((Date.now()-new Date(rs[0].date+'T00:00:00'))/864e5)<=tankFreq('water');})()},
+  {code:'FMS.1.1.8',title:'⛽ Diesel fuel reserve monitored (GEN-1 & GEN-2) · source: Utilities → Diesel Tank',act:'Mostapha taps today\'s stick level in ⚡ Utilities → ⛽ Diesel Tank — weekly cycle',pct:()=>(typeof tankGet==='function')?(function(){const rs=tankGet('diesel');if(!rs.length)return 0;const dys=Math.floor((Date.now()-new Date(rs[0].date+'T00:00:00'))/864e5);return dys<=tankFreq('diesel')?100:Math.max(0,100-((dys-tankFreq('diesel'))*10));})():0,chk:()=>(typeof tankGet==='function')&&(function(){const rs=tankGet('diesel');if(!rs.length)return false;return Math.floor((Date.now()-new Date(rs[0].date+'T00:00:00'))/864e5)<=tankFreq('diesel');})()},
   {code:'FMS.9.5',title:'Shielding certs — valid (KACST)',k:'shieldCert',tgt:3,chk:d=>d.length>=3&&d.filter(r=>!r.expiry||new Date(r.expiry)>=new Date()).length>=3},
   {code:'FMS.9.6',title:'Lead apron annual testing',k:'leadApron',tgt:1,chk:d=>d.length>=1},
   {code:'FMS.9.7',title:'TLD quarterly reviews by RSO (4/year)',k:'tldReview',tgt:4,chk:d=>d.length>=4},
-  {code:'FMS.21.1',title:'Fire alarm monthly inspections (12/year)',k:'fireAlarm',tgt:12,chk:d=>d.filter(r=>r.type?.includes('Monthly')).length>=12},
-  {code:'FMS.21.3',title:'Fire alarm quarterly PPM — Civil Defense (4/year)',k:'fireAlarm',tgt:4,chk:d=>d.filter(r=>r.type?.includes('PPM')).length>=4},
+  {code:'FMS.21.1',title:'Fire alarm monthly inspections (12/year)',k:'fireAlarm',tgt:12,act:'Log fire alarm records with Activity = "Monthly Inspection (FMS.21.1)" — need 12/yr of that type specifically',chk:d=>d.filter(r=>String(r.type||'').toLowerCase().includes('monthly')).length>=12,pct:()=>Math.min(100,Math.round(ld('fireAlarm').filter(r=>String(r.type||'').toLowerCase().includes('monthly')).length/12*100))},
+  {code:'FMS.21.3',title:'Fire alarm quarterly PPM — Civil Defense (4/year)',k:'fireAlarm',tgt:4,act:'Log fire alarm records with Activity = "Quarterly PPM — Civil Defense (FMS.21.3)" — need 4/yr of that type specifically',chk:d=>d.filter(r=>{const t=String(r.type||'').toLowerCase();return t.includes('ppm')||t.includes('civil');}).length>=4,pct:()=>Math.min(100,Math.round(ld('fireAlarm').filter(r=>{const t=String(r.type||'').toLowerCase();return t.includes('ppm')||t.includes('civil');}).length/4*100))},
   {code:'FMS.22',title:'Suppression system PPM records (8/year)',k:'fireSup',tgt:8,chk:d=>d.length>=8},
   {code:'FMS.23',title:'Fire exit route inspections — all 5 criteria (4/year)',k:'fireExit',tgt:4,chk:d=>d.length>=4&&d.filter(r=>r.c1==='pass'&&r.c2==='pass'&&r.c3==='pass'&&r.c4==='pass'&&r.c6==='pass').length>=2},
   {code:'FMS.23.3/4/6',title:'🚪 Exit doors — 100% with passing quarterly inspection · source: 🛡 Safety → Fire Exit Doors',pct:()=>(typeof exdCbdPct==='function')?exdCbdPct():0,chk:()=>(typeof exdCbdOk==='function')&&exdCbdOk()},
@@ -7664,7 +7664,7 @@ function cbStats(){
       st=def.chk(d)?'met':(p>=40?'par':'gap');
     }catch(e){st='gap';p=0;}
     if(st==='met')met++;else if(st==='par')par++;else gap++;
-    rows.push({code:def.code,title:def.title,status:st,pct:p});
+    rows.push({code:def.code,title:def.title,status:st,pct:p,act:def.act||''});
   });
   return{met,par,gap,rows};
 }
@@ -20280,7 +20280,7 @@ function cbdShowBreakdown(){
     const trs=rows.map(r=>'<tr style="border-bottom:1px solid var(--bd);">'+
       '<td style="padding:7px 8px;white-space:nowrap;font-weight:700;font-size:10px;">'+r.code+'</td>'+
       '<td style="padding:7px 8px;font-size:10px;">'+r.title+
-        (r.status!=='met'?'<div style="font-size:9px;color:var(--ac);margin-top:3px;">→ '+(CBD_ACTIONS[r.code]||'')+'</div>':'')+'</td>'+
+        (r.status!=='met'?'<div style="font-size:9px;color:var(--ac);margin-top:3px;">→ '+(r.act||CBD_ACTIONS[r.code]||'')+'</div>':'')+'</td>'+
       '<td style="padding:7px 8px;text-align:center;">'+chip(r)+'</td>'+
       '<td style="padding:7px 8px;text-align:right;font-family:Rajdhani,sans-serif;font-weight:700;font-size:13px;color:'+(r.pct>=100?'#10b981':r.pct>=40?'#f59e0b':'#ef4444')+';">'+r.pct+'%</td></tr>').join('');
     let ov=document.getElementById('cbd-breakdown-ov');
