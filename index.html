@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260719-1591';
+  var v = '20260719-1592';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260719-1591">
+<meta name="app-version" content="20260719-1592">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -2870,7 +2870,7 @@ if ('caches' in window) {
         <button class="btn bg" style="margin-top:10px;width:100%;" onclick="exdiSave()">✓ Save Inspection</button>
       </div></div>
     </div>
-    <div class="card"><div class="ch"><div class="ct">Door Inventory</div><button class="btn bp" style="font-size:10px;" onclick="exdExport()">⬇ Export Report (FMS 23)</button></div>
+    <div class="card"><div class="ch"><div class="ct">Door Inventory</div><div><button class="btn bo" style="font-size:10px;margin-right:6px;" onclick="exdSeedIfEmpty();exdRender();">🌱 Seed Official List</button><button class="btn bp" style="font-size:10px;" onclick="exdExport()">⬇ Export Report (FMS 23)</button></div></div>
       <div class="cb" style="padding:0;max-height:380px;overflow-y:auto;">
         <table class="tbl"><thead><tr><th>Door ID</th><th>Floor</th><th>Location</th><th>Last Inspection</th><th>23.3</th><th>23.4</th><th>23.6</th><th>Status</th><th>Actions</th></tr></thead>
         <tbody id="exd-tb"></tbody></table>
@@ -20261,6 +20261,7 @@ if(typeof buildAlerts==='function'){
   };
 }
 try{exdRender();}catch(e){}
+try{ setTimeout(function(){ try{ exdSeedIfEmpty(); }catch(e){} }, 4000); }catch(e){}
 </script>
 
 <script>
@@ -20310,7 +20311,7 @@ function cbdShowBreakdown(){
     ov.innerHTML='<div style="background:var(--sf,#111827);border:1px solid var(--bd);border-radius:16px;max-width:860px;width:100%;max-height:88vh;display:flex;flex-direction:column;">'+
       '<div style="padding:14px 18px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;">'+
       '<div><div style="font-family:Rajdhani,sans-serif;font-size:17px;font-weight:700;color:var(--tx);">🏆 CBAHI Readiness — Check-by-Check Breakdown</div>'+
-      '<div style="font-size:10px;color:var(--mu);margin-top:2px;">Strict (fully Met only): <b style="color:var(--or);">'+strict+'%</b> · Weighted (Partial = half credit): <b style="color:#f59e0b;">'+weighted+'%</b> · '+st2.met+' Met · '+st2.par+' Partial · '+st2.gap+' Gap of '+tot+'</div></div>'+
+      '<div style="font-size:9px;color:var(--mu);margin-top:2px;font-family:monospace;">🔍 '+((document.querySelector('meta[name=app-version]')||{}).content||'?')+' · doors:'+((typeof exdAll==='function')?exdAll().length:'?')+' · insp:'+((typeof exdiAll==='function')?exdiAll().length:'?')+' · wtr:'+((typeof tankGet==='function')?tankGet('water').length:'?')+' · dsl:'+((typeof tankGet==='function')?tankGet('diesel').length:'?')+' · backend:'+(Array.isArray(window.DB_BACKEND_KEYS)?window.DB_BACKEND_KEYS.length+' stores':'no sync yet')+(Array.isArray(window.DB_MISSING_STORES)&&window.DB_MISSING_STORES.length?' · ⚠ MISSING: '+window.DB_MISSING_STORES.join(','):'')+'</div>'+'<div style="font-size:10px;color:var(--mu);margin-top:2px;">Strict (fully Met only): <b style="color:var(--or);">'+strict+'%</b> · Weighted (Partial = half credit): <b style="color:#f59e0b;">'+weighted+'%</b> · '+st2.met+' Met · '+st2.par+' Partial · '+st2.gap+' Gap of '+tot+'</div></div>'+
       '<button onclick="document.getElementById(\'cbd-breakdown-ov\').remove()" style="background:var(--s2);border:1px solid var(--bd);color:var(--tx);border-radius:8px;padding:6px 13px;cursor:pointer;font-size:12px;">✕ Close</button></div>'+
       '<div style="overflow-y:auto;padding:6px 10px;">'+
       '<table style="width:100%;border-collapse:collapse;"><thead><tr style="color:var(--mu);font-size:9px;text-transform:uppercase;"><th style="padding:6px 8px;text-align:left;">Standard</th><th style="padding:6px 8px;text-align:left;">Check · what closes it</th><th style="padding:6px 8px;">Status</th><th style="padding:6px 8px;text-align:right;">Progress</th></tr></thead>'+
