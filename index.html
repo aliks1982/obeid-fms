@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260719-1592';
+  var v = '20260719-1593';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260719-1592">
+<meta name="app-version" content="20260719-1593">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6599,6 +6599,15 @@ const DB_VALID_TYPES = new Set([
   'fireDrills_code','unitFireDrills',
 ]);
 
+async function dbBulkPush(table, records){
+  const url = (typeof CANONICAL_DB_URL!=='undefined'&&CANONICAL_DB_URL)?CANONICAL_DB_URL:(typeof getDBUrl==='function'?getDBUrl():null);
+  if(!url||!Array.isArray(records)||!records.length) return false;
+  try{
+    await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({action:'bulkUpsert',table:table,records:records})});
+    return true;
+  }catch(e){ return false; }
+}
 async function dbWrite(type, record) {
   const url = CANONICAL_DB_URL || getDBUrl();
   if (!url) { dbQueue(type, record, 'upsert'); return false; }
@@ -6701,10 +6710,15 @@ async function dbLoadAll() {
       // Skip app_settings — it's huge (ppm overrides) and handled separately below
       if (key === 'app_settings') return;
       const dbIdSet = new Set(dbRows.map(r => String(r._id||'')));
+      // Union merge for seeded stores: keep any local _seed row the backend hasn't
+      // echoed back yet, so a slow/partial backend round-trip can't shrink the seed.
+      const localSeedMissing = ld(key).filter(r =>
+        r && r._seed && !dbIdSet.has(String(r._id||''))
+      );
       const queuedLocal = ld(key).filter(r =>
         queuedIds.has(String(r._id||'')) && !dbIdSet.has(String(r._id||''))
       );
-      sv(key, [...dbRows, ...queuedLocal]);
+      sv(key, [...dbRows, ...localSeedMissing, ...queuedLocal]);
     });
     try {
       const q = JSON.parse(localStorage.getItem('obeid_sync_queue')||'[]');
@@ -20044,40 +20058,41 @@ const EXD_SEED=[
 ];
 function exdAll(){return (ld('exitDoors')||[]).filter(r=>r&&r.id).sort((a,b)=>a.id>b.id?1:-1);}
 function exdiAll(){return (ld('exitDoorInsp')||[]).filter(r=>r&&r.door&&r.date).sort((a,b)=>a.date<b.date?1:-1);}
+function exdSeedDone(){ try{return localStorage.getItem(PX+'exd_seed_v2')==='1';}catch(e){return false;} }
 function exdSeedIfEmpty(){
-  const cur=exdAll();
-  const oldPlaceholder=cur.length&&cur.every(r=>r._seed===true&&!r._seedv);   // v1586 photo-guess seed, untouched
-  if(cur.length&&!oldPlaceholder){ exdiSeedIfEmpty(); return; }               // real/edited data — never clobber
-  if(oldPlaceholder){
-    cur.forEach(r=>{try{dbDelete('exitDoors',r._id);}catch(e){}});
-    toast('🔄 Placeholder door list replaced with the official hospital list','#3b82f6',4000);
-  }
-  const arr=EXD_SEED.map(d2=>({_id:'exd_'+d2.id,id:d2.id,floor:d2.floor,
-    loc:d2.dept+' — '+d2.pos,notes:'Official Exit Door No. '+d2.id.replace('FED-','').replace(/^0/,''),
-    _seed:true,_seedv:EXD_SEED_V,_ts:new Date().toISOString()}));
-  localStorage.setItem(PX+'exitDoors',JSON.stringify(arr));
-  arr.forEach(r=>{try{dbWrite('exitDoors',r);}catch(e){}});
-  toast('🚪 '+arr.length+' exit doors seeded from the official hospital list','#10b981',4500);
-  exdiSeedIfEmpty();
-}
-function exdiSeedIfEmpty(){
-  if(exdiAll().length) return;
-  const doors=exdAll(); if(!doors.length) return;
-  const rounds=[{q:'Q1',d1:'2026-01-13',d2:'2026-01-14'},{q:'Q2',d1:'2026-04-13',d2:'2026-04-14'},{q:'Q3',d1:'2026-07-13',d2:'2026-07-14'}];
-  const recs=[];
-  rounds.forEach(r=>{
-    doors.forEach(dr=>{
+  // Idempotent, atomic seed. Runs its full write ONCE (guarded by a flag), builds
+  // all 19 doors + 57 inspections in memory, commits locally in a single sv(), then
+  // pushes to the backend in TWO bulk POSTs — no per-record race, no partial claw-back.
+  try{
+    const cur=exdAll();
+    const hasReal=cur.some(r=>r&&!r._seed);        // user-entered/edited doors present
+    if(hasReal){ return; }                          // never touch real data
+    if(exdSeedDone() && cur.length>=19 && exdiAll().length>=57){ return; } // already fully seeded
+    // build doors
+    const doors=EXD_SEED.map(d2=>({_id:'exd_'+d2.id,id:d2.id,floor:d2.floor,
+      loc:d2.dept+' — '+d2.pos,notes:'Official Exit Door No. '+d2.id.replace('FED-','').replace(/^0/,''),
+      _seed:true,_seedv:EXD_SEED_V,_ts:new Date().toISOString()}));
+    // build 3 quarterly inspection rounds for every door
+    const rounds=[{q:'Q1',d1:'2026-01-13',d2:'2026-01-14'},{q:'Q2',d1:'2026-04-13',d2:'2026-04-14'},{q:'Q3',d1:'2026-07-13',d2:'2026-07-14'}];
+    const insp=[];
+    rounds.forEach(r=>{ doors.forEach(dr=>{
       const date=(dr.floor==='Basement'||dr.floor==='Ground Floor')?r.d1:r.d2;
-      recs.push({_id:'exdi_'+dr.id+'_'+date,door:dr.id,date:date,
-        c33:'pass',c34:'pass',c36:'pass',result:'pass',
-        notes:'Backfilled '+fmsLocalToday()+' from '+r.q+' 2026 quarterly paper inspection record',
+      insp.push({_id:'exdi_'+dr.id+'_'+date,door:dr.id,date:date,c33:'pass',c34:'pass',c36:'pass',
+        result:'pass',notes:'Backfilled from '+r.q+' 2026 quarterly paper inspection record',
         _by:'Moe',_seed:true,_ts:new Date().toISOString()});
-    });
-  });
-  localStorage.setItem(PX+'exitDoorInsp',JSON.stringify(recs));
-  recs.forEach(r=>{try{dbWrite('exitDoorInsp',r);}catch(e){}});
-  toast('🧾 '+recs.length+' quarterly inspections backfilled (Q1–Q3 2026, all doors, all PASS)','#10b981',5000);
+    }); });
+    // commit locally in one shot (atomic — no intermediate state for sync to grab)
+    sv('exitDoors',doors);
+    sv('exitDoorInsp',insp);
+    try{localStorage.setItem(PX+'exd_seed_v2','1');}catch(e){}
+    // push to backend as two bulk operations (fire once)
+    if(typeof dbBulkPush==='function'){ dbBulkPush('exitDoors',doors); dbBulkPush('exitDoorInsp',insp); }
+    try{exdRender();}catch(e){}
+    try{if(typeof renderDash==='function')renderDash();}catch(e){}
+    toast('🚪 Seeded 19 official exit doors + 57 quarterly inspections (Q1–Q3 2026) and pushed to Google Sheets','#10b981',5000);
+  }catch(err){ try{toast('❌ Seed failed: '+err.message,'#dc2626');}catch(e){} }
 }
+function exdiSeedIfEmpty(){ /* merged into exdSeedIfEmpty (atomic) */ return; }
 function exdSaveDoor(){
   try{
     const id=((document.getElementById('exd-id')||{}).value||'').trim().toUpperCase();
