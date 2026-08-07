@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260719-1597';
+  var v = '20260719-1598';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260719-1597">
+<meta name="app-version" content="20260719-1598">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -19858,7 +19858,15 @@ const TANK_FRAC_LBL={'0.25':'¼','0.5':'½','0.75':'¾','1':'Full'};
 let TANK_SEL={water:null,diesel:null};
 function tankFreq(kind){const t=TANKS[kind];return Number(platCfg()[t.cfgKey])||t.defFreq;}
 function tankGet(kind){const t=TANKS[kind];
-  return (ld(t.store)||[]).filter(r=>r&&r.date).sort((a,b)=>a.date<b.date?1:-1);}
+  // Sort newest-first by ROBUST parsed date (string sort breaks on mixed date formats,
+  // which made the gauge show an old reading instead of the latest).
+  return (ld(t.store)||[]).filter(r=>r&&r.date).sort((a,b)=>{
+    const ta=(typeof fmsParseDate==='function')?fmsParseDate(a.date):Date.parse(a.date);
+    const tb=(typeof fmsParseDate==='function')?fmsParseDate(b.date):Date.parse(b.date);
+    const na=isNaN(ta), nb=isNaN(tb);
+    if(na&&nb)return 0; if(na)return 1; if(nb)return -1;
+    return tb-ta;
+  });}
 function tankPick(kind,frac,btn){
   TANK_SEL[kind]=frac;const t=TANKS[kind];
   btn.parentElement.querySelectorAll('button').forEach(b=>{b.style.background='var(--s2)';b.style.color='var(--tx)';b.style.borderColor='var(--bd)';});
