@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260719-1594';
+  var v = '20260719-1595';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260719-1594">
+<meta name="app-version" content="20260719-1595">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -7624,10 +7624,9 @@ function codeDrillWindowRows(){
   // CBAHI surveyors examine the last year of evidence — a calendar-year filter
   // wrongly zeroes Q4 drills every 1 January; all-time counting never expires.
   const cutoff=Date.now()-365*864e5;
-  const iso=v=>(typeof achDateISO==='function')?achDateISO(v):String(v||'').slice(0,10);
   return (ld('fireDrills_code')||[]).filter(r=>{
-    const d=new Date(iso(r.date)+'T00:00:00');
-    return isFinite(d)&&d.getTime()>=cutoff;
+    const t=fmsParseDate(r.date);
+    return !isNaN(t)&&t>=cutoff;
   });
 }
 function codeDrillsThisYear(){
@@ -7664,8 +7663,8 @@ const CBD=[
   {code:'FMS.1.1.8',title:'Generator monthly tests (12/year)',k:'genTest',tgt:12,act:'Log monthly GEN-1/GEN-2 tests on ⚡ Utilities → Generator Tests (12/yr)',chk:d=>d.length>=12},
   {code:'FMS.1.1.8',title:'Water safety tests (4/year)',k:'waterTest',tgt:4,act:'Start the water safety test log — ⚡ Utilities → Water Safety (4/yr; first entry moves this to Partial)',chk:d=>d.length>=4},
   {code:'FMS.1.1.8',title:'Communication system tests (4/year)',k:'commTest',tgt:4,act:'Log communication system tests — ⚡ Utilities → Communication (4/yr)',chk:d=>d.length>=4},
-  {code:'FMS.1.1.8',title:'💧 Water tank level readings current · source: Utilities → Water Tank',act:'Mostapha taps today\'s stick level in ⚡ Utilities → 💧 Water Tank — one tap flips this to Met',pct:()=>(typeof tankGet==='function')?(function(){const rs=tankGet('water');if(!rs.length)return 0;const dys=Math.floor((Date.now()-new Date(rs[0].date+'T00:00:00'))/864e5);return dys<=tankFreq('water')?100:Math.max(0,100-((dys-tankFreq('water'))*10));})():0,chk:()=>(typeof tankGet==='function')&&(function(){const rs=tankGet('water');if(!rs.length)return false;return Math.floor((Date.now()-new Date(rs[0].date+'T00:00:00'))/864e5)<=tankFreq('water');})()},
-  {code:'FMS.1.1.8',title:'⛽ Diesel fuel reserve monitored (GEN-1 & GEN-2) · source: Utilities → Diesel Tank',act:'Mostapha taps today\'s stick level in ⚡ Utilities → ⛽ Diesel Tank — weekly cycle',pct:()=>(typeof tankGet==='function')?(function(){const rs=tankGet('diesel');if(!rs.length)return 0;const dys=Math.floor((Date.now()-new Date(rs[0].date+'T00:00:00'))/864e5);return dys<=tankFreq('diesel')?100:Math.max(0,100-((dys-tankFreq('diesel'))*10));})():0,chk:()=>(typeof tankGet==='function')&&(function(){const rs=tankGet('diesel');if(!rs.length)return false;return Math.floor((Date.now()-new Date(rs[0].date+'T00:00:00'))/864e5)<=tankFreq('diesel');})()},
+  {code:'FMS.1.1.8',title:'💧 Water tank level readings current · source: Utilities → Water Tank',act:'Mostapha taps today\'s stick level in ⚡ Utilities → 💧 Water Tank — one tap flips this to Met',pct:()=>(typeof tankGet==='function')?(function(){const rs=tankGet('water');if(!rs.length)return 0;const dys=fmsDaysSince(rs[0].date);return dys<=tankFreq('water')?100:Math.max(0,100-((dys-tankFreq('water'))*10));})():0,chk:()=>(typeof tankGet==='function')&&(function(){const rs=tankGet('water');if(!rs.length)return false;return fmsDaysSince(rs[0].date)<=tankFreq('water');})()},
+  {code:'FMS.1.1.8',title:'⛽ Diesel fuel reserve monitored (GEN-1 & GEN-2) · source: Utilities → Diesel Tank',act:'Mostapha taps today\'s stick level in ⚡ Utilities → ⛽ Diesel Tank — weekly cycle',pct:()=>(typeof tankGet==='function')?(function(){const rs=tankGet('diesel');if(!rs.length)return 0;const dys=fmsDaysSince(rs[0].date);return dys<=tankFreq('diesel')?100:Math.max(0,100-((dys-tankFreq('diesel'))*10));})():0,chk:()=>(typeof tankGet==='function')&&(function(){const rs=tankGet('diesel');if(!rs.length)return false;return fmsDaysSince(rs[0].date)<=tankFreq('diesel');})()},
   {code:'FMS.9.5',title:'Shielding certs — valid (KACST)',k:'shieldCert',tgt:3,chk:d=>d.length>=3&&d.filter(r=>!r.expiry||new Date(r.expiry)>=new Date()).length>=3},
   {code:'FMS.9.6',title:'Lead apron annual testing',k:'leadApron',tgt:1,chk:d=>d.length>=1},
   {code:'FMS.9.7',title:'TLD quarterly reviews by RSO (4/year)',k:'tldReview',tgt:4,chk:d=>d.length>=4},
@@ -7677,7 +7676,7 @@ const CBD=[
   {code:'FMS.27',title:'🌡 Temperature control — morgue & waste room in-range ≥90% · source: Temperature Log',pct:()=>{const t=(typeof tmpStats==='function')?tmpStats():null;return (t&&t.rate!=null)?t.rate:0;},chk:()=>{const t=(typeof tmpStats==='function')?tmpStats():null;return !!t&&t.rate!=null&&t.rate>=90;}},
   {code:'FMS.32.1',title:'PMG daily checklists (30+)',k:'pmgCheck',tgt:30,chk:d=>d.length>=30},
   {code:'FMS.32.3',title:'Air purity tests (2/year)',k:'airPurity',tgt:2,chk:d=>d.length>=2&&d.some(r=>r.res==='pass')},
-  {code:'FMS.32.8',title:'🫧 LOX reserve — daily physical gauge reading current & ≥25% · source: Medical Gas → LOX',pct:()=>{try{const lr=loxGetReadings();if(!lr.length||lr[0].litres==null)return 0;return Math.round(lr[0].litres/LOX_MAX_LITRES*100);}catch(e){return 0;}},chk:()=>{try{const lr=loxGetReadings();if(!lr.length||lr[0].litres==null)return false;const dys=Math.floor((Date.now()-new Date(lr[0].date+'T00:00:00'))/864e5);return dys<=(Number(platCfg().loxFreqDays)||1)&&(lr[0].litres/LOX_MAX_LITRES)>=0.25;}catch(e){return false;}}},
+  {code:'FMS.32.8',title:'🫧 LOX reserve — daily physical gauge reading current & ≥25% · source: Medical Gas → LOX',pct:()=>{try{const lr=loxGetReadings();if(!lr.length||lr[0].litres==null)return 0;return Math.round(lr[0].litres/LOX_MAX_LITRES*100);}catch(e){return 0;}},chk:()=>{try{const lr=loxGetReadings();if(!lr.length||lr[0].litres==null)return false;const dys=fmsDaysSince(lr[0].date);return dys<=(Number(platCfg().loxFreqDays)||1)&&(lr[0].litres/LOX_MAX_LITRES)>=0.25;}catch(e){return false;}}},
   {code:'FMS.34.5',title:'💨 Critical-area ACH compliance ≥90% (this month) · source: ACH module (same as PMS-U1)',pct:()=>{try{const e=pmsAchAutoEntry(fmsLocalToday());return e?Math.round(e.num/e.den*100):0;}catch(x){return 0;}},chk:()=>{try{const e=pmsAchAutoEntry(fmsLocalToday());return !!e&&(e.num/e.den)>=0.9;}catch(x){return false;}}},
 ];
 function cbStats(){
@@ -19913,7 +19912,7 @@ function tankRender(kind){
     if(pEl)pEl.textContent=last?pct+'%':'—';
     if(lEl)lEl.textContent=last?last.liters.toLocaleString()+' L · '+last.date:'No readings yet';
     if(stEl){
-      if(last){const days=Math.floor((Date.now()-new Date(last.date+'T00:00:00'))/864e5);
+      if(last){const days=fmsDaysSince(last.date);
         const f=tankFreq(kind);
         stEl.textContent=days>f?'⚠ Reading overdue ('+days+'d ago · every '+f+'d)':'✓ Up to date';
         stEl.style.color=days>f?'#ef4444':'#10b981';
@@ -19988,14 +19987,14 @@ function dashRenderTanks(){
     const l=lr[0]||null;
     const lp=(l&&l.litres!=null)?Math.round(l.litres/LOX_MAX_LITRES*100):null;
     let st='';
-    if(l){const dys=Math.floor((Date.now()-new Date(l.date+'T00:00:00'))/864e5);
+    if(l){const dys=fmsDaysSince(l.date);
       const lf=Number(cfg.loxFreqDays)||1; if(dys>lf)st='⚠ '+dys+'d ago';}
     out+=dashTankGauge('🫧','LOX',lp,l?Number(l.litres).toLocaleString()+' L · '+l.date:'No readings','#3b82f6',st);
   }catch(e){out+=dashTankGauge('🫧','LOX',null,'No readings','#3b82f6','');}
   // Water + Diesel
   Object.keys(TANKS).forEach(k=>{
     const t=TANKS[k]; const rs=tankGet(k); const r=rs[0]||null; let st='';
-    if(r){const dys=Math.floor((Date.now()-new Date(r.date+'T00:00:00'))/864e5);
+    if(r){const dys=fmsDaysSince(r.date);
       if(dys>tankFreq(k))st='⚠ '+dys+'d ago';}
     out+=dashTankGauge(t.icon,t.label,r?r.pct:null,r?Number(r.liters).toLocaleString()+' L · '+r.date:'No readings',t.color,st);
   });
@@ -20021,7 +20020,7 @@ if(typeof buildAlerts==='function'){
       Object.keys(TANKS).forEach(k=>{
         const t=TANKS[k]; const rs=tankGet(k); const f=tankFreq(k);
         if(!rs.length){a.push({c:'alw',i:'🟡',t:t.icon+' '+t.label+': no level readings logged yet (every '+f+'d)',s:'Mostapha — FMS.1.1.8'});return;}
-        const last=rs[0]; const days=Math.floor((Date.now()-new Date(last.date+'T00:00:00'))/864e5);
+        const last=rs[0]; const days=fmsDaysSince(last.date);
         if(days>f)a.push({c:'alw',i:'🟡',t:t.icon+' '+t.label+' reading overdue — last '+last.date+' ('+days+'d ago · every '+f+'d)',s:'Mostapha — FMS.1.1.8'});
         if(Number(last.frac)<=0.25)a.push({c:'alc',i:'🔴',t:t.icon+' '+t.label+' at '+last.level+' ('+Number(last.liters).toLocaleString()+' L) — refill required',s:'Mostapha — FMS.1.1.8'});
       });
@@ -20192,21 +20191,18 @@ function exdiDelete(door,date){
   toast('Inspection deleted'); exdRender(); try{renderDash();}catch(e){}
 }
 function exdLatest(door){return exdiAll().find(r=>r.door===door)||null;}
-function exdParseDate(v){
-  // Backend returns dates as STRINGS in unpredictable formats (ISO, "Mon Jul 13 2026",
-  // Sheets serials, timestamps). Normalise all of them to a millisecond epoch or NaN.
+function fmsParseDate(v){
   if(v==null||v==='')return NaN;
-  if(typeof v==='number')return v>20000&&v<80000?(new Date(1899,11,30).getTime()+v*864e5):v; // Sheets serial
+  if(typeof v==='number')return (v>20000&&v<80000)?(new Date(1899,11,30).getTime()+v*864e5):v;
   let sv=String(v).trim();
-  // pure ISO yyyy-mm-dd (may have trailing time)
   let m=sv.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if(m)return new Date(+m[1],+m[2]-1,+m[3]).getTime();
-  // Sheets serial as string
   if(/^\d+(\.\d+)?$/.test(sv)){const n=parseFloat(sv);if(n>20000&&n<80000)return new Date(1899,11,30).getTime()+n*864e5;}
-  // fall back to Date parser (handles "Mon Jul 13 2026", "07/13/2026", ISO w/ Z, etc.)
   const t=Date.parse(sv);
   return isNaN(t)?NaN:t;
 }
+function fmsDaysSince(v){const t=fmsParseDate(v);return isNaN(t)?Infinity:Math.floor((Date.now()-t)/864e5);}
+function exdParseDate(v){ return fmsParseDate(v); }
 function exdCurrentQ(door){
   // consider ALL inspections for this door, newest valid date wins — a ghost row
   // with an unparseable date can never mask a real passing inspection.
@@ -20219,7 +20215,7 @@ function exdCurrentQ(door){
 }
 function exdStats(){
   // de-dupe by canonical door id (backend ghosts / dup-id variants collapse to one)
-  const seen={}; exdAll().forEach(d=>{const id=String(d.id||'').trim().toUpperCase(); if(id&&!seen[id])seen[id]=d;});
+  const seen={}; exdAll().forEach(d=>{let id=String(d.id||'').trim().toUpperCase().replace(/[ _.].*$/,''); if(id&&!seen[id])seen[id]=d;});
   const doors=Object.values(seen);
   let inspected=0,compliant=0;
   doors.forEach(d=>{const q=exdCurrentQ(d.id);
