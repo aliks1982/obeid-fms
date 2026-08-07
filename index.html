@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260719-1595';
+  var v = '20260719-1596';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260719-1595">
+<meta name="app-version" content="20260719-1596">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3603,7 +3603,7 @@ if ('caches' in window) {
         <div id="wt-stale" style="font-size:10px;font-weight:700;margin-top:4px;"></div>
       </div></div>
     </div>
-    <div class="card"><div class="ch"><div class="ct">Water Tank Reading Log</div><button class="btn bp" style="font-size:10px;" onclick="tankExport('water')">⬇ Export Report</button></div>
+    <div class="card"><div class="ch"><div class="ct">Water Tank Reading Log</div><button class="btn br" style="font-size:10px;margin-right:6px;" onclick="tankPurgeTest('water')">🧹 Purge Test Data</button><button class="btn bp" style="font-size:10px;" onclick="tankExport('water')">⬇ Export Report</button></div>
       <div class="cb" style="padding:0;max-height:420px;overflow-y:auto;">
         <table class="tbl"><thead><tr><th>Date</th><th>Stick Level</th><th>Liters</th><th>%</th><th>By</th><th>Notes</th><th>Actions</th></tr></thead>
         <tbody id="wt-tb"></tbody></table>
@@ -3642,7 +3642,7 @@ if ('caches' in window) {
         <div id="dt-stale" style="font-size:10px;font-weight:700;margin-top:4px;"></div>
       </div></div>
     </div>
-    <div class="card"><div class="ch"><div class="ct">Diesel Tank Reading Log</div><button class="btn bp" style="font-size:10px;" onclick="tankExport('diesel')">⬇ Export Report</button></div>
+    <div class="card"><div class="ch"><div class="ct">Diesel Tank Reading Log</div><button class="btn br" style="font-size:10px;margin-right:6px;" onclick="tankPurgeTest('diesel')">🧹 Purge Test Data</button><button class="btn bp" style="font-size:10px;" onclick="tankExport('diesel')">⬇ Export Report</button></div>
       <div class="cb" style="padding:0;max-height:420px;overflow-y:auto;">
         <table class="tbl"><thead><tr><th>Date</th><th>Stick Level</th><th>Liters</th><th>%</th><th>By</th><th>Notes</th><th>Actions</th></tr></thead>
         <tbody id="dt-tb"></tbody></table>
@@ -7727,9 +7727,14 @@ function showKT(tab,btn){renderKPI(tab);if(btn){btn.closest('.tb').querySelector
 function fpd(data,pd){
   if(pd==='ytd')return data;
   const yr=new Date().getFullYear();
-  const qr={q1:[`${yr}-01-01`,`${yr}-03-31`],q2:[`${yr}-04-01`,`${yr}-06-30`],q3:[`${yr}-07-01`,`${yr}-09-30`],q4:[`${yr}-10-01`,`${yr}-12-31`]};
-  const[s,en]=qr[pd]||['',''];
-  return data.filter(r=>{const d=r.date||r._ts?.slice(0,10)||'';return d>=s&&d<=en;});
+  const qr={q1:[0,2],q2:[3,5],q3:[6,8],q4:[9,11]}[pd];
+  if(!qr)return data;
+  const lo=new Date(yr,qr[0],1).getTime();
+  const hi=new Date(yr,qr[1]+1,1).getTime()-1;
+  return data.filter(r=>{
+    const t=(typeof fmsParseDate==='function')?fmsParseDate(r.date||r._ts):Date.parse(r.date||r._ts||'');
+    return !isNaN(t)&&t>=lo&&t<=hi;
+  });
 }
 
 // KPI domains each role can VIEW and ENTER data for
@@ -19910,7 +19915,7 @@ function tankRender(kind){
     const pct=last?last.pct:0;
     fill.style.height=pct+'%'; fill.style.background=tankGaugeColor(pct,t.color);
     if(pEl)pEl.textContent=last?pct+'%':'—';
-    if(lEl)lEl.textContent=last?last.liters.toLocaleString()+' L · '+last.date:'No readings yet';
+    if(lEl)lEl.textContent=last?last.liters.toLocaleString()+' L · '+fmsFmtDate(last.date):'No readings yet';
     if(stEl){
       if(last){const days=fmsDaysSince(last.date);
         const f=tankFreq(kind);
@@ -19921,7 +19926,7 @@ function tankRender(kind){
   }
   const tb=document.getElementById(t.pfx+'-tb');
   if(tb){
-    tb.innerHTML=rs.length?rs.map(r=>'<tr><td>'+r.date+'</td><td style="font-weight:800;color:'+t.color+';">'+
+    tb.innerHTML=rs.length?rs.map(r=>'<tr><td>'+fmsFmtDate(r.date)+'</td><td style="font-weight:800;color:'+t.color+';">'+
       (r.level||'')+'</td><td>'+Number(r.liters).toLocaleString()+' L</td><td>'+r.pct+'%</td><td>'+(r._by||'—')+
       '</td><td style="font-size:10px;color:var(--mu);">'+(r.notes||'—')+'</td>'+
       '<td style="white-space:nowrap;"><button class="btn bo" style="font-size:9px;padding:3px 8px;" onclick="tankEdit(\''+kind+'\',\''+r.date+'\')">✏</button> '+
@@ -19936,6 +19941,23 @@ function tankInit(kind){
   const t=TANKS[kind]; const d=document.getElementById(t.pfx+'-date');
   if(d&&!d.value)d.value=(typeof fmsLocalToday==='function')?fmsLocalToday():new Date().toISOString().slice(0,10);
   tankRender(kind);
+}
+function tankPurgeTest(kind){
+  const t=TANKS[kind]; const rs=tankGet(kind);
+  if(!rs.length){toast('No '+t.label+' readings to review','#f59e0b');return;}
+  const isClean=r=>/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(String(r.date||'').trim());
+  const suspect=rs.filter(r=>!isClean(r)); const clean=rs.filter(isClean);
+  const msg=suspect.length
+    ? ('Found '+suspect.length+' '+t.label+' reading(s) with non-standard dates (likely old test/sync data) out of '+rs.length+' total. Delete ONLY those '+suspect.length+' and keep the '+clean.length+' clean ones?')
+    : ('All '+rs.length+' '+t.label+' readings look clean. Delete ALL '+rs.length+' and start fresh? Use only if these are test readings.');
+  if(!confirm(msg))return;
+  const keep = suspect.length ? clean : [];
+  const removed = suspect.length ? suspect : rs;
+  sv(t.store, keep);
+  removed.forEach(r=>{try{dbDelete(t.store,r._id);}catch(e){}});
+  if(typeof dbBulkPush==='function') dbBulkPush(t.store, keep);
+  toast('🧹 '+t.label+': removed '+removed.length+', kept '+keep.length,'#10b981',4500);
+  tankRender(kind); try{dashRenderTanks();renderDash();}catch(e){}
 }
 function tankExport(kind){
   try{
@@ -19989,14 +20011,14 @@ function dashRenderTanks(){
     let st='';
     if(l){const dys=fmsDaysSince(l.date);
       const lf=Number(cfg.loxFreqDays)||1; if(dys>lf)st='⚠ '+dys+'d ago';}
-    out+=dashTankGauge('🫧','LOX',lp,l?Number(l.litres).toLocaleString()+' L · '+l.date:'No readings','#3b82f6',st);
+    out+=dashTankGauge('🫧','LOX',lp,l?Number(l.litres).toLocaleString()+' L · '+fmsFmtDate(l.date):'No readings','#3b82f6',st);
   }catch(e){out+=dashTankGauge('🫧','LOX',null,'No readings','#3b82f6','');}
   // Water + Diesel
   Object.keys(TANKS).forEach(k=>{
     const t=TANKS[k]; const rs=tankGet(k); const r=rs[0]||null; let st='';
     if(r){const dys=fmsDaysSince(r.date);
       if(dys>tankFreq(k))st='⚠ '+dys+'d ago';}
-    out+=dashTankGauge(t.icon,t.label,r?r.pct:null,r?Number(r.liters).toLocaleString()+' L · '+r.date:'No readings',t.color,st);
+    out+=dashTankGauge(t.icon,t.label,r?r.pct:null,r?Number(r.liters).toLocaleString()+' L · '+fmsFmtDate(r.date):'No readings',t.color,st);
   });
   box.innerHTML=out;
 }
@@ -20021,7 +20043,7 @@ if(typeof buildAlerts==='function'){
         const t=TANKS[k]; const rs=tankGet(k); const f=tankFreq(k);
         if(!rs.length){a.push({c:'alw',i:'🟡',t:t.icon+' '+t.label+': no level readings logged yet (every '+f+'d)',s:'Mostapha — FMS.1.1.8'});return;}
         const last=rs[0]; const days=fmsDaysSince(last.date);
-        if(days>f)a.push({c:'alw',i:'🟡',t:t.icon+' '+t.label+' reading overdue — last '+last.date+' ('+days+'d ago · every '+f+'d)',s:'Mostapha — FMS.1.1.8'});
+        if(days>f)a.push({c:'alw',i:'🟡',t:t.icon+' '+t.label+' reading overdue — last '+fmsFmtDate(last.date)+' ('+days+'d ago · every '+f+'d)',s:'Mostapha — FMS.1.1.8'});
         if(Number(last.frac)<=0.25)a.push({c:'alc',i:'🔴',t:t.icon+' '+t.label+' at '+last.level+' ('+Number(last.liters).toLocaleString()+' L) — refill required',s:'Mostapha — FMS.1.1.8'});
       });
     }catch(e){}
@@ -20202,6 +20224,11 @@ function fmsParseDate(v){
   return isNaN(t)?NaN:t;
 }
 function fmsDaysSince(v){const t=fmsParseDate(v);return isNaN(t)?Infinity:Math.floor((Date.now()-t)/864e5);}
+function fmsFmtDate(v){
+  const t=fmsParseDate(v); if(isNaN(t))return (v==null?'':String(v));
+  const d=new Date(t); const p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
 function exdParseDate(v){ return fmsParseDate(v); }
 function exdCurrentQ(door){
   // consider ALL inspections for this door, newest valid date wins — a ghost row
