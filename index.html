@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260719-1600">
+<meta name="app-version" content="20260810-1602">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -5652,6 +5652,21 @@ if ('caches' in window) {
         <span id="backup-status" style="font-size:10px;color:var(--mu);align-self:center;"></span>
       </div>
       <div style="margin-top:16px;border-top:1px solid var(--bd);padding-top:12px;">
+        <div style="font-size:11px;font-weight:700;color:var(--tx);margin-bottom:6px;">📧 Automatic Daily Email Backup</div>
+        <div style="font-size:10px;color:var(--mu);margin:0 0 8px;">Emails the complete backup (platform data + live maintenance/biomedical rows + medical-equipment inventory) once per day to the address below — an off-device safety copy that lands automatically. Sends via the connected Google backend.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <input type="email" id="autoemail-to" placeholder="backup-recipient@example.com"
+            style="flex:1;min-width:240px;background:var(--s3);border:1px solid var(--bd);border-radius:7px;padding:8px 12px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--tx);white-space:nowrap;cursor:pointer;">
+            <input type="checkbox" id="autoemail-on" style="width:15px;height:15px;cursor:pointer;"> Enable daily
+          </label>
+          <button class="btn bg" style="font-size:11px;padding:7px 14px;" onclick="autoEmailSaveConfig()">💾 Save</button>
+          <button class="btn bo" style="font-size:11px;padding:7px 14px;" onclick="autoEmailSendNow(true)">📧 Send now</button>
+        </div>
+        <div id="autoemail-status" style="font-size:10px;color:var(--mu);margin-top:7px;"></div>
+        <div style="font-size:9px;color:var(--mu);margin-top:5px;">⚙ One-time setup: paste the delivered <b>FMS_DB_APPSSCRIPT.gs</b> (your Platform-Data backend, now with the <b>emailBackup</b> handler) → Deploy → Manage deployments → Edit → New version (same URL). Run <b>testEmailBackup</b> once from the editor to authorize email, then use <b>Send now</b> to test.</div>
+      </div>
+      <div style="margin-top:16px;border-top:1px solid var(--bd);padding-top:12px;">
         <div style="font-size:11px;font-weight:700;color:var(--tx);margin-bottom:6px;">🕐 Automatic Daily Snapshots (last 7 days, on this device)</div>
         <div id="backup-snapshot-list" style="font-size:11px;"></div>
       </div>
@@ -6484,7 +6499,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260606-1505';
+const APP_VERSION = '20260810-1602';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -7588,7 +7603,13 @@ function fCKPI(f,btn){ckpiF=f;renderCKPI(f);if(btn){btn.closest('.tb').querySele
 const DC={safety:'var(--or)',security:'var(--rd)',biomedical:'var(--pu)',maintenance:'var(--ac)',director:'var(--gn)'};
 const DL={safety:'🛡 Safety — Moe',security:'🔒 Security — Bader',biomedical:'⚕ Biomed — Bashar',maintenance:'🔧 Maint. — Mostapha',director:'⬡ FMS Director'};// ===== DASHBOARD =====
 function renderDash(){
-  const wos=ld('workorders'),open=wos.filter(w=>w.status==='Open'||w.status==='In Progress').length;
+  // v1601: Open Work Orders tile now reads the LIVE maintenance sheet (ROWS) via
+  // woOpenRows() — the same source as the follow-up flag/panel (v1597) and the
+  // Maintenance Analytics "Open / Pending" tile — so the headline count matches.
+  // Falls back to the local workorders store only if woOpenRows isn't available.
+  const open=(typeof woOpenRows==='function')
+    ? woOpenRows().length
+    : ld('workorders').filter(w=>w.status==='Open'||w.status==='In Progress').length;
   // PPM Completion Rate — SAME source as FMS Performance Sheet (PMS-B1):
   // high-risk devices (ICU/CCU/OR/ER/Lab/Blood Bank) with ✅ VALID PPM in inventory.
   const _pm = (typeof pmsPmAutoStats==='function') ? pmsPmAutoStats() : null;
@@ -7661,7 +7682,10 @@ function codeDrillsThisYear(){
   return per;
 }
 function buildAlerts(){
-  const a=[],now=new Date(),today=now.toISOString().split('T')[0];
+  // v1601: use LOCAL calendar date (Riyadh, GMT+3) — toISOString() reports the
+  // UTC day, which between 00:00–03:00 local is still "yesterday", firing a false
+  // "LOX not submitted today" alert even after a valid same-day check.
+  const a=[],now=new Date(),today=(typeof fmsLocalToday==='function')?fmsLocalToday():now.toISOString().split('T')[0];
   const todayLOX=(typeof loxCheckDone==='function')?loxCheckDone(today):ld('mg_lox').some(r=>String(r.date||'').slice(0,10)===today); if(!todayLOX)a.push({c:'alc',i:'🔴',t:'LOX Daily Checklist not submitted today',s:'Bashar — Biomedical'});
   const _u=ufdComplianceStats();
   if(_u && _u.rate<100)a.push({c:'alw',i:'🟡',t:`Unit Level Fire Drill Compliance: ${_u.rate}% (${_u.num}/${_u.den} drills)`,s:'Moe — FMS.1.1.6'});
@@ -18424,8 +18448,9 @@ function backupCollectAll() {
 }
 
 // ── Layer 1: manual full backup to file ──
-function backupExportFull() {
-  if (!backupIsDirector()) { toast('Backup export is Director-only','#ef4444'); return; }
+// Build the complete backup payload — SINGLE source of truth used by both the
+// file export AND the daily auto-email, so the two are always identical.
+function buildBackupPayload() {
   // Capture the LIVE maintenance + biomedical data (lives in Google Sheets, fetched into ROWS —
   // it is NOT in localStorage, so without this the backup would omit the largest dataset).
   let maintenanceExport = { available:false, rowCount:0, headers:[], maintenance:[], biomedical:[] };
@@ -18442,39 +18467,228 @@ function backupExportFull() {
     }
   } catch(e) { maintenanceExport.error = e.message; }
 
+  // v1601: Capture the FULL medical-equipment inventory. The base registry lives in
+  // EQ_PAYLOAD embedded in the HTML (NOT localStorage); the eq_added store alone would
+  // omit every base asset. Snapshotting eqAll() gives a complete, audit-ready inventory.
+  let equipmentExport = { available:false, rowCount:0, equipment:[] };
+  try {
+    if (typeof eqAll === 'function') {
+      const eq = eqAll();
+      if (Array.isArray(eq)) equipmentExport = { available:true, rowCount:eq.length, equipment:eq };
+    }
+  } catch(e) { equipmentExport.error = e.message; }
+
+  // Every platform localStorage key (this is the WHOLE platform: CBAHI, Medical Gas
+  // FMS.32, PMG PPM FMS.32.1, fire alarm insp/testing, safety/security/hazmat/emergency,
+  // utilities, ACH, temp logs, radiation, work orders, custom KPIs, documents, budget,
+  // risk, contracts, performance sheet, etc. — all live under the obeid3_ prefix).
+  const data = backupCollectAll();
+
+  // v1602: Per-store MANIFEST — record counts for every captured store so the backup
+  // is self-auditing. You can open the file and confirm each module's data is present.
+  const manifest = {};
+  Object.keys(data).forEach(k => {
+    let n;
+    try {
+      const val = JSON.parse(data[k]);
+      if (Array.isArray(val)) n = val.length;
+      else if (val && typeof val === 'object') n = Object.keys(val).length + ' fields';
+      else n = 'value';
+    } catch(e) { n = 'value'; }
+    manifest[k] = n;
+  });
+
+  // v1602: Completeness cross-check. The canonical store list (ME_STORES) plus the
+  // Medical-Gas / Radiation / CBAHI / temperature families. Any expected store that is
+  // absent OR empty at backup time is flagged so you know if something simply hadn't
+  // loaded/synced yet (vs. genuinely empty). Prefix helper matches obeid3_<key>.
+  const px = (typeof PX !== 'undefined') ? PX : 'obeid3_';
+  const expected = [].concat(
+    (typeof ME_STORES !== 'undefined' && Array.isArray(ME_STORES)) ? ME_STORES : [],
+    // Medical Gas (FMS.32) daily/refill forms
+    ['mg_lox','mg_o2backup','mg_n2o','mg_vacuum','mg_aircomp','mg_airbackup','mg_ambulance',
+     'mg_cylinder','mg_o2refill','mg_airrefill','lox_gauge',
+    // PMG Preventive Maintenance (FMS.32.1), annexes (32.2), cylinder hydro tests (32.9), PMG checks
+     'pmg_ppm','pmg_annex','cyl_test','pmgCheck','airPurity','commTest',
+    // Equipment PPM, generators, water, fire alarm inspection & testing, drills
+     'ppm','genTest','waterTest','fireAlarm','fireSup','fireExit','fireDrill',
+     'fireDrills_code','unitFireDrills',
+    // Radiation (FMS.9)
+     'tldReview','shieldCert','leadApron','rad_tld','rad_apron','rad_shield',
+    // IPC — ACH / room pressure / temperature logs
+     'ach_readings','temp_morgue','temp_waste',
+    // Compliance / ops / performance
+     'risk_register','contracts','evaluations','pms_entries','customKPI','kpi2_entries',
+     'doc','workorders','incident','emDrill',
+    // Reserves, exit doors, equipment inventory deltas, settings
+     'waterTank','dieselTank','exitDoors','exitDoorInsp','eq_added','eq_relocations',
+     'app_settings','platform_settings','act']
+  );
+  const seen = {}; const emptyOrMissing = [];
+  expected.forEach(k => {
+    if (seen[k]) return; seen[k] = 1;
+    const raw = data[px + k];
+    let count = 0;
+    if (raw === undefined) { emptyOrMissing.push(k + ' (absent)'); return; }
+    try { const val = JSON.parse(raw); count = Array.isArray(val) ? val.length : (val && typeof val==='object' ? Object.keys(val).length : (raw ? 1 : 0)); } catch(e) { count = raw ? 1 : 0; }
+    if (!count) emptyOrMissing.push(k + ' (empty)');
+  });
+
+  // CBAHI compliance answers are stored as many obeid3_cbahi_* keys — count them together.
+  const cbahiKeys = Object.keys(data).filter(k => k.indexOf(px + 'cbahi_') === 0).length;
+
   const payload = {
     _backup_meta: {
       platform: 'Obeid FMS Command',
       version: (typeof v !== 'undefined' ? v : 'unknown'),
+      appVersion: (typeof APP_VERSION !== 'undefined' ? APP_VERSION : 'unknown'),
       created: new Date().toISOString(),
       by: (CU && CU.name) || 'Director',
-      keyCount: 0,
+      keyCount: Object.keys(data).length,
+      cbahiAnswerKeys: cbahiKeys,
       maintenanceRows: maintenanceExport.rowCount,
       maintenanceIncluded: maintenanceExport.available,
-      note: maintenanceExport.available
-        ? 'Complete: platform stores + live maintenance/biomedical sheet data.'
-        : 'WARNING: maintenance sheet data was NOT loaded when this backup ran — open Maintenance Analytics to load it, then re-export for a complete backup.'
+      equipmentRows: equipmentExport.rowCount,
+      equipmentIncluded: equipmentExport.available,
+      emptyOrMissingExpected: emptyOrMissing,
+      completeness: (maintenanceExport.available && equipmentExport.available && emptyOrMissing.length === 0)
+        ? 'COMPLETE — all platform stores, live maintenance/biomedical, and full equipment inventory captured.'
+        : 'PARTIAL — see emptyOrMissingExpected / maintenanceIncluded / equipmentIncluded. Stores may be empty because no data exists yet, or because sync/maintenance had not finished loading when this backup ran.',
+      note: 'This backup contains the ENTIRE platform: every obeid3_ store (CBAHI, Medical Gas FMS.32, PMG PPM FMS.32.1, fire alarm inspection & testing, all compliance tabs, ACH, temperature logs, radiation, budget, risk, contracts, performance sheet, work orders, documents) + the live maintenance/biomedical sheet + the full medical-equipment inventory (FMS.1.1.7).'
     },
-    data: backupCollectAll(),
-    maintenanceData: maintenanceExport
+    storeManifest: manifest,
+    data: data,
+    maintenanceData: maintenanceExport,
+    equipmentData: equipmentExport
   };
-  payload._backup_meta.keyCount = Object.keys(payload.data).length;
+  return payload;
+}
+
+function backupExportFull() {
+  if (!backupIsDirector()) { toast('Backup export is Director-only','#ef4444'); return; }
+  const payload = buildBackupPayload();
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'ObeidFMS_Backup_' + new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.json';
   a.click();
   const st = document.getElementById('backup-status');
-  const mCount = payload._backup_meta.maintenanceRows;
-  const mOk = payload._backup_meta.maintenanceIncluded;
-  if (st) st.innerHTML = '✅ Exported ' + payload._backup_meta.keyCount + ' platform keys + ' +
-    (mOk ? ('<b>' + mCount + '</b> maintenance/biomedical rows') : '<b style="color:#ef4444;">0 maintenance rows (not loaded — see warning)</b>') +
-    ' · ' + new Date().toLocaleString('en-GB');
+  const m = payload._backup_meta;
+  const mCount = m.maintenanceRows, mOk = m.maintenanceIncluded, eCount = m.equipmentRows;
+  const gaps = m.emptyOrMissingExpected || [];
+  if (st) st.innerHTML = '✅ Exported <b>' + m.keyCount + '</b> platform stores (' + m.cbahiAnswerKeys + ' CBAHI answer keys) + ' +
+    (mOk ? ('<b>' + mCount + '</b> maintenance/biomedical rows') : '<b style="color:#ef4444;">0 maintenance rows (not loaded)</b>') +
+    ' + <b>' + eCount + '</b> equipment records · ' + new Date().toLocaleString('en-GB') +
+    (gaps.length ? ('<br><span style="color:#f59e0b;">ℹ ' + gaps.length + ' expected store(s) empty/absent: ' + gaps.join(', ') + '</span>') : '<br><span style="color:#10b981;">All expected stores present.</span>');
   if (!mOk) {
-    toast('⚠ Backup exported, but maintenance data was NOT loaded. Open 🔩 Maintenance Analytics first, then re-export for a COMPLETE backup.','#f59e0b',7000);
+    toast('⚠ Backup saved (' + m.keyCount + ' stores + ' + eCount + ' equipment), but maintenance rows were NOT loaded. Open 🔩 Maintenance Analytics first, then re-export.','#f59e0b',7000);
   } else {
-    toast('✅ COMPLETE backup exported — ' + payload._backup_meta.keyCount + ' platform keys + ' + mCount + ' maintenance rows','#10b981',5000);
+    toast('✅ COMPLETE backup — ' + m.keyCount + ' stores + ' + mCount + ' maintenance + ' + eCount + ' equipment','#10b981',5000);
   }
+}
+
+// ══════════════════════════════════════════════════════════════
+// AUTO-EMAIL BACKUP (Director-only, once per LOCAL day) — v1601, hardened v1602
+// Sends the SAME full payload (platform stores + live maintenance ROWS +
+// medical-equipment inventory) to a configured recipient via the Apps Script
+// backend (MailApp) as a JSON attachment. Guarded by a local-date key so it
+// fires at most once per day. Requires the emailBackup handler in the .gs backend.
+// ══════════════════════════════════════════════════════════════
+const AUTOEMAIL_ENABLED_KEY = 'fms_autoemail_enabled';
+const AUTOEMAIL_TO_KEY      = 'fms_autoemail_to';
+const AUTOEMAIL_LAST_KEY    = 'fms_autoemail_last';   // last LOCAL date sent (fmsLocalToday)
+
+function autoEmailGetTo(){ return (localStorage.getItem(AUTOEMAIL_TO_KEY)||'').trim(); }
+function autoEmailEnabled(){ return localStorage.getItem(AUTOEMAIL_ENABLED_KEY)==='1'; }
+function autoEmailValidAddr(s){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((s||'').trim()); }
+
+function autoEmailSaveConfig(){
+  const toEl = document.getElementById('autoemail-to');
+  const onEl = document.getElementById('autoemail-on');
+  const to = toEl ? toEl.value.trim() : '';
+  const on = onEl ? onEl.checked : false;
+  if (on && !autoEmailValidAddr(to)) { toast('Enter a valid recipient email to enable auto-send','#f59e0b'); if(onEl) onEl.checked=false; return; }
+  localStorage.setItem(AUTOEMAIL_TO_KEY, to);
+  localStorage.setItem(AUTOEMAIL_ENABLED_KEY, on ? '1' : '0');
+  toast(on ? ('✅ Daily auto-email backup ON → ' + to) : '☑ Daily auto-email backup saved (off)','#10b981');
+  autoEmailRenderConfig();
+}
+
+function autoEmailRenderConfig(){
+  const toEl = document.getElementById('autoemail-to');
+  const onEl = document.getElementById('autoemail-on');
+  if (toEl) toEl.value = autoEmailGetTo();
+  if (onEl) onEl.checked = autoEmailEnabled();
+  const st = document.getElementById('autoemail-status');
+  if (st) {
+    const last = localStorage.getItem(AUTOEMAIL_LAST_KEY);
+    st.innerHTML = autoEmailEnabled()
+      ? ('🟢 ON — sends once daily to <b>' + (autoEmailGetTo()||'—') + '</b>' + (last ? (' · last sent ' + last) : ' · not sent yet'))
+      : '⚪ Off' + (last ? (' · last sent ' + last) : '');
+  }
+}
+
+// Fire the backup email through the backend. manual=true shows toasts + ignores the daily guard.
+function autoEmailSendNow(manual){
+  if (!backupIsDirector()) { if(manual) toast('Auto-email backup is Director-only','#ef4444'); return; }
+  const to = autoEmailGetTo();
+  if (!autoEmailValidAddr(to)) { if(manual) toast('Enter a valid recipient email first','#f59e0b'); return; }
+  // v1602: emailBackup handler lives in the FMS DB (Platform Data) Apps Script — the same
+  // backend the platform already syncs to — so post to CANONICAL_DB_URL.
+  const url = (typeof CANONICAL_DB_URL!=='undefined' && CANONICAL_DB_URL)
+    ? CANONICAL_DB_URL
+    : (typeof getDBUrl==='function' ? getDBUrl() : (localStorage.getItem('obeid_db_url')||''));
+  if (!url) { if(manual) toast('Database backend not connected — cannot email backup','#ef4444'); return; }
+  const payload  = buildBackupPayload();
+  const json     = JSON.stringify(payload);
+  const filename = 'ObeidFMS_Backup_' + fmsLocalToday() + '.json';
+  const subject  = 'Obeid FMS backup — ' + fmsLocalToday() + ' · ' +
+                   payload._backup_meta.keyCount + ' keys / ' +
+                   payload._backup_meta.maintenanceRows + ' maint / ' +
+                   payload._backup_meta.equipmentRows + ' equip';
+  const body = [
+    'Automatic daily backup from the Obeid FMS Command Platform.',
+    '',
+    'Created: ' + payload._backup_meta.created,
+    'By: ' + payload._backup_meta.by,
+    'Platform data keys: ' + payload._backup_meta.keyCount,
+    'Maintenance/biomedical rows: ' + payload._backup_meta.maintenanceRows +
+      (payload._backup_meta.maintenanceIncluded ? '' : '  (NOT loaded at send time)'),
+    'Medical-equipment records: ' + payload._backup_meta.equipmentRows,
+    '',
+    'The complete backup JSON is attached. Restore via Settings -> Backup & Restore -> Restore from Backup.'
+  ].join('\n');
+  try {
+    // no-cors = fire-and-forget (browser cannot read the response); the backend
+    // still processes the POST and sends the mail. We optimistically mark today done.
+    fetch(url, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ action:'emailBackup', to:to, subject:subject, filename:filename, body:body, json:json }) });
+    localStorage.setItem(AUTOEMAIL_LAST_KEY, fmsLocalToday());
+    if (manual) toast('📧 Backup email dispatched to ' + to + ' (~' + Math.round(json.length/1024) + ' KB)','#10b981',5000);
+    else console.log('📧 Daily backup email dispatched to ' + to);
+    autoEmailRenderConfig();
+  } catch(e) {
+    if (manual) toast('❌ Email dispatch failed: ' + e.message,'#ef4444');
+  }
+}
+
+// Once-per-local-day check, run on load. Waits for BOTH the platform DB sync
+// (dbLoadAll → DB_BACKEND_KEYS populates the localStorage cache) AND the live
+// maintenance sheet (ROWS) so the emailed backup is complete, then sends regardless.
+function autoEmailDailyCheck(){
+  if (!backupIsDirector()) return;
+  if (!autoEmailEnabled()) return;
+  if (!autoEmailValidAddr(autoEmailGetTo())) return;
+  if (localStorage.getItem(AUTOEMAIL_LAST_KEY) === fmsLocalToday()) return; // already sent today
+  let tries = 0;
+  (function attempt(){
+    const rowsReady = (typeof ROWS!=='undefined' && Array.isArray(ROWS) && ROWS.length);
+    const dbReady   = Array.isArray(window.DB_BACKEND_KEYS);   // set when dbLoadAll completes
+    // Wait up to ~30s (10 × 3s) for both; then send with whatever is ready so a
+    // slow/offline sheet never blocks the daily safety copy entirely.
+    if ((rowsReady && dbReady) || tries >= 10) { autoEmailSendNow(false); return; }
+    tries++; setTimeout(attempt, 3000);
+  })();
 }
 
 // ── Layer 1: restore from file (destructive — Director only, double-confirm) ──
@@ -18599,6 +18813,8 @@ function backupInit() {
   if (card) card.style.display = backupIsDirector() ? '' : 'none';
   backupTakeSnapshot();          // daily auto-snapshot (once per day)
   backupRenderSnapshotList();
+  if (typeof autoEmailRenderConfig === 'function') autoEmailRenderConfig();  // v1601
+  if (typeof autoEmailDailyCheck  === 'function') autoEmailDailyCheck();     // v1601 once-daily auto-send
 }
 window.addEventListener('load', () => setTimeout(backupInit, 4000));
 
@@ -19453,7 +19669,8 @@ function repairCustomUserAccess() {
 //    saves to lox_gauge*, while the legacy Medical Gas checklist used mg_lox.
 //    Either one counts as today's check.
 function loxCheckDone(dateStr) {
-  const d = dateStr || new Date().toISOString().slice(0,10);
+  // v1601: default to LOCAL date (not UTC) so an omitted arg matches locally-stored dates.
+  const d = dateStr || ((typeof fmsLocalToday==='function') ? fmsLocalToday() : new Date().toISOString().slice(0,10));
   try {
     // 1. LOX Reserve Calculator (gauge readings) — the live source
     if (typeof loxGetReadings === 'function') {
