@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260719-1599';
+  var v = '20260719-1600';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260719-1599">
+<meta name="app-version" content="20260719-1600">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -18426,15 +18426,37 @@ function backupCollectAll() {
 // ── Layer 1: manual full backup to file ──
 function backupExportFull() {
   if (!backupIsDirector()) { toast('Backup export is Director-only','#ef4444'); return; }
+  // Capture the LIVE maintenance + biomedical data (lives in Google Sheets, fetched into ROWS —
+  // it is NOT in localStorage, so without this the backup would omit the largest dataset).
+  let maintenanceExport = { available:false, rowCount:0, headers:[], maintenance:[], biomedical:[] };
+  try {
+    if (typeof ROWS !== 'undefined' && Array.isArray(ROWS) && ROWS.length) {
+      const hdrs = (ROWS[0] && ROWS[0].headers) ? ROWS[0].headers : [];
+      maintenanceExport = {
+        available: true,
+        rowCount: ROWS.length,
+        headers: hdrs,
+        maintenance: ROWS.filter(e=>!e.bio).map(e=>e.row),
+        biomedical:  ROWS.filter(e=> e.bio).map(e=>e.row)
+      };
+    }
+  } catch(e) { maintenanceExport.error = e.message; }
+
   const payload = {
     _backup_meta: {
       platform: 'Obeid FMS Command',
       version: (typeof v !== 'undefined' ? v : 'unknown'),
       created: new Date().toISOString(),
       by: (CU && CU.name) || 'Director',
-      keyCount: 0
+      keyCount: 0,
+      maintenanceRows: maintenanceExport.rowCount,
+      maintenanceIncluded: maintenanceExport.available,
+      note: maintenanceExport.available
+        ? 'Complete: platform stores + live maintenance/biomedical sheet data.'
+        : 'WARNING: maintenance sheet data was NOT loaded when this backup ran — open Maintenance Analytics to load it, then re-export for a complete backup.'
     },
-    data: backupCollectAll()
+    data: backupCollectAll(),
+    maintenanceData: maintenanceExport
   };
   payload._backup_meta.keyCount = Object.keys(payload.data).length;
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -18443,8 +18465,16 @@ function backupExportFull() {
   a.download = 'ObeidFMS_Backup_' + new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.json';
   a.click();
   const st = document.getElementById('backup-status');
-  if (st) st.textContent = '✅ Exported ' + payload._backup_meta.keyCount + ' data keys · ' + new Date().toLocaleString('en-GB');
-  toast('✅ Full backup exported (' + payload._backup_meta.keyCount + ' keys) — save it to Drive/email','#10b981');
+  const mCount = payload._backup_meta.maintenanceRows;
+  const mOk = payload._backup_meta.maintenanceIncluded;
+  if (st) st.innerHTML = '✅ Exported ' + payload._backup_meta.keyCount + ' platform keys + ' +
+    (mOk ? ('<b>' + mCount + '</b> maintenance/biomedical rows') : '<b style="color:#ef4444;">0 maintenance rows (not loaded — see warning)</b>') +
+    ' · ' + new Date().toLocaleString('en-GB');
+  if (!mOk) {
+    toast('⚠ Backup exported, but maintenance data was NOT loaded. Open 🔩 Maintenance Analytics first, then re-export for a COMPLETE backup.','#f59e0b',7000);
+  } else {
+    toast('✅ COMPLETE backup exported — ' + payload._backup_meta.keyCount + ' platform keys + ' + mCount + ' maintenance rows','#10b981',5000);
+  }
 }
 
 // ── Layer 1: restore from file (destructive — Director only, double-confirm) ──
@@ -18457,12 +18487,17 @@ function backupRestoreFromFile(input) {
     try {
       const parsed = JSON.parse(e.target.result);
       if (!parsed || !parsed.data || typeof parsed.data !== 'object') { toast('❌ Not a valid backup file','#ef4444'); return; }
+      // Note: maintenance/biomedical rows live in Google Sheets; a file-restore rebuilds platform
+      // stores. If maintenanceData is present it is preserved in the file for audit/hospital-server
+      // archival, but the authoritative maintenance source remains the Google Sheet.
+      const _mRows = (parsed.maintenanceData && parsed.maintenanceData.rowCount) || 0;
       const meta = parsed._backup_meta || {};
       const cnt = Object.keys(parsed.data).length;
       const msg = 'RESTORE this backup?\n\n' +
         'Created: ' + (meta.created ? new Date(meta.created).toLocaleString('en-GB') : 'unknown') + '\n' +
         'By: ' + (meta.by || 'unknown') + '\n' +
-        'Data keys: ' + cnt + '\n\n' +
+        'Platform data keys: ' + cnt + '\n' +
+        'Maintenance rows in file: ' + _mRows + ' (archival copy)\n\n' +
         '⚠️ This REPLACES all current data on this device with the backup. A safety snapshot of the current state will be taken first. Continue?';
       if (!confirm(msg)) { input.value = ''; return; }
       // Safety snapshot of CURRENT state before overwriting
