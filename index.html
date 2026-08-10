@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260719-1598';
+  var v = '20260719-1599';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260719-1598">
+<meta name="app-version" content="20260719-1599">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -5720,6 +5720,25 @@ if ('caches' in window) {
       </table>
     </div></div>
 
+    <!-- Tab Access Permissions (Director only) -->
+    <div class="card director-settings-only"><div class="ch"><div class="ct">🔐 Tab Access Permissions</div><button class="btn bp" style="font-size:10px;" onclick="permReset()">↺ Reset to Defaults</button></div><div class="cb">
+      <div style="background:rgba(59,130,246,.06);border:1px solid var(--bd);border-radius:9px;padding:9px 13px;margin-bottom:12px;font-size:10px;color:var(--mu);">
+        Select an account, tick the tabs it may access, and Save. Changes take effect at that user's next login (or Sync). The Director always sees everything.
+      </div>
+      <div class="ff" style="margin-bottom:10px;"><label>Account</label>
+        <select id="perm-role" onchange="permLoad()" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px 12px;color:var(--tx);font-size:12px;">
+          <option value="maintenance">Maintenance — Mostapha</option>
+          <option value="biomedical">Biomedical — Bashar</option>
+          <option value="safety">Safety — Moe</option>
+          <option value="security">Security — Bader</option>
+          <option value="ipc">IPC — Infection Control</option>
+        </select>
+      </div>
+      <div id="perm-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;margin-bottom:12px;"></div>
+      <button class="btn bg" style="width:100%;" onclick="permSave()">✓ Save Permissions for this Account</button>
+      <div id="perm-status" style="font-size:10px;color:var(--mu);margin-top:8px;text-align:center;"></div>
+    </div></div>
+
     <!-- Edit User (Director only) -->
     <div class="card director-settings-only"><div class="ch"><div class="ct">✏️ Edit User / Change PIN</div></div><div class="cb">
       <div class="fg fg2">
@@ -10135,7 +10154,7 @@ function eqDelAdded(ts) {
 const ROLE_ACCESS = {
   director:    ['ALL'],
   // Maintenance (Mostapha): fire systems, utilities, CBAHI reports — NO analytics/reports pages
-  maintenance: ['n-dash','n-kpi','n-wo','n-utils','n-fire','n-cbahi','n-ckpi','n-settings','n-pms'],
+  maintenance: ['n-dash','n-kpi','n-wo','n-utils','n-fire','n-emergency','n-cbahi','n-ckpi','n-settings','n-pms'],
   biomedical:  ['n-dash','n-kpi','n-equip','n-medgas','n-pmg','n-radiation','n-wo','n-cbahi','n-ckpi','n-settings','n-pms'],
   // Safety (Moe): CBAHI, safety, hazmat, emergency, fire — NO analytics/reports pages
   safety:      ['n-dash','n-kpi','n-cbahi','n-safety','n-hazmat','n-emergency','n-fire','n-wo','n-ckpi','n-docs','n-settings','n-pms'],
@@ -10147,7 +10166,7 @@ const ROLE_ACCESS = {
 // Page access — which pages each role can open
 const PAGE_ACCESS = {
   director:    ['ALL'],
-  maintenance: ['dash','kpi','wo','utils','fire','cbahi','ckpi','settings','pms'],
+  maintenance: ['dash','kpi','wo','utils','fire','emergency','cbahi','ckpi','settings','pms'],
   biomedical:  ['dash','kpi','equip','medgas','pmg','radiation','wo','cbahi','ckpi','settings','pms'],
   safety:      ['dash','kpi','cbahi','safety','hazmat','emergency','fire','wo','ckpi','docs','settings','pms'],
   security:    ['dash','kpi','security','wo','ckpi','settings'],
@@ -10156,6 +10175,31 @@ const PAGE_ACCESS = {
 
 // Page access — which page IDs each role can visit
 ;
+
+// ── Configurable access overrides (Director-managed, saved in localStorage) ──
+const ACCESS_OVERRIDE_KEY = 'obeid_access_override';
+function getAccessOverride(){
+  try{ return JSON.parse(localStorage.getItem(ACCESS_OVERRIDE_KEY)||'null') || {}; }catch(e){ return {}; }
+}
+function saveAccessOverride(o){ localStorage.setItem(ACCESS_OVERRIDE_KEY, JSON.stringify(o||{})); }
+// All navigable pages (id without the "n-" prefix) → label, for the permissions UI
+const ALL_PAGES = [
+  ['dash','⬡ Command Center'],['kpi','📊 KPI Dashboard'],['cbahi','✓ CBAHI Tracker'],
+  ['mms','🔩 Maintenance Analytics'],['reports','📈 Reports & Analysis'],
+  ['safety','🛡 Safety (1.1.1)'],['security','🔒 Security (1.1.2)'],['hazmat','☣ Hazmat (1.1.3)'],
+  ['emergency','🚨 Emergency (1.1.4/5)'],['fire','🔥 Fire Safety (1.1.6)'],['equip','⚕ Med. Equipment (1.1.7)'],
+  ['utils','⚡ Utilities (1.1.8)'],['ach','🌬 ACH / Room Pressure'],['temperature','🌡 Temperature Log'],
+  ['medgas','🫧 Medical Gas (32)'],['pmg','📋 PMG PPM (32.1)'],['radiation','☢ Radiation (9)'],
+  ['wo','🔧 Work Orders'],['ckpi','⚙ Custom KPIs'],['docs','📁 Documents'],
+  ['budget','💰 FMS Budget'],['risk','⚠️ Risk Assessment'],['contracts','📃 Contract Review'],
+  ['pms','📊 FMS Performance Sheet'],['settings','⚙ Settings / DB']
+];
+// Effective page list for a role: override if present, else built-in default
+function effectivePageAccess(role){
+  const ov = getAccessOverride();
+  if (ov[role] && Array.isArray(ov[role])) return ov[role];
+  return PAGE_ACCESS[role] || [];
+}
 
 function getEffectiveRole(role) {
   // For built-in roles, return as-is
@@ -10190,7 +10234,7 @@ function applyRBAC() {
   }
   // Resolve custom roles to their template role for access lookup
   const effectiveRole = getEffectiveRole(CU.role);
-  const allowed = ROLE_ACCESS[effectiveRole] || ROLE_ACCESS['security'] || [];
+  let allowed = ROLE_ACCESS[effRole] || ROLE_ACCESS['security'] || []; { const ov=getAccessOverride(); if(ov[effRole]&&Array.isArray(ov[effRole])) allowed = ov[effRole].map(p=>'n-'+p); }
 
   document.querySelectorAll('.ni[id]').forEach(el => {
     el.style.display = allowed.includes(el.id) ? '' : 'none';
@@ -10208,10 +10252,12 @@ function applyRBAC() {
 
 function canAccessPage(pageId) {
   if (!CU.role || CU.role === 'director') return true;
-  if (pageId === 'budget') return false; // FMS Budget — strictly FMS Director only
-  if (pageId === 'settings') return true; // all roles can access settings for DB connection
+  if (pageId === 'settings') return true; // all roles reach settings for DB connection
   const effectiveRole = getEffectiveRole(CU.role);
-  const allowed = PAGE_ACCESS[effectiveRole] || PAGE_ACCESS['security'] || [];
+  const ov = getAccessOverride();
+  // Budget stays director-only UNLESS the director has explicitly granted it via override
+  if (pageId === 'budget' && !(ov[effectiveRole] && ov[effectiveRole].includes('budget'))) return false;
+  const allowed = effectivePageAccess(effectiveRole);
   return allowed.includes(pageId);
 }
 
@@ -20523,6 +20569,62 @@ function woFlashFlag(){
 if(typeof renderDash==='function'){ const _wo_rd=renderDash; renderDash=function(){_wo_rd.apply(this,arguments); try{woFlashFlag();}catch(e){}}; }
 if(typeof gp==='function'){ const _wo_gp=gp; gp=function(){ const r=_wo_gp.apply(this,arguments); try{setTimeout(woFlashFlag,120);}catch(e){} return r; }; }
 setTimeout(function(){ try{woFlashFlag();}catch(e){} }, 7000);
+</script>
+
+<script>
+/* ============ TAB ACCESS PERMISSIONS PANEL — v1599 ============ */
+function permLoad(){
+  const role=(document.getElementById('perm-role')||{}).value;
+  if(!role) return;
+  const grid=document.getElementById('perm-grid'); if(!grid) return;
+  const current = (typeof effectivePageAccess==='function') ? effectivePageAccess(role) : (PAGE_ACCESS[role]||[]);
+  const set=new Set(current);
+  grid.innerHTML = ALL_PAGES.map(function(p){
+    const id=p[0], label=p[1];
+    const locked=(id==='settings'); // settings always on (DB connection)
+    const checked=set.has(id)||locked;
+    return '<label style="display:flex;align-items:center;gap:7px;font-size:11px;color:var(--tx);cursor:'+(locked?'not-allowed':'pointer')+';opacity:'+(locked?'.6':'1')+';">'+
+      '<input type="checkbox" class="perm-cb" data-page="'+id+'" '+(checked?'checked':'')+' '+(locked?'disabled':'')+' style="width:15px;height:15px;accent-color:var(--ac);"> '+label+
+      (locked?' <span style="font-size:8px;color:var(--mu);">(always)</span>':'')+'</label>';
+  }).join('');
+  const st=document.getElementById('perm-status'); if(st) st.textContent='';
+}
+function permSave(){
+  const role=(document.getElementById('perm-role')||{}).value; if(!role) return;
+  const pages=[...document.querySelectorAll('.perm-cb')].filter(c=>c.checked||c.disabled).map(c=>c.dataset.page);
+  if(!pages.includes('settings')) pages.push('settings');
+  const ov=getAccessOverride(); ov[role]=pages; saveAccessOverride(ov);
+  // persist to DB so it syncs across devices
+  try{ if(typeof dbWrite==='function') dbWrite('platform_settings',{_id:'access_'+role, role:role, pages:pages, _ts:new Date().toISOString()}); }catch(e){}
+  const st=document.getElementById('perm-status');
+  if(st){ st.textContent='✅ Saved '+pages.length+' tabs for '+role+' — effective at their next login.'; st.style.color='#10b981'; }
+  toast('🔐 Permissions saved for '+role,'#10b981',3500);
+}
+function permReset(){
+  const role=(document.getElementById('perm-role')||{}).value; if(!role) return;
+  if(!confirm('Reset '+role+' to the built-in default tabs?')) return;
+  const ov=getAccessOverride(); delete ov[role]; saveAccessOverride(ov);
+  try{ if(typeof dbDelete==='function') dbDelete('platform_settings','access_'+role); }catch(e){}
+  permLoad();
+  const st=document.getElementById('perm-status'); if(st){ st.textContent='↺ Reset to defaults.'; st.style.color='var(--mu)'; }
+  toast('Permissions reset for '+role);
+}
+// Load overrides from DB on sync (so they apply across devices)
+(function(){
+  function applyAccessFromDB(){
+    try{
+      const rows = (typeof ld==='function') ? ld('platform_settings') : [];
+      if(!Array.isArray(rows)) return;
+      const ov=getAccessOverride();
+      rows.forEach(r=>{ if(r && r._id && String(r._id).indexOf('access_')===0 && r.role && Array.isArray(r.pages)){ ov[r.role]=r.pages; } });
+      saveAccessOverride(ov);
+    }catch(e){}
+  }
+  if(typeof dbLoadAll==='function'){ const _o=dbLoadAll; dbLoadAll=async function(){ const r=await _o.apply(this,arguments); try{applyAccessFromDB();}catch(e){} return r; }; }
+  setTimeout(applyAccessFromDB, 8000);
+})();
+// init the grid when settings opens
+if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,arguments); if(p==='settings'){ try{setTimeout(permLoad,120);}catch(e){} } return r; }; }
 </script>
 </body>
 </html>
