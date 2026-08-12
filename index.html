@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260811-1603';
+  var v = '20260812-1604';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260811-1603">
+<meta name="app-version" content="20260812-1604">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -2773,7 +2773,10 @@ if ('caches' in window) {
 
       <div class="card"><div class="ch">
         <div class="ct">ESR Log — <span id="esr-count-label">0 rounds</span></div>
-        <button class="btn bo" style="font-size:10px;padding:4px 10px;" onclick="exportESRSummary()">📥 Export Summary</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn bo" id="esr-seed-btn" style="font-size:10px;padding:4px 10px;display:none;" onclick="esrSeed2026()">🌱 Seed Q1 2026</button>
+          <button class="btn bo" style="font-size:10px;padding:4px 10px;" onclick="exportESRSummary()">📥 Summary</button>
+        </div>
       </div>
         <div class="cb" style="padding:0;max-height:500px;overflow-y:auto;">
           <table class="tbl"><thead><tr><th>Round</th><th>Date</th><th>Areas</th><th>Found</th><th>Closed</th><th>By</th><th>Files</th><th></th></tr></thead>
@@ -5502,7 +5505,10 @@ if ('caches' in window) {
   <div id="ctr-list">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
       <div style="font-size:11px;color:var(--mu);">All active contracted services · Click to evaluate</div>
-      <button class="btn bp" onclick="ctrTab('add-contract',null)">+ Add Contract</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn bo" style="font-size:10px;padding:5px 12px;" onclick="exportContracts('report')">📄 Export Report</button>
+        <button class="btn bp" onclick="ctrTab('add-contract',null)">+ Add Contract</button>
+      </div>
     </div>
     <div id="ctr-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:13px;"></div>
   </div>
@@ -5626,7 +5632,12 @@ if ('caches' in window) {
   <!-- EVALUATION HISTORY -->
   <div id="ctr-history" style="display:none;">
     <div class="g g4" id="ctr-kpi-stats"></div>
-    <div class="card"><div class="ch"><div class="ct">All Quarterly Evaluations</div></div>
+    <div class="card"><div class="ch"><div class="ct">All Quarterly Evaluations</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn bo" style="font-size:10px;padding:4px 10px;" onclick="exportContracts('report')">📄 Report</button>
+        <button class="btn bo" style="font-size:10px;padding:4px 10px;" onclick="exportContracts('csv')">📥 CSV</button>
+      </div>
+    </div>
       <div class="cb" style="padding:0;overflow-x:auto;"><table class="tbl">
         <thead><tr><th>Quarter</th><th>Contract</th><th>Score</th><th>Level</th><th>FMS Evaluator</th><th>Joint Evaluator</th><th>Decision</th><th>Date</th><th>Proof</th></tr></thead>
         <tbody id="ctr-hist-tb"></tbody>
@@ -6499,7 +6510,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260811-1603';
+const APP_VERSION = '20260812-1604';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -20878,5 +20889,511 @@ function permReset(){
 // init the grid when settings opens
 if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,arguments); if(p==='settings'){ try{setTimeout(permLoad,120);}catch(e){} } return r; }; }
 </script>
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   v1604 — ESR discipline-structured rounds + edit modal + detailed report;
+           Contract Review export; Risk Register export (was undefined).
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+  'use strict';
+
+  // ---- discipline metadata (memo team) ----
+  window.ESR_DISC = [
+    { k:'safety',       label:'Safety',            rep:'Moe (Safety Officer)' },
+    { k:'maintenance',  label:'Maintenance',       rep:'Mostapha' },
+    { k:'biomed',       label:'Biomedical',        rep:'Eng. Bashar Nurin' },
+    { k:'ipc',          label:'Infection Control', rep:'Khalid Mhajoup Osman' },
+    { k:'housekeeping', label:'Housekeeping',      rep:'Ms. Michelle' }
+  ];
+  const DK = ESR_DISC.map(d=>d.k);
+  function discBlank(){ const o={}; DK.forEach(k=>o[k]=[]); return o; }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function attr(s){ return esc(s).replace(/`/g,'&#96;'); }
+
+  // total / closed findings derived from disciplines (fallback to legacy count fields)
+  window.esrFindingCounts = function(rec){
+    if (!rec || !rec.disc) {
+      return { found: parseInt((rec&&rec.findings)||0)||0, closed: parseInt((rec&&rec.closed)||0)||0 };
+    }
+    let f=0, c=0;
+    DK.forEach(k => (rec.disc[k]||[]).forEach(it => { f++; if ((it.state||'open')==='closed') c++; }));
+    return { found:f, closed:c };
+  };
+  function discCount(rec){ if(!rec||!rec.disc) return 0; return DK.reduce((n,k)=>n+((rec.disc[k]||[]).length),0); }
+
+  // ─────────────────────────── ESR LOG TABLE (override) ───────────────────────────
+  window.renderESRTable = function(){
+    const tb = document.getElementById('eoc-tb'); if (!tb) return;
+    const data = (typeof ld==='function') ? (ld('eoc')||[]) : [];
+    const lbl = document.getElementById('esr-count-label'); if (lbl) lbl.textContent = data.length + ' round' + (data.length!==1?'s':'');
+    // show seed button to directors only, when the seeded rounds aren't already present
+    const seedBtn = document.getElementById('esr-seed-btn');
+    if (seedBtn) {
+      const isDir = (typeof CU==='undefined') || !CU.role || CU.role==='director';
+      const already = data.some(r => (r.round==='ESR-01'||r.round==='ESR-02'||r.round==='ESR-03') && String(r.date||'').startsWith('2026-01'));
+      seedBtn.style.display = (isDir && !already) ? '' : 'none';
+    }
+    if (!data.length) { tb.innerHTML = '<tr><td colspan="8" class="em">No ESR rounds logged yet</td></tr>'; return; }
+    tb.innerHTML = data.map(r => {
+      const files = (r.fileKey && typeof fsGetFiles==='function') ? (fsGetFiles(r.fileKey)||[]) : [];
+      const filesBadge = files.length
+        ? '<span class="bx bb2" style="cursor:pointer;" onclick="showFilesModal(\''+r.fileKey+'\',\'ESR '+attr(r.round||r.date)+'\')">📎 '+files.length+'</span>'
+        : '<span class="bx bm2">—</span>';
+      const cnt = esrFindingCounts(r);
+      const dc = discCount(r);
+      const areaCell = esc(r.areas||'—') + (dc ? ' <span class="bx bb2" style="font-size:8px;">'+dc+' findings</span>' : '');
+      return '<tr>'
+        + '<td style="font-family:\'Rajdhani\',sans-serif;color:var(--ac);">'+esc(r.round||'—')+'</td>'
+        + '<td>'+esc(r.date||'—')+'</td>'
+        + '<td style="font-size:10px;">'+areaCell+'</td>'
+        + '<td style="color:var(--or);">'+cnt.found+'</td>'
+        + '<td style="color:var(--gn);">'+cnt.closed+'</td>'
+        + '<td style="font-size:10px;">'+esc(r.by||'—')+'</td>'
+        + '<td>'+filesBadge+'</td>'
+        + '<td style="white-space:nowrap;">'
+          + '<button class="btn bo" style="font-size:9px;padding:2px 6px;" title="Detailed report" onclick="esrExportRound(\''+r._id+'\')">📄</button> '
+          + '<button class="btn bp" style="font-size:9px;padding:2px 6px;" title="Edit round & findings" onclick="esrEditOpen(\''+r._id+'\')">✎</button> '
+          + '<button class="btn br" style="font-size:9px;padding:2px 6px;" title="Delete" onclick="delRecord(\'eoc\',\''+r._id+'\',renderESRTable)">✕</button>'
+        + '</td></tr>';
+    }).join('');
+  };
+
+  // ─────────────────────────── EDIT MODAL ───────────────────────────
+  let _esrEditId = null;
+
+  function ensureModal(){
+    let ov = document.getElementById('esr-edit-ov');
+    if (ov) return ov;
+    ov = document.createElement('div');
+    ov.id = 'esr-edit-ov';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:9999;display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 12px;';
+    ov.innerHTML =
+      '<div style="background:var(--sf,#12203a);border:1px solid var(--bd,#294056);border-radius:14px;max-width:1080px;width:100%;margin:auto;box-shadow:0 20px 60px rgba(0,0,0,.5);">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--bd,#294056);position:sticky;top:0;background:var(--sf,#12203a);border-radius:14px 14px 0 0;">'
+      +   '<div style="font-family:\'Rajdhani\',sans-serif;font-size:18px;font-weight:700;color:var(--tx,#e6eef7);">✎ Edit ESR Round <span id="esr-ed-title" style="color:var(--ac,#4fa3e3);"></span></div>'
+      +   '<button class="btn bo" style="font-size:11px;padding:5px 12px;" onclick="esrEditClose()">✕ Close</button>'
+      + '</div>'
+      + '<div style="padding:16px 18px;" id="esr-ed-body"></div>'
+      + '<div style="display:flex;gap:10px;justify-content:flex-end;padding:14px 18px;border-top:1px solid var(--bd,#294056);position:sticky;bottom:0;background:var(--sf,#12203a);border-radius:0 0 14px 14px;">'
+      +   '<button class="btn bo" onclick="esrEditClose()">Cancel</button>'
+      +   '<button class="btn bg" onclick="esrEditSave()">✓ Save Round</button>'
+      + '</div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('mousedown', e=>{ if(e.target===ov) esrEditClose(); });
+    return ov;
+  }
+
+  const IN = 'width:100%;background:var(--s2,#0f1b2e);border:1px solid var(--bd,#294056);border-radius:6px;padding:6px 8px;color:var(--tx,#e6eef7);font-size:12px;box-sizing:border-box;';
+  const LB = 'font-size:10px;color:var(--mu,#8fa6bd);display:block;margin-bottom:3px;';
+
+  function findingRow(k, it){
+    it = it || {};
+    const sel = (v,opts)=>opts.map(o=>'<option'+(String(v)===o?' selected':'')+'>'+o+'</option>').join('');
+    return '<div class="esr-frow" style="border:1px solid var(--bd,#294056);border-radius:8px;padding:9px;margin-bottom:8px;background:var(--s2,#0f1b2e);">'
+      + '<div style="display:grid;grid-template-columns:2fr 90px 110px;gap:8px;margin-bottom:6px;">'
+      +   '<div><label style="'+LB+'">Assessment standard / item</label><input class="ef-std" style="'+IN+'" value="'+attr(it.std)+'"></div>'
+      +   '<div><label style="'+LB+'">Status</label><select class="ef-status" style="'+IN+'">'+sel(it.status||'No',['Yes','No','NA'])+'</select></div>'
+      +   '<div><label style="'+LB+'">State</label><select class="ef-state" style="'+IN+'">'+sel(it.state||'open',['open','closed'])+'</select></div>'
+      + '</div>'
+      + '<div style="margin-bottom:6px;"><label style="'+LB+'">Finding / observation</label><textarea class="ef-obs" style="'+IN+'min-height:44px;">'+esc(it.obs)+'</textarea></div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;">'
+      +   '<div><label style="'+LB+'">Corrective action</label><input class="ef-action" style="'+IN+'" value="'+attr(it.action)+'"></div>'
+      +   '<div><label style="'+LB+'">Responsible</label><input class="ef-resp" style="'+IN+'" value="'+attr(it.resp)+'"></div>'
+      +   '<button class="btn br" style="font-size:10px;padding:6px 10px;" onclick="this.closest(\'.esr-frow\').remove()">✕</button>'
+      + '</div></div>';
+  }
+
+  window.esrAddFinding = function(k){
+    const box = document.getElementById('esr-disc-'+k);
+    if (!box) return;
+    box.insertAdjacentHTML('beforeend', findingRow(k, {}));
+  };
+
+  window.esrEditOpen = function(id){
+    const arr = ld('eoc')||[];
+    const rec = arr.find(r=>String(r._id)===String(id));
+    if (!rec) { toast('Round not found','#f59e0b'); return; }
+    _esrEditId = rec._id;
+    if (!rec.disc) rec.disc = discBlank();
+    ensureModal();
+    document.getElementById('esr-ed-title').textContent = (rec.round||'') + (rec.date?(' · '+rec.date):'');
+
+    const hdr = '<div style="display:grid;grid-template-columns:1fr 1fr 2fr;gap:10px;margin-bottom:10px;">'
+      + '<div><label style="'+LB+'">Round No.</label><input id="ed-round" style="'+IN+'" value="'+attr(rec.round)+'"></div>'
+      + '<div><label style="'+LB+'">Date</label><input id="ed-date" type="date" style="'+IN+'" value="'+attr(rec.date)+'"></div>'
+      + '<div><label style="'+LB+'">Areas inspected</label><input id="ed-areas" style="'+IN+'" value="'+attr(rec.areas)+'"></div>'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 2fr;gap:10px;margin-bottom:10px;">'
+      + '<div><label style="'+LB+'">Conducted by</label><input id="ed-by" style="'+IN+'" value="'+attr(rec.by)+'"></div>'
+      + '<div><label style="'+LB+'">Round team</label><input id="ed-team" style="'+IN+'" value="'+attr(rec.team)+'"></div>'
+      + '</div>'
+      + '<div style="margin-bottom:12px;"><label style="'+LB+'">Notes / summary</label><textarea id="ed-notes" style="'+IN+'min-height:40px;">'+esc(rec.notes)+'</textarea></div>';
+
+    const discHtml = ESR_DISC.map(d=>{
+      const items = (rec.disc[d.k]||[]);
+      const rows = items.length ? items.map(it=>findingRow(d.k,it)).join('') : '';
+      return '<div style="border:1px solid var(--bd,#294056);border-radius:10px;padding:12px;margin-bottom:12px;">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
+        +   '<div style="font-weight:700;color:var(--tx,#e6eef7);font-size:13px;">'+esc(d.label)+' <span style="font-size:10px;color:var(--mu,#8fa6bd);font-weight:400;">· '+esc(d.rep)+'</span></div>'
+        +   '<button class="btn bp" style="font-size:10px;padding:4px 10px;" onclick="esrAddFinding(\''+d.k+'\')">+ Add finding</button>'
+        + '</div>'
+        + '<div id="esr-disc-'+d.k+'">'+rows+'</div>'
+        + '</div>';
+    }).join('');
+
+    document.getElementById('esr-ed-body').innerHTML = hdr
+      + '<div style="font-weight:700;color:var(--ac,#4fa3e3);font-size:13px;margin:4px 0 8px;">Discipline inputs — Safety · Maintenance · Biomedical · Infection Control · Housekeeping</div>'
+      + discHtml;
+    document.getElementById('esr-edit-ov').style.display = 'flex';
+  };
+
+  window.esrEditClose = function(){ const ov=document.getElementById('esr-edit-ov'); if(ov) ov.style.display='none'; _esrEditId=null; };
+
+  window.esrEditSave = function(){
+    const arr = ld('eoc')||[];
+    const idx = arr.findIndex(r=>String(r._id)===String(_esrEditId));
+    if (idx<0) { toast('Round not found','#f59e0b'); return; }
+    const rec = arr[idx];
+    rec.round = document.getElementById('ed-round').value.trim();
+    rec.date  = document.getElementById('ed-date').value;
+    rec.areas = document.getElementById('ed-areas').value.trim();
+    rec.by    = document.getElementById('ed-by').value.trim();
+    rec.team  = document.getElementById('ed-team').value.trim();
+    rec.notes = document.getElementById('ed-notes').value;
+    const disc = discBlank();
+    ESR_DISC.forEach(d=>{
+      const box = document.getElementById('esr-disc-'+d.k); if(!box) return;
+      box.querySelectorAll('.esr-frow').forEach(row=>{
+        const g = c=>{ const e=row.querySelector(c); return e?e.value:''; };
+        const std=g('.ef-std').trim(), obs=g('.ef-obs').trim();
+        if (!std && !obs) return; // skip empty
+        disc[d.k].push({ std, status:g('.ef-status'), obs, action:g('.ef-action').trim(), resp:g('.ef-resp').trim(), state:g('.ef-state') });
+      });
+    });
+    rec.disc = disc;
+    const cnt = esrFindingCounts(rec);
+    rec.findings = String(cnt.found); rec.closed = String(cnt.closed);
+    rec._ts = new Date().toISOString();
+    arr[idx] = rec; sv('eoc', arr);
+    try { dbWrite('eoc', rec); } catch(e){}
+    esrEditClose();
+    renderESRTable();
+    if (typeof updateTargetProgress==='function') updateTargetProgress();
+    if (typeof renderAll==='function') renderAll();
+    toast('✓ ESR round updated');
+  };
+
+  // ─────────────────────────── DETAILED REPORT (printable) ───────────────────────────
+  function reportShell(titleLine, metaLine, bodyHtml, fname){
+    const today = (typeof fmsLocalToday==='function') ? fmsLocalToday() : new Date().toISOString().slice(0,10);
+    const who = (typeof CU!=='undefined'&&CU&&CU.name) ? CU.name : '';
+    const html = '<!doctype html><html><head><meta charset="utf-8"><title>'+esc(titleLine)+'</title>'
+      + '<style>@media print{button{display:none}} body{font-family:Arial,Helvetica,sans-serif;max-width:1050px;margin:22px auto;color:#222;padding:0 14px;} '
+      + 'table{border-collapse:collapse;width:100%;font-size:11px;margin-bottom:14px;} th{background:#1e3a5c;color:#fff;padding:6px 8px;border:1px solid #b9c6d4;text-align:left;} '
+      + 'td{padding:5px 8px;border:1px solid #cdd7e1;vertical-align:top;} h3{color:#1e3a5c;margin:18px 0 6px;font-size:14px;border-bottom:2px solid #1e3a5c;padding-bottom:3px;}</style></head>'
+      + '<body>'
+      + '<div style="text-align:center;border-bottom:3px solid #1e3a5c;padding-bottom:10px;margin-bottom:14px;">'
+      +   '<div style="font-size:20px;font-weight:800;color:#1e3a5c;">OBEID SPECIALIZED HOSPITAL</div>'
+      +   '<div style="font-size:11px;color:#555;">Riyadh, KSA · Facility Management &amp; Safety · CBAHI 2026</div>'
+      +   '<div style="font-size:14px;font-weight:700;color:#7B2436;margin-top:8px;">'+esc(titleLine)+'</div>'
+      +   '<div style="font-size:10px;color:#777;margin-top:2px;">'+esc(metaLine)+'</div>'
+      +   '<div style="font-size:10px;color:#777;">Generated '+esc(today)+(who?(' · '+esc(who)):'')+'</div>'
+      + '</div>'
+      + '<button onclick="window.print()" style="background:#1e3a5c;color:#fff;border:none;border-radius:6px;padding:8px 18px;font-size:12px;cursor:pointer;margin-bottom:12px;">🖨 Print / Save as PDF</button>'
+      + bodyHtml
+      + '<div style="margin-top:26px;display:flex;justify-content:space-between;font-size:11px;">'
+      +   '<div>Prepared by: ____________________<br><span style="color:#777;">FMS Director</span></div>'
+      +   '<div>Reviewed by: ____________________<br><span style="color:#777;">Concerned Head of Department</span></div>'
+      + '</div>'
+      + '<p style="margin-top:16px;font-size:9px;color:#999;">Obeid Specialized Hospital · FMS Command Platform · Generated from live platform records.</p>'
+      + '</body></html>';
+    try {
+      const b = new Blob([html],{type:'text/html'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = fname; a.click();
+    } catch(e){
+      const w = window.open('','_blank'); if(w){ w.document.write(html); w.document.close(); }
+    }
+  }
+
+  window.esrExportRound = function(id){
+    const rec = (ld('eoc')||[]).find(r=>String(r._id)===String(id));
+    if (!rec) { toast('Round not found','#f59e0b'); return; }
+    const cnt = esrFindingCounts(rec);
+    let body = '<table><tr><th style="width:170px;">Round</th><td>'+esc(rec.round||'—')+'</td><th style="width:120px;">Date</th><td>'+esc(rec.date||'—')+'</td></tr>'
+      + '<tr><th>Areas inspected</th><td colspan="3">'+esc(rec.areas||'—')+'</td></tr>'
+      + '<tr><th>Conducted by</th><td>'+esc(rec.by||'—')+'</td><th>Findings / Closed</th><td>'+cnt.found+' / '+cnt.closed+'</td></tr>'
+      + '<tr><th>Round team</th><td colspan="3">'+esc(rec.team||'—')+'</td></tr>'
+      + (rec.notes?('<tr><th>Notes</th><td colspan="3">'+esc(rec.notes)+'</td></tr>'):'')
+      + '</table>';
+    const badge = s => s==='closed' ? '<b style="color:#0a7c2f;">Closed</b>' : '<b style="color:#b45309;">Open</b>';
+    const stat  = s => s==='Yes' ? '<b style="color:#0a7c2f;">Yes</b>' : s==='No' ? '<b style="color:#b91c1c;">No</b>' : (s||'—');
+    let any = false;
+    ESR_DISC.forEach(d=>{
+      const items = (rec.disc && rec.disc[d.k]) || [];
+      if (!items.length) return; any = true;
+      body += '<h3>'+esc(d.label)+' — '+esc(d.rep)+'</h3>'
+        + '<table><thead><tr><th style="width:22%;">Assessment standard</th><th style="width:8%;">Status</th><th>Finding / observation</th><th style="width:22%;">Corrective action</th><th style="width:14%;">Responsible</th><th style="width:8%;">State</th></tr></thead><tbody>'
+        + items.map(it=>'<tr><td>'+esc(it.std)+'</td><td>'+stat(it.status)+'</td><td>'+esc(it.obs)+'</td><td>'+esc(it.action)+'</td><td>'+esc(it.resp)+'</td><td>'+badge(it.state||'open')+'</td></tr>').join('')
+        + '</tbody></table>';
+    });
+    if (!any) body += '<p style="font-size:12px;color:#555;">No discipline findings recorded. Use ✎ Edit to add Safety / Maintenance / Biomedical / Infection Control / Housekeeping inputs.</p>';
+    reportShell('Environmental Safety Round (ESR) Report — FMS.1.1.1',
+      'Round '+(rec.round||'')+' · '+(rec.date||'')+' · '+cnt.found+' findings, '+cnt.closed+' closed',
+      body, 'ESR_'+(rec.round||'round').replace(/[^\w-]/g,'')+'_'+(rec.date||'')+'.html');
+    toast('✓ ESR report generated — open it and Print / Save as PDF','#10b981',4000);
+  };
+
+  // ─────────────────────────── SEED Q1 2026 (3-day quarterly round) ───────────────────────────
+  const TEAM = "Ali Sobh (FMS Director) · Moe (Safety Officer) · Khalid Mhajoup Osman (Infection Control) · Ms. Michelle (Housekeeping) · Mostapha (Maintenance) · Eng. Bashar Nurin (Biomedical)";
+  const F = (std,status,obs,action,resp,state)=>({std,status,obs,action,resp,state:state||'open'});
+
+  function seedRounds(){
+    return [
+      {
+        round:'ESR-01', date:'2026-01-19',
+        areas:'Basement & Ground floors — ER, Radiology, Laboratory, Blood Bank, CSSD, Internal Pharmacy, Kitchen, Medical Records',
+        notes:'Day 1 of the Q1 2026 quarterly environmental round (19–21 Jan). Basement & ground-floor departments.',
+        disc:{
+          ipc:[
+            F('Spill Management','No','Clorox tablets and absorbent powder in the biohazard spill kits are expired.','Replace expired spill-kit contents and add expiry tracking.','Khalid (IPC)','open'),
+            F('Environmental Cleaning — Radiology','No','Pump room in Radiology needs an electric insect killer. High-level disinfectant should be used to decontaminate the ultrasound probe after use.','Install insect killer; supply high-level disinfectant for probe.','Khalid (IPC)','open'),
+            F('Environmental Cleaning — Laboratory','No','The main laboratory door should be auto-closure and lockable.','Fit self-closer and lock on the lab main door.','Khalid (IPC) / Maintenance','open'),
+            F('Environmental Cleaning — Blood Bank','No','Hematology analyzer reagents are stored in the waiting area; should be in a dedicated store, not with their original boxes.','Provide a dedicated reagent store in the blood bank.','Khalid (IPC)','open'),
+            F('Environmental Cleaning — Kitchen','No','Sewage drainage under the cooking stove needs maintenance.','Raise a work order for the kitchen sewage line.','Khalid (IPC) / Maintenance','open'),
+            F('Environmental Cleaning — Medical Records','No','Ceiling in the medical-records unit leaks during rain.','Waterproof / repair the ceiling.','Khalid (IPC) / Maintenance','open'),
+            F('Clean & Soiled Utility Rooms','No','Utility rooms should be dedicated to dirty/clean items only; some areas lack a dirty utility room.','Designate and segregate utility rooms.','Khalid (IPC)','open'),
+            F('IPC Supplies','No','Most visited units raised shortages of IPC supplies (tissue, gloves, gel in bottles).','Review consumable par-levels and replenishment.','Khalid (IPC)','open')
+          ],
+          biomed:[
+            F('Bio-Medical PM stickers — Internal Pharmacy','No','Biosafety cabinet PPM (asset No. 3303–3304) will expire this month.','Schedule PPM before expiry.','Bashar (Biomed)','open'),
+            F('Bio-Medical PM stickers — Laboratory & Blood Bank','No','PPM due for laboratory and blood-bank equipment.','Plan PPM for lab & blood bank.','Bashar (Biomed)','open'),
+            F('Bio-Medical PM stickers — Radiology','No','PPM due for radiology equipment.','Plan radiology PPM.','Bashar (Biomed)','open'),
+            F('Medical Equipment — ER','No','ER beds 3–9 need pulse oximetry.','Provide pulse oximeters for ER beds 3–9.','Bashar (Biomed)','open'),
+            F('Bio-Medical PM stickers — CSSD','No','PPM due for CSSD. Autoclave (asset No. 1709) failed the leak test.','Repair autoclave 1709 and complete CSSD PPM.','Bashar (Biomed)','open')
+          ],
+          maintenance:[
+            F('Building fabric — Kitchen','No','Sewage drainage under the cooking stove requires repair.','Repair the sewage line under the stove.','Mostapha (Maintenance)','open'),
+            F('Building fabric — Medical Records','No','Ceiling leaks during rain.','Seal / waterproof the ceiling.','Mostapha (Maintenance)','open'),
+            F('Doors & hardware — Laboratory','No','Main lab door lacks auto-closure and lock.','Install a self-closing lockset.','Mostapha (Maintenance)','open')
+          ],
+          safety:[
+            F('Fire response competency (RACE)','Yes','Staff on basement/ground units could describe the RACE protocol.','Maintain quarterly fire drills.','Moe (Safety)','closed'),
+            F('Emergency oxygen shut-off','Yes','Staff aware of the oxygen shut-off valve location.','—','Moe (Safety)','closed'),
+            F('Fire extinguisher monthly tags','Yes','Extinguishers in basement corridors carry current monthly inspection tags.','—','Moe (Safety)','closed')
+          ],
+          housekeeping:[
+            F('Cleaning trolleys','No','Cleaners need trolleys with at least two buckets and space to store chemicals.','Procure compliant cleaning trolleys.','Michelle (Housekeeping)','open'),
+            F('Support to reagent/store segregation','NA','Storage-segregation issues noted with IPC; housekeeping to support once dedicated stores are provided.','Coordinate with IPC on store cleaning.','Michelle (Housekeeping)','open')
+          ]
+        }
+      },
+      {
+        round:'ESR-02', date:'2026-01-20',
+        areas:'OPD & Diagnostics — ENT, Cardiology, Dermatology, Eye Center, OPD clinics, Physiotherapy, Endoscopy',
+        notes:'Day 2 of the Q1 2026 quarterly environmental round. Out-patient clinics and diagnostics.',
+        disc:{
+          ipc:[
+            F('Hand hygiene stations','No','Some gel dispensers lack hand-hygiene guidance; ENT, Cardiology and Dermatology need tissue dispensers.','Add guidance signage and install tissue dispensers.','Khalid (IPC)','open'),
+            F('Reprocessing of surgical instruments — ENT','No','ENT used (dirty) instruments must be sent to CSSD in a well-sealed container, or collected by CSSD staff.','Provide sealed transport containers; agree CSSD collection.','Khalid (IPC)','open'),
+            F('Reprocessing — Physiotherapy','No','Physiotherapy towels should be disposable, or use wipes impregnated with a chemical compatible with the electronic devices.','Switch to disposable / compatible wipes.','Khalid (IPC)','open'),
+            F('Environmental Cleaning — Endoscopy','No','The reprocessing room space for endoscopy does not fit requirements.','Assess relocation / enlargement of the reprocessing room.','Khalid (IPC)','open'),
+            F('Environmental Cleaning — Eye Center','No','Eye-center toilet needs water maintenance; wall needs painting; ceiling is not well sealed (insect-breeding risk).','Maintenance work order for toilet, paint and ceiling seal.','Khalid (IPC) / Maintenance','open')
+          ],
+          biomed:[
+            F('Bio-Medical PM stickers — Physiotherapy','No','PPM due for physiotherapy equipment.','Plan physiotherapy PPM.','Bashar (Biomed)','open'),
+            F('Bio-Medical PM stickers — Eye Clinic','No','PPM due for eye-clinic equipment.','Plan eye-clinic PPM.','Bashar (Biomed)','open'),
+            F('Medical Equipment — Cardiology','No','PPM due for echo; ECG machine needs a new battery.','PPM echo; replace ECG battery.','Bashar (Biomed)','open'),
+            F('Bio-Medical PM stickers — ENT','No','PPM due for ENT equipment.','Plan ENT PPM.','Bashar (Biomed)','open'),
+            F('Bio-Medical PM stickers — Dermatology','No','PPM due for dermatology equipment.','Plan derma PPM.','Bashar (Biomed)','open'),
+            F('Bio-Medical PM stickers — OPD clinics','No','PPM due for OPD clinics.','Plan OPD PPM.','Bashar (Biomed)','open'),
+            F('Medical Equipment — Endoscopy','No','Endoscopy (asset No. 5802) needs a new cable.','Order and replace endoscopy cable 5802.','Bashar (Biomed)','open')
+          ],
+          maintenance:[
+            F('Building fabric — Eye Center','No','Toilet water leak, wall paint, and unsealed ceiling.','Plumbing + paint + ceiling-seal work order.','Mostapha (Maintenance)','open'),
+            F('Space / room works — Endoscopy','No','Reprocessing room does not meet space requirements.','Feasibility study for room modification.','Mostapha (Maintenance)','open')
+          ],
+          safety:[
+            F('Emergency codes awareness','Yes','Clinic staff could state the hospital emergency codes.','Continue code-awareness refreshers.','Moe (Safety)','closed'),
+            F('Egress & corridors','Yes','OPD corridors clear; exit signage illuminated.','—','Moe (Safety)','closed')
+          ],
+          housekeeping:[
+            F('Clinic cleaning frequency','Yes','OPD clinics cleaned per schedule; checklists signed.','Maintain.','Michelle (Housekeeping)','closed'),
+            F('Consumables — tissue / gel','No','Clinics report tissue and gel shortages (raised with IPC).','Align supply with IPC par-levels.','Michelle (Housekeeping)','open')
+          ]
+        }
+      },
+      {
+        round:'ESR-03', date:'2026-01-21',
+        areas:'Inpatient Wards, Utilities & General — nursing units, utility rooms, staff areas',
+        notes:'Day 3 of the Q1 2026 quarterly environmental round. Wards, utilities and general facility, plus staff-competency interviews.',
+        disc:{
+          ipc:[
+            F('Clean & Soiled Utility Rooms — Wards','No','Some ward areas lack a dedicated dirty utility room.','Designate dirty utility rooms on the wards.','Khalid (IPC)','open'),
+            F('Hand hygiene guidance','No','Ward gel dispensers need hand-hygiene guidance signage.','Apply guidance signage.','Khalid (IPC)','open'),
+            F('Employee Health Clinic','No','There is no employee health clinic; staff should be screened and receive required immunizations.','Establish an employee-health clinic / screening & immunization programme.','Khalid (IPC) / Administration','open')
+          ],
+          safety:[
+            F('Fire response competency (RACE)','Yes','Ward staff could describe the RACE protocol.','Maintain drills.','Moe (Safety)','closed'),
+            F('Emergency oxygen shut-off','Yes','Ward staff aware of the O₂ shut-off valve location.','—','Moe (Safety)','closed'),
+            F('Emergency codes awareness','Yes','Ward staff could state the hospital emergency codes.','—','Moe (Safety)','closed')
+          ],
+          maintenance:[
+            F('Utility rooms','No','Additional dirty utility rooms are required on some wards (fit-out).','Scope fit-out for utility rooms.','Mostapha (Maintenance)','open'),
+            F('General building','Yes','No new structural defects noted on the wards this round.','—','Mostapha (Maintenance)','closed')
+          ],
+          housekeeping:[
+            F('Cleaning trolleys & chemical storage','No','Ward cleaners need compliant trolleys (two buckets) and chemical-storage space.','Procure trolleys and allocate storage.','Michelle (Housekeeping)','open'),
+            F('Waste segregation','Yes','Ward waste segregation observed compliant.','Maintain.','Michelle (Housekeeping)','closed')
+          ],
+          biomed:[
+            F('Bio-Medical PM stickers — Wards','NA','Ward-level equipment PPM mostly current; no critical findings this round.','—','Bashar (Biomed)','closed')
+          ]
+        }
+      }
+    ];
+  }
+
+  window.esrSeed2026 = function(){
+    const arr = ld('eoc')||[];
+    const seeds = seedRounds();
+    const missing = seeds.filter(s => !arr.some(r => r.round===s.round && String(r.date||'').startsWith('2026-01')));
+    if (!missing.length) { toast('Q1 2026 rounds already seeded','#f59e0b'); renderESRTable(); return; }
+    if (!confirm('Seed '+missing.length+' ESR round(s) for the Q1 2026 quarterly round (19–21 Jan 2026)?\n\nThey are fully editable afterwards.')) return;
+    const now = Date.now();
+    missing.forEach((s,i)=>{
+      const rec = {
+        _id: now + i,
+        _by: (typeof CU!=='undefined'&&CU.name)||'FMS Director',
+        _rl: (typeof CU!=='undefined'&&CU.rl)||'director',
+        _ts: new Date().toISOString(),
+        round: s.round, date: s.date, areas: s.areas,
+        by: 'Ali Sobh (FMS Director)', team: TEAM, notes: s.notes,
+        disc: s.disc, fileKey: 'eoc_'+(now+i)
+      };
+      const cnt = esrFindingCounts(rec);
+      rec.findings = String(cnt.found); rec.closed = String(cnt.closed);
+      arr.unshift(rec);
+      try { dbWrite('eoc', rec); } catch(e){}
+    });
+    sv('eoc', arr);
+    renderESRTable();
+    if (typeof updateTargetProgress==='function') updateTargetProgress();
+    if (typeof renderAll==='function') renderAll();
+    toast('✓ Seeded '+missing.length+' ESR round(s) — 19–21 Jan 2026. Edit any round to adjust.','#10b981',4500);
+  };
+
+  // ─────────────────────────── CONTRACT REVIEW EXPORT ───────────────────────────
+  function csvDL(rows, fname){
+    const csv = rows.map(r=>r.map(c=>'"'+String(c==null?'':c).replace(/"/g,'""')+'"').join(',')).join('\n');
+    const b = new Blob([csv],{type:'text/csv'}); const a=document.createElement('a');
+    a.href=URL.createObjectURL(b); a.download=fname; a.click();
+  }
+
+  window.exportContracts = function(mode){
+    const contracts = (typeof getContracts==='function') ? getContracts() : (ld('contracts')||[]);
+    const evals = ld('evaluations')||[];
+    if (mode==='csv') {
+      const rows = [['Contract','Company','Category','Quarter','Year','Date','Score /25','%','Decision','FMS Evaluator','Joint Evaluator','Strengths','Issues','Actions']];
+      evals.forEach(e=>{
+        const c = contracts.find(x=>x._id===e.contractId) || {};
+        rows.push([e.contractName||c.name||'', c.company||'', c.cat||'', e.quarter||'', e.year||'', e.date||(e._ts||'').slice(0,10),
+          e.score||'', e.pct||'', e.decision||'', e.fms||'', e.joint||'', e.strengths||'', e.issues||'', e.actions||'']);
+      });
+      if (evals.length===0) rows.push(['(no evaluations recorded yet)']);
+      csvDL(rows, 'Contract_Evaluations_'+((typeof fmsLocalToday==='function')?fmsLocalToday():'')+'.csv');
+      toast('✓ Contract evaluations exported (CSV)','#10b981'); return;
+    }
+    // detailed printable report
+    const lvl = pct => pct>=80?'<b style="color:#0a7c2f;">Good</b>':pct>=60?'<b style="color:#b45309;">Acceptable</b>':'<b style="color:#b91c1c;">Poor</b>';
+    let body = '<h3>A. Contracted Services</h3>'
+      + '<table><thead><tr><th>Service</th><th>Company</th><th>Category</th><th>Dept / Joint Evaluator</th><th>Latest Score</th><th>Decision</th></tr></thead><tbody>'
+      + contracts.map(c=>{
+          const ce = evals.filter(e=>e.contractId===c._id).sort((a,b)=>(b._ts>a._ts?1:-1));
+          const last = ce[0];
+          const pct = last?last.pct:null;
+          return '<tr><td>'+esc(c.name)+'</td><td>'+esc(c.company)+'</td><td>'+esc(c.cat)+'</td><td>'+esc(c.deptHead||c.dept||'—')+'</td>'
+            + '<td>'+(pct!=null?(pct+'% '+lvl(pct)):'—')+'</td><td>'+esc(last?last.decision:'—')+'</td></tr>';
+        }).join('')
+      + '</tbody></table>';
+    body += '<h3>B. Quarterly Evaluations — Full History</h3>';
+    if (evals.length) {
+      body += '<table><thead><tr><th>Quarter</th><th>Contract</th><th>Score</th><th>%</th><th>Decision</th><th>FMS Evaluator</th><th>Joint Evaluator</th><th>Date</th></tr></thead><tbody>'
+        + evals.map(e=>'<tr><td>Q'+esc(e.quarter||'')+' '+esc(e.year||'')+'</td><td>'+esc(e.contractName||'')+'</td><td>'+esc(e.score||'')+'/25</td><td>'+esc(e.pct||'')+'%</td><td>'+esc(e.decision||'')+'</td><td>'+esc(e.fms||'')+'</td><td>'+esc(e.joint||'')+'</td><td>'+esc(e.date||(e._ts||'').slice(0,10))+'</td></tr>').join('')
+        + '</tbody></table>';
+      // detail cards for strengths/issues/actions
+      body += '<h3>C. Evaluation Detail</h3>';
+      body += evals.map(e=>'<table style="margin-bottom:10px;"><tr><th style="width:150px;">'+esc(e.contractName||'')+'</th><td>Q'+esc(e.quarter||'')+' '+esc(e.year||'')+' · Score '+esc(e.score||'')+'/25 ('+esc(e.pct||'')+'%) · Decision: '+esc(e.decision||'')+'</td></tr>'
+        + '<tr><th>Strengths</th><td>'+esc(e.strengths||'—')+'</td></tr>'
+        + '<tr><th>Issues</th><td>'+esc(e.issues||'—')+'</td></tr>'
+        + '<tr><th>Corrective actions</th><td>'+esc(e.actions||'—')+'</td></tr></table>').join('');
+    } else {
+      body += '<p style="font-size:12px;color:#555;">No quarterly evaluations recorded yet.</p>';
+    }
+    reportShell('Contract Review — Quarterly Evaluation Report (CBAHI FMS)',
+      contracts.length+' contracted services · '+evals.length+' evaluations',
+      body, 'Contract_Review_Report_'+((typeof fmsLocalToday==='function')?fmsLocalToday():'')+'.html');
+    toast('✓ Contract report generated — open it and Print / Save as PDF','#10b981',4000);
+  };
+
+  // ─────────────────────────── RISK REGISTER EXPORT (was undefined) ───────────────────────────
+  window.exportRiskRegister = function(mode){
+    const risks = (typeof getAllRisks==='function') ? getAllRisks() : (ld('risk_register')||[]);
+    const sc = r => (typeof riskScore==='function') ? riskScore(r) : ((r.likelihood||1)*(r.consequence||1));
+    const lv = s => (typeof riskLevel==='function') ? riskLevel(s) : (s>=15?'Extreme':s>=10?'High':s>=5?'Medium':'Low');
+    if (mode==='report') {
+      const color = s => s>=15?'#b91c1c':s>=10?'#c2410c':s>=5?'#b45309':'#0a7c2f';
+      const body = '<h3>Departmental Risk Register — Heat-Map Scores</h3>'
+        + '<table><thead><tr><th>Dept</th><th>Hazard</th><th>Category</th><th>L</th><th>C</th><th>Score</th><th>Level</th><th>Controls</th><th>Actions</th><th>Owner</th><th>Review</th></tr></thead><tbody>'
+        + risks.map(r=>{const s=sc(r);return '<tr><td>'+esc(r.dept)+'</td><td>'+esc(r.hazard)+'</td><td>'+esc(r.cat||'—')+'</td><td>'+esc(r.likelihood)+'</td><td>'+esc(r.consequence)+'</td>'
+          +'<td style="font-weight:700;color:'+color(s)+';">'+s+'</td><td style="font-weight:700;color:'+color(s)+';">'+esc(lv(s))+'</td>'
+          +'<td>'+esc(r.controls||'—')+'</td><td>'+esc(r.actions||'—')+'</td><td>'+esc(r.owner||'—')+'</td><td>'+esc(r.review||'—')+'</td></tr>';}).join('')
+        + '</tbody></table>';
+      reportShell('Risk Assessment — Departmental Risk Register (FMS)',
+        risks.length+' risk entries', body, 'Risk_Register_Report_'+((typeof fmsLocalToday==='function')?fmsLocalToday():'')+'.html');
+      toast('✓ Risk register report generated — open it and Print / Save as PDF','#10b981',4000);
+      return;
+    }
+    const rows = [['Department','Hazard','Category','Likelihood','Consequence','Score','Level','Controls','Actions','Owner','Review Date']];
+    risks.forEach(r=>{const s=sc(r);rows.push([r.dept,r.hazard,r.cat||'',r.likelihood,r.consequence,s,lv(s),r.controls||'',r.actions||'',r.owner||'',r.review||'']);});
+    const ext = risks.filter(r=>sc(r)>=15).length, high = risks.filter(r=>{const s=sc(r);return s>=10&&s<15;}).length;
+    rows.push([]); rows.push(['Total risks',risks.length,'Extreme',ext,'High',high]);
+    csvDL(rows, 'Risk_Register_'+((typeof fmsLocalToday==='function')?fmsLocalToday():'')+'.csv');
+    toast('✓ Risk register exported (CSV)','#10b981');
+  };
+
+  // upgrade the Risk register Export button into CSV + Report (best-effort, once)
+  function upgradeRiskBtn(){
+    try {
+      const btn = document.querySelector('#risk-register .ch button[onclick*="exportRiskRegister"]');
+      if (btn && !btn.dataset.up) {
+        btn.dataset.up = '1';
+        btn.setAttribute('onclick', "exportRiskRegister('csv')");
+        btn.textContent = '📥 CSV';
+        const rep = document.createElement('button');
+        rep.className = 'btn bo'; rep.style.cssText = 'padding:4px 12px;font-size:10px;margin-right:6px;';
+        rep.setAttribute('onclick', "exportRiskRegister('report')");
+        rep.textContent = '📄 Report';
+        btn.parentNode.insertBefore(rep, btn);
+      }
+    } catch(e){}
+  }
+
+  // ─────────────────────────── INIT ───────────────────────────
+  function init(){
+    try { if (typeof renderESRTable==='function') renderESRTable(); } catch(e){}
+    upgradeRiskBtn();
+  }
+  if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', ()=>setTimeout(init,300));
+  else setTimeout(init,300);
+  // re-run button upgrade + esr render when navigating (gp) to those pages
+  if (typeof window.gp==='function') {
+    const _gp = window.gp;
+    window.gp = function(p){ const r=_gp.apply(this,arguments);
+      try { if(p==='safety'){ setTimeout(renderESRTable,120); } if(p==='risk'){ setTimeout(upgradeRiskBtn,120); } } catch(e){}
+      return r; };
+  }
+})();
+</script>
+
 </body>
 </html>
