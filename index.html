@@ -17258,7 +17258,56 @@ function pmgTab(tab, btn) {
   }
 }
 
+// v1605: compute Next Due from the completed date + frequency.
+// (Note: "Semi-Annual" contains "annual", so 'semi' is tested before 'annual'.)
+function pmgCalcNextDue(date, freq) {
+  if (!date) return '';
+  const d = new Date(date + 'T00:00:00');
+  if (isNaN(d)) return '';
+  const f = String(freq || '').toLowerCase();
+  if      (f.indexOf('month')   !== -1) d.setMonth(d.getMonth() + 1);
+  else if (f.indexOf('quarter') !== -1) d.setMonth(d.getMonth() + 3);
+  else if (f.indexOf('semi')    !== -1) d.setMonth(d.getMonth() + 6);
+  else if (f.indexOf('annual')  !== -1 || f.indexOf('year') !== -1) d.setFullYear(d.getFullYear() + 1);
+  else d.setMonth(d.getMonth() + 3); // default = quarterly
+  return d.toISOString().slice(0, 10);
+}
+
+// Keep the modal's Next Due in sync when the date or frequency changes.
+function pmgWireDueSync() {
+  const df = document.getElementById('pmg-f-date');
+  const ff = document.getElementById('pmg-f-freq');
+  const nf = document.getElementById('pmg-f-nextdue');
+  if (!df || !ff || !nf) return null;
+  const sync = function(){ if (df.value) nf.value = pmgCalcNextDue(df.value, ff.value); };
+  df.onchange = sync; ff.onchange = sync;
+  return sync;
+}
+
+// One-time repair: older records were saved with Next Due = Date Completed (no
+// frequency offset), so every one read as "Overdue" from day one. Recompute those
+// from the frequency. Runs once per device; re-saves so the fix syncs to the DB.
+function pmgBackfillDueDates() {
+  try {
+    if (localStorage.getItem('obeid3_pmg_nextdue_fixed_v1')) return;
+    let anyChange = false;
+    PMG_COMPS.forEach(comp => {
+      const recs = pmgGetRecords(comp); let compChanged = false;
+      recs.forEach(r => {
+        if (r && r.date && (!r.nextDue || r.nextDue === r.date)) {
+          const nd = pmgCalcNextDue(r.date, r.freq);
+          if (nd && nd !== r.nextDue) { r.nextDue = nd; compChanged = true; anyChange = true; }
+        }
+      });
+      if (compChanged) pmgSaveRecords(comp, recs); // persists locally + syncs to DB
+    });
+    localStorage.setItem('obeid3_pmg_nextdue_fixed_v1', '1');
+    if (anyChange) console.log('PMG: back-filled Next Due dates from frequency.');
+  } catch(e) { console.warn('pmgBackfillDueDates:', e && e.message); }
+}
+
 function pmgRenderAll() {
+  pmgBackfillDueDates();
   PMG_COMPS.forEach(comp => pmgRenderComp(comp));
   pmgUpdateSummary();
 }
@@ -17273,6 +17322,18 @@ function pmgGetStatus(nextDue) {
   return {label:'✅ Valid', cls:'chip chip-green'};
 }
 
+// The _id set of the most-recent record for each sub-component (by Date Completed).
+// Older records for a sub-component that has since been re-checked are "superseded"
+// and shouldn't be flagged overdue — the newest check is what governs compliance.
+function pmgLatestIds(recs) {
+  const latest = {};
+  recs.forEach(r => {
+    const c = r.component || '';
+    if (!latest[c] || (r.date||'') > (latest[c].date||'')) latest[c] = r;
+  });
+  return new Set(Object.keys(latest).map(c => latest[c]._id));
+}
+
 function pmgRenderComp(comp) {
   const tbody = document.getElementById('pmg-body-'+comp); if (!tbody) return;
   const recs = pmgGetRecords(comp);
@@ -17281,8 +17342,10 @@ function pmgRenderComp(comp) {
     return;
   }
   const sorted = [...recs].sort((a,b) => (b.date||'') > (a.date||'') ? 1 : -1);
+  const latestIds = pmgLatestIds(recs);
   tbody.innerHTML = sorted.map(r => {
-    const st = pmgGetStatus(r.nextDue);
+    const st = latestIds.has(r._id) ? pmgGetStatus(r.nextDue)
+                                    : {label:'✓ Superseded', cls:'chip chip-blue'};
     return `<tr>
       <td style="white-space:nowrap;font-weight:600;">${r.date||'—'}</td>
       <td style="font-size:11px;">${r.component||'—'}</td>
@@ -17306,8 +17369,10 @@ function pmgUpdateSummary() {
     const recs = pmgGetRecords(comp);
     const el = document.getElementById('pmg-sum-'+comp); if (!el) return;
     if (!recs.length) { el.textContent = 'No records'; return; }
-    const overdue = recs.filter(r => r.nextDue && new Date(r.nextDue) < new Date()).length;
-    const dueSoon = recs.filter(r => {
+    const latestIds = pmgLatestIds(recs);
+    const latest = recs.filter(r => latestIds.has(r._id));
+    const overdue = latest.filter(r => r.nextDue && new Date(r.nextDue) < new Date()).length;
+    const dueSoon = latest.filter(r => {
       if (!r.nextDue) return false;
       const diff = Math.round((new Date(r.nextDue)-new Date())/(1000*60*60*24));
       return diff >= 0 && diff <= 30;
@@ -17330,6 +17395,7 @@ function pmgAdd(comp) {
   document.getElementById('pmg-f-contractor').value = '';
   document.getElementById('pmg-f-nextdue').value = '';
   document.getElementById('pmg-f-date').value = new Date().toISOString().slice(0,10);
+  const _sync = pmgWireDueSync(); if (_sync) _sync();   // prefill Next Due from date + frequency
   document.getElementById('pmg-modal').style.display = 'block';
 }
 
@@ -17348,6 +17414,7 @@ function pmgEdit(comp, id) {
   document.getElementById('pmg-f-cert').value = r.cert||'';
   document.getElementById('pmg-f-nextdue').value = r.nextDue||'';
   document.getElementById('pmg-f-notes').value = r.notes||'';
+  pmgWireDueSync();   // recompute Next Due if the user changes date/frequency
   document.getElementById('pmg-modal').style.display = 'block';
 }
 
@@ -17358,15 +17425,19 @@ function pmgSave() {
   const date = document.getElementById('pmg-f-date').value;
   if (!date) { toast('Please enter the date completed','#f59e0b'); return; }
   const editId = document.getElementById('pmg-edit-id').value;
+  const freqVal = document.getElementById('pmg-f-freq').value;
+  let nextDueVal = document.getElementById('pmg-f-nextdue').value;
+  // If Next Due is blank, or was left equal to the completed date, derive it from frequency.
+  if (!nextDueVal || nextDueVal === date) nextDueVal = pmgCalcNextDue(date, freqVal);
   const rec = {
     _id: editId || ('pmg_'+comp+'_'+Date.now()),
     date, component: document.getElementById('pmg-f-component').value,
-    freq: document.getElementById('pmg-f-freq').value,
+    freq: freqVal,
     contractor: document.getElementById('pmg-f-contractor').value,
     findings: document.getElementById('pmg-f-findings').value,
     action: document.getElementById('pmg-f-action').value,
     cert: document.getElementById('pmg-f-cert').value,
-    nextDue: document.getElementById('pmg-f-nextdue').value,
+    nextDue: nextDueVal,
     notes: document.getElementById('pmg-f-notes').value,
     _ts: new Date().toISOString(), _by: (window.CU?.name||'Director')
   };
