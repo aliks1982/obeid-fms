@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260814-1605';
+  var v = '20260816-1606';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260814-1605">
+<meta name="app-version" content="20260816-1606">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -2264,6 +2264,14 @@ if ('caches' in window) {
         </select>
       </div>
       <div id="fa-insp-summary" style="font-size:11px;padding:8px 14px;background:var(--s2);border-radius:7px;border:1px solid var(--bd);flex:1;">—</div>
+    </div>
+
+    <!-- Quick-fill + location management toolbar -->
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+      <button class="btn bp" style="font-size:11px;padding:6px 12px;" onclick="faApplyAll('pass')">✅ Apply Pass/Done to All</button>
+      <button class="btn bo" style="font-size:11px;padding:6px 12px;" onclick="faApplyAll('reset')">🔄 Reset All</button>
+      <span style="font-size:10px;color:var(--mu);">Applies to the rows shown for the selected floor. Then just change the rare faults.</span>
+      <button class="btn bo" style="font-size:11px;padding:6px 12px;margin-left:auto;" onclick="faLocEditorOpen()">✏ Edit Locations / Detectors</button>
     </div>
 
     <!-- Scrollable inspection table -->
@@ -6510,7 +6518,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260814-1605';
+const APP_VERSION = '20260816-1606';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -6845,6 +6853,18 @@ async function dbLoadAll() {
       if (!Array.isArray(recs)) recs = [];
       localStorage.setItem(PX + 'cyl_test', JSON.stringify(recs));
       console.log('Cylinder tests (FMS 32.9): restored ' + recs.length + ' records from DB');
+    }
+
+    // ── v1606: Restore editable Fire-Alarm location list (fa_floors) — FMS 21.1/21.2 ──
+    if (j.data && Array.isArray(j.data.fa_floors) && j.data.fa_floors.length) {
+      const faRow = j.data.fa_floors.find(r => r && (r._id === 'fa_floors_all' || r.data != null)) || j.data.fa_floors[0];
+      let list = faRow && faRow.data;
+      if (typeof list === 'string') { try { list = JSON.parse(list); } catch(e) { list = null; } }
+      if (Array.isArray(list) && list.length) {
+        localStorage.setItem(PX + 'fa_floors', JSON.stringify(list));
+        try { if (typeof faRebuildTable === 'function') faRebuildTable(); } catch(e) {}
+        console.log('Fire-alarm locations (FMS 21.1): restored ' + list.length + ' floors from DB');
+      }
     }
 
     // ── Restore KPI entries from DB into per-KPI localStorage keys ──
@@ -15974,11 +15994,12 @@ const _cleanSel = () => _repSel(['','✅ Done','⚠️ Partial','❌ Not Done'])
 function repBuildFATable() {
   const body = document.getElementById('fa-floors-body');
   if (!body) return;
+  if (typeof faRebuildFloorSelector === 'function') faRebuildFloorSelector();
   if (body._built) return; // Already built — preserve entered values
   body._built = true;
   let html = '';
   let sn = 0;
-  FA_FLOORS_DATA.forEach(([floor, loop, rooms]) => {
+  faFloors().forEach(([floor, loop, rooms]) => {
     const total = rooms.reduce((a,[,c])=>a+c,0);
     html += `<tr class="rep-floor-hdr"><td colspan="10" style="background:var(--ac);color:#fff;font-weight:700;font-size:10px;padding:6px 10px;letter-spacing:.3px;">${floor} &nbsp;·&nbsp; Loop ${loop} &nbsp;·&nbsp; ${rooms.length} locations &nbsp;·&nbsp; ${total} detectors</td></tr>`;
     rooms.forEach(([loc, count]) => {
@@ -21509,6 +21530,198 @@ if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,a
       try { if(p==='safety'){ setTimeout(renderESRTable,120); } if(p==='risk'){ setTimeout(upgradeRiskBtn,120); } } catch(e){}
       return r; };
   }
+})();
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   v1606 — Fire Alarm Monthly Inspection (FMS 21.1/21.2)
+   • "Apply Pass/Done to All" quick-fill for the visible loop/floor
+   • Editable location/detector list (add · remove · modify · relocate)
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+  'use strict';
+  const PXx = (typeof PX !== 'undefined') ? PX : 'obeid3_';
+
+  // ---- editable master location list (seeded from the hardcoded default) ----
+  window.faFloors = function(){
+    try {
+      const raw = localStorage.getItem(PXx + 'fa_floors');
+      if (raw) { const a = JSON.parse(raw); if (Array.isArray(a) && a.length) return a; }
+    } catch(e){}
+    return (typeof FA_FLOORS_DATA !== 'undefined') ? FA_FLOORS_DATA : [];
+  };
+  window.faSaveFloors = function(list){
+    localStorage.setItem(PXx + 'fa_floors', JSON.stringify(list));
+    try { dbWrite('fa_floors', { _id:'fa_floors_all', data:list, _ts:new Date().toISOString() }); } catch(e){}
+  };
+  // floor → loop map from the current list (used when relocating)
+  function faFloorLoopMap(){
+    const m = {}; const order = [];
+    faFloors().forEach(([floor, loop]) => { if(!(floor in m)){ m[floor]=loop; order.push(floor); } });
+    return { map:m, order:order };
+  }
+
+  window.faRebuildFloorSelector = function(){
+    const sel = document.getElementById('fa-floor-selector'); if(!sel) return;
+    const cur = sel.value;
+    let html = '<option value="all">📋 All Floors (Overview)</option>';
+    faFloors().forEach(([floor, loop, rooms]) => {
+      const det = (rooms||[]).reduce((a,[,c])=>a+(parseInt(c)||0),0);
+      html += '<option value="'+floor+'">'+floor+' — Loop '+loop+' ('+det+' det.)</option>';
+    });
+    sel.innerHTML = html;
+    if ([...sel.options].some(o=>o.value===cur)) sel.value = cur;
+  };
+
+  window.faRebuildTable = function(){
+    const body = document.getElementById('fa-floors-body'); if(!body) return;
+    body._built = false;
+    if (typeof repBuildFATable === 'function') repBuildFATable();
+    const sel = document.getElementById('fa-floor-selector');
+    if (sel && typeof repFilterFloor === 'function') repFilterFloor(sel.value);
+  };
+
+  // ─────────────────────────── APPLY TO ALL ───────────────────────────
+  // Sets every task cell in the currently-VISIBLE rows to its positive value
+  // (Cleaning → Done, checks → Pass, Status → Pass, Faults → 0), or clears them.
+  window.faApplyAll = function(mode){
+    const floorSel = document.getElementById('fa-floor-selector');
+    const activeFloor = floorSel ? floorSel.value : 'all';
+    const rows = document.querySelectorAll('#fa-floors-body tr[data-floor]');
+    let n = 0;
+    rows.forEach(tr => {
+      if (activeFloor !== 'all' && tr.dataset.floor !== activeFloor) return;
+      if (tr.style.display === 'none') return;              // visible rows only
+      const sels = tr.querySelectorAll('select');
+      const faults = tr.querySelector('input[type=number]');
+      if (mode === 'pass') {
+        if (sels[0]) sels[0].value = '✅ Done';              // Cleaning
+        for (let i=1; i<=5; i++) { if (sels[i]) sels[i].value = '✅ Pass'; } // checks 2–6
+        if (sels[6]) sels[6].value = 'pass';                 // Status
+        if (faults) faults.value = '0';
+      } else if (mode === 'reset') {
+        sels.forEach(s => s.value = '');
+        if (faults) faults.value = '0';
+      }
+      n++;
+    });
+    if (typeof repUpdateSummary === 'function') repUpdateSummary();
+    if (typeof toast === 'function') {
+      toast(mode === 'pass' ? ('✅ Marked '+n+' locations as Pass/Done — change any faults manually')
+                            : ('🔄 Cleared '+n+' locations'), '#10b981', 3500);
+    }
+  };
+
+  // ─────────────────────────── LOCATION EDITOR ───────────────────────────
+  const IN = 'background:var(--s2,#0f1b2e);border:1px solid var(--bd,#294056);border-radius:6px;padding:6px 8px;color:var(--tx,#e6eef7);font-size:12px;box-sizing:border-box;';
+
+  function ensureFaModal(){
+    let ov = document.getElementById('fa-loc-ov');
+    if (ov) return ov;
+    ov = document.createElement('div');
+    ov.id = 'fa-loc-ov';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:9999;display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 12px;';
+    ov.innerHTML =
+      '<div style="background:var(--sf,#12203a);border:1px solid var(--bd,#294056);border-radius:14px;max-width:900px;width:100%;margin:auto;box-shadow:0 20px 60px rgba(0,0,0,.5);">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--bd,#294056);position:sticky;top:0;background:var(--sf,#12203a);border-radius:14px 14px 0 0;">'
+      +   '<div style="font-family:\'Rajdhani\',sans-serif;font-size:18px;font-weight:700;color:var(--tx,#e6eef7);">✏ Fire-Alarm Locations &amp; Detectors</div>'
+      +   '<button class="btn bo" style="font-size:11px;padding:5px 12px;" onclick="faLocEditorClose()">✕ Close</button>'
+      + '</div>'
+      + '<div style="padding:12px 18px;">'
+      +   '<div style="font-size:11px;color:var(--mu,#8fa6bd);margin-bottom:10px;">Add, rename, change the detector count, relocate a point to another floor, or delete it. '
+      +   'Saving rebuilds the checklist (in-progress entries are cleared, so edit the list before you start an inspection).</div>'
+      +   '<div style="max-height:56vh;overflow:auto;border:1px solid var(--bd,#294056);border-radius:8px;">'
+      +     '<table style="width:100%;border-collapse:collapse;font-size:12px;">'
+      +       '<thead><tr style="position:sticky;top:0;background:var(--ac,#1e3a5c);color:#fff;">'
+      +         '<th style="text-align:left;padding:7px 8px;">Floor</th><th style="text-align:left;padding:7px 8px;">Location</th>'
+      +         '<th style="padding:7px 8px;width:90px;">Detectors</th><th style="padding:7px 8px;width:44px;"></th></tr></thead>'
+      +       '<tbody id="fa-loc-rows"></tbody>'
+      +     '</table>'
+      +   '</div>'
+      +   '<div style="margin-top:10px;"><button class="btn bp" style="font-size:11px;padding:6px 12px;" onclick="faLocAddRow()">+ Add Location</button></div>'
+      + '</div>'
+      + '<div style="display:flex;gap:10px;justify-content:space-between;align-items:center;padding:14px 18px;border-top:1px solid var(--bd,#294056);position:sticky;bottom:0;background:var(--sf,#12203a);border-radius:0 0 14px 14px;">'
+      +   '<button class="btn br" style="font-size:11px;padding:6px 12px;" onclick="faLocResetDefault()">↺ Restore original list</button>'
+      +   '<div style="display:flex;gap:10px;">'
+      +     '<button class="btn bo" onclick="faLocEditorClose()">Cancel</button>'
+      +     '<button class="btn bg" onclick="faLocEditorSave()">✓ Save &amp; Rebuild</button>'
+      +   '</div>'
+      + '</div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('mousedown', e => { if (e.target === ov) faLocEditorClose(); });
+    return ov;
+  }
+
+  function faFloorOptions(selected){
+    const { order } = faFloorLoopMap();
+    return order.map(f => '<option'+(f===selected?' selected':'')+'>'+f+'</option>').join('');
+  }
+  function faLocRowHtml(floor, loc, count){
+    return '<tr class="fa-loc-row" style="border-bottom:1px solid var(--bd,#294056);">'
+      + '<td style="padding:4px 6px;"><select class="fl-floor" style="'+IN+'width:100%;">'+faFloorOptions(floor)+'</select></td>'
+      + '<td style="padding:4px 6px;"><input class="fl-loc" style="'+IN+'width:100%;" value="'+String(loc==null?'':loc).replace(/"/g,'&quot;')+'"></td>'
+      + '<td style="padding:4px 6px;"><input class="fl-count" type="number" min="0" style="'+IN+'width:100%;text-align:center;" value="'+(parseInt(count)||0)+'"></td>'
+      + '<td style="padding:4px 6px;text-align:center;"><button class="btn br" style="font-size:10px;padding:4px 8px;" onclick="this.closest(\'tr\').remove()">✕</button></td>'
+      + '</tr>';
+  }
+
+  window.faLocEditorOpen = function(){
+    ensureFaModal();
+    const rowsBox = document.getElementById('fa-loc-rows');
+    let html = '';
+    faFloors().forEach(([floor, loop, rooms]) => {
+      (rooms||[]).forEach(([loc, count]) => { html += faLocRowHtml(floor, loc, count); });
+    });
+    rowsBox.innerHTML = html;
+    document.getElementById('fa-loc-ov').style.display = 'flex';
+  };
+  window.faLocAddRow = function(){
+    const rowsBox = document.getElementById('fa-loc-rows'); if(!rowsBox) return;
+    const { order } = faFloorLoopMap();
+    rowsBox.insertAdjacentHTML('beforeend', faLocRowHtml(order[0]||'', '', 1));
+    const last = rowsBox.querySelector('tr:last-child .fl-loc'); if(last) last.focus();
+  };
+  window.faLocEditorClose = function(){ const ov=document.getElementById('fa-loc-ov'); if(ov) ov.style.display='none'; };
+
+  window.faLocResetDefault = function(){
+    if (!confirm('Restore the original built-in location list? Your custom additions/edits will be replaced.')) return;
+    try { localStorage.removeItem(PXx + 'fa_floors'); } catch(e){}
+    faLocEditorOpen();       // reload rows from default
+    if (typeof toast === 'function') toast('Original list restored in the editor — press Save to apply', '#f59e0b', 3500);
+  };
+
+  window.faLocEditorSave = function(){
+    const rows = Array.from(document.querySelectorAll('#fa-loc-rows .fa-loc-row'));
+    const { map, order } = faFloorLoopMap();
+    // group by floor, preserving original floor order
+    const grouped = {}; order.forEach(f => grouped[f] = []);
+    rows.forEach(tr => {
+      const floor = tr.querySelector('.fl-floor').value;
+      const loc   = tr.querySelector('.fl-loc').value.trim();
+      const count = parseInt(tr.querySelector('.fl-count').value) || 0;
+      if (!loc) return;
+      if (!grouped[floor]) { grouped[floor] = []; order.push(floor); }
+      grouped[floor].push([loc, count]);
+    });
+    const out = order
+      .filter(f => grouped[f] && grouped[f].length)
+      .map(f => [f, (map[f] != null ? map[f] : 1), grouped[f]]);
+    if (!out.length) { if(typeof toast==='function') toast('Add at least one location before saving','#f59e0b'); return; }
+    faSaveFloors(out);
+    faLocEditorClose();
+    faRebuildTable();
+    if (typeof toast === 'function') {
+      const totalLoc = out.reduce((a,[,,r])=>a+r.length,0);
+      const totalDet = out.reduce((a,[,,r])=>a+r.reduce((s,[,c])=>s+(parseInt(c)||0),0),0);
+      toast('✓ Saved '+totalLoc+' locations · '+totalDet+' detectors', '#10b981', 3500);
+    }
+  };
+
+  // keep the floor selector fresh once the DOM is ready
+  function initFa(){ try { if (typeof faRebuildFloorSelector === 'function') faRebuildFloorSelector(); } catch(e){} }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(initFa, 400));
+  else setTimeout(initFa, 400);
 })();
 </script>
 
