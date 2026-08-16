@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260812-1604';
+  var v = '20260814-1605';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260812-1604">
+<meta name="app-version" content="20260814-1605">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6510,7 +6510,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260812-1604';
+const APP_VERSION = '20260814-1605';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -6799,6 +6799,52 @@ async function dbLoadAll() {
         const loxEl = document.getElementById('mg-o2calc');
         if (loxEl && loxEl.style.display !== 'none') setTimeout(loxRenderDashboard, 200);
       }
+    }
+
+    // ── v1605: Restore PMG Preventive Maintenance (pmg_ppm) into per-component keys — FMS 32.1 ──
+    // The tab reads obeid3_pmg_<comp> (lox/air/manifold/suction); the DB keeps ONE row per
+    // component ({comp, records}). Without this unwrap, entries saved on one PC never
+    // re-hydrate on another — they load into obeid3_pmg_ppm, which no screen reads.
+    if (j.data && Array.isArray(j.data.pmg_ppm) && j.data.pmg_ppm.length) {
+      let pmgRestored = 0;
+      j.data.pmg_ppm.forEach(row => {
+        if (!row) return;
+        let comp = row.comp || (typeof row._id === 'string' ? row._id.replace(/^pmg_/, '') : '');
+        if (!comp) return;
+        let recs = row.records;
+        if (typeof recs === 'string') { try { recs = JSON.parse(recs); } catch(e) { recs = []; } }
+        if (!Array.isArray(recs)) recs = [];
+        localStorage.setItem(PX + 'pmg_' + comp, JSON.stringify(recs));
+        pmgRestored += recs.length;
+      });
+      console.log('PMG PPM (FMS 32.1): restored ' + pmgRestored + ' records from DB');
+      try { if (typeof pmgRenderAll === 'function') pmgRenderAll(); } catch(e) {}
+    }
+
+    // ── v1605: Restore PMG Annexes (pmg_annex) into per-type keys — FMS 32.2 ──
+    if (j.data && Array.isArray(j.data.pmg_annex) && j.data.pmg_annex.length) {
+      let annexRestored = 0;
+      j.data.pmg_annex.forEach(row => {
+        if (!row) return;
+        let type = row.type || (typeof row._id === 'string' ? row._id.replace(/^pmg_annex_/, '') : '');
+        if (!type) return;
+        let recs = row.records;
+        if (typeof recs === 'string') { try { recs = JSON.parse(recs); } catch(e) { recs = []; } }
+        if (!Array.isArray(recs)) recs = [];
+        localStorage.setItem(PX + 'pmg_annex_' + type, JSON.stringify(recs));
+        annexRestored += recs.length;
+      });
+      console.log('PMG Annexes (FMS 32.2): restored ' + annexRestored + ' records from DB');
+    }
+
+    // ── v1605: Restore Cylinder Hydrostatic Tests (cyl_test) into its key — FMS 32.9 ──
+    if (j.data && Array.isArray(j.data.cyl_test) && j.data.cyl_test.length) {
+      const cylRow = j.data.cyl_test.find(r => r && (r._id === 'cyl_test_all' || r.records != null)) || j.data.cyl_test[0];
+      let recs = cylRow && cylRow.records;
+      if (typeof recs === 'string') { try { recs = JSON.parse(recs); } catch(e) { recs = []; } }
+      if (!Array.isArray(recs)) recs = [];
+      localStorage.setItem(PX + 'cyl_test', JSON.stringify(recs));
+      console.log('Cylinder tests (FMS 32.9): restored ' + recs.length + ' records from DB');
     }
 
     // ── Restore KPI entries from DB into per-KPI localStorage keys ──
