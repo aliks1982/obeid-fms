@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1608';
+  var v = '20260816-1609';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,13 +27,15 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1608">
+<meta name="app-version" content="20260816-1609">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,opsz,wght@0,6..18,400;0,6..18,500;0,6..18,600;0,6..18,700;0,6..18,800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════════════════════════════
@@ -677,6 +679,8 @@ if ('caches' in window) {
     <div class="ni" onclick="gp('ach')" id="n-ach"><span class="ni-ic">🌬</span>ACH / Room Pressure (IPC)</div>
     <div class="ni" onclick="gp('temperature')" id="n-temperature"><span class="ni-ic">🌡</span>Temperature Log (IPC)</div>
     <div class="ni" onclick="gp('census')" id="n-census"><span class="ni-ic">🛏</span>Nursing Census</div>
+    <div class="ni" onclick="gp('ipcstore')" id="n-ipcstore"><span class="ni-ic">🧴</span>IPC Store (Consumables)</div>
+    <div class="ni" onclick="gp('ipcnurse')" id="n-ipcnurse"><span class="ni-ic">🧤</span>Nurse Dispensing</div>
     <div class="nsc">FMS Standards</div>
     <div class="ni" onclick="gp('medgas')" id="n-medgas"><span class="ni-ic">🫧</span>Medical Gas (FMS.32)</div>
     <div class="ni" onclick="gp('pmg')" id="n-pmg"><span class="ni-ic">📋</span>PMG PPM (FMS.32.1)</div>
@@ -3576,6 +3580,36 @@ if ('caches' in window) {
     </div>
   </div>
   <div id="census-root"></div>
+</div>
+
+<!-- ===== IPC STORE (CONSUMABLES / PAR) ===== -->
+<div class="pg" id="page-ipcstore">
+  <div class="ph" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
+    <div><h1>🧴 IPC Store — Consumables &amp; PAR Control</h1><p>Main store &amp; per-station inventory · dispensing ledger · PAR (MOH) · reorder · QR labels</p></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn bo" style="font-size:11px;padding:8px 14px;" onclick="ipcExportInventory()">📊 Export Inventory (Excel)</button>
+    </div>
+  </div>
+  <div class="tb">
+    <button class="tbtn active" onclick="ipcTab('main',this)">📦 Main Stock</button>
+    <button class="tbtn" onclick="ipcTab('issue',this)">📤 Dispense to Station</button>
+    <button class="tbtn" onclick="ipcTab('stations',this)">🏥 Station Inventories</button>
+    <button class="tbtn" onclick="ipcTab('par',this)">📐 PAR &amp; Reorder</button>
+    <button class="tbtn" onclick="ipcTab('items',this)">🏷 Items &amp; QR</button>
+    <button class="tbtn" onclick="ipcTab('kpi',this)">📈 Analysis / KPIs</button>
+  </div>
+  <div id="ipcstore-main"></div>
+  <div id="ipcstore-issue" style="display:none;"></div>
+  <div id="ipcstore-stations" style="display:none;"></div>
+  <div id="ipcstore-par" style="display:none;"></div>
+  <div id="ipcstore-items" style="display:none;"></div>
+  <div id="ipcstore-kpi" style="display:none;"></div>
+</div>
+
+<!-- ===== NURSE DISPENSING ===== -->
+<div class="pg" id="page-ipcnurse">
+  <div class="ph"><div><h1>🧤 Nurse Dispensing — Station Consumables</h1><p>Scan or pick a consumable to record usage from your station · request restock</p></div></div>
+  <div id="ipcnurse-root"></div>
 </div>
 
 <!-- ===== UTILITIES ===== -->
@@ -6535,7 +6569,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1608';
+const APP_VERSION = '20260816-1609';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -6870,6 +6904,23 @@ async function dbLoadAll() {
       if (!Array.isArray(recs)) recs = [];
       localStorage.setItem(PX + 'cyl_test', JSON.stringify(recs));
       console.log('Cylinder tests (FMS 32.9): restored ' + recs.length + ' records from DB');
+    }
+
+    // ── v1609: Restore IPC Consumables / PAR system ──
+    if (j.data) {
+      const _single = (key) => {
+        const arr = j.data[key];
+        if (Array.isArray(arr) && arr.length) {
+          const row = arr.find(r => r && r.data != null) || arr[0];
+          let d = row && row.data;
+          if (typeof d === 'string') { try { d = JSON.parse(d); } catch(e){ d = null; } }
+          if (d != null) sv(key, d);
+        }
+      };
+      _single('ipc_items'); _single('ipc_stations'); _single('ipc_par_cfg');
+      if (Array.isArray(j.data.ipc_txns))     sv('ipc_txns',     j.data.ipc_txns.filter(r => r && r.id && r.type));
+      if (Array.isArray(j.data.ipc_reorders)) sv('ipc_reorders', j.data.ipc_reorders.filter(r => r && r.id));
+      try { if (typeof window.ipcInvalidate === 'function') window.ipcInvalidate(); } catch(e){}
     }
 
     // ── v1608: Restore Nursing Daily Census (census_daily rows + census_beds config) ──
@@ -7469,7 +7520,7 @@ function setDate(){document.getElementById('tbDate').textContent=new Date().toLo
 function prefillDates(){const t=new Date().toISOString().split('T')[0];document.querySelectorAll('input[type=date]').forEach(e=>{if(!e.value)e.value=t;});const tm=new Date().toTimeString().slice(0,5);document.querySelectorAll('input[type=time]').forEach(e=>{if(!e.value)e.value=tm;});}
 
 // ===== NAV =====
-const PTITLES={dash:'⬡ Command Center',kpi:'📊 KPI Dashboard',cbahi:'✓ CBAHI Tracker',mms:'🔩 Maintenance Analytics',reports:'📈 Reports & Analysis',safety:'🛡 Safety — FMS.1.1.1',security:'🔒 Security — FMS.1.1.2',hazmat:'☣ Hazmat — FMS.1.1.3',emergency:'🚨 Emergency — FMS.1.1.4/5',fire:'🔥 Fire Safety — FMS.1.1.6',equip:'⚕ Medical Equipment — FMS.1.1.7',utils:'⚡ Utilities — FMS.1.1.8',medgas:'🫧 Medical Gas — FMS.32',radiation:'☢ Radiation — FMS.9',wo:'🔧 Work Orders',ckpi:'⚙ Custom KPIs',docs:'📁 Documents',pms:'📊 FMS Performance Sheet',pmg:'📋 PMG Preventive Maintenance — FMS 32.1',census:'🛏 Nursing Department Daily Census'};
+const PTITLES={dash:'⬡ Command Center',kpi:'📊 KPI Dashboard',cbahi:'✓ CBAHI Tracker',mms:'🔩 Maintenance Analytics',reports:'📈 Reports & Analysis',safety:'🛡 Safety — FMS.1.1.1',security:'🔒 Security — FMS.1.1.2',hazmat:'☣ Hazmat — FMS.1.1.3',emergency:'🚨 Emergency — FMS.1.1.4/5',fire:'🔥 Fire Safety — FMS.1.1.6',equip:'⚕ Medical Equipment — FMS.1.1.7',utils:'⚡ Utilities — FMS.1.1.8',medgas:'🫧 Medical Gas — FMS.32',radiation:'☢ Radiation — FMS.9',wo:'🔧 Work Orders',ckpi:'⚙ Custom KPIs',docs:'📁 Documents',pms:'📊 FMS Performance Sheet',pmg:'📋 PMG Preventive Maintenance — FMS 32.1',census:'🛏 Nursing Department Daily Census',ipcstore:'🧴 IPC Store — Consumables & PAR Control',ipcnurse:'🧤 Nurse Dispensing — Station Consumables'};
 function gp(id){
   document.querySelectorAll('.pg').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
@@ -7489,6 +7540,8 @@ function gp(id){
   if(id==='ach') setTimeout(function(){try{achInit();}catch(e){}},120);
   if(id==='temperature') setTimeout(function(){try{tmpInit();}catch(e){}},120);
   if(id==='census') setTimeout(function(){try{censusInit();}catch(e){}},80);
+  if(id==='ipcstore') setTimeout(function(){try{ipcStoreInit();}catch(e){}},80);
+  if(id==='ipcnurse') setTimeout(function(){try{ipcNurseInit();}catch(e){}},80);
   if(id==='settings') setTimeout(function(){try{meInit();}catch(e){}},120);
   window.scrollTo(0,0);
 }
@@ -10313,7 +10366,7 @@ const PAGE_ACCESS = {
   biomedical:  ['dash','kpi','equip','medgas','pmg','radiation','wo','cbahi','ckpi','settings','pms'],
   safety:      ['dash','kpi','cbahi','safety','hazmat','emergency','fire','wo','ckpi','docs','settings','pms'],
   security:    ['dash','kpi','security','wo','ckpi','settings'],
-  ipc:         ['ach','temperature','settings'], // IPC: ACH + Temperature Log
+  ipc:         ['ach','temperature','census','ipcstore','ipcnurse','settings'], // IPC: ACH + Temperature + Nursing Census + IPC Consumables
 };
 
 // Page access — which page IDs each role can visit
@@ -10333,6 +10386,7 @@ const ALL_PAGES = [
   ['emergency','🚨 Emergency (1.1.4/5)'],['fire','🔥 Fire Safety (1.1.6)'],['equip','⚕ Med. Equipment (1.1.7)'],
   ['utils','⚡ Utilities (1.1.8)'],['ach','🌬 ACH / Room Pressure'],['temperature','🌡 Temperature Log'],
   ['census','🛏 Nursing Census'],
+  ['ipcstore','🧴 IPC Store (Consumables)'],['ipcnurse','🧤 Nurse Dispensing'],
   ['medgas','🫧 Medical Gas (32)'],['pmg','📋 PMG PPM (32.1)'],['radiation','☢ Radiation (9)'],
   ['wo','🔧 Work Orders'],['ckpi','⚙ Custom KPIs'],['docs','📁 Documents'],
   ['budget','💰 FMS Budget'],['risk','⚠️ Risk Assessment'],['contracts','📃 Contract Review'],
@@ -22467,5 +22521,483 @@ if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,a
 })();
 </script>
 
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   v1609 — IPC Consumables & PAR Control (MOH)
+   Ledger-based two-tier inventory (main store → station), PAR engine,
+   QR generation + camera scanning, consumption-vs-occupancy KPIs.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+  'use strict';
+  const PXx = (typeof PX!=='undefined') ? PX : 'obeid3_';
+  const T = (msg,c,d)=>{ if(typeof toast==='function') toast(msg,c||'#10b981',d||3000); };
+  const num = v => { const n=parseFloat(v); return isNaN(n)?0:n; };
+  const esc = s => String(s==null?'':s).replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  const nowISO = ()=>new Date().toISOString();
+  const uid = p => (p||'T')+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  const C = { ac:'#3b82f6', gd:'#10b981', wn:'#f59e0b', rd:'#ef4444', pu:'#8b5cf6', mu:'#8fa6bd', bd:'#294056' };
+
+  // ───────── seed data ─────────
+  const ITEM_SEED = [
+    ['1860 HEALTH CARE PARTICULATE RESPIRATOR & SURGICAL MASK','box'],
+    ['1860S N95 HEALTH CARE PARTICULATE RESPIRATOR','box'],
+    ['1870 N95 MASK','box'],
+    ['ALCOHOL SOLUTION 70% 1000ML','bottle'],
+    ['ALCOHOL SOLUTION 70% 250ML','bottle'],
+    ['BETADINE SOLUTION 10% 1000ML','bottle'],
+    ['CABLE TIES 203X3.2MM 100PC/PCK','pack'],
+    ['CHLOROHEXIDEN 4% SURGICAL SCRUB 500ML','bottle'],
+    ['DISP. ISOLATION GOWN YELLOW 115CM 25GM','piece'],
+    ['DISP.SURGICAL FACE MASK 3-PLY GREEN TIES /50','box'],
+    ['DISPOSABLE BLADES FOR SURGICAL CLIPPER 9660 3M','box'],
+    ['DISPOSABLE CURTAINE BLUE 7.5X2M','piece'],
+    ['DISPOSABLE LATEX GLOVES POW. FREE (LARGE)','box'],
+    ['DISPOSABLE LATEX GLOVES POW. FREE (MEDIUM)','box'],
+    ['DISPOSABLE LATEX GLOVES POW. FREE (SMALL)','box'],
+    ['FACE SHIELD (WHOLE FACE) M20FS','piece'],
+    ['GALLON YELLOW 20LTR','gallon'],
+    ['HAND SANITIZING GEL SACHET 1LTR','sachet'],
+    ['HYDROGEN PEROXIDE 6% 5LTR','gallon'],
+    ['ISOLATION BAG YELLOW BIG W/ LOGO MICRN-.075,L-90CM,W-50CM','pack'],
+    ['ISOLATION SHARP CONTAINER ROUND 13L','piece'],
+    ['MAXI ROLL 300M 6ROLL/CRTN','carton'],
+    ['OPA SOLUTION 5LTR','gallon'],
+    ['PLASTIC BAG BLACK MICRN-.050,L-93CM,W-50CM','pack'],
+    ['SURFACE DISINFECTANT 750ML F3-188/EXEOL','bottle'],
+    ['SURFACE DISINFECTANT SPRAY 500ML (DI-MD-2160-Q)','bottle'],
+    ['SURGICAL FACE MASK EAR LOOP 50PC/BX (MEDICAL)','box'],
+    ['SURGICAL GOWN STANDARD L W/ HAND TOWEL','piece'],
+    ['SURGICAL GOWN STANDARD XL W/ HAND TOWEL','piece'],
+    ['SURGICAL GOWN STANDARD XXL W/ HAND TOWEL','piece']
+  ];
+  function seedItems(){ return ITEM_SEED.map((r,i)=>({ id:'C'+String(i+1).padStart(2,'0'), name:r[0], unit:r[1], active:true })); }
+  function seedStations(){
+    let s=[];
+    try{ const b=JSON.parse(localStorage.getItem(PXx+'census_beds')||'null'); if(Array.isArray(b)&&b.length) s=b.map(x=>x.station); }catch(e){}
+    if(!s.length) s=['Station A','Station B','Station C','Station D','Station E','Station F','Station G','Station H','ICU (A)','ICU (C)','ICU Isolation Room','CCU','CS-ICU','PICU','NICU','LR/DR','NURSERY'];
+    ['ER','OPD','OR'].forEach(d=>{ if(!s.includes(d)) s.push(d); });
+    return s;
+  }
+
+  // ───────── stores ─────────
+  function items(){ try{ const a=ld('ipc_items'); if(Array.isArray(a)&&a.length) return a; }catch(e){} const s=seedItems(); sv('ipc_items',s); return s; }
+  function saveItems(list){ sv('ipc_items',list); try{ dbWrite('ipc_items',{_id:'ipc_items_all',data:list,_ts:nowISO()}); }catch(e){} }
+  function stations(){ try{ const a=ld('ipc_stations'); if(Array.isArray(a)&&a.length) return a; }catch(e){} const s=seedStations(); return s; }
+  function saveStations(list){ sv('ipc_stations',list); try{ dbWrite('ipc_stations',{_id:'ipc_stations_all',data:list,_ts:nowISO()}); }catch(e){} }
+  function txns(){ try{ const a=ld('ipc_txns'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+  function addTxn(t){
+    t.id=t.id||uid('IPC'); t._id=t.id; t.ts=t.ts||nowISO();
+    const l=txns(); l.push(t); sv('ipc_txns',l);
+    try{ dbWrite('ipc_txns',t); }catch(e){}
+    invalidate(); return t;
+  }
+  function reorders(){ try{ const a=ld('ipc_reorders'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+  function saveReorder(r){ r.id=r.id||uid('RO'); r._id=r.id; const l=reorders(); const i=l.findIndex(x=>x.id===r.id); if(i>=0) l[i]=r; else l.push(r); sv('ipc_reorders',l); try{ dbWrite('ipc_reorders',r); }catch(e){} }
+  const PAR_DEF = { leadTimeDays:7, safetyStock:0, window:30, items:{}, stations:{} };
+  function parCfg(){ try{ const c=ld('ipc_par_cfg'); if(c&&typeof c==='object'&&!Array.isArray(c)) return Object.assign({},PAR_DEF,c); }catch(e){} return Object.assign({},PAR_DEF); }
+  function saveParCfg(c){ sv('ipc_par_cfg',c); try{ dbWrite('ipc_par_cfg',{_id:'ipc_par_cfg_all',data:c,_ts:nowISO()}); }catch(e){} }
+
+  // per-device nurse station (not synced)
+  function myStation(){ return localStorage.getItem(PXx+'ipc_my_station')||''; }
+  function setMyStation(s){ localStorage.setItem(PXx+'ipc_my_station',s); }
+
+  // ───────── balances (computed from ledger) ─────────
+  let _bal=null;
+  function invalidate(){ _bal=null; }
+  window.ipcInvalidate = function(){ _bal=null; };
+  function balances(){
+    if(_bal) return _bal;
+    const main={}, st={};
+    txns().forEach(t=>{
+      const q=num(t.qty), it=t.itemId;
+      if(t.type==='receive'){ main[it]=(main[it]||0)+q; }
+      else if(t.type==='issue'){ main[it]=(main[it]||0)-q; st[t.station]=st[t.station]||{}; st[t.station][it]=(st[t.station][it]||0)+q; }
+      else if(t.type==='consume'){ st[t.station]=st[t.station]||{}; st[t.station][it]=(st[t.station][it]||0)-q; }
+      else if(t.type==='adjust'){ if(t.station&&t.station!=='MAIN'){ st[t.station]=st[t.station]||{}; st[t.station][it]=(st[t.station][it]||0)+q; } else { main[it]=(main[it]||0)+q; } }
+    });
+    _bal={main,st}; return _bal;
+  }
+  const mainQty = it => Math.round((balances().main[it]||0)*100)/100;
+  const stQty = (s,it)=> Math.round((((balances().st[s]||{})[it])||0)*100)/100;
+
+  // ───────── ADU + PAR ─────────
+  const winDays = ()=> parCfg().window||30;
+  function consumeSince(days){ const cut=Date.now()-days*864e5; return txns().filter(t=>t.type==='consume' && new Date(t.ts).getTime()>=cut); }
+  function aduHospital(it){ const d=winDays(); return consumeSince(d).filter(t=>t.itemId===it).reduce((a,t)=>a+num(t.qty),0)/d; }
+  function aduStation(s,it){ const d=winDays(); return consumeSince(d).filter(t=>t.itemId===it&&t.station===s).reduce((a,t)=>a+num(t.qty),0)/d; }
+  function parFor(it, station){
+    const c=parCfg(); let lt=num(c.leadTimeDays), ss=num(c.safetyStock);
+    if(c.items&&c.items[it]){ if(c.items[it].leadTimeDays!=null&&c.items[it].leadTimeDays!=='') lt=num(c.items[it].leadTimeDays); if(c.items[it].safetyStock!=null&&c.items[it].safetyStock!=='') ss=num(c.items[it].safetyStock); }
+    if(station && c.stations&&c.stations[station]&&c.stations[station][it]){ const o=c.stations[station][it]; if(o.leadTimeDays!=null&&o.leadTimeDays!=='') lt=num(o.leadTimeDays); if(o.safetyStock!=null&&o.safetyStock!=='') ss=num(o.safetyStock); }
+    const adu = station? aduStation(station,it) : aduHospital(it);
+    return { par: Math.ceil(adu*lt+ss), adu:Math.round(adu*100)/100, lt, ss };
+  }
+  const itemById = id => items().find(x=>x.id===id);
+  const itemName = id => { const it=itemById(id); return it?it.name:id; };
+  const itemUnit = id => { const it=itemById(id); return it?it.unit:''; };
+
+  // ═══════════════ STORE TAB ═══════════════
+  const IST='background:var(--s2,#0f1b2e);border:1px solid var(--bd,#294056);border-radius:6px;padding:6px 8px;color:var(--tx,#e6eef7);font-size:12px;';
+  const IQ ='background:var(--s2,#0f1b2e);border:1px solid var(--bd,#294056);border-radius:6px;padding:5px 6px;color:var(--tx,#e6eef7);font-size:12px;width:74px;text-align:center;';
+  function itemOptions(sel){ return items().filter(i=>i.active!==false).map(i=>'<option value="'+i.id+'"'+(sel===i.id?' selected':'')+'>'+esc(i.name)+' ('+esc(i.unit)+')</option>').join(''); }
+  function stationOptions(sel){ return stations().map(s=>'<option'+(sel===s?' selected':'')+'>'+esc(s)+'</option>').join(''); }
+
+  window.ipcStoreInit = function(){ ipcStoreRender('main'); };
+  window.ipcTab = function(sub,btn){ if(typeof st==='function') st('ipcstore',sub,btn); ipcStoreRender(sub); };
+  window.ipcStoreRender = function(sub){
+    if(sub==='main') return renderMain();
+    if(sub==='issue') return renderIssue();
+    if(sub==='stations') return renderStations();
+    if(sub==='par') return renderPar();
+    if(sub==='items') return renderItems();
+    if(sub==='kpi') return renderKPI();
+  };
+
+  // ---- Main Stock ----
+  function renderMain(){
+    const box=document.getElementById('ipcstore-main'); if(!box) return;
+    let rows=items().filter(i=>i.active!==false).map(i=>{
+      const q=mainQty(i.id); const p=parFor(i.id,null); const low=q<=p.par;
+      return '<tr'+(low?' style="background:rgba(239,68,68,.08);"':'')+'>'
+        +'<td style="padding:5px 8px;">'+esc(i.name)+'</td>'
+        +'<td style="padding:5px 8px;text-align:center;color:var(--mu);">'+esc(i.unit)+'</td>'
+        +'<td style="padding:5px 8px;text-align:center;font-weight:700;'+(low?'color:'+C.rd:'')+'">'+q+'</td>'
+        +'<td style="padding:5px 8px;text-align:center;color:var(--mu);">'+p.par+'</td>'
+        +'<td style="padding:3px 6px;text-align:center;"><input id="rcv-'+i.id+'" type="number" min="0" placeholder="qty" style="'+IQ+'"></td>'
+        +'<td style="padding:3px 6px;text-align:center;"><button class="btn bg" style="font-size:10px;padding:4px 9px;" onclick="ipcReceive(\''+i.id+'\')">+ Receive</button> '
+          +'<button class="btn bo" style="font-size:10px;padding:4px 9px;" onclick="ipcStockTake(\''+i.id+'\')">Set</button></td>'
+      +'</tr>';
+    }).join('');
+    box.innerHTML='<div class="card" style="padding:10px 14px;margin-bottom:10px;font-size:12px;color:var(--mu);">Enter stock received into the main store. <b>+ Receive</b> adds to on-hand; <b>Set</b> records a stock-take (absolute count). Rows highlighted red are at/below PAR and need reorder.</div>'
+      +'<div class="card" style="padding:0;overflow:hidden;"><div style="overflow:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">'
+      +'<thead><tr style="background:var(--ac,#1e3a5c);color:#fff;"><th style="text-align:left;padding:7px 8px;">Consumable</th><th style="padding:7px 8px;">Unit</th><th style="padding:7px 8px;">On Hand</th><th style="padding:7px 8px;">PAR</th><th style="padding:7px 8px;">Receive / Set</th><th style="padding:7px 8px;"></th></tr></thead>'
+      +'<tbody>'+rows+'</tbody></table></div></div>';
+  }
+  window.ipcReceive = function(id){
+    const el=document.getElementById('rcv-'+id); const q=num(el&&el.value);
+    if(q<=0){ T('Enter a quantity','#f59e0b'); return; }
+    addTxn({type:'receive',itemId:id,qty:q,station:'MAIN',by:'storekeeper',note:'received'});
+    T('+'+q+' '+itemUnit(id)+' received · '+itemName(id)); renderMain();
+  };
+  window.ipcStockTake = function(id){
+    const el=document.getElementById('rcv-'+id); const target=num(el&&el.value);
+    const cur=mainQty(id); const delta=Math.round((target-cur)*100)/100;
+    if(delta===0){ T('Already '+cur,'#8fa6bd'); return; }
+    addTxn({type:'adjust',itemId:id,qty:delta,station:'MAIN',by:'storekeeper',note:'stock-take set to '+target});
+    T('Set '+itemName(id)+' → '+target+' ('+(delta>0?'+':'')+delta+')'); renderMain();
+  };
+
+  // ---- Dispense to Station (issue) ----
+  function renderIssue(){
+    const box=document.getElementById('ipcstore-issue'); if(!box) return;
+    box.innerHTML=
+      '<div class="card" style="padding:14px;margin-bottom:10px;">'
+      +'<div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">'
+      + f('Station / Department','<select id="iss-station" style="'+IST+'min-width:180px;">'+stationOptions(myStation())+'</select>')
+      + f('Consumable','<select id="iss-item" style="'+IST+'min-width:280px;">'+itemOptions()+'</select>')
+      + f('Quantity','<input id="iss-qty" type="number" min="1" style="'+IQ+'">')
+      + '<button class="btn bg" style="font-size:12px;padding:9px 18px;" onclick="ipcIssue()">📤 Dispense</button>'
+      +'</div><div style="font-size:11px;color:var(--mu);margin-top:8px;">Deducts from the main store and credits the selected station. Every movement is logged for audit.</div></div>'
+      +'<div id="iss-recent"></div>';
+    renderIssueRecent();
+  }
+  function renderIssueRecent(){
+    const box=document.getElementById('iss-recent'); if(!box) return;
+    const recent=txns().filter(t=>t.type==='issue').slice(-12).reverse();
+    if(!recent.length){ box.innerHTML='<div class="card" style="padding:12px;color:var(--mu);">No dispensing yet.</div>'; return; }
+    box.innerHTML='<div class="card" style="padding:0;overflow:hidden;"><div style="padding:8px 13px;font-weight:700;font-family:\'Rajdhani\',sans-serif;background:var(--s2);border-bottom:1px solid var(--bd);">Recent Dispensing</div><div style="overflow:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--ac,#1e3a5c);color:#fff;"><th style="text-align:left;padding:6px 8px;">When</th><th style="text-align:left;padding:6px 8px;">Station</th><th style="text-align:left;padding:6px 8px;">Consumable</th><th style="padding:6px 8px;">Qty</th></tr></thead><tbody>'
+      +recent.map(t=>'<tr><td style="padding:5px 8px;color:var(--mu);">'+new Date(t.ts).toLocaleString('en-GB')+'</td><td style="padding:5px 8px;">'+esc(t.station)+'</td><td style="padding:5px 8px;">'+esc(itemName(t.itemId))+'</td><td style="padding:5px 8px;text-align:center;font-weight:700;">'+t.qty+'</td></tr>').join('')
+      +'</tbody></table></div></div>';
+  }
+  window.ipcIssue = function(){
+    const s=(document.getElementById('iss-station')||{}).value;
+    const it=(document.getElementById('iss-item')||{}).value;
+    const q=num((document.getElementById('iss-qty')||{}).value);
+    if(!s||!it||q<=0){ T('Pick station, item and quantity','#f59e0b'); return; }
+    const avail=mainQty(it);
+    if(q>avail && !confirm('Main store only has '+avail+' '+itemUnit(it)+'. Dispense anyway (stock will go negative)?')) return;
+    addTxn({type:'issue',itemId:it,qty:q,station:s,by:'storekeeper',note:'issued to '+s});
+    T('📤 '+q+' '+itemUnit(it)+' → '+s); document.getElementById('iss-qty').value='';
+    renderIssueRecent();
+  };
+
+  // ---- Station Inventories (matrix) ----
+  function renderStations(){
+    const box=document.getElementById('ipcstore-stations'); if(!box) return;
+    const sts=stations(), its=items().filter(i=>i.active!==false);
+    let head='<th style="text-align:left;padding:6px 8px;position:sticky;left:0;background:var(--ac,#1e3a5c);z-index:2;">Consumable</th>'+sts.map(s=>'<th style="padding:6px 6px;white-space:nowrap;font-size:10px;">'+esc(s)+'</th>').join('');
+    let rows=its.map(i=>{
+      let cells=sts.map(s=>{ const q=stQty(s,i.id); const adu=aduStation(s,i.id); const dos=adu>0?(q/adu):Infinity; const low=adu>0 && dos<parCfg().leadTimeDays;
+        return '<td style="padding:4px 6px;text-align:center;'+(q<0?'color:'+C.rd+';':low?'color:'+C.wn+';':'')+'">'+(q||0)+'</td>'; }).join('');
+      return '<tr><td style="padding:5px 8px;position:sticky;left:0;background:var(--sf,#12203a);border-right:1px solid var(--bd);font-size:11px;">'+esc(i.name)+'</td>'+cells+'</tr>';
+    }).join('');
+    box.innerHTML='<div class="card" style="padding:10px 14px;margin-bottom:10px;font-size:12px;color:var(--mu);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;"><span>Live on-hand per station (computed from the dispensing ledger). <span style="color:'+C.wn+';">Amber</span> = below lead-time cover · <span style="color:'+C.rd+';">Red</span> = negative.</span><button class="btn bo" style="font-size:11px;padding:5px 12px;" onclick="ipcStoreRender(\'stations\')">🔄 Refresh</button></div>'
+      +'<div class="card" style="padding:0;overflow:hidden;"><div style="overflow:auto;max-height:64vh;"><table style="border-collapse:collapse;font-size:12px;min-width:100%;"><thead><tr style="background:var(--ac,#1e3a5c);color:#fff;position:sticky;top:0;z-index:3;">'+head+'</tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  }
+
+  // ---- PAR & Reorder ----
+  function renderPar(){
+    const box=document.getElementById('ipcstore-par'); if(!box) return;
+    const c=parCfg();
+    let rows=items().filter(i=>i.active!==false).map(i=>{
+      const p=parFor(i.id,null); const q=mainQty(i.id); const low=q<=p.par;
+      const ov=c.items[i.id]||{};
+      return '<tr'+(low?' style="background:rgba(239,68,68,.08);"':'')+'>'
+        +'<td style="padding:5px 8px;">'+esc(i.name)+'</td>'
+        +'<td style="padding:5px 8px;text-align:center;">'+p.adu+'</td>'
+        +'<td style="padding:3px 6px;text-align:center;"><input type="number" min="0" value="'+(ov.leadTimeDays!=null&&ov.leadTimeDays!==''?ov.leadTimeDays:'')+'" placeholder="'+c.leadTimeDays+'" onchange="ipcSetOverride(\''+i.id+'\',\'leadTimeDays\',this.value)" style="'+IQ+'width:56px;"></td>'
+        +'<td style="padding:3px 6px;text-align:center;"><input type="number" min="0" value="'+(ov.safetyStock!=null&&ov.safetyStock!==''?ov.safetyStock:'')+'" placeholder="'+c.safetyStock+'" onchange="ipcSetOverride(\''+i.id+'\',\'safetyStock\',this.value)" style="'+IQ+'width:56px;"></td>'
+        +'<td style="padding:5px 8px;text-align:center;font-weight:700;">'+p.par+'</td>'
+        +'<td style="padding:5px 8px;text-align:center;font-weight:700;'+(low?'color:'+C.rd:'color:'+C.gd)+'">'+q+'</td>'
+        +'<td style="padding:5px 8px;text-align:center;">'+(low?'<span style="color:'+C.rd+';font-weight:700;">⚠ REORDER</span>':'<span style="color:'+C.gd+';">OK</span>')+'</td>'
+      +'</tr>';
+    }).join('');
+    const openRO=reorders().filter(r=>r.status==='open');
+    box.innerHTML=
+      '<div class="card" style="padding:14px;margin-bottom:10px;"><div style="font-family:\'Rajdhani\',sans-serif;font-weight:700;font-size:15px;margin-bottom:8px;">📐 PAR Configuration (IPC)</div>'
+      +'<div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;">'
+      + f('Global Lead Time (days)','<input id="par-lt" type="number" min="0" value="'+c.leadTimeDays+'" style="'+IQ+'">')
+      + f('Global Safety Stock','<input id="par-ss" type="number" min="0" value="'+c.safetyStock+'" style="'+IQ+'">')
+      + f('Usage Window (days)','<input id="par-win" type="number" min="1" value="'+c.window+'" style="'+IQ+'">')
+      + '<button class="btn bg" style="font-size:12px;padding:9px 16px;" onclick="ipcSaveParGlobals()">Save</button>'
+      + '<span style="font-size:11px;color:var(--mu);">PAR = (Average Daily Usage × Lead Time) + Safety Stock. Per-item values below override the global default; per-station overrides are set from Station Inventories.</span>'
+      +'</div></div>'
+      + (openRO.length? '<div class="card" style="padding:0;overflow:hidden;margin-bottom:10px;"><div style="padding:8px 13px;font-weight:700;font-family:\'Rajdhani\',sans-serif;background:var(--s2);border-bottom:1px solid var(--bd);">🔔 Open Reorder Requests ('+openRO.length+')</div><div style="overflow:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--ac,#1e3a5c);color:#fff;"><th style="text-align:left;padding:6px 8px;">When</th><th style="text-align:left;padding:6px 8px;">Station</th><th style="text-align:left;padding:6px 8px;">Consumable</th><th style="padding:6px 8px;">Qty</th><th style="padding:6px 8px;"></th></tr></thead><tbody>'
+        + openRO.slice().reverse().map(r=>'<tr><td style="padding:5px 8px;color:var(--mu);">'+new Date(r.ts).toLocaleString('en-GB')+'</td><td style="padding:5px 8px;">'+esc(r.station)+'</td><td style="padding:5px 8px;">'+esc(itemName(r.itemId))+'</td><td style="padding:5px 8px;text-align:center;font-weight:700;">'+r.qty+'</td><td style="padding:5px 8px;text-align:center;"><button class="btn bg" style="font-size:10px;padding:4px 9px;" onclick="ipcFulfill(\''+r.id+'\')">Dispense &amp; close</button> <button class="btn bo" style="font-size:10px;padding:4px 9px;" onclick="ipcCloseRO(\''+r.id+'\')">Close</button></td></tr>').join('')
+        +'</tbody></table></div></div>':'')
+      +'<div class="card" style="padding:0;overflow:hidden;"><div style="overflow:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--ac,#1e3a5c);color:#fff;"><th style="text-align:left;padding:7px 8px;">Consumable</th><th style="padding:7px 8px;">ADU</th><th style="padding:7px 8px;">Lead&nbsp;Time</th><th style="padding:7px 8px;">Safety</th><th style="padding:7px 8px;">PAR</th><th style="padding:7px 8px;">On&nbsp;Hand</th><th style="padding:7px 8px;">Status</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  }
+  window.ipcSaveParGlobals = function(){
+    const c=parCfg();
+    c.leadTimeDays=num((document.getElementById('par-lt')||{}).value);
+    c.safetyStock=num((document.getElementById('par-ss')||{}).value);
+    c.window=Math.max(1,num((document.getElementById('par-win')||{}).value)||30);
+    saveParCfg(c); T('PAR settings saved'); renderPar();
+  };
+  window.ipcSetOverride = function(itemId,field,val){
+    const c=parCfg(); c.items[itemId]=c.items[itemId]||{};
+    if(val===''||val==null) delete c.items[itemId][field]; else c.items[itemId][field]=num(val);
+    if(!Object.keys(c.items[itemId]).length) delete c.items[itemId];
+    saveParCfg(c); renderPar();
+  };
+  window.ipcFulfill = function(id){
+    const r=reorders().find(x=>x.id===id); if(!r) return;
+    const avail=mainQty(r.itemId);
+    if(r.qty>avail && !confirm('Main store has '+avail+'. Dispense '+r.qty+' anyway?')) return;
+    addTxn({type:'issue',itemId:r.itemId,qty:r.qty,station:r.station,by:'storekeeper',note:'reorder '+r.id});
+    r.status='fulfilled'; r.fulfilledTs=nowISO(); saveReorder(r);
+    T('Dispensed '+r.qty+' → '+r.station); renderPar();
+  };
+  window.ipcCloseRO = function(id){ const r=reorders().find(x=>x.id===id); if(!r) return; r.status='cancelled'; saveReorder(r); renderPar(); };
+
+  // ---- Items & QR ----
+  function renderItems(){
+    const box=document.getElementById('ipcstore-items'); if(!box) return;
+    box.innerHTML='<div class="card" style="padding:12px 14px;margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;"><span style="font-size:12px;color:var(--mu);flex:1;">Each consumable carries a QR (encodes its code). Nurses scan it to record usage. Add or remove items; new items get a QR automatically.</span>'
+      +'<button class="btn bp" style="font-size:11px;padding:7px 13px;" onclick="ipcAddItem()">+ Add Consumable</button>'
+      +'<button class="btn bo" style="font-size:11px;padding:7px 13px;" onclick="ipcPrintQRLabels()">🖨 Print QR Labels (PDF)</button></div>'
+      +'<div class="g g3" id="ipc-qr-grid"></div>';
+    const grid=document.getElementById('ipc-qr-grid');
+    grid.innerHTML=items().map(i=>
+      '<div class="card" style="padding:12px;text-align:center;'+(i.active===false?'opacity:.5;':'')+'">'
+      +'<div id="qr-'+i.id+'" style="display:inline-block;background:#fff;padding:8px;border-radius:8px;"></div>'
+      +'<div style="font-size:11px;font-weight:600;margin-top:8px;line-height:1.3;">'+esc(i.name)+'</div>'
+      +'<div style="font-size:10px;color:var(--mu);margin:3px 0;">'+esc(i.id)+' · '+esc(i.unit)+'</div>'
+      +'<button class="btn br" style="font-size:10px;padding:3px 9px;" onclick="ipcRemoveItem(\''+i.id+'\')">Remove</button>'
+      +'</div>').join('');
+    // render QR codes
+    setTimeout(()=>{ items().forEach(i=>{ const el=document.getElementById('qr-'+i.id); if(el && window.QRCode){ el.innerHTML=''; try{ new QRCode(el,{text:'OBIPC:'+i.id,width:96,height:96,correctLevel:QRCode.CorrectLevel.M}); }catch(e){} } else if(el){ el.innerHTML='<div style="width:96px;height:96px;display:flex;align-items:center;justify-content:center;color:#333;font-size:9px;">QR lib loading…</div>'; } }); },60);
+  }
+  window.ipcAddItem = function(){
+    const name=prompt('New consumable name:'); if(!name||!name.trim()) return;
+    const unit=prompt('Unit (box, bottle, piece, pack, gallon, roll, sachet, carton):','box')||'box';
+    const list=items(); const maxN=list.reduce((m,i)=>{ const n=parseInt(String(i.id).replace(/\D/g,''))||0; return Math.max(m,n); },0);
+    list.push({ id:'C'+String(maxN+1).padStart(2,'0'), name:name.trim(), unit:unit.trim(), active:true });
+    saveItems(list); T('Added '+name.trim()); renderItems();
+  };
+  window.ipcRemoveItem = function(id){
+    if(!confirm('Remove '+itemName(id)+'? Its history stays in the ledger; it will be hidden from lists.')) return;
+    const list=items().map(i=> i.id===id ? Object.assign({},i,{active:false}) : i); saveItems(list); renderItems();
+  };
+  window.ipcPrintQRLabels = function(){
+    const JS=(window.jspdf&&window.jspdf.jsPDF)?window.jspdf.jsPDF:null;
+    if(!JS || !window.QRCode){ T('PDF/QR engine still loading (needs internet)','#f59e0b',4000); return; }
+    const doc=new JS({unit:'pt',format:'a4'}); const pw=doc.internal.pageSize.getWidth(), ph=doc.internal.pageSize.getHeight();
+    const cols=3, cellW=(pw-80)/cols, cellH=150; let x=40,y=50,col=0;
+    doc.setFontSize(14); doc.setFont('helvetica','bold'); doc.text('Obeid Specialized Hospital — IPC Consumable QR Labels',40,32);
+    const list=items().filter(i=>i.active!==false);
+    list.forEach(i=>{
+      const tmp=document.createElement('div'); new QRCode(tmp,{text:'OBIPC:'+i.id,width:110,height:110,correctLevel:QRCode.CorrectLevel.M});
+      const cv=tmp.querySelector('canvas'); const url=cv?cv.toDataURL('image/png'):(tmp.querySelector('img')||{}).src;
+      if(url){ doc.setDrawColor(200); doc.rect(x,y,cellW-10,cellH-10);
+        doc.addImage(url,'PNG', x+(cellW-10)/2-40, y+8, 80, 80);
+        doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(20,30,45);
+        doc.text(doc.splitTextToSize(i.name,cellW-24), x+8, y+100);
+        doc.setFont('helvetica','normal'); doc.setTextColor(120,130,145); doc.text(i.id+' · '+i.unit, x+8, y+cellH-16);
+      }
+      col++; if(col>=cols){ col=0; x=40; y+=cellH; if(y+cellH>ph-30){ doc.addPage(); y=50; } } else { x+=cellW; }
+    });
+    doc.save('IPC_Consumable_QR_Labels.pdf'); T('🖨 QR label sheet generated');
+  };
+
+  // ---- KPIs / Analysis ----
+  function census(){ try{ const a=JSON.parse(localStorage.getItem(PXx+'census_daily')||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+  function denomForStation(s, days){
+    // bed-day / patient-volume denominator over window, from nursing census
+    const cut=Date.now()-days*864e5; const rows=census().filter(r=>r.date && new Date(r.date).getTime()>=cut);
+    if(s==='ER') return rows.reduce((a,r)=>a+num(r.er&&r.er.seen),0);
+    if(s==='OPD') return rows.reduce((a,r)=>a+num(r.opd&&r.opd.seen),0);
+    if(s==='OR') return rows.reduce((a,r)=>a+num(r.or&&r.or.total),0);
+    return rows.reduce((a,r)=>a+num(r.occ&&r.occ[s]),0); // occupied-bed-days
+  }
+  function renderKPI(){
+    const box=document.getElementById('ipcstore-kpi'); if(!box) return;
+    const d=winDays();
+    const cons=consumeSince(d);
+    const totalUnits=cons.reduce((a,t)=>a+num(t.qty),0);
+    // per station consumption
+    const perSt={}; cons.forEach(t=>{ perSt[t.station]=(perSt[t.station]||0)+num(t.qty); });
+    // top items
+    const perItem={}; cons.forEach(t=>{ perItem[t.itemId]=(perItem[t.itemId]||0)+num(t.qty); });
+    const topItems=Object.keys(perItem).map(k=>({name:itemName(k),val:perItem[k]})).sort((a,b)=>b.val-a.val).slice(0,8);
+    // consumption per patient-day per station
+    const sts=stations();
+    const ratio=sts.map(s=>{ const c=perSt[s]||0; const den=denomForStation(s,d); const isVol=(s==='ER'||s==='OPD'||s==='OR'); return { s, c, den, per: den>0? Math.round(c/den*100)/100 : null, isVol }; }).filter(x=>x.c>0||x.den>0);
+    const beds=ratio.filter(x=>!x.isVol && x.per!=null);
+    const mean = beds.length? beds.reduce((a,x)=>a+x.per,0)/beds.length : 0;
+
+    // KPI cards
+    const openRO=reorders().filter(r=>r.status==='open').length;
+    const reorderItems=items().filter(i=>i.active!==false&&mainQty(i.id)<=parFor(i.id,null).par).length;
+    box.innerHTML='<div class="g g4" style="margin-bottom:12px;">'
+      + kpi('Total Consumption', totalUnits, 'units · last '+d+' days', C.ac)
+      + kpi('Items at/below PAR', reorderItems, 'main store needs reorder', reorderItems>0?C.rd:C.gd)
+      + kpi('Open Reorder Requests', openRO, 'from stations', openRO>0?C.wn:C.gd)
+      + kpi('Avg Use / Patient-day', mean?Math.round(mean*100)/100:'—', 'across bed stations', C.pu)
+      +'</div>'
+      + '<div class="g g2">'
+      + card('🏆 Top Consumed (last '+d+'d)', topItems.length? hbars(topItems) : muted('No consumption logged yet.'))
+      + card('🏥 Consumption vs Occupancy', beds.length? ratioTable(ratio,mean) : muted('Log some nurse consumption and daily census to see per-patient-day usage.'))
+      + '</div>'
+      + card('📊 Reasonableness Analysis', analysisText(ratio,mean,d), 'mt');
+  }
+  function ratioTable(ratio,mean){
+    return '<div style="overflow:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="color:var(--mu);"><th style="text-align:left;padding:4px 6px;">Station</th><th style="padding:4px 6px;">Used</th><th style="padding:4px 6px;">Pt-days/Vol</th><th style="padding:4px 6px;">Per unit</th><th style="padding:4px 6px;">Flag</th></tr></thead><tbody>'
+      + ratio.map(x=>{ let flag=''; if(!x.isVol && x.per!=null && mean>0){ if(x.per>mean*1.5) flag='<span style="color:'+C.rd+';">▲ high</span>'; else if(x.per<mean*0.5) flag='<span style="color:'+C.wn+';">▼ low</span>'; else flag='<span style="color:'+C.gd+';">ok</span>'; }
+        return '<tr><td style="padding:4px 6px;">'+esc(x.s)+'</td><td style="padding:4px 6px;text-align:center;">'+x.c+'</td><td style="padding:4px 6px;text-align:center;color:var(--mu);">'+(x.den||'—')+(x.isVol?' (vol)':'')+'</td><td style="padding:4px 6px;text-align:center;font-weight:700;">'+(x.per!=null?x.per:'—')+'</td><td style="padding:4px 6px;text-align:center;">'+flag+'</td></tr>';
+      }).join('')+'</tbody></table></div>';
+  }
+  function analysisText(ratio,mean,d){
+    const beds=ratio.filter(x=>!x.isVol&&x.per!=null);
+    if(!beds.length) return muted('Insufficient data. Consumption-per-patient-day compares each bed station against the hospital mean once nurses log usage and the census is filled.');
+    const high=beds.filter(x=>x.per>mean*1.5).map(x=>x.s), low=beds.filter(x=>x.per<mean*0.5).map(x=>x.s);
+    let s='Over the last '+d+' days the hospital averaged <b>'+(Math.round(mean*100)/100)+'</b> units per patient-day across bed stations. ';
+    if(high.length) s+='<span style="color:'+C.rd+';">Higher-than-expected</span> consumption at: <b>'+high.join(', ')+'</b> (review for waste or under-recording of census). ';
+    if(low.length) s+='<span style="color:'+C.wn+';">Lower-than-expected</span> at: <b>'+low.join(', ')+'</b> (possible under-recording of usage). ';
+    if(!high.length&&!low.length) s+='All stations are within a reasonable band of the mean — consumption looks proportionate to occupancy.';
+    return '<div style="font-size:12px;line-height:1.7;">'+s+'</div>';
+  }
+  function kpi(label,val,sub,color){ return '<div class="card" style="padding:12px 14px;border-left:4px solid '+color+';"><div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:.6px;">'+label+'</div><div style="font-size:26px;font-weight:800;font-family:\'Rajdhani\',sans-serif;line-height:1.1;margin:2px 0;">'+val+'</div><div style="font-size:10px;color:var(--mu);">'+sub+'</div></div>'; }
+  function hbars(items){ const max=Math.max.apply(null,items.map(i=>i.val))||1; const W=420; return '<svg viewBox="0 0 '+W+' '+(items.length*22+6)+'" style="width:100%;height:auto;">'+items.map((it,i)=>{ const y=i*22+6,w=(it.val/max)*(W-190); return '<text x="4" y="'+(y+12)+'" fill="var(--tx,#e6eef7)" font-size="10">'+esc(it.name.slice(0,26))+'</text><rect x="180" y="'+y+'" width="'+(W-190)+'" height="14" rx="3" fill="var(--s2,#0f1b2e)"/><rect x="180" y="'+y+'" width="'+Math.max(1,w)+'" height="14" rx="3" fill="'+C.ac+'"/><text x="'+(W-4)+'" y="'+(y+11)+'" fill="var(--mu,#8fa6bd)" font-size="10" text-anchor="end">'+it.val+'</text>'; }).join('')+'</svg>'; }
+  function muted(t){ return '<div style="color:var(--mu);padding:14px;font-size:12px;">'+t+'</div>'; }
+
+  // ═══════════════ NURSE TAB ═══════════════
+  window.ipcNurseInit = function(){
+    const root=document.getElementById('ipcnurse-root'); if(!root) return;
+    const ms=myStation();
+    root.innerHTML=
+      '<div class="card" style="padding:14px;margin-bottom:12px;">'
+      + '<div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">'
+      + f('My Station / Department','<select id="nz-station" onchange="ipcSetStation()" style="'+IST+'min-width:200px;">'+ '<option value="">— select —</option>'+stationOptions(ms)+'</select>')
+      + '<div style="flex:1;"></div>'
+      + '<button class="btn bp" style="font-size:12px;padding:10px 18px;" onclick="ipcScanStart()">📷 Scan QR</button>'
+      + '</div>'
+      + '<div id="ipc-reader" style="display:none;max-width:320px;margin:12px auto 0;"></div>'
+      + '<div id="ipc-reader-stop" style="display:none;text-align:center;margin-top:8px;"><button class="btn bo" style="font-size:11px;" onclick="ipcScanStop()">✕ Stop camera</button></div>'
+      + '</div>'
+      + '<div class="g g2">'
+      + card('🧤 Record Usage (dispense from station)',
+          f('Consumable','<select id="nz-item" style="'+IST+'width:100%;">'+itemOptions()+'</select>')
+          + '<div style="height:8px;"></div>'
+          + '<div style="display:flex;gap:10px;align-items:flex-end;">'+f('Quantity used','<input id="nz-qty" type="number" min="1" style="'+IQ+'">')
+          + '<button class="btn bg" style="font-size:12px;padding:9px 18px;" onclick="ipcConsume()">✓ Record Usage</button></div>')
+      + card('🔄 Request Restock',
+          f('Consumable','<select id="nz-ro-item" style="'+IST+'width:100%;">'+itemOptions()+'</select>')
+          + '<div style="height:8px;"></div>'
+          + '<div style="display:flex;gap:10px;align-items:flex-end;">'+f('Quantity','<input id="nz-ro-qty" type="number" min="1" style="'+IQ+'">')
+          + '<button class="btn bo" style="font-size:12px;padding:9px 18px;" onclick="ipcRequestRestock()">Send Request</button></div>')
+      + '</div>'
+      + '<div id="nz-inv" style="margin-top:12px;"></div>';
+    ipcNurseInv();
+  };
+  window.ipcSetStation = function(){ const s=(document.getElementById('nz-station')||{}).value; setMyStation(s); ipcNurseInv(); };
+  function ipcNurseInv(){
+    const box=document.getElementById('nz-inv'); if(!box) return;
+    const s=myStation(); if(!s){ box.innerHTML=muted('Select your station to see its inventory.'); return; }
+    const rows=items().filter(i=>i.active!==false).map(i=>{ const q=stQty(s,i.id); const adu=aduStation(s,i.id); const dos=adu>0?Math.floor(q/adu):null; const low=adu>0&&dos<parCfg().leadTimeDays;
+      return '<tr'+(q<0?' style="background:rgba(239,68,68,.08);"':low?' style="background:rgba(245,158,11,.08);"':'')+'><td style="padding:5px 8px;">'+esc(i.name)+'</td><td style="padding:5px 8px;text-align:center;color:var(--mu);">'+esc(i.unit)+'</td><td style="padding:5px 8px;text-align:center;font-weight:700;'+(q<0?'color:'+C.rd:low?'color:'+C.wn:'')+'">'+q+'</td><td style="padding:5px 8px;text-align:center;color:var(--mu);">'+(dos!=null?dos+'d':'—')+'</td></tr>'; }).join('');
+    box.innerHTML='<div class="card" style="padding:0;overflow:hidden;"><div style="padding:8px 13px;font-weight:700;font-family:\'Rajdhani\',sans-serif;background:var(--s2);border-bottom:1px solid var(--bd);">📦 '+esc(s)+' — On Hand</div><div style="overflow:auto;max-height:50vh;"><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--ac,#1e3a5c);color:#fff;"><th style="text-align:left;padding:6px 8px;">Consumable</th><th style="padding:6px 8px;">Unit</th><th style="padding:6px 8px;">On Hand</th><th style="padding:6px 8px;">Days Left</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  }
+  window.ipcConsume = function(){
+    const s=myStation(); if(!s){ T('Select your station first','#f59e0b'); return; }
+    const it=(document.getElementById('nz-item')||{}).value; const q=num((document.getElementById('nz-qty')||{}).value);
+    if(!it||q<=0){ T('Pick an item and quantity','#f59e0b'); return; }
+    const have=stQty(s,it);
+    if(q>have && !confirm(s+' shows only '+have+' '+itemUnit(it)+'. Record anyway?')) return;
+    addTxn({type:'consume',itemId:it,qty:q,station:s,by:'nurse',note:'used at '+s});
+    T('✓ '+q+' '+itemUnit(it)+' recorded · '+itemName(it)); document.getElementById('nz-qty').value=''; ipcNurseInv();
+  };
+  window.ipcRequestRestock = function(){
+    const s=myStation(); if(!s){ T('Select your station first','#f59e0b'); return; }
+    const it=(document.getElementById('nz-ro-item')||{}).value; const q=num((document.getElementById('nz-ro-qty')||{}).value);
+    if(!it||q<=0){ T('Pick an item and quantity','#f59e0b'); return; }
+    saveReorder({ ts:nowISO(), itemId:it, station:s, qty:q, status:'open', by:'nurse' });
+    T('🔄 Restock request sent to store'); document.getElementById('nz-ro-qty').value='';
+  };
+
+  // ---- QR scanning ----
+  let _scanner=null;
+  window.ipcScanStart = function(){
+    if(!myStation()){ T('Select your station first','#f59e0b'); return; }
+    const Lib=window.Html5Qrcode; if(!Lib){ T('Scanner still loading (needs internet & camera)','#f59e0b',4000); return; }
+    const box=document.getElementById('ipc-reader'); const stopb=document.getElementById('ipc-reader-stop');
+    box.style.display='block'; if(stopb) stopb.style.display='block';
+    try{ _scanner=new Lib('ipc-reader'); }catch(e){ T('Scanner init failed','#ef4444'); return; }
+    _scanner.start({facingMode:'environment'},{fps:10,qrbox:220}, txt=>{ ipcScanStop(); ipcOnScan(txt); }, ()=>{})
+      .catch(e=>{ T('Camera error: '+e,'#ef4444',4000); ipcScanStop(); });
+  };
+  window.ipcScanStop = function(){
+    const box=document.getElementById('ipc-reader'); const stopb=document.getElementById('ipc-reader-stop');
+    if(_scanner){ _scanner.stop().then(()=>{ try{_scanner.clear();}catch(e){} }).catch(()=>{}); _scanner=null; }
+    if(box){ box.style.display='none'; box.innerHTML=''; } if(stopb) stopb.style.display='none';
+  };
+  function ipcOnScan(txt){
+    let id=txt; const m=String(txt).match(/^OBIPC:(.+)$/i); if(m) id=m[1];
+    const it=items().find(x=>x.id===id) || items().find(x=>x.name===txt);
+    if(!it){ T('Unrecognised QR: '+txt,'#ef4444',4000); return; }
+    const sel=document.getElementById('nz-item'); if(sel) sel.value=it.id;
+    const qty=document.getElementById('nz-qty'); if(qty){ qty.focus(); }
+    T('Scanned: '+it.name+' — enter quantity','#3b82f6',3500);
+  }
+
+  // ═══════════════ Excel export (inventory snapshot) ═══════════════
+  window.ipcExportInventory = function(){
+    const sts=stations(), its=items().filter(i=>i.active!==false);
+    const header=['Consumable','Unit','Main Store','PAR (main)','ADU'].concat(sts);
+    const aoa=[header];
+    its.forEach(i=>{ const p=parFor(i.id,null); const row=[i.name,i.unit,mainQty(i.id),p.par,p.adu]; sts.forEach(s=>row.push(stQty(s,i.id))); aoa.push(row); });
+    const date=new Date().toISOString().slice(0,10); const base='IPC_Consumables_Inventory_'+date;
+    if(typeof XLSX==='undefined'||!XLSX.utils){ const csv=aoa.map(r=>r.map(c=>{const x=String(c==null?'':c);return /[",\n]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x;}).join(',')).join('\r\n'); const b=new Blob(['\ufeff'+csv],{type:'text/csv'}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=base+'.csv'; a.click(); URL.revokeObjectURL(u); T('Exported (CSV)'); return; }
+    const wb=XLSX.utils.book_new(); const ws=XLSX.utils.aoa_to_sheet(aoa); ws['!cols']=header.map((h,idx)=>({wch: idx===0?34:(idx<5?12:11)})); XLSX.utils.book_append_sheet(wb,ws,'Inventory');
+    XLSX.writeFile(wb, base+'.xlsx'); T('📊 Inventory exported');
+  };
+
+  // ---- shared field helper ----
+  function f(label,inner){ return '<div><div style="font-size:10px;color:var(--mu,#8fa6bd);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">'+label+'</div>'+inner+'</div>'; }
+  function card(title,body,cls){ return '<div class="card'+(cls==='mt'?'':'')+'" style="padding:0;overflow:hidden;'+(cls==='mt'?'margin-top:12px;':'')+'"><div style="padding:9px 13px;font-family:\'Rajdhani\',sans-serif;font-weight:700;font-size:14px;background:var(--s2,#0f1b2e);border-bottom:1px solid var(--bd);">'+title+'</div><div style="padding:12px 14px;">'+body+'</div></div>'; }
+
+})();
+
+</script>
 </body>
 </html>
