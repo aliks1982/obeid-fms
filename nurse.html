@@ -210,9 +210,7 @@ function render(){ fillSelectors(); renderInventory(); }
 async function reload(manual){
   setStatus(manual?'Refreshing…':'Syncing…','load');
   try{
-    var r=await fetch(DB_URL+'?action=getAll',{cache:'no-store'});
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    var j=await r.json();
+    var j=await jsonp({ action:'getAll' });
     if(!j||!j.ok||!j.data) throw new Error('bad response');
     SERVER_TXNS=(j.data.ipc_txns||[]).filter(function(t){ return t&&t.id&&t.type; });
     var sids={}; SERVER_TXNS.forEach(function(t){ sids[String(t.id)]=1; });
@@ -224,14 +222,31 @@ async function reload(manual){
     var pc=unwrap(j.data.ipc_par_cfg); if(pc&&typeof pc==='object') PARCFG=Object.assign({leadTimeDays:7,safetyStock:0,window:30},pc);
     lastSync=new Date(); setStatus('Synced '+lastSync.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}),'ok');
   }catch(e){
-    setStatus(navigator.onLine?'Sync failed — retry':'Offline','bad');
+    setStatus('Sync failed ('+(e&&e.message||'network')+') — tap Refresh','bad');
   }
   render();
 }
 function scheduleReload(){ clearTimeout(reloadTimer); reloadTimer=setTimeout(function(){ reload(false); }, 3500); }
+
+// JSONP — cross-origin read/write via <script> tag (never blocked by mobile
+// tracking prevention, unlike fetch/XHR). Server wraps the JSON in callback().
+function jsonp(params){
+  return new Promise(function(resolve,reject){
+    var cb='__ncb'+Date.now()+Math.floor(Math.random()*1e6);
+    var s=document.createElement('script');
+    var timer=setTimeout(function(){ cleanup(); reject(new Error('timeout')); }, 25000);
+    function cleanup(){ clearTimeout(timer); try{ delete window[cb]; }catch(e){ window[cb]=undefined; } if(s&&s.parentNode) s.parentNode.removeChild(s); }
+    window[cb]=function(data){ cleanup(); resolve(data); };
+    s.onerror=function(){ cleanup(); reject(new Error('network')); };
+    var q=[]; for(var k in params){ q.push(encodeURIComponent(k)+'='+encodeURIComponent(params[k])); }
+    s.src=DB_URL+'?'+q.join('&')+'&callback='+cb+'&_cb='+Date.now();
+    document.body.appendChild(s);
+  });
+}
 function postUpsert(type,record){
-  try{ fetch(DB_URL,{ method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({ action:'upsert', type:type, record:record }) }); return true; }
-  catch(e){ return false; }
+  return jsonp({ action:'upsert', type:type, record:JSON.stringify(record) })
+    .then(function(res){ return !!(res && res.ok); })
+    .catch(function(){ return false; });
 }
 
 // ── actions ──
@@ -243,18 +258,22 @@ function recordUsage(){
   var have=Math.round(((stationOnHand(s))[it]||0)*100)/100;
   if(q>have){ toast('❌ '+s+' has only '+have+' '+unitOf(it)+' — cannot record '+q+'. Request a restock.'); return; }
   var t={ id:uid('IPC'), ts:new Date().toISOString(), type:'consume', itemId:it, qty:q, station:s, by:'nurse', note:'used at '+s }; t._id=t.id;
-  PENDING.push(t); postUpsert('ipc_txns',t);
-  document.getElementById('useQty').value=''; render(); scheduleReload();
-  toast('✓ '+q+' '+unitOf(it)+' recorded · '+itemName(it));
+  setStatus('Saving…','load');
+  postUpsert('ipc_txns',t).then(function(ok){
+    if(ok){ PENDING.push(t); document.getElementById('useQty').value=''; render(); toast('✓ '+q+' '+unitOf(it)+' recorded · '+itemName(it)); scheduleReload(); }
+    else { toast('❌ Save failed — check your connection and try again'); setStatus('Save failed — tap Refresh','bad'); }
+  });
 }
 function requestRestock(){
   var s=curStation(); if(!s){ toast('Select your station first'); return; }
   var it=document.getElementById('roItem').value, q=num(document.getElementById('roQty').value);
   if(!it||q<=0){ toast('Pick an item and quantity'); return; }
   var r={ id:uid('RO'), ts:new Date().toISOString(), itemId:it, station:s, qty:q, status:'open', by:'nurse' }; r._id=r.id;
-  postUpsert('ipc_reorders',r);
-  document.getElementById('roQty').value='';
-  toast('🔄 Restock request sent to the store');
+  setStatus('Sending…','load');
+  postUpsert('ipc_reorders',r).then(function(ok){
+    if(ok){ document.getElementById('roQty').value=''; toast('🔄 Restock request sent to the store'); scheduleReload(); }
+    else { toast('❌ Request failed — check your connection and try again'); setStatus('Send failed — tap Refresh','bad'); }
+  });
 }
 
 // ── QR scanning ──
