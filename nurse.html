@@ -209,9 +209,14 @@ function render(){ fillSelectors(); renderInventory(); }
 // ── data load ──
 async function reload(manual){
   setStatus(manual?'Refreshing…':'Syncing…','load');
+  var j=null, diag='';
+  try{ j=await jsonp({ action:'getAll' }); }
+  catch(e1){ diag='jsonp:'+(e1&&e1.message||'err');
+    try{ var rr=await fetch(DB_URL+'?action=getAll&_cb='+Date.now()); if(rr.ok){ j=await rr.json(); } else { diag+=' fetch:HTTP'+rr.status; } }
+    catch(e2){ diag+=' fetch:'+(e2&&e2.message||'err'); }
+  }
   try{
-    var j=await jsonp({ action:'getAll' });
-    if(!j||!j.ok||!j.data) throw new Error('bad response');
+    if(!j||!j.ok||!j.data) throw new Error('no data');
     SERVER_TXNS=(j.data.ipc_txns||[]).filter(function(t){ return t&&t.id&&t.type; });
     var sids={}; SERVER_TXNS.forEach(function(t){ sids[String(t.id)]=1; });
     PENDING=PENDING.filter(function(t){ return !sids[String(t.id)]; });
@@ -222,7 +227,8 @@ async function reload(manual){
     var pc=unwrap(j.data.ipc_par_cfg); if(pc&&typeof pc==='object') PARCFG=Object.assign({leadTimeDays:7,safetyStock:0,window:30},pc);
     lastSync=new Date(); setStatus('Synced '+lastSync.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}),'ok');
   }catch(e){
-    setStatus('Sync failed ('+(e&&e.message||'network')+') — tap Refresh','bad');
+    setStatus('Sync failed — re-deploy the Apps Script (New version), then Refresh','bad');
+    try{ console.log('nurse sync error:', diag||(e&&e.message)); }catch(_){}
   }
   render();
 }
@@ -245,8 +251,12 @@ function jsonp(params){
 }
 function postUpsert(type,record){
   return jsonp({ action:'upsert', type:type, record:JSON.stringify(record) })
-    .then(function(res){ return !!(res && res.ok); })
-    .catch(function(){ return false; });
+    .then(function(res){ if(res && res.ok) return true; throw new Error('bad'); })
+    .catch(function(){
+      // Fallback: fire-and-forget POST (works where the browser allows it)
+      try{ fetch(DB_URL,{ method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({ action:'upsert', type:type, record:record }) }); return true; }
+      catch(e){ return false; }
+    });
 }
 
 // ── actions ──
