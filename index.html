@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1607';
+  var v = '20260816-1608';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,11 +27,13 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1607">
+<meta name="app-version" content="20260816-1608">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,opsz,wght@0,6..18,400;0,6..18,500;0,6..18,600;0,6..18,700;0,6..18,800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════════════════════════════
@@ -674,6 +676,7 @@ if ('caches' in window) {
     <div class="ni" onclick="gp('utils')" id="n-utils"><span class="ni-ic">⚡</span>Utilities (FMS.1.1.8)</div>
     <div class="ni" onclick="gp('ach')" id="n-ach"><span class="ni-ic">🌬</span>ACH / Room Pressure (IPC)</div>
     <div class="ni" onclick="gp('temperature')" id="n-temperature"><span class="ni-ic">🌡</span>Temperature Log (IPC)</div>
+    <div class="ni" onclick="gp('census')" id="n-census"><span class="ni-ic">🛏</span>Nursing Census</div>
     <div class="nsc">FMS Standards</div>
     <div class="ni" onclick="gp('medgas')" id="n-medgas"><span class="ni-ic">🫧</span>Medical Gas (FMS.32)</div>
     <div class="ni" onclick="gp('pmg')" id="n-pmg"><span class="ni-ic">📋</span>PMG PPM (FMS.32.1)</div>
@@ -3561,6 +3564,18 @@ if ('caches' in window) {
     <div id="eq-kpi-out"></div>
   </div>
 
+</div>
+
+<!-- ===== NURSING DEPARTMENT DAILY CENSUS ===== -->
+<div class="pg" id="page-census">
+  <div class="ph" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
+    <div><h1>🛏 Nursing Department Daily Census</h1><p>Daily bed occupancy · 24-hour ER / OR / L&amp;D / OPD activity · KPIs, infographics &amp; trend analysis</p></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn bo" style="font-size:11px;padding:8px 14px;" onclick="censusEditCapacity()">🛏 Edit Bed Capacity</button>
+      <button class="btn bp" style="font-size:11px;padding:8px 14px;" onclick="censusExportPDF()">📄 Export Daily Report (PDF)</button>
+    </div>
+  </div>
+  <div id="census-root"></div>
 </div>
 
 <!-- ===== UTILITIES ===== -->
@@ -6520,7 +6535,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1607';
+const APP_VERSION = '20260816-1608';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -6855,6 +6870,18 @@ async function dbLoadAll() {
       if (!Array.isArray(recs)) recs = [];
       localStorage.setItem(PX + 'cyl_test', JSON.stringify(recs));
       console.log('Cylinder tests (FMS 32.9): restored ' + recs.length + ' records from DB');
+    }
+
+    // ── v1608: Restore Nursing Daily Census (census_daily rows + census_beds config) ──
+    if (j.data && Array.isArray(j.data.census_daily)) {
+      const rows = j.data.census_daily.filter(r => r && r.date);
+      if (rows.length) { sv('census_daily', rows); console.log('Nursing census: restored ' + rows.length + ' daily entries from DB'); }
+    }
+    if (j.data && Array.isArray(j.data.census_beds) && j.data.census_beds.length) {
+      const bRow = j.data.census_beds.find(r => r && (r._id === 'census_beds_all' || r.data != null)) || j.data.census_beds[0];
+      let list = bRow && bRow.data;
+      if (typeof list === 'string') { try { list = JSON.parse(list); } catch(e){ list = null; } }
+      if (Array.isArray(list) && list.length) { sv('census_beds', list); console.log('Nursing census: restored bed-capacity config from DB'); }
     }
 
     // ── v1607: Restore Critical-Equipment Backup Plan (eq_backup) — FMS 25.9 ──
@@ -7442,7 +7469,7 @@ function setDate(){document.getElementById('tbDate').textContent=new Date().toLo
 function prefillDates(){const t=new Date().toISOString().split('T')[0];document.querySelectorAll('input[type=date]').forEach(e=>{if(!e.value)e.value=t;});const tm=new Date().toTimeString().slice(0,5);document.querySelectorAll('input[type=time]').forEach(e=>{if(!e.value)e.value=tm;});}
 
 // ===== NAV =====
-const PTITLES={dash:'⬡ Command Center',kpi:'📊 KPI Dashboard',cbahi:'✓ CBAHI Tracker',mms:'🔩 Maintenance Analytics',reports:'📈 Reports & Analysis',safety:'🛡 Safety — FMS.1.1.1',security:'🔒 Security — FMS.1.1.2',hazmat:'☣ Hazmat — FMS.1.1.3',emergency:'🚨 Emergency — FMS.1.1.4/5',fire:'🔥 Fire Safety — FMS.1.1.6',equip:'⚕ Medical Equipment — FMS.1.1.7',utils:'⚡ Utilities — FMS.1.1.8',medgas:'🫧 Medical Gas — FMS.32',radiation:'☢ Radiation — FMS.9',wo:'🔧 Work Orders',ckpi:'⚙ Custom KPIs',docs:'📁 Documents',pms:'📊 FMS Performance Sheet',pmg:'📋 PMG Preventive Maintenance — FMS 32.1'};
+const PTITLES={dash:'⬡ Command Center',kpi:'📊 KPI Dashboard',cbahi:'✓ CBAHI Tracker',mms:'🔩 Maintenance Analytics',reports:'📈 Reports & Analysis',safety:'🛡 Safety — FMS.1.1.1',security:'🔒 Security — FMS.1.1.2',hazmat:'☣ Hazmat — FMS.1.1.3',emergency:'🚨 Emergency — FMS.1.1.4/5',fire:'🔥 Fire Safety — FMS.1.1.6',equip:'⚕ Medical Equipment — FMS.1.1.7',utils:'⚡ Utilities — FMS.1.1.8',medgas:'🫧 Medical Gas — FMS.32',radiation:'☢ Radiation — FMS.9',wo:'🔧 Work Orders',ckpi:'⚙ Custom KPIs',docs:'📁 Documents',pms:'📊 FMS Performance Sheet',pmg:'📋 PMG Preventive Maintenance — FMS 32.1',census:'🛏 Nursing Department Daily Census'};
 function gp(id){
   document.querySelectorAll('.pg').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
@@ -7461,6 +7488,7 @@ function gp(id){
   if(id==='settings') setTimeout(function(){try{backupInit();}catch(e){}},200);
   if(id==='ach') setTimeout(function(){try{achInit();}catch(e){}},120);
   if(id==='temperature') setTimeout(function(){try{tmpInit();}catch(e){}},120);
+  if(id==='census') setTimeout(function(){try{censusInit();}catch(e){}},80);
   if(id==='settings') setTimeout(function(){try{meInit();}catch(e){}},120);
   window.scrollTo(0,0);
 }
@@ -10304,6 +10332,7 @@ const ALL_PAGES = [
   ['safety','🛡 Safety (1.1.1)'],['security','🔒 Security (1.1.2)'],['hazmat','☣ Hazmat (1.1.3)'],
   ['emergency','🚨 Emergency (1.1.4/5)'],['fire','🔥 Fire Safety (1.1.6)'],['equip','⚕ Med. Equipment (1.1.7)'],
   ['utils','⚡ Utilities (1.1.8)'],['ach','🌬 ACH / Room Pressure'],['temperature','🌡 Temperature Log'],
+  ['census','🛏 Nursing Census'],
   ['medgas','🫧 Medical Gas (32)'],['pmg','📋 PMG PPM (32.1)'],['radiation','☢ Radiation (9)'],
   ['wo','🔧 Work Orders'],['ckpi','⚙ Custom KPIs'],['docs','📁 Documents'],
   ['budget','💰 FMS Budget'],['risk','⚠️ Risk Assessment'],['contracts','📃 Contract Review'],
@@ -21970,6 +21999,471 @@ if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,a
     eqBackupClose();
     if (typeof toast==='function') toast('✓ Saved '+list.length+' critical-equipment backup entr'+(list.length===1?'y':'ies'),'#10b981',3500);
   };
+})();
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   v1608 — Nursing Department Daily Census
+   • Daily bed-occupancy entry + 24h ER/OR/L&D/OPD activity
+   • Editable bed capacity per station
+   • KPIs, SVG infographics, period trend analysis
+   • Daily report exported as a real PDF (jsPDF)
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(){
+  'use strict';
+
+  // ---------- default bed-capacity config (from the nursing template) ----------
+  const DEFAULT_BEDS = [
+    {station:'Station A',group:'inpatient',cap:15},{station:'Station B',group:'inpatient',cap:12},
+    {station:'Station C',group:'inpatient',cap:11},{station:'Station D',group:'inpatient',cap:11},
+    {station:'Station E',group:'inpatient',cap:20},{station:'Station F',group:'inpatient',cap:20},
+    {station:'Station G',group:'inpatient',cap:34},{station:'Station H',group:'inpatient',cap:34},
+    {station:'ICU (A)',group:'inpatient',cap:7},{station:'ICU (C)',group:'inpatient',cap:8},
+    {station:'ICU Isolation Room',group:'inpatient',cap:1},{station:'CCU',group:'inpatient',cap:5},
+    {station:'CS-ICU',group:'inpatient',cap:4},{station:'PICU',group:'inpatient',cap:3},
+    {station:'NICU',group:'inpatient',cap:15},
+    {station:'LR/DR',group:'ld',cap:9},{station:'NURSERY',group:'nursery',cap:25}
+  ];
+
+  // ---------- stores ----------
+  function beds(){ try{ const a=ld('census_beds'); return (Array.isArray(a)&&a.length)?a:DEFAULT_BEDS.slice(); }catch(e){ return DEFAULT_BEDS.slice(); } }
+  function saveBeds(list){ sv('census_beds',list); try{ dbWrite('census_beds',{_id:'census_beds_all',data:list,_ts:new Date().toISOString()}); }catch(e){} }
+  function daily(){ try{ const a=ld('census_daily'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+  function saveDaily(list){ sv('census_daily',list); }
+  function byDate(d){ return daily().find(r=>r.date===d) || null; }
+  function upsert(entry){
+    const list=daily(); const i=list.findIndex(r=>r.date===entry.date);
+    if(i>=0) list[i]=entry; else list.push(entry);
+    list.sort((a,b)=>a.date<b.date?-1:1);
+    saveDaily(list);
+    try{ dbWrite('census_daily',entry); }catch(e){}
+  }
+  const inpatient = ()=>beds().filter(b=>b.group==='inpatient');
+  const capOf = st => { const b=beds().find(x=>x.station===st); return b?(+b.cap||0):0; };
+  const num = v => { const n=parseInt(v,10); return isNaN(n)?0:n; };
+  const pct = (a,b)=> b>0 ? Math.round((a/b)*1000)/10 : 0;
+  const todayStr = ()=>{ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+  const nowTime = ()=>{ const d=new Date(); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
+
+  // ---------- theme-ish colors ----------
+  const C = { ac:'#3b82f6', gd:'#10b981', wn:'#f59e0b', rd:'#ef4444', pu:'#8b5cf6', mu:'#8fa6bd', bd:'#294056', s2:'#0f1b2e' };
+
+  // ---------- selected working date ----------
+  let CUR = todayStr();
+
+  // ═══════════════ RENDER ═══════════════
+  window.censusInit = function(){
+    const root=document.getElementById('census-root'); if(!root) return;
+    if(!byDate(CUR)) CUR = (daily().length? daily()[daily().length-1].date : todayStr());
+    root.innerHTML =
+      controlsHTML() +
+      '<div id="census-kpi"></div>' +
+      formHTML() +
+      '<div id="census-analytics"></div>';
+    loadInto(CUR);
+    renderKPIs();
+    renderAnalytics();
+  };
+
+  function controlsHTML(){
+    return '<div class="card" style="padding:12px 14px;margin-bottom:12px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">'
+      + fld('Date','<input type="date" id="cs-date" value="'+CUR+'" onchange="censusDateChange()" style="'+IST+'">')
+      + fld('Time','<input type="time" id="cs-time" value="'+nowTime()+'" style="'+IST+'">')
+      + fld('Entered by','<input id="cs-by" placeholder="Nurse / Supervisor" style="'+IST+'width:170px;">')
+      + '<button class="btn bg" style="font-size:12px;padding:9px 18px;" onclick="censusSave()">💾 Save Census</button>'
+      + '<div style="margin-left:auto;">'+fld('Trend period',
+          '<select id="cs-period" onchange="censusRenderAnalytics()" style="'+IST+'">'
+          +'<option value="7">Last 7 days</option><option value="14">Last 14 days</option>'
+          +'<option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option></select>')
+      + '</div></div>';
+  }
+  const IST='background:var(--s2,#0f1b2e);border:1px solid var(--bd,#294056);border-radius:7px;padding:8px 10px;color:var(--tx,#e6eef7);font-size:12px;';
+  const ISM='background:var(--s2,#0f1b2e);border:1px solid var(--bd,#294056);border-radius:6px;padding:5px 7px;color:var(--tx,#e6eef7);font-size:12px;width:78px;text-align:center;';
+  const ITX='background:var(--s2,#0f1b2e);border:1px solid var(--bd,#294056);border-radius:6px;padding:5px 7px;color:var(--tx,#e6eef7);font-size:12px;width:100%;';
+  function fld(label,inner){ return '<div><div style="font-size:10px;color:var(--mu,#8fa6bd);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">'+label+'</div>'+inner+'</div>'; }
+
+  function formHTML(){
+    // Inpatient bed census
+    let rows = inpatient().map(b=>{
+      const s=b.station;
+      return '<tr>'
+        +'<td style="padding:5px 8px;font-weight:600;">'+s+'</td>'
+        +'<td style="padding:5px 8px;text-align:center;color:var(--mu,#8fa6bd);">'+b.cap+'</td>'
+        +'<td style="padding:3px 6px;text-align:center;"><input class="cs-occ" data-st="'+esc(s)+'" type="number" min="0" oninput="censusRowCalc()" style="'+ISM+'"></td>'
+        +'<td style="padding:5px 8px;text-align:center;"><span class="cs-pct" data-st="'+esc(s)+'" style="font-weight:700;">—</span></td>'
+        +'<td style="padding:3px 6px;"><input class="cs-rem" data-st="'+esc(s)+'" placeholder="—" style="'+ITX+'"></td>'
+      +'</tr>';
+    }).join('');
+    const totCap=inpatient().reduce((a,b)=>a+(+b.cap||0),0);
+    const bedTable='<div class="card" style="padding:0;overflow:hidden;margin-bottom:12px;">'
+      +'<div style="padding:10px 14px;font-family:\'Rajdhani\',sans-serif;font-weight:700;font-size:15px;background:var(--s2,#0f1b2e);border-bottom:1px solid var(--bd);">🛏 Inpatient Bed Census</div>'
+      +'<div style="overflow:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">'
+      +'<thead><tr style="background:var(--ac,#1e3a5c);color:#fff;"><th style="text-align:left;padding:7px 8px;">Unit / Station</th><th style="padding:7px 8px;">Capacity</th><th style="padding:7px 8px;">Occupied</th><th style="padding:7px 8px;">Occupancy</th><th style="text-align:left;padding:7px 8px;">Remarks</th></tr></thead>'
+      +'<tbody>'+rows+'</tbody>'
+      +'<tfoot><tr style="background:var(--s2,#0f1b2e);font-weight:700;border-top:2px solid var(--bd);"><td style="padding:7px 8px;">TOTAL</td><td style="padding:7px 8px;text-align:center;">'+totCap+'</td><td style="padding:7px 8px;text-align:center;"><span id="cs-occ-total">0</span></td><td style="padding:7px 8px;text-align:center;"><span id="cs-pct-total">0%</span></td><td></td></tr></tfoot>'
+      +'</table></div></div>';
+
+    // 24h units
+    const ld24='<div class="g g2" style="margin-bottom:12px;">'
+      + card('🤰 Labor &amp; Delivery (LR/DR) — 24h',
+          two('Capacity','<span style="color:var(--mu);">'+capOf('LR/DR')+'</span>')
+          +two('Bed Occupied','<input id="cs-ld-occ" type="number" min="0" style="'+ISM+'">')
+          +two('NSVD','<input id="cs-ld-nsvd" type="number" min="0" style="'+ISM+'">')
+          +two('LSCS (Emergency)','<input id="cs-ld-lscs" type="number" min="0" style="'+ISM+'">')
+          +two('Abortion','<input id="cs-ld-ab" type="number" min="0" style="'+ISM+'">')
+          +two('HDU','<input id="cs-ld-hdu" type="number" min="0" style="'+ISM+'">')
+          +two('24h Admissions','<input id="cs-ld-adm" type="number" min="0" style="'+ISM+'">'))
+      + card('👶 Nursery — 24h',
+          two('Capacity','<span style="color:var(--mu);">'+capOf('NURSERY')+'</span>')
+          +two('Bed Occupied','<input id="cs-nur-occ" type="number" min="0" style="'+ISM+'">'))
+      +'</div>';
+
+    const act='<div class="g g3" style="margin-bottom:12px;">'
+      + card('🚑 Emergency Room — 24h',
+          two('Total Patients Seen','<input id="cs-er-seen" type="number" min="0" style="'+ISM+'">')
+          +two('Admissions','<input id="cs-er-adm" type="number" min="0" style="'+ISM+'">'))
+      + card('🏥 OPD — 24h',
+          two('Total Patients Seen','<input id="cs-opd-seen" type="number" min="0" style="'+ISM+'">')
+          +two('Admissions','<input id="cs-opd-adm" type="number" min="0" style="'+ISM+'">'))
+      + card('🔪 Operating Room — 24h',
+          two('Total Cases','<input id="cs-or-total" type="number" min="0" style="'+ISM+'">')
+          +two('AM','<input id="cs-or-am" type="number" min="0" style="'+ISM+'">')
+          +two('PM','<input id="cs-or-pm" type="number" min="0" style="'+ISM+'">')
+          +two('Emergency','<input id="cs-or-emerg" type="number" min="0" style="'+ISM+'">'))
+      +'</div>';
+
+    return bedTable + ld24 + act;
+  }
+  function card(title,body){ return '<div class="card" style="padding:0;overflow:hidden;"><div style="padding:9px 13px;font-family:\'Rajdhani\',sans-serif;font-weight:700;font-size:14px;background:var(--s2,#0f1b2e);border-bottom:1px solid var(--bd);">'+title+'</div><div style="padding:8px 13px;">'+body+'</div></div>'; }
+  function two(label,inner){ return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px dashed var(--bd,#294056);"><span style="font-size:12px;color:var(--mu,#8fa6bd);">'+label+'</span>'+inner+'</div>'; }
+  function esc(s){ return String(s==null?'':s).replace(/"/g,'&quot;'); }
+
+  // ═══════════════ FORM I/O ═══════════════
+  window.censusRowCalc = function(){
+    let tot=0;
+    document.querySelectorAll('#census-root .cs-occ').forEach(inp=>{
+      const st=inp.dataset.st, occ=num(inp.value), cap=capOf(st);
+      tot+=occ;
+      const p=document.querySelector('.cs-pct[data-st="'+cssq(st)+'"]');
+      if(p){ const v=pct(occ,cap); p.textContent=v+'%'; p.style.color=v>=90?C.rd:v>=75?C.wn:C.gd; }
+    });
+    const tc=inpatient().reduce((a,b)=>a+(+b.cap||0),0);
+    const ot=document.getElementById('cs-occ-total'); if(ot) ot.textContent=tot;
+    const pt=document.getElementById('cs-pct-total'); if(pt){ const v=pct(tot,tc); pt.textContent=v+'%'; pt.style.color=v>=90?C.rd:v>=75?C.wn:C.gd; }
+  };
+  function cssq(s){ return String(s).replace(/"/g,'\\"'); }
+
+  function loadInto(date){
+    const e=byDate(date)||{};
+    const occ=e.occ||{}, rem=e.rem||{};
+    document.querySelectorAll('#census-root .cs-occ').forEach(i=>{ i.value = (occ[i.dataset.st]!=null?occ[i.dataset.st]:''); });
+    document.querySelectorAll('#census-root .cs-rem').forEach(i=>{ i.value = (rem[i.dataset.st]||''); });
+    const g=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=(v!=null?v:''); };
+    g('cs-time', e.time||nowTime()); g('cs-by', e.by||'');
+    const L=e.ld||{}; g('cs-ld-occ',occ['LR/DR']); g('cs-ld-nsvd',L.nsvd); g('cs-ld-lscs',L.lscs); g('cs-ld-ab',L.abortion); g('cs-ld-hdu',L.hdu); g('cs-ld-adm',L.admissions);
+    g('cs-nur-occ', occ['NURSERY']);
+    const ER=e.er||{}; g('cs-er-seen',ER.seen); g('cs-er-adm',ER.adm);
+    const O=e.opd||{}; g('cs-opd-seen',O.seen); g('cs-opd-adm',O.adm);
+    const R=e.or||{}; g('cs-or-total',R.total); g('cs-or-am',R.am); g('cs-or-pm',R.pm); g('cs-or-emerg',R.emerg);
+    censusRowCalc();
+  }
+
+  function collect(){
+    const g=id=>{ const el=document.getElementById(id); return el?el.value:''; };
+    const occ={}, rem={};
+    document.querySelectorAll('#census-root .cs-occ').forEach(i=>{ if(i.value!=='') occ[i.dataset.st]=num(i.value); });
+    document.querySelectorAll('#census-root .cs-rem').forEach(i=>{ if(i.value.trim()) rem[i.dataset.st]=i.value.trim(); });
+    if(g('cs-ld-occ')!=='') occ['LR/DR']=num(g('cs-ld-occ'));
+    if(g('cs-nur-occ')!=='') occ['NURSERY']=num(g('cs-nur-occ'));
+    return {
+      date:g('cs-date')||CUR, time:g('cs-time'), by:g('cs-by'),
+      occ, rem,
+      ld:{ nsvd:num(g('cs-ld-nsvd')), lscs:num(g('cs-ld-lscs')), abortion:num(g('cs-ld-ab')), hdu:num(g('cs-ld-hdu')), admissions:num(g('cs-ld-adm')) },
+      er:{ seen:num(g('cs-er-seen')), adm:num(g('cs-er-adm')) },
+      opd:{ seen:num(g('cs-opd-seen')), adm:num(g('cs-opd-adm')) },
+      or:{ total:num(g('cs-or-total')), am:num(g('cs-or-am')), pm:num(g('cs-or-pm')), emerg:num(g('cs-or-emerg')) },
+      _ts:new Date().toISOString()
+    };
+  }
+
+  window.censusDateChange = function(){
+    const d=document.getElementById('cs-date'); if(!d) return;
+    CUR=d.value||todayStr(); loadInto(CUR); renderKPIs(); renderAnalytics();
+  };
+  window.censusSave = function(){
+    const e=collect();
+    if(!e.date){ if(typeof toast==='function') toast('Pick a date first','#f59e0b'); return; }
+    upsert(e); CUR=e.date;
+    renderKPIs(); renderAnalytics();
+    if(typeof toast==='function') toast('💾 Census saved for '+e.date,'#10b981',3200);
+  };
+
+  // ═══════════════ KPI + ANALYTICS ═══════════════
+  function inpOcc(e){ if(!e||!e.occ) return 0; return inpatient().reduce((a,b)=>a+num(e.occ[b.station]),0); }
+  function inpCap(){ return inpatient().reduce((a,b)=>a+(+b.cap||0),0); }
+  function admissions(e){ if(!e) return 0; return num(e.er&&e.er.adm)+num(e.opd&&e.opd.adm)+num(e.ld&&e.ld.admissions); }
+  function deliveries(e){ if(!e||!e.ld) return 0; return num(e.ld.nsvd)+num(e.ld.lscs); }
+  function prevEntry(date){ const l=daily().filter(r=>r.date<date); return l.length?l[l.length-1]:null; }
+
+  function renderKPIs(){
+    const box=document.getElementById('census-kpi'); if(!box) return;
+    const e=byDate(CUR); const prev=prevEntry(CUR);
+    if(!e){ box.innerHTML='<div class="card" style="padding:14px;color:var(--mu);margin-bottom:12px;">No saved census for <b>'+CUR+'</b> yet — enter the numbers below and press 💾 Save Census to generate KPIs.</div>'; return; }
+    const occ=inpOcc(e), cap=inpCap(), op=pct(occ,cap);
+    const pOcc=prev?pct(inpOcc(prev),cap):null;
+    const adm=admissions(e), pAdm=prev?admissions(prev):null;
+    const del=deliveries(e), csrate=del?Math.round((num(e.ld.lscs)/del)*1000)/10:0;
+    const orT=e.or?num(e.or.total):0, pOr=prev&&prev.or?num(prev.or.total):null;
+    box.innerHTML='<div class="g g4" style="margin-bottom:12px;">'
+      + kpi('Hospital Occupancy', op+'%', occ+' / '+cap+' beds', delta(op,pOcc,'pp'), op>=90?C.rd:op>=75?C.wn:C.gd)
+      + kpi('24h Admissions', adm, 'ER+OPD+L&D', delta(adm,pAdm), C.ac)
+      + kpi('Deliveries (L&D)', del, 'NSVD '+num(e.ld.nsvd)+' · LSCS '+num(e.ld.lscs)+' · CS '+csrate+'%', null, C.pu)
+      + kpi('OR Cases', orT, 'AM '+num(e.or.am)+' · PM '+num(e.or.pm)+' · Emerg '+num(e.or.emerg), delta(orT,pOr), C.wn)
+      +'</div>';
+  }
+  function kpi(label,val,sub,dl,color){
+    return '<div class="card" style="padding:12px 14px;border-left:4px solid '+color+';">'
+      +'<div style="font-size:10px;color:var(--mu,#8fa6bd);text-transform:uppercase;letter-spacing:.6px;">'+label+'</div>'
+      +'<div style="font-size:28px;font-weight:800;font-family:\'Rajdhani\',sans-serif;line-height:1.1;margin:2px 0;">'+val+(dl||'')+'</div>'
+      +'<div style="font-size:10px;color:var(--mu,#8fa6bd);">'+sub+'</div></div>';
+  }
+  function delta(cur,prev,unit){
+    if(prev==null) return '';
+    const d=Math.round((cur-prev)*10)/10;
+    if(d===0) return ' <span style="font-size:12px;color:'+C.mu+';">→0</span>';
+    const up=d>0; const col=up?C.rd:C.gd; // higher occupancy/admissions = more load (red up)
+    return ' <span style="font-size:13px;color:'+col+';font-weight:700;">'+(up?'▲':'▼')+Math.abs(d)+(unit==='pp'?'pp':'')+'</span>';
+  }
+
+  window.censusRenderAnalytics = function(){ renderAnalytics(); };
+  function renderAnalytics(){
+    const box=document.getElementById('census-analytics'); if(!box) return;
+    const e=byDate(CUR);
+    const days=parseInt((document.getElementById('cs-period')||{}).value||'30',10);
+    const hist=daily().slice(-days);
+
+    // per-department occupancy bars (current)
+    let deptBars='';
+    if(e){
+      const items=inpatient().map(b=>({name:b.station, val:pct(num(e.occ&&e.occ[b.station]),b.cap), occ:num(e.occ&&e.occ[b.station]), cap:b.cap}));
+      deptBars=svgHBars(items);
+    }
+    // trend: occupancy% + admissions over period
+    const trend = hist.length? svgTrend(hist.map(r=>({date:r.date, occ:pct(inpOcc(r),inpCap()), adm:admissions(r)}))) : '<div style="color:var(--mu);padding:20px;">No history yet.</div>';
+    // L&D donut + OR donut (current)
+    let donuts='';
+    if(e){
+      donuts='<div class="g g2">'
+        + card('🤰 Delivery Mix (L&amp;D)', svgDonut([
+            {label:'NSVD',val:num(e.ld.nsvd),color:C.gd},
+            {label:'LSCS (Emer)',val:num(e.ld.lscs),color:C.rd},
+            {label:'Abortion',val:num(e.ld.abortion),color:C.wn}
+          ]))
+        + card('🔪 OR Case Mix', svgDonut([
+            {label:'AM',val:num(e.or.am),color:C.ac},
+            {label:'PM',val:num(e.or.pm),color:C.pu},
+            {label:'Emergency',val:num(e.or.emerg),color:C.rd}
+          ]))
+        +'</div>';
+    }
+    // period analysis text
+    let analysis='';
+    if(hist.length){
+      const occs=hist.map(r=>pct(inpOcc(r),inpCap()));
+      const avg=Math.round(occs.reduce((a,b)=>a+b,0)/occs.length*10)/10;
+      const peak=hist[occs.indexOf(Math.max.apply(null,occs))];
+      const low=hist[occs.indexOf(Math.min.apply(null,occs))];
+      const admSum=hist.reduce((a,r)=>a+admissions(r),0);
+      const delSum=hist.reduce((a,r)=>a+deliveries(r),0);
+      const orSum=hist.reduce((a,r)=>a+(r.or?num(r.or.total):0),0);
+      analysis='<div class="card" style="padding:12px 14px;margin-top:12px;font-size:12px;line-height:1.7;">'
+        +'<b style="font-family:\'Rajdhani\',sans-serif;font-size:14px;">📊 Period Analysis · last '+hist.length+' day(s)</b><br>'
+        +'Average hospital occupancy <b>'+avg+'%</b>. '
+        +'Peak <b>'+Math.max.apply(null,occs)+'%</b> on '+peak.date+', lowest <b>'+Math.min.apply(null,occs)+'%</b> on '+low.date+'.<br>'
+        +'Total admissions <b>'+admSum+'</b> · deliveries <b>'+delSum+'</b> · OR cases <b>'+orSum+'</b> over the period '
+        +'(avg '+Math.round(admSum/hist.length*10)/10+' admissions/day).'
+        +'</div>';
+    }
+    box.innerHTML =
+      (deptBars? card('🏨 Occupancy by Department — '+CUR, deptBars)+'<div style="height:12px;"></div>':'')
+      + card('📈 Trend — Occupancy % &amp; Admissions', trend)
+      + '<div style="height:12px;"></div>'
+      + donuts
+      + analysis;
+  }
+
+  // ═══════════════ SVG CHARTS (no libraries) ═══════════════
+  function svgHBars(items){
+    const W=760, rowH=22, pad=140, max=100;
+    const H=items.length*rowH+16;
+    let bars=items.map((it,i)=>{
+      const y=i*rowH+8, w=(it.val/max)*(W-pad-70);
+      const col=it.val>=90?C.rd:it.val>=75?C.wn:C.gd;
+      return '<text x="6" y="'+(y+13)+'" fill="var(--tx,#e6eef7)" font-size="11">'+it.name+'</text>'
+        +'<rect x="'+pad+'" y="'+y+'" width="'+(W-pad-70)+'" height="15" rx="3" fill="var(--s2,#0f1b2e)"/>'
+        +'<rect x="'+pad+'" y="'+y+'" width="'+Math.max(0,w)+'" height="15" rx="3" fill="'+col+'"/>'
+        +'<text x="'+(W-64)+'" y="'+(y+12)+'" fill="var(--mu,#8fa6bd)" font-size="10">'+it.val+'% ('+it.occ+'/'+it.cap+')</text>';
+    }).join('');
+    return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;">'+bars+'</svg>';
+  }
+  function svgTrend(series){
+    const W=760,H=200,pl=40,pr=40,pt=14,pb=26;
+    const n=series.length; if(!n) return '';
+    const xw=(W-pl-pr)/Math.max(1,n-1);
+    const maxAdm=Math.max(10,Math.max.apply(null,series.map(s=>s.adm)));
+    // admission bars
+    let bars=series.map((s,i)=>{ const x=pl+i*xw, bh=(s.adm/maxAdm)*(H-pt-pb); return '<rect x="'+(x-6)+'" y="'+(H-pb-bh)+'" width="12" height="'+bh+'" rx="2" fill="'+C.ac+'" opacity=".35"/>'; }).join('');
+    // occupancy line (0-100%)
+    let pts=series.map((s,i)=>{ const x=pl+i*xw, y=pt+(1-s.occ/100)*(H-pt-pb); return x+','+y; });
+    const line='<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+C.gd+'" stroke-width="2.5"/>';
+    const dots=series.map((s,i)=>{ const x=pl+i*xw, y=pt+(1-s.occ/100)*(H-pt-pb); return '<circle cx="'+x+'" cy="'+y+'" r="2.6" fill="'+C.gd+'"/>'; }).join('');
+    // x labels (sparse)
+    const step=Math.ceil(n/8);
+    let xlab=series.map((s,i)=> (i%step===0||i===n-1)? '<text x="'+(pl+i*xw)+'" y="'+(H-8)+'" fill="var(--mu,#8fa6bd)" font-size="9" text-anchor="middle">'+s.date.slice(5)+'</text>':'').join('');
+    const grid=[0,25,50,75,100].map(v=>{ const y=pt+(1-v/100)*(H-pt-pb); return '<line x1="'+pl+'" y1="'+y+'" x2="'+(W-pr)+'" y2="'+y+'" stroke="var(--bd,#294056)" stroke-width="1" opacity=".5"/><text x="6" y="'+(y+3)+'" fill="var(--mu,#8fa6bd)" font-size="9">'+v+'%</text>'; }).join('');
+    return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;">'+grid+bars+line+dots+xlab
+      +'<text x="'+(W-pr)+'" y="10" fill="'+C.gd+'" font-size="9" text-anchor="end">— Occupancy %</text>'
+      +'<text x="'+(W-pr)+'" y="20" fill="'+C.ac+'" font-size="9" text-anchor="end">▮ Admissions</text></svg>';
+  }
+  function svgDonut(parts){
+    const total=parts.reduce((a,p)=>a+p.val,0);
+    const cx=70,cy=70,r=52,rin=30; let a0=-Math.PI/2;
+    let segs = total>0 ? parts.filter(p=>p.val>0).map(p=>{
+      const frac=p.val/total, a1=a0+frac*2*Math.PI;
+      const x0=cx+r*Math.cos(a0), y0=cy+r*Math.sin(a0), x1=cx+r*Math.cos(a1), y1=cy+r*Math.sin(a1);
+      const xi1=cx+rin*Math.cos(a1), yi1=cy+rin*Math.sin(a1), xi0=cx+rin*Math.cos(a0), yi0=cy+rin*Math.sin(a0);
+      const large=frac>0.5?1:0; a0=a1;
+      return '<path d="M'+x0+' '+y0+' A'+r+' '+r+' 0 '+large+' 1 '+x1+' '+y1+' L'+xi1+' '+yi1+' A'+rin+' '+rin+' 0 '+large+' 0 '+xi0+' '+yi0+' Z" fill="'+p.color+'"/>';
+    }).join('') : '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="var(--s2,#0f1b2e)"/><circle cx="'+cx+'" cy="'+cy+'" r="'+rin+'" fill="var(--sf,#12203a)"/>';
+    const legend=parts.map(p=>'<div style="display:flex;align-items:center;gap:6px;font-size:11px;margin:3px 0;"><span style="width:11px;height:11px;border-radius:2px;background:'+p.color+';display:inline-block;"></span>'+p.label+' <b style="margin-left:auto;">'+p.val+'</b></div>').join('');
+    return '<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;"><svg viewBox="0 0 140 140" style="width:140px;height:140px;">'+segs
+      +'<text x="70" y="66" text-anchor="middle" fill="var(--tx,#e6eef7)" font-size="20" font-weight="700">'+total+'</text>'
+      +'<text x="70" y="82" text-anchor="middle" fill="var(--mu,#8fa6bd)" font-size="9">TOTAL</text></svg>'
+      +'<div style="flex:1;min-width:120px;">'+legend+'</div></div>';
+  }
+
+  // ═══════════════ BED CAPACITY EDITOR ═══════════════
+  const IE='background:var(--s2,#0f1b2e);border:1px solid var(--bd,#294056);border-radius:6px;padding:5px 7px;color:var(--tx,#e6eef7);font-size:12px;box-sizing:border-box;';
+  window.censusEditCapacity = function(){
+    let ov=document.getElementById('cs-cap-ov');
+    if(!ov){ ov=document.createElement('div'); ov.id='cs-cap-ov';
+      ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:9999;display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:22px 10px;';
+      ov.innerHTML='<div style="background:var(--sf,#12203a);border:1px solid var(--bd,#294056);border-radius:14px;max-width:640px;width:100%;margin:auto;box-shadow:0 20px 60px rgba(0,0,0,.5);">'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--bd,#294056);position:sticky;top:0;background:var(--sf,#12203a);border-radius:14px 14px 0 0;"><div style="font-family:\'Rajdhani\',sans-serif;font-size:18px;font-weight:700;">🛏 Edit Bed Capacity</div><button class="btn bo" style="font-size:11px;padding:5px 12px;" onclick="document.getElementById(\'cs-cap-ov\').style.display=\'none\'">✕ Close</button></div>'
+        +'<div style="padding:12px 18px;"><div style="font-size:11px;color:var(--mu,#8fa6bd);margin-bottom:10px;">Adjust the licensed bed capacity of any station, add a new unit, or remove one. Occupancy % is calculated against these numbers.</div>'
+        +'<div style="max-height:56vh;overflow:auto;border:1px solid var(--bd,#294056);border-radius:8px;"><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="position:sticky;top:0;background:var(--ac,#1e3a5c);color:#fff;"><th style="text-align:left;padding:7px 8px;">Unit / Station</th><th style="padding:7px 8px;width:120px;">Group</th><th style="padding:7px 8px;width:90px;">Capacity</th><th style="width:40px;"></th></tr></thead><tbody id="cs-cap-rows"></tbody></table></div>'
+        +'<div style="margin-top:10px;"><button class="btn bp" style="font-size:11px;padding:6px 12px;" onclick="censusCapAdd()">+ Add Unit</button></div></div>'
+        +'<div style="display:flex;gap:10px;justify-content:space-between;align-items:center;padding:14px 18px;border-top:1px solid var(--bd,#294056);"><button class="btn br" style="font-size:11px;padding:6px 12px;" onclick="censusCapReset()">↺ Restore template defaults</button><div style="display:flex;gap:10px;"><button class="btn bo" onclick="document.getElementById(\'cs-cap-ov\').style.display=\'none\'">Cancel</button><button class="btn bg" onclick="censusCapSave()">✓ Save Capacity</button></div></div></div>';
+      document.body.appendChild(ov);
+      ov.addEventListener('mousedown',e=>{ if(e.target===ov) ov.style.display='none'; });
+    }
+    const rows=document.getElementById('cs-cap-rows');
+    rows.innerHTML=beds().map(capRow).join('');
+    ov.style.display='flex';
+  };
+  function capRow(b){
+    const g=b.group||'inpatient';
+    const opt=v=>'<option value="'+v+'"'+(g===v?' selected':'')+'>'+v+'</option>';
+    return '<tr class="cs-cap-row" style="border-bottom:1px solid var(--bd,#294056);">'
+      +'<td style="padding:3px 6px;"><input class="cap-st" style="'+IE+'width:100%;" value="'+esc(b.station)+'"></td>'
+      +'<td style="padding:3px 6px;"><select class="cap-gr" style="'+IE+'width:100%;">'+opt('inpatient')+opt('ld')+opt('nursery')+'</select></td>'
+      +'<td style="padding:3px 6px;"><input class="cap-cap" type="number" min="0" style="'+IE+'width:100%;text-align:center;" value="'+(+b.cap||0)+'"></td>'
+      +'<td style="padding:3px 6px;text-align:center;"><button class="btn br" style="font-size:10px;padding:4px 7px;" onclick="this.closest(\'tr\').remove()">✕</button></td></tr>';
+  }
+  window.censusCapAdd=function(){ const r=document.getElementById('cs-cap-rows'); r.insertAdjacentHTML('beforeend', capRow({station:'',group:'inpatient',cap:0})); const el=r.querySelector('tr:last-child .cap-st'); if(el) el.focus(); };
+  window.censusCapReset=function(){ if(!confirm('Restore the original template bed capacities? Custom edits will be replaced.')) return; try{ localStorage.removeItem(PX+'census_beds'); }catch(e){} document.getElementById('cs-cap-rows').innerHTML=DEFAULT_BEDS.map(capRow).join(''); if(typeof toast==='function') toast('Template defaults loaded — press Save','#f59e0b'); };
+  window.censusCapSave=function(){
+    const rows=Array.from(document.querySelectorAll('#cs-cap-rows .cs-cap-row'));
+    const list=rows.map(tr=>({ station:tr.querySelector('.cap-st').value.trim(), group:tr.querySelector('.cap-gr').value, cap:num(tr.querySelector('.cap-cap').value) })).filter(b=>b.station);
+    if(!list.length){ if(typeof toast==='function') toast('Add at least one unit','#f59e0b'); return; }
+    saveBeds(list);
+    document.getElementById('cs-cap-ov').style.display='none';
+    censusInit();
+    if(typeof toast==='function') toast('✓ Bed capacity saved ('+list.reduce((a,b)=>a+b.cap,0)+' beds)','#10b981',3200);
+  };
+
+  // ═══════════════ PDF EXPORT (real PDF via jsPDF) ═══════════════
+  window.censusExportPDF = function(){
+    const JS = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : (window.jsPDF||null);
+    if(!JS){ if(typeof toast==='function') toast('PDF engine still loading (needs internet) — try again in a moment','#f59e0b',4000); return; }
+    const e=byDate(CUR);
+    if(!e){ if(typeof toast==='function') toast('Save the census for '+CUR+' first','#f59e0b'); return; }
+    const doc=new JS({unit:'pt',format:'a4'});
+    const pw=doc.internal.pageSize.getWidth();
+    const prev=prevEntry(CUR);
+
+    // Header
+    doc.setFillColor(30,58,92); doc.rect(0,0,pw,64,'F');
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(16);
+    doc.text('Obeid Specialized Hospital', 40, 28);
+    doc.setFontSize(12); doc.setFont('helvetica','normal');
+    doc.text('Nursing Department — Daily Census Report', 40, 46);
+    doc.setFontSize(10);
+    doc.text('Date: '+e.date+'    Time: '+(e.time||'—')+'    Entered by: '+(e.by||'—'), pw-40, 40, {align:'right'});
+
+    // KPI summary line
+    const occ=inpOcc(e), cap=inpCap(), op=pct(occ,cap);
+    const adm=admissions(e), del=deliveries(e), orT=e.or?num(e.or.total):0;
+    let y=84;
+    doc.setTextColor(20,30,45); doc.setFont('helvetica','bold'); doc.setFontSize(11);
+    doc.text('Key Indicators', 40, y); y+=6;
+    doc.autoTable({
+      startY:y,
+      head:[['Hospital Occupancy','24h Admissions','Deliveries (NSVD/LSCS)','OR Cases']],
+      body:[[op+'%  ('+occ+'/'+cap+')', String(adm), del+'  ('+num(e.ld.nsvd)+'/'+num(e.ld.lscs)+')', String(orT)]],
+      theme:'grid', styles:{fontSize:10,halign:'center'}, headStyles:{fillColor:[59,130,246],textColor:255,fontStyle:'bold'},
+      margin:{left:40,right:40}
+    });
+    y=doc.lastAutoTable.finalY+16;
+
+    // Inpatient bed census table
+    const bodyBeds=inpatient().map(b=>{ const o=num(e.occ&&e.occ[b.station]); return [b.station, String(b.cap), String(o), pct(o,b.cap)+'%', (e.rem&&e.rem[b.station])||'']; });
+    bodyBeds.push([{content:'TOTAL',styles:{fontStyle:'bold'}}, {content:String(cap),styles:{fontStyle:'bold'}}, {content:String(occ),styles:{fontStyle:'bold'}}, {content:op+'%',styles:{fontStyle:'bold'}}, '']);
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text('Inpatient Bed Census', 40, y); y+=6;
+    doc.autoTable({ startY:y, head:[['Unit / Station','Capacity','Occupied','Occupancy','Remarks']], body:bodyBeds,
+      theme:'striped', styles:{fontSize:9}, headStyles:{fillColor:[30,58,92],textColor:255},
+      columnStyles:{1:{halign:'center'},2:{halign:'center'},3:{halign:'center'}}, margin:{left:40,right:40} });
+    y=doc.lastAutoTable.finalY+16;
+
+    // 24h activity table
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text('24-Hour Department Activity', 40, y); y+=6;
+    const L=e.ld||{}, ER=e.er||{}, OP=e.opd||{}, OR=e.or||{};
+    doc.autoTable({ startY:y, head:[['Department','Metrics']], body:[
+      ['Labor & Delivery (LR/DR)','Occupied '+num(e.occ&&e.occ['LR/DR'])+' / '+capOf('LR/DR')+'   ·   NSVD '+num(L.nsvd)+'   ·   LSCS(Emer) '+num(L.lscs)+'   ·   Abortion '+num(L.abortion)+'   ·   HDU '+num(L.hdu)+'   ·   24h Admissions '+num(L.admissions)],
+      ['Nursery','Occupied '+num(e.occ&&e.occ['NURSERY'])+' / '+capOf('NURSERY')],
+      ['Emergency Room (24h)','Total seen '+num(ER.seen)+'   ·   Admissions '+num(ER.adm)],
+      ['OPD (24h)','Total seen '+num(OP.seen)+'   ·   Admissions '+num(OP.adm)],
+      ['Operating Room (24h)','Total cases '+num(OR.total)+'   ·   AM '+num(OR.am)+'   ·   PM '+num(OR.pm)+'   ·   Emergency '+num(OR.emerg)]
+    ], theme:'grid', styles:{fontSize:9}, headStyles:{fillColor:[59,130,246],textColor:255},
+      columnStyles:{0:{fontStyle:'bold',cellWidth:150}}, margin:{left:40,right:40} });
+    y=doc.lastAutoTable.finalY+16;
+
+    // Day-over-day comparison
+    if(prev){
+      const pOcc=pct(inpOcc(prev),cap), dOcc=Math.round((op-pOcc)*10)/10;
+      const dAdm=adm-admissions(prev);
+      doc.setFont('helvetica','bold'); doc.setFontSize(11);
+      if(y>760){ doc.addPage(); y=50; }
+      doc.text('Change vs previous census ('+prev.date+')', 40, y); y+=6;
+      doc.autoTable({ startY:y, head:[['Indicator','Previous','Current','Change']], body:[
+        ['Occupancy %', pOcc+'%', op+'%', (dOcc>0?'+':'')+dOcc+' pp'],
+        ['24h Admissions', String(admissions(prev)), String(adm), (dAdm>0?'+':'')+dAdm],
+        ['Deliveries', String(deliveries(prev)), String(del), (del-deliveries(prev)>0?'+':'')+(del-deliveries(prev))]
+      ], theme:'grid', styles:{fontSize:9,halign:'center'}, headStyles:{fillColor:[139,92,246],textColor:255},
+        columnStyles:{0:{halign:'left',fontStyle:'bold'}}, margin:{left:40,right:40} });
+      y=doc.lastAutoTable.finalY;
+    }
+
+    // footer
+    const ph=doc.internal.pageSize.getHeight();
+    doc.setFontSize(8); doc.setTextColor(140,150,165);
+    doc.text('Generated by FMS Command Platform · '+new Date().toLocaleString('en-GB')+' · CBAHI 2026', 40, ph-24);
+
+    doc.save('Nursing_Daily_Census_'+e.date+'.pdf');
+    if(typeof toast==='function') toast('📄 PDF report generated for '+e.date,'#10b981',3200);
+  };
+
 })();
 </script>
 
