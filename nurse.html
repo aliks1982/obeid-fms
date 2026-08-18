@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Nurse Dispensing — Obeid Specialized Hospital</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root{ --bg:#0a1120; --sf:#12203a; --s2:#0f1b2e; --bd:#294056; --tx:#e6eef7; --mu:#8fa6bd; --ac:#3b82f6; --gd:#10b981; --wn:#f59e0b; --rd:#ef4444; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body{ margin:0; background:var(--bg); color:var(--tx); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; font-size:15px; padding-bottom:40px; }
+  header{ background:linear-gradient(135deg,#1e3a5c,#0f2038); padding:16px 16px 14px; position:sticky; top:0; z-index:50; box-shadow:0 2px 14px rgba(0,0,0,.4); }
+  header h1{ margin:0; font-size:16px; font-weight:800; letter-spacing:.3px; }
+  header .sub{ font-size:12px; color:#b9c9dc; margin-top:2px; }
+  .wrap{ max-width:560px; margin:0 auto; padding:14px 12px; }
+  .card{ background:var(--sf); border:1px solid var(--bd); border-radius:14px; padding:14px; margin-bottom:14px; }
+  .card h2{ margin:0 0 10px; font-size:14px; font-weight:700; display:flex; align-items:center; gap:7px; }
+  label{ display:block; font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--mu); margin:0 0 5px; }
+  select,input{ width:100%; background:var(--s2); border:1px solid var(--bd); border-radius:10px; padding:13px 12px; color:var(--tx); font-size:16px; }
+  select:focus,input:focus{ outline:none; border-color:var(--ac); }
+  .row{ display:flex; gap:10px; align-items:flex-end; }
+  .row .qty{ width:96px; flex:none; }
+  button{ border:none; border-radius:11px; font-size:15px; font-weight:700; padding:14px 16px; color:#fff; cursor:pointer; width:100%; }
+  .b-scan{ background:linear-gradient(135deg,#3b82f6,#2563eb); font-size:17px; padding:17px; }
+  .b-use{ background:linear-gradient(135deg,#10b981,#059669); }
+  .b-ro{ background:linear-gradient(135deg,#f59e0b,#d97706); }
+  .b-ghost{ background:var(--s2); border:1px solid var(--bd); color:var(--mu); font-weight:600; }
+  .mt8{ margin-top:8px; }
+  #reader{ margin-top:12px; border-radius:12px; overflow:hidden; }
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  th{ text-align:left; padding:8px 8px; background:var(--ac); color:#fff; font-size:11px; position:sticky; top:0; }
+  th.c,td.c{ text-align:center; }
+  td{ padding:8px 8px; border-bottom:1px solid var(--bd); }
+  .tag{ font-size:10px; font-weight:800; padding:2px 6px; border-radius:5px; }
+  .status{ font-size:12px; color:var(--mu); text-align:center; padding:8px; }
+  .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#111c2e; border:1px solid var(--bd); color:#fff; padding:12px 16px; border-radius:12px; font-size:14px; max-width:90%; box-shadow:0 8px 30px rgba(0,0,0,.5); z-index:100; opacity:0; transition:opacity .2s, transform .2s; text-align:center; }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(-4px); }
+  .pill{ display:inline-flex; align-items:center; gap:6px; font-size:12px; background:var(--s2); border:1px solid var(--bd); border-radius:20px; padding:5px 12px; color:var(--mu); }
+  .dot{ width:8px; height:8px; border-radius:50%; background:var(--mu); }
+  .dot.ok{ background:var(--gd); } .dot.bad{ background:var(--rd); } .dot.load{ background:var(--wn); }
+  .muted{ color:var(--mu); font-size:13px; padding:14px; text-align:center; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🧤 Nurse Dispensing</h1>
+  <div class="sub">Obeid Specialized Hospital — IPC Consumables</div>
+</header>
+
+<div class="wrap">
+  <div class="card">
+    <label>My Station / Department</label>
+    <select id="station" onchange="onStationChange()"><option value="">— select your station —</option></select>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:8px;">
+      <span class="pill"><span id="dot" class="dot load"></span><span id="syncTxt">Loading…</span></span>
+      <button class="b-ghost" style="width:auto;padding:9px 14px;font-size:13px;" onclick="reload(true)">🔄 Refresh</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <button class="b-scan" onclick="scanStart()">📷 Scan Consumable QR</button>
+    <div id="reader" style="display:none;"></div>
+    <div id="readerStop" style="display:none;text-align:center;margin-top:8px;"><button class="b-ghost" style="width:auto;padding:9px 16px;" onclick="scanStop()">✕ Stop camera</button></div>
+  </div>
+
+  <div class="card">
+    <h2>🧤 Record Usage</h2>
+    <label>Consumable</label>
+    <select id="useItem"></select>
+    <div class="row mt8">
+      <div class="qty"><label>Qty used</label><input id="useQty" type="number" min="1" inputmode="numeric" placeholder="0"></div>
+      <button class="b-use" onclick="recordUsage()">✓ Record</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🔄 Request Restock</h2>
+    <label>Consumable</label>
+    <select id="roItem"></select>
+    <div class="row mt8">
+      <div class="qty"><label>Quantity</label><input id="roQty" type="number" min="1" inputmode="numeric" placeholder="0"></div>
+      <button class="b-ro" onclick="requestRestock()">Send Request</button>
+    </div>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden;">
+    <h2 style="padding:12px 14px;margin:0;border-bottom:1px solid var(--bd);background:var(--s2);">📦 <span id="invTitle">Station</span> — On Hand</h2>
+    <div style="overflow:auto;max-height:60vh;"><div id="inv"><div class="muted">Select your station to see its inventory.</div></div></div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   Nurse Dispensing (no-login) — writes to the SAME ledger as the FMS platform.
+   Read:  GET  {DB_URL}?action=getAll  ->  {ok, data:{ipc_txns:[...], ...}}
+   Write: POST {DB_URL} (no-cors)      ->  {action:'upsert', type, record}
+   ═══════════════════════════════════════════════════════════════════════ */
+'use strict';
+var DB_URL = 'https://script.google.com/macros/s/AKfycbwdezUpX0rs9tUfdN_nRpaFQCMuYVLol4lQ2BLl1Rc4KMbyofO9TS9uww-_NuLrwA5J/exec';
+
+// Fallback 30-item master list — identical ids/units to the platform seed,
+// used only if the store hasn't synced its item list to the DB yet.
+var SEED_ITEMS = [
+  ['1860 HEALTH CARE PARTICULATE RESPIRATOR & SURGICAL MASK','box'],
+  ['1860S N95 HEALTH CARE PARTICULATE RESPIRATOR','box'],
+  ['1870 N95 MASK','box'],
+  ['ALCOHOL SOLUTION 70% 1000ML','bottle'],
+  ['ALCOHOL SOLUTION 70% 250ML','bottle'],
+  ['BETADINE SOLUTION 10% 1000ML','bottle'],
+  ['CABLE TIES 203X3.2MM 100PC/PCK','pack'],
+  ['CHLOROHEXIDEN 4% SURGICAL SCRUB 500ML','bottle'],
+  ['DISP. ISOLATION GOWN YELLOW 115CM 25GM','piece'],
+  ['DISP.SURGICAL FACE MASK 3-PLY GREEN TIES /50','box'],
+  ['DISPOSABLE BLADES FOR SURGICAL CLIPPER 9660 3M','box'],
+  ['DISPOSABLE CURTAINE BLUE 7.5X2M','piece'],
+  ['DISPOSABLE LATEX GLOVES POW. FREE (LARGE)','box'],
+  ['DISPOSABLE LATEX GLOVES POW. FREE (MEDIUM)','box'],
+  ['DISPOSABLE LATEX GLOVES POW. FREE (SMALL)','box'],
+  ['FACE SHIELD (WHOLE FACE) M20FS','piece'],
+  ['GALLON YELLOW 20LTR','gallon'],
+  ['HAND SANITIZING GEL SACHET 1LTR','sachet'],
+  ['HYDROGEN PEROXIDE 6% 5LTR','gallon'],
+  ['ISOLATION BAG YELLOW BIG W/ LOGO MICRN-.075,L-90CM,W-50CM','pack'],
+  ['ISOLATION SHARP CONTAINER ROUND 13L','piece'],
+  ['MAXI ROLL 300M 6ROLL/CRTN','carton'],
+  ['OPA SOLUTION 5LTR','gallon'],
+  ['PLASTIC BAG BLACK MICRN-.050,L-93CM,W-50CM','pack'],
+  ['SURFACE DISINFECTANT 750ML F3-188/EXEOL','bottle'],
+  ['SURFACE DISINFECTANT SPRAY 500ML (DI-MD-2160-Q)','bottle'],
+  ['SURGICAL FACE MASK EAR LOOP 50PC/BX (MEDICAL)','box'],
+  ['SURGICAL GOWN STANDARD L W/ HAND TOWEL','piece'],
+  ['SURGICAL GOWN STANDARD XL W/ HAND TOWEL','piece'],
+  ['SURGICAL GOWN STANDARD XXL W/ HAND TOWEL','piece']
+].map(function(r,i){ return { id:'C'+String(i+1).padStart(2,'0'), name:r[0], unit:r[1], active:true }; });
+
+var DEFAULT_STATIONS = ['Station A','Station B','Station C','Station D','Station E','Station F','Station G','Station H','ICU (A)','ICU (C)','ICU Isolation Room','CCU','CS-ICU','PICU','NICU','LR/DR','NURSERY','ER','OPD','OR'];
+
+var ITEMS = SEED_ITEMS.slice();
+var STATIONS = DEFAULT_STATIONS.slice();
+var PARCFG = { leadTimeDays:7, safetyStock:0, window:30 };
+var SERVER_TXNS = [];
+var PENDING = [];              // posted but not yet confirmed by the server
+var lastSync = null, reloadTimer = null;
+
+// ── helpers ──
+function num(v){ var n=parseFloat(v); return isNaN(n)?0:n; }
+function uid(p){ return (p||'T')+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+function curStation(){ return localStorage.getItem('obeidNurseStation')||''; }
+function setStation(s){ localStorage.setItem('obeidNurseStation', s); }
+function itemById(id){ for(var i=0;i<ITEMS.length;i++){ if(ITEMS[i].id===id) return ITEMS[i]; } return null; }
+function itemName(id){ var it=itemById(id); return it?it.name:id; }
+function unitOf(id){ var it=itemById(id); return it?it.unit:''; }
+function activeItems(){ return ITEMS.filter(function(i){ return i.active!==false; }); }
+function unwrap(arr){ if(!Array.isArray(arr)||!arr.length) return null; var row=null; for(var i=0;i<arr.length;i++){ if(arr[i]&&arr[i].data!=null){ row=arr[i]; break; } } if(!row) row=arr[0]; var d=row&&row.data; if(typeof d==='string'){ try{ d=JSON.parse(d); }catch(e){ d=null; } } return d; }
+
+function effectiveTxns(){
+  if(!PENDING.length) return SERVER_TXNS;
+  var ids={}; SERVER_TXNS.forEach(function(t){ ids[String(t.id)]=1; });
+  return SERVER_TXNS.concat(PENDING.filter(function(t){ return !ids[String(t.id)]; }));
+}
+function stationOnHand(station){
+  var bal={};
+  effectiveTxns().forEach(function(t){
+    if(t.station!==station) return;
+    var q=num(t.qty);
+    if(t.type==='issue') bal[t.itemId]=(bal[t.itemId]||0)+q;
+    else if(t.type==='consume') bal[t.itemId]=(bal[t.itemId]||0)-q;
+    else if(t.type==='adjust') bal[t.itemId]=(bal[t.itemId]||0)+q;
+  });
+  return bal;
+}
+function aduStation(station,itemId){
+  var d=num(PARCFG.window)||30, cut=Date.now()-d*864e5, s=0;
+  effectiveTxns().forEach(function(t){ if(t.type==='consume'&&t.station===station&&t.itemId===itemId&&new Date(t.ts).getTime()>=cut) s+=num(t.qty); });
+  return s/d;
+}
+
+// ── UI helpers ──
+function toast(msg){ var el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(el._t); el._t=setTimeout(function(){ el.classList.remove('show'); }, 3600); }
+function setStatus(txt,cls){ document.getElementById('syncTxt').textContent=txt; var d=document.getElementById('dot'); d.className='dot'+(cls?(' '+cls):''); }
+
+function fillSelectors(){
+  // stations
+  var sSel=document.getElementById('station'), cur=curStation();
+  var opts='<option value="">— select your station —</option>'+STATIONS.map(function(s){ return '<option'+(s===cur?' selected':'')+'>'+esc(s)+'</option>'; }).join('');
+  sSel.innerHTML=opts;
+  // items
+  var itemOpts=activeItems().map(function(i){ return '<option value="'+i.id+'">'+esc(i.name)+' ('+esc(i.unit)+')</option>'; }).join('');
+  document.getElementById('useItem').innerHTML=itemOpts;
+  document.getElementById('roItem').innerHTML=itemOpts;
+}
+function renderInventory(){
+  var box=document.getElementById('inv'), s=curStation();
+  document.getElementById('invTitle').textContent=s||'Station';
+  if(!s){ box.innerHTML='<div class="muted">Select your station to see its inventory.</div>'; return; }
+  var bal=stationOnHand(s), lt=num(PARCFG.leadTimeDays)||7;
+  var rows=activeItems().map(function(i){
+    var q=Math.round((bal[i.id]||0)*100)/100, adu=aduStation(s,i.id), dl=adu>0?Math.floor(q/adu):null, low=adu>0&&dl<lt;
+    var col=q<0?'color:var(--rd)':low?'color:var(--wn)':'';
+    return '<tr><td>'+esc(i.name)+'</td><td class="c" style="color:var(--mu)">'+esc(i.unit)+'</td><td class="c" style="font-weight:800;'+col+'">'+q+'</td><td class="c" style="color:var(--mu)">'+(dl!=null?dl+'d':'—')+'</td></tr>';
+  }).join('');
+  box.innerHTML='<table><thead><tr><th>Consumable</th><th class="c">Unit</th><th class="c">On&nbsp;Hand</th><th class="c">Days</th></tr></thead><tbody>'+rows+'</tbody></table>';
+}
+function render(){ fillSelectors(); renderInventory(); }
+
+// ── data load ──
+async function reload(manual){
+  setStatus(manual?'Refreshing…':'Syncing…','load');
+  try{
+    var r=await fetch(DB_URL+'?action=getAll',{cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var j=await r.json();
+    if(!j||!j.ok||!j.data) throw new Error('bad response');
+    SERVER_TXNS=(j.data.ipc_txns||[]).filter(function(t){ return t&&t.id&&t.type; });
+    var sids={}; SERVER_TXNS.forEach(function(t){ sids[String(t.id)]=1; });
+    PENDING=PENDING.filter(function(t){ return !sids[String(t.id)]; });
+    var it=unwrap(j.data.ipc_items); if(Array.isArray(it)&&it.length) ITEMS=it;
+    var stn=unwrap(j.data.ipc_stations);
+    if(Array.isArray(stn)&&stn.length) STATIONS=stn;
+    else { var cb=unwrap(j.data.census_beds); if(Array.isArray(cb)&&cb.length){ var names=cb.map(function(x){ return x.station; }); ['ER','OPD','OR'].forEach(function(d){ if(names.indexOf(d)<0) names.push(d); }); STATIONS=names; } }
+    var pc=unwrap(j.data.ipc_par_cfg); if(pc&&typeof pc==='object') PARCFG=Object.assign({leadTimeDays:7,safetyStock:0,window:30},pc);
+    lastSync=new Date(); setStatus('Synced '+lastSync.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}),'ok');
+  }catch(e){
+    setStatus(navigator.onLine?'Sync failed — retry':'Offline','bad');
+  }
+  render();
+}
+function scheduleReload(){ clearTimeout(reloadTimer); reloadTimer=setTimeout(function(){ reload(false); }, 3500); }
+function postUpsert(type,record){
+  try{ fetch(DB_URL,{ method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({ action:'upsert', type:type, record:record }) }); return true; }
+  catch(e){ return false; }
+}
+
+// ── actions ──
+function onStationChange(){ setStation(document.getElementById('station').value); renderInventory(); document.getElementById('invTitle').textContent=curStation()||'Station'; }
+function recordUsage(){
+  var s=curStation(); if(!s){ toast('Select your station first'); return; }
+  var it=document.getElementById('useItem').value, q=num(document.getElementById('useQty').value);
+  if(!it||q<=0){ toast('Pick an item and quantity'); return; }
+  var have=Math.round(((stationOnHand(s))[it]||0)*100)/100;
+  if(q>have){ toast('❌ '+s+' has only '+have+' '+unitOf(it)+' — cannot record '+q+'. Request a restock.'); return; }
+  var t={ id:uid('IPC'), ts:new Date().toISOString(), type:'consume', itemId:it, qty:q, station:s, by:'nurse', note:'used at '+s }; t._id=t.id;
+  PENDING.push(t); postUpsert('ipc_txns',t);
+  document.getElementById('useQty').value=''; render(); scheduleReload();
+  toast('✓ '+q+' '+unitOf(it)+' recorded · '+itemName(it));
+}
+function requestRestock(){
+  var s=curStation(); if(!s){ toast('Select your station first'); return; }
+  var it=document.getElementById('roItem').value, q=num(document.getElementById('roQty').value);
+  if(!it||q<=0){ toast('Pick an item and quantity'); return; }
+  var r={ id:uid('RO'), ts:new Date().toISOString(), itemId:it, station:s, qty:q, status:'open', by:'nurse' }; r._id=r.id;
+  postUpsert('ipc_reorders',r);
+  document.getElementById('roQty').value='';
+  toast('🔄 Restock request sent to the store');
+}
+
+// ── QR scanning ──
+var _scanner=null;
+function scanStart(){
+  if(!curStation()){ toast('Select your station first'); return; }
+  if(!window.Html5Qrcode){ toast('Scanner still loading — check your connection'); return; }
+  var box=document.getElementById('reader'), stop=document.getElementById('readerStop');
+  box.style.display='block'; stop.style.display='block';
+  try{ _scanner=new Html5Qrcode('reader'); }catch(e){ toast('Scanner init failed'); return; }
+  _scanner.start({facingMode:'environment'},{fps:10,qrbox:230}, function(txt){ scanStop(); onScan(txt); }, function(){})
+    .catch(function(e){ toast('Camera error — allow camera access'); scanStop(); });
+}
+function scanStop(){
+  var box=document.getElementById('reader'), stop=document.getElementById('readerStop');
+  if(_scanner){ _scanner.stop().then(function(){ try{_scanner.clear();}catch(e){} }).catch(function(){}); _scanner=null; }
+  if(box){ box.style.display='none'; box.innerHTML=''; } if(stop) stop.style.display='none';
+}
+function onScan(txt){
+  var id=txt, m=String(txt).match(/^OBIPC:(.+)$/i); if(m) id=m[1];
+  var it=itemById(id); if(!it){ for(var i=0;i<ITEMS.length;i++){ if(ITEMS[i].name===txt){ it=ITEMS[i]; break; } } }
+  if(!it){ toast('Unrecognised QR: '+txt); return; }
+  document.getElementById('useItem').value=it.id;
+  var qty=document.getElementById('useQty'); if(qty){ qty.focus(); }
+  toast('Scanned: '+it.name+' — enter quantity');
+}
+
+// ── init ──
+render();
+reload(false);
+setInterval(function(){ if(document.visibilityState==='visible') reload(false); }, 30000);
+document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible') reload(false); });
+</script>
+</body>
+</html>

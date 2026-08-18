@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1609';
+  var v = '20260816-1611';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1609">
+<meta name="app-version" content="20260816-1611">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6569,7 +6569,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1609';
+const APP_VERSION = '20260816-1611';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -22657,22 +22657,38 @@ if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,a
   function renderMain(){
     const box=document.getElementById('ipcstore-main'); if(!box) return;
     let rows=items().filter(i=>i.active!==false).map(i=>{
-      const q=mainQty(i.id); const p=parFor(i.id,null); const low=q<=p.par;
-      return '<tr'+(low?' style="background:rgba(239,68,68,.08);"':'')+'>'
+      const q=mainQty(i.id); const p=parFor(i.id,null);
+      const mx=num(i.max);
+      const critical = mx>0 && q < 0.10*mx;      // below 10% of full level
+      const reorder  = q<=p.par;
+      const rowBg = critical ? 'background:rgba(239,68,68,.14);' : (reorder ? 'background:rgba(245,158,11,.10);' : '');
+      const qCol  = critical ? 'color:'+C.rd : (reorder ? 'color:'+C.wn : '');
+      const status = critical ? '<span style="color:'+C.rd+';font-weight:800;">⚠ CRITICAL LOW</span>'
+                    : reorder ? '<span style="color:'+C.wn+';font-weight:700;">reorder</span>'
+                    : '<span style="color:'+C.gd+';">OK</span>';
+      return '<tr'+(rowBg?' style="'+rowBg+'"':'')+'>'
         +'<td style="padding:5px 8px;">'+esc(i.name)+'</td>'
         +'<td style="padding:5px 8px;text-align:center;color:var(--mu);">'+esc(i.unit)+'</td>'
-        +'<td style="padding:5px 8px;text-align:center;font-weight:700;'+(low?'color:'+C.rd:'')+'">'+q+'</td>'
+        +'<td style="padding:5px 8px;text-align:center;font-weight:700;'+qCol+'">'+q+'</td>'
+        +'<td style="padding:3px 6px;text-align:center;"><input id="max-'+i.id+'" type="number" min="0" value="'+(mx||'')+'" placeholder="—" title="Maximum / full level" onchange="ipcSetMax(\''+i.id+'\',this.value)" style="'+IQ+'width:64px;"></td>'
         +'<td style="padding:5px 8px;text-align:center;color:var(--mu);">'+p.par+'</td>'
+        +'<td style="padding:5px 8px;text-align:center;">'+status+'</td>'
         +'<td style="padding:3px 6px;text-align:center;"><input id="rcv-'+i.id+'" type="number" min="0" placeholder="qty" style="'+IQ+'"></td>'
-        +'<td style="padding:3px 6px;text-align:center;"><button class="btn bg" style="font-size:10px;padding:4px 9px;" onclick="ipcReceive(\''+i.id+'\')">+ Receive</button> '
+        +'<td style="padding:3px 6px;text-align:center;white-space:nowrap;"><button class="btn bg" style="font-size:10px;padding:4px 9px;" onclick="ipcReceive(\''+i.id+'\')">+ Receive</button> '
           +'<button class="btn bo" style="font-size:10px;padding:4px 9px;" onclick="ipcStockTake(\''+i.id+'\')">Set</button></td>'
       +'</tr>';
     }).join('');
-    box.innerHTML='<div class="card" style="padding:10px 14px;margin-bottom:10px;font-size:12px;color:var(--mu);">Enter stock received into the main store. <b>+ Receive</b> adds to on-hand; <b>Set</b> records a stock-take (absolute count). Rows highlighted red are at/below PAR and need reorder.</div>'
+    box.innerHTML='<div class="card" style="padding:12px 14px;margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;"><span style="font-size:12px;color:var(--mu);flex:1;">Enter stock received into the main store. <b>+ Receive</b> adds to on-hand; <b>Set</b> records a stock-take (absolute count). Set a <b>Max</b> (full) level per item: rows turn <span style="color:'+C.rd+';">red</span> when on-hand falls below 10% of it, <span style="color:'+C.wn+';">amber</span> when at/below PAR.</span>'
+      +'<button class="btn bp" style="font-size:11px;padding:8px 14px;" onclick="ipcAddItem()">+ Add Consumable</button></div>'
       +'<div class="card" style="padding:0;overflow:hidden;"><div style="overflow:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">'
-      +'<thead><tr style="background:var(--ac,#1e3a5c);color:#fff;"><th style="text-align:left;padding:7px 8px;">Consumable</th><th style="padding:7px 8px;">Unit</th><th style="padding:7px 8px;">On Hand</th><th style="padding:7px 8px;">PAR</th><th style="padding:7px 8px;">Receive / Set</th><th style="padding:7px 8px;"></th></tr></thead>'
+      +'<thead><tr style="background:var(--ac,#1e3a5c);color:#fff;"><th style="text-align:left;padding:7px 8px;">Consumable</th><th style="padding:7px 8px;">Unit</th><th style="padding:7px 8px;">On Hand</th><th style="padding:7px 8px;">Max</th><th style="padding:7px 8px;">PAR</th><th style="padding:7px 8px;">Status</th><th style="padding:7px 8px;">Receive / Set</th><th style="padding:7px 8px;"></th></tr></thead>'
       +'<tbody>'+rows+'</tbody></table></div></div>';
   }
+  window.ipcSetMax = function(id,val){
+    const list=items(); const i=list.find(x=>x.id===id); if(!i) return;
+    const v=num(val); if(v>0) i.max=v; else delete i.max;
+    saveItems(list); renderMain();
+  };
   window.ipcReceive = function(id){
     const el=document.getElementById('rcv-'+id); const q=num(el&&el.value);
     if(q<=0){ T('Enter a quantity','#f59e0b'); return; }
@@ -22715,7 +22731,7 @@ if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,a
     const q=num((document.getElementById('iss-qty')||{}).value);
     if(!s||!it||q<=0){ T('Pick station, item and quantity','#f59e0b'); return; }
     const avail=mainQty(it);
-    if(q>avail && !confirm('Main store only has '+avail+' '+itemUnit(it)+'. Dispense anyway (stock will go negative)?')) return;
+    if(q>avail){ T('❌ Cannot dispense '+q+' — main store has only '+avail+' '+itemUnit(it)+'. Stock cannot go negative.','#ef4444',5000); return; }
     addTxn({type:'issue',itemId:it,qty:q,station:s,by:'storekeeper',note:'issued to '+s});
     T('📤 '+q+' '+itemUnit(it)+' → '+s); document.getElementById('iss-qty').value='';
     renderIssueRecent();
@@ -22786,7 +22802,7 @@ if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,a
     let disp = inp ? num(inp.value) : num(r.qty);
     if(disp<=0){ T('Enter a quantity to dispense','#f59e0b'); return; }
     const avail=mainQty(r.itemId);
-    if(disp>avail && !confirm('Main store has '+avail+'. Dispense '+disp+' anyway?')) return;
+    if(disp>avail){ T('❌ Cannot dispense '+disp+' — main store has only '+avail+' '+itemUnit(r.itemId)+'. Reduce the quantity (max '+avail+').','#ef4444',5000); return; }
     const requested=num(r.qty);
     addTxn({type:'issue',itemId:r.itemId,qty:disp,station:r.station,by:'storekeeper',note:'reorder '+r.id+(disp!==requested?(' (requested '+requested+')'):'')});
     r.qtyRequested=(r.qtyRequested!=null?r.qtyRequested:requested); r.qtyDispensed=disp;
@@ -22803,7 +22819,7 @@ if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,a
       +'<div style="font-size:11px;color:var(--mu);margin-bottom:10px;">Print and post these. Scanning with a phone camera opens the platform straight to the right screen — storekeeper → Main Stock, nurse → Dispensing. No typing.</div>'
       +'<div class="g g2">'
       +'<div class="card" style="padding:12px;text-align:center;"><div id="ipc-mqr-store" style="display:inline-block;background:#fff;padding:8px;border-radius:8px;"></div><div style="font-size:12px;font-weight:700;margin-top:8px;">📦 Store — Main Stock</div><div style="font-size:10px;color:var(--mu);">for the storekeeper</div></div>'
-      +'<div class="card" style="padding:12px;text-align:center;"><div id="ipc-mqr-nurse" style="display:inline-block;background:#fff;padding:8px;border-radius:8px;"></div><div style="font-size:12px;font-weight:700;margin-top:8px;">🧤 Nurse Dispensing</div><div style="font-size:10px;color:var(--mu);">for the nurses</div></div>'
+      +'<div class="card" style="padding:12px;text-align:center;"><div id="ipc-mqr-nurse" style="display:inline-block;background:#fff;padding:8px;border-radius:8px;"></div><div style="font-size:12px;font-weight:700;margin-top:8px;">🧤 Nurse Dispensing</div><div style="font-size:10px;color:var(--mu);">opens the no-login nurse page</div></div>'
       +'</div>'
       +'<div style="margin-top:10px;"><button class="btn bo" style="font-size:11px;padding:6px 12px;" onclick="ipcPrintMasterQR()">🖨 Print Master QR (PDF)</button></div>'
       +'</div>'
@@ -22823,10 +22839,11 @@ if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,a
     setTimeout(()=>{
       items().forEach(i=>{ const el=document.getElementById('qr-'+i.id); if(el && window.QRCode){ el.innerHTML=''; try{ new QRCode(el,{text:'OBIPC:'+i.id,width:96,height:96,correctLevel:QRCode.CorrectLevel.M}); }catch(e){} } else if(el){ el.innerHTML='<div style="width:96px;height:96px;display:flex;align-items:center;justify-content:center;color:#333;font-size:9px;">QR lib loading…</div>'; } });
       renderMasterQR('ipc-mqr-store', masterURL('store'), 132);
-      renderMasterQR('ipc-mqr-nurse', masterURL('nurse'), 132);
+      renderMasterQR('ipc-mqr-nurse', nurseURL(), 132);
     },60);
   }
   function masterURL(go){ return location.origin + location.pathname + '?go=' + go; }
+  function nurseURL(){ return location.origin + location.pathname.replace(/[^/]*$/,'') + 'nurse.html'; }
   function renderMasterQR(elId, url, size){
     const el=document.getElementById(elId); if(!el) return;
     if(window.QRCode){ el.innerHTML=''; try{ new QRCode(el,{text:url,width:size,height:size,correctLevel:QRCode.CorrectLevel.M}); }catch(e){} }
@@ -22838,15 +22855,15 @@ if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,a
     const doc=new JS({unit:'pt',format:'a4'}); const pw=doc.internal.pageSize.getWidth();
     doc.setFontSize(16); doc.setFont('helvetica','bold'); doc.text('Obeid Specialized Hospital',pw/2,50,{align:'center'});
     doc.setFontSize(12); doc.setFont('helvetica','normal'); doc.text('IPC Consumables — Master Access QR',pw/2,72,{align:'center'});
-    const make=(go)=>{ const t=document.createElement('div'); new QRCode(t,{text:masterURL(go),width:200,height:200,correctLevel:QRCode.CorrectLevel.M}); const cv=t.querySelector('canvas'); return cv?cv.toDataURL('image/png'):((t.querySelector('img')||{}).src||''); };
-    const mcards=[['📦  STORE — Main Stock','Scan to open stock receiving','store'],['🧤  NURSE Dispensing','Scan to record usage at your station','nurse']];
+    const make=(target)=>{ const t=document.createElement('div'); new QRCode(t,{text:target,width:200,height:200,correctLevel:QRCode.CorrectLevel.M}); const cv=t.querySelector('canvas'); return cv?cv.toDataURL('image/png'):((t.querySelector('img')||{}).src||''); };
+    const mcards=[['📦  STORE — Main Stock','Scan to open stock receiving',masterURL('store')],['🧤  NURSE Dispensing','Scan to record usage (no login)',nurseURL()]];
     let y=120;
-    mcards.forEach(([title,sub,go])=>{
-      const url=make(go);
+    mcards.forEach(([title,sub,target])=>{
+      const url=make(target);
       if(url){ doc.addImage(url,'PNG', pw/2-90, y, 180, 180); }
       doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(20,30,45); doc.text(title, pw/2, y+205, {align:'center'});
       doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(110,120,135); doc.text(sub, pw/2, y+222, {align:'center'});
-      doc.setFontSize(7); doc.setTextColor(150,160,175); doc.text(masterURL(go), pw/2, y+236, {align:'center'});
+      doc.setFontSize(7); doc.setTextColor(150,160,175); doc.text(target, pw/2, y+236, {align:'center'});
       y+=270;
     });
     doc.save('IPC_Master_Access_QR.pdf'); T('🖨 Master QR sheet generated');
@@ -22854,9 +22871,14 @@ if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,a
   window.ipcAddItem = function(){
     const name=prompt('New consumable name:'); if(!name||!name.trim()) return;
     const unit=prompt('Unit (box, bottle, piece, pack, gallon, roll, sachet, carton):','box')||'box';
+    const maxLvl=prompt('Maximum / full stock level for '+name.trim()+' (used for the 10% critical-low alarm — leave blank to skip):','');
     const list=items(); const maxN=list.reduce((m,i)=>{ const n=parseInt(String(i.id).replace(/\D/g,''))||0; return Math.max(m,n); },0);
-    list.push({ id:'C'+String(maxN+1).padStart(2,'0'), name:name.trim(), unit:unit.trim(), active:true });
-    saveItems(list); T('Added '+name.trim()); renderItems();
+    const rec={ id:'C'+String(maxN+1).padStart(2,'0'), name:name.trim(), unit:unit.trim(), active:true };
+    if(maxLvl!=null && String(maxLvl).trim()!=='' && num(maxLvl)>0) rec.max=num(maxLvl);
+    list.push(rec);
+    saveItems(list); T('Added '+name.trim());
+    if(document.getElementById('ipcstore-main')) renderMain();
+    if(document.getElementById('ipc-qr-grid')) renderItems();
   };
   window.ipcRemoveItem = function(id){
     if(!confirm('Remove '+itemName(id)+'? Its history stays in the ledger; it will be hidden from lists.')) return;
@@ -22986,7 +23008,7 @@ if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,a
     const it=(document.getElementById('nz-item')||{}).value; const q=num((document.getElementById('nz-qty')||{}).value);
     if(!it||q<=0){ T('Pick an item and quantity','#f59e0b'); return; }
     const have=stQty(s,it);
-    if(q>have && !confirm(s+' shows only '+have+' '+itemUnit(it)+'. Record anyway?')) return;
+    if(q>have){ T('❌ '+s+' has only '+have+' '+itemUnit(it)+' on hand — cannot record '+q+'. Request a restock.','#ef4444',5000); return; }
     addTxn({type:'consume',itemId:it,qty:q,station:s,by:'nurse',note:'used at '+s});
     T('✓ '+q+' '+itemUnit(it)+' recorded · '+itemName(it)); document.getElementById('nz-qty').value=''; ipcNurseInv();
   };
@@ -23026,9 +23048,9 @@ if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,a
   // ═══════════════ Excel export (inventory snapshot) ═══════════════
   window.ipcExportInventory = function(){
     const sts=stations(), its=items().filter(i=>i.active!==false);
-    const header=['Consumable','Unit','Main Store','PAR (main)','ADU'].concat(sts);
+    const header=['Consumable','Unit','Main Store','Max Level','PAR (main)','ADU'].concat(sts);
     const aoa=[header];
-    its.forEach(i=>{ const p=parFor(i.id,null); const row=[i.name,i.unit,mainQty(i.id),p.par,p.adu]; sts.forEach(s=>row.push(stQty(s,i.id))); aoa.push(row); });
+    its.forEach(i=>{ const p=parFor(i.id,null); const row=[i.name,i.unit,mainQty(i.id),(num(i.max)||''),p.par,p.adu]; sts.forEach(s=>row.push(stQty(s,i.id))); aoa.push(row); });
     const date=new Date().toISOString().slice(0,10); const base='IPC_Consumables_Inventory_'+date;
     if(typeof XLSX==='undefined'||!XLSX.utils){ const csv=aoa.map(r=>r.map(c=>{const x=String(c==null?'':c);return /[",\n]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x;}).join(',')).join('\r\n'); const b=new Blob(['\ufeff'+csv],{type:'text/csv'}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=base+'.csv'; a.click(); URL.revokeObjectURL(u); T('Exported (CSV)'); return; }
     const wb=XLSX.utils.book_new(); const ws=XLSX.utils.aoa_to_sheet(aoa); ws['!cols']=header.map((h,idx)=>({wch: idx===0?34:(idx<5?12:11)})); XLSX.utils.book_append_sheet(wb,ws,'Inventory');
