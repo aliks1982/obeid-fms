@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1611';
+  var v = '20260816-1612';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1611">
+<meta name="app-version" content="20260816-1612">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3587,7 +3587,7 @@ if ('caches' in window) {
   <div class="ph" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
     <div><h1>🧴 Store — Consumables &amp; PAR Control</h1><p>Main store &amp; per-station inventory · dispensing ledger · PAR (MOH) · reorder · QR labels</p></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="btn bo" style="font-size:11px;padding:8px 14px;" onclick="ipcExportInventory()">📊 Export Inventory (Excel)</button>
+      <span id="ipc-ledger-status" style="font-size:11px;color:var(--mu,#8fa6bd);align-self:center;"></span><button class="btn bo" style="font-size:11px;padding:8px 14px;" onclick="ipcSyncLedger(true)">🔄 Refresh Ledger</button><button class="btn bo" style="font-size:11px;padding:8px 14px;" onclick="ipcExportInventory()">📊 Export Inventory (Excel)</button>
     </div>
   </div>
   <div class="tb">
@@ -6569,7 +6569,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1611';
+const APP_VERSION = '20260816-1612';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -6766,7 +6766,7 @@ async function dbGetAllShared(force) {
   if (!url) throw new Error('No DB URL');
   DB_GETALL_INFLIGHT = (async () => {
     try {
-      const r = await fetch(url + '?action=getAll', { signal: AbortSignal.timeout(45000) });
+      const r = await fetch(url + '?action=getAll&skip=ipc_txns', { signal: AbortSignal.timeout(45000) });
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const j = await r.json();
       if (!j.ok) throw new Error(j.error || 'getAll failed');
@@ -22642,9 +22642,33 @@ if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,a
   function itemOptions(sel){ return items().filter(i=>i.active!==false).map(i=>'<option value="'+i.id+'"'+(sel===i.id?' selected':'')+'>'+esc(i.name)+' ('+esc(i.unit)+')</option>').join(''); }
   function stationOptions(sel){ return stations().map(s=>'<option'+(sel===s?' selected':'')+'>'+esc(s)+'</option>').join(''); }
 
-  window.ipcStoreInit = function(){ ipcStoreRender('main'); };
+  var _ipcSub='main';
+  window.ipcStoreInit = function(){ ipcStoreRender('main'); ipcSyncLedger(); };
+  // Load the consumables ledger (ipc_txns) on demand — it's excluded from the
+  // boot getAll to keep startup fast, so we fetch just this sheet when needed.
+  var _ipcLedgerTs=0, _ipcLedgerBusy=false;
+  window.ipcSyncLedger = function(force){
+    var url=(typeof CANONICAL_DB_URL!=='undefined'&&CANONICAL_DB_URL)?CANONICAL_DB_URL:null; if(!url) return;
+    if(_ipcLedgerBusy) return;
+    if(!force && (Date.now()-_ipcLedgerTs)<15000) return;   // light throttle
+    _ipcLedgerBusy=true;
+    var badge=document.getElementById('ipc-ledger-status'); if(badge) badge.textContent='⟳ loading ledger…';
+    fetch(url+'?action=getType&type=ipc_txns',{signal:AbortSignal.timeout(45000)})
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        if(j&&j.ok&&Array.isArray(j.rows)){
+          sv('ipc_txns', j.rows.filter(function(t){ return t&&t.id&&t.type; }));
+          invalidate(); _ipcLedgerTs=Date.now();
+          if(badge) badge.textContent='';
+          ipcStoreRender(_ipcSub);   // refresh current view with real balances
+        } else if(badge){ badge.textContent=''; }
+      })
+      .catch(function(){ if(badge) badge.textContent='⚠ ledger sync failed — tap a tab to retry'; })
+      .finally(function(){ _ipcLedgerBusy=false; });
+  };
   window.ipcTab = function(sub,btn){ if(typeof st==='function') st('ipcstore',sub,btn); ipcStoreRender(sub); };
   window.ipcStoreRender = function(sub){
+    _ipcSub=sub;
     if(sub==='main') return renderMain();
     if(sub==='issue') return renderIssue();
     if(sub==='stations') return renderStations();
