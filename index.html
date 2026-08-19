@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1612';
+  var v = '20260816-1613';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1612">
+<meta name="app-version" content="20260816-1613">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6569,7 +6569,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1612';
+const APP_VERSION = '20260816-1613';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -6766,12 +6766,24 @@ async function dbGetAllShared(force) {
   if (!url) throw new Error('No DB URL');
   DB_GETALL_INFLIGHT = (async () => {
     try {
-      const r = await fetch(url + '?action=getAll&skip=ipc_txns', { signal: AbortSignal.timeout(45000) });
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.error || 'getAll failed');
-      DB_GETALL_CACHE = j; DB_GETALL_TS = Date.now();
-      return j;
+      let lastErr = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const r = await fetch(url + '?action=getAll&skip=ipc_txns', { signal: AbortSignal.timeout(90000) });
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          const text = await r.text();
+          let j;
+          try { j = JSON.parse(text); }
+          catch (pe) { throw new Error('transient'); } // Google "unable to open" HTML page, etc.
+          if (!j.ok) throw new Error(j.error || 'getAll failed');
+          DB_GETALL_CACHE = j; DB_GETALL_TS = Date.now();
+          return j;
+        } catch (err) {
+          lastErr = err;
+          if (attempt < 2) await new Promise(res => setTimeout(res, 1500)); // quick retry past cold-start/transient
+        }
+      }
+      throw lastErr || new Error('getAll failed');
     } finally { DB_GETALL_INFLIGHT = null; }
   })();
   return DB_GETALL_INFLIGHT;
