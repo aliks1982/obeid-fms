@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1613';
+  var v = '20260816-1614';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1613">
+<meta name="app-version" content="20260816-1614">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6569,7 +6569,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1613';
+const APP_VERSION = '20260816-1614';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -6757,26 +6757,39 @@ async function dbDelete(type, id) {
 // ── SHARED getAll: one in-flight request + 60s cache for ALL consumers ──
 // Prevents concurrent getAll storms (dbLoadAll + repSync + fsPpmSync +
 // reseed all hitting Apps Script simultaneously caused 500s/timeouts).
-let DB_GETALL_CACHE = null, DB_GETALL_TS = 0, DB_GETALL_INFLIGHT = null;
-async function dbGetAllShared(force) {
+// Heavy, fast-growing collections are excluded from the light boot load and
+// fetched by a background pass (and by the app_settings consumers) instead.
+// Profiling: app_settings≈61%, eq_added≈16%, ach_readings≈7% of getAll.
+const DB_HEAVY_SKIP = 'app_settings,eq_added,ach_readings,ipc_txns';
+let DB_GETALL_CACHE = null, DB_GETALL_TS = 0;            // legacy "best available" cache (other readers use this)
+let DB_GA_LIGHT = { cache:null, ts:0, inflight:null };   // boot payload (heavies skipped)
+let DB_GA_FULL  = { cache:null, ts:0, inflight:null };   // full payload (includes heavies)
+async function dbGetAllShared(force, includeHeavies) {
+  const slot = includeHeavies ? DB_GA_FULL : DB_GA_LIGHT;
   const now = Date.now();
-  if (!force && DB_GETALL_CACHE && (now - DB_GETALL_TS) < 60000) return DB_GETALL_CACHE;
-  if (DB_GETALL_INFLIGHT) return DB_GETALL_INFLIGHT;
+  if (!force && slot.cache && (now - slot.ts) < 60000) return slot.cache;
+  if (slot.inflight) return slot.inflight;
   const url = (typeof CANONICAL_DB_URL !== 'undefined' && CANONICAL_DB_URL) ? CANONICAL_DB_URL : (typeof getDBUrl === 'function' ? getDBUrl() : null);
   if (!url) throw new Error('No DB URL');
-  DB_GETALL_INFLIGHT = (async () => {
+  const qs = includeHeavies ? '?action=getAll' : ('?action=getAll&skip=' + DB_HEAVY_SKIP);
+  slot.inflight = (async () => {
     try {
       let lastErr = null;
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
-          const r = await fetch(url + '?action=getAll&skip=ipc_txns', { signal: AbortSignal.timeout(90000) });
+          const r = await fetch(url + qs, { signal: AbortSignal.timeout(90000) });
           if (!r.ok) throw new Error('HTTP ' + r.status);
           const text = await r.text();
           let j;
           try { j = JSON.parse(text); }
           catch (pe) { throw new Error('transient'); } // Google "unable to open" HTML page, etc.
           if (!j.ok) throw new Error(j.error || 'getAll failed');
-          DB_GETALL_CACHE = j; DB_GETALL_TS = Date.now();
+          slot.cache = j; slot.ts = Date.now();
+          // keep the legacy cache pointing at the most complete payload available
+          const hasHeavy = !!(j.data && j.data.app_settings);
+          if (hasHeavy || !DB_GETALL_CACHE || !(DB_GETALL_CACHE.data && DB_GETALL_CACHE.data.app_settings)) {
+            DB_GETALL_CACHE = j; DB_GETALL_TS = Date.now();
+          }
           return j;
         } catch (err) {
           lastErr = err;
@@ -6784,19 +6797,20 @@ async function dbGetAllShared(force) {
         }
       }
       throw lastErr || new Error('getAll failed');
-    } finally { DB_GETALL_INFLIGHT = null; }
+    } finally { slot.inflight = null; }
   })();
-  return DB_GETALL_INFLIGHT;
+  return slot.inflight;
 }
 
-async function dbLoadAll() {
+async function dbLoadAll(opts) {
+  opts = opts || {};
   // Always use canonical URL for reads (prevents CORS issues on other devices)
   const url = typeof CANONICAL_DB_URL !== 'undefined' ? CANONICAL_DB_URL : getDBUrl();
   if (url && url !== getDBUrl()) setDBUrl(url); // auto-correct stored URL
   if (!url) { dbShowStatus('offline'); return; }
-  dbShowStatus('loading');
+  if (!opts.background) dbShowStatus('loading');
   try {
-    const j = await dbGetAllShared(true); // shared fetch — also fills the cache for other consumers
+    const j = await dbGetAllShared(true, opts.heavy === true); // boot=light (heavies skipped); heavy pass=full
     DB_ONLINE = true;
 
     // DB is the single source of truth — replace local data with DB data
@@ -7144,8 +7158,14 @@ async function dbLoadAll() {
         toast('⚠ Backend outdated — Apps Script missing '+window.DB_MISSING_STORES.length+' stores ('+window.DB_MISSING_STORES.join(', ')+'). Redeploy FMS_DB_APPSSCRIPT.gs (new version, same URL) or new data will NOT persist to Google Sheets.','#ef4444',12000);
       }
     } catch(eSchema) {} try{ setTimeout(function(){ if(typeof exdSeedIfEmpty==='function') exdSeedIfEmpty(); if(typeof renderDash==='function'&&document.getElementById('page-dash')) try{renderDash();}catch(e2){} }, 1500); }catch(e){}
+    // After a fast light boot, pull the heavy collections in the background
+    // (app_settings, eq_added, ach_readings, ipc_txns) so the UI is never blocked.
+    if (!opts.heavy) {
+      setTimeout(function(){ try { dbLoadAll({ heavy:true, background:true }); } catch(e){} }, 2500);
+    }
     return true;
   } catch(e) {
+    if (opts.background) { console.warn('Background heavy load failed:', e.message); return false; }
     DB_ONLINE = false;
     console.warn('dbLoadAll failed:', e.message, '— scheduling auto-reconnect');
     dbScheduleReconnect();
@@ -16647,7 +16667,7 @@ async function repSyncFromDB(verbose) {
   const setStatus = t => { if (statusEl) statusEl.textContent = t; };
   try {
     setStatus('Checking cloud…');
-    const j = await dbGetAllShared(verbose === true); // manual button forces fresh; auto uses 60s cache
+    const j = await dbGetAllShared(verbose === true, true); // needs app_settings → full payload
     if (!j.ok || !j.data || !j.data.app_settings) {
       setStatus('Cloud responded but no App_Settings data');
       if (verbose) toast('⚠️ Cloud has no App_Settings data','#f59e0b');
@@ -18248,7 +18268,7 @@ function fsPpmResetSeed() {
 
 async function fsPpmSync() {
   try {
-    const j = await dbGetAllShared(false);
+    const j = await dbGetAllShared(false, true);
     if (!j.ok || !j.data || !j.data.app_settings) return;
     const row = j.data.app_settings.find(x=>x._id==='fs_ppm_schedule');
     if (!row || !row.value) return;
@@ -18550,7 +18570,7 @@ function grandBuildReports() {
 async function grandFireReseed() {
   try {
     if (typeof dbWrite !== 'function' || typeof dbDelete !== 'function') { setTimeout(grandFireReseed, 2000); return; }
-    const j = await dbGetAllShared(false);
+    const j = await dbGetAllShared(false, true);
     if (!j.ok || !j.data) return;
     const appRows = j.data.app_settings || [];
     const marker = appRows.find(x => x._id === FIRE_RESEED_MARKER);
