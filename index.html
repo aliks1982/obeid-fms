@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1614';
+  var v = '20260816-1615';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1614">
+<meta name="app-version" content="20260816-1615">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6569,7 +6569,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1614';
+const APP_VERSION = '20260816-1615';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -6617,6 +6617,7 @@ if (window.performance && window.performance.navigation.type === window.performa
 const DB_SHEET_ID = '13zPJDPlYhbqqZ2rXq8Ev7fm0Oj4FHI54dP0kSaR8rnw';
 let   DB_URL      = '';  // set from settings or localStorage
 let   DB_ONLINE   = false;
+let   DB_EVER_ONLINE = false;   // true after the first successful cloud read (keeps status stable)
 let   DB_SYNC_QUEUE = []; // offline queue
 
 // ── Local cache (localStorage) ──
@@ -6808,7 +6809,7 @@ async function dbLoadAll(opts) {
   const url = typeof CANONICAL_DB_URL !== 'undefined' ? CANONICAL_DB_URL : getDBUrl();
   if (url && url !== getDBUrl()) setDBUrl(url); // auto-correct stored URL
   if (!url) { dbShowStatus('offline'); return; }
-  if (!opts.background) dbShowStatus('loading');
+  if (!opts.background && !DB_EVER_ONLINE) dbShowStatus('loading');
   try {
     const j = await dbGetAllShared(true, opts.heavy === true); // boot=light (heavies skipped); heavy pass=full
     DB_ONLINE = true;
@@ -6823,32 +6824,37 @@ async function dbLoadAll(opts) {
     );
 
     if (!j.data || typeof j.data !== 'object') throw new Error('Invalid DB response: j.data is null');
+    const RESTORE_CUSTOM = new Set(['app_settings','ipc_items','ipc_stations','ipc_par_cfg',
+      'ipc_txns','ipc_reorders','eq_backup','fa_floors','census_beds','census_daily',
+      'pmg_ppm','pmg_annex','cyl_test','lox_gauge']);
     Object.entries(j.data).forEach(([key, dbRows]) => {
-      if (!dbRows) return;
+      if (!dbRows || !Array.isArray(dbRows)) return;
       totalRecords += dbRows.length;
-      if (dbRows.length === 0) {
-        // DB has no records for this key — keep local queued ones only.
-        // EXCEPTION: seeded stores (exit doors etc.) self-heal locally until the
-        // backend .gs learns the store — never let an empty backend wipe seeds.
-        const cur = ld(key);
-        if (cur.some(r => r && r._seed)) return;
-        const local = cur.filter(r => queuedIds.has(String(r._id||'')));
-        sv(key, local);
-        return;
-      }
-      // DB has records — use DB as authoritative source
-      // Skip app_settings — it's huge (ppm overrides) and handled separately below
-      if (key === 'app_settings') return;
-      const dbIdSet = new Set(dbRows.map(r => String(r._id||'')));
-      // Union merge for seeded stores: keep any local _seed row the backend hasn't
-      // echoed back yet, so a slow/partial backend round-trip can't shrink the seed.
-      const localSeedMissing = ld(key).filter(r =>
-        r && r._seed && !dbIdSet.has(String(r._id||''))
-      );
-      const queuedLocal = ld(key).filter(r =>
-        queuedIds.has(String(r._id||'')) && !dbIdSet.has(String(r._id||''))
-      );
-      sv(key, [...dbRows, ...localSeedMissing, ...queuedLocal]);
+      // Collections with bespoke restore logic (below) are merged there, safely.
+      if (RESTORE_CUSTOM.has(key)) return;
+      // ───────────────────────────────────────────────────────────────────────
+      // SAFE UNION MERGE — a cloud READ must NEVER delete local data.
+      // • DB rows insert/update by _id.
+      // • Any local row the DB doesn't (yet) have is KEPT — an empty or partial
+      //   cloud response can no longer wipe browser-only records (census, items…).
+      // • A row with a pending local write (queued) keeps its LOCAL version.
+      // Deletions only happen through explicit user delete + delete-sync, never here.
+      // ───────────────────────────────────────────────────────────────────────
+      const cur = Array.isArray(ld(key)) ? ld(key) : [];
+      const dbIds = new Set(dbRows.map(r => String((r && r._id) || '')));
+      const merged = dbRows.map(r => {
+        const id = String((r && r._id) || '');
+        if (id && queuedIds.has(id)) {
+          const localVer = cur.find(x => String((x && x._id) || '') === id);
+          return localVer || r;               // don't let stale DB clobber a pending edit
+        }
+        return r;
+      });
+      const localKept = cur.filter(r => {
+        const id = String((r && r._id) || '');
+        return id ? !dbIds.has(id) : true;     // keep local-only + unkeyed rows
+      });
+      sv(key, merged.concat(localKept));
     });
     try {
       const q = JSON.parse(localStorage.getItem('obeid_sync_queue')||'[]');
@@ -6868,6 +6874,7 @@ async function dbLoadAll(opts) {
       }
     } catch(qe) { console.warn('Queue cleanup error:', qe.message); }
     try{ window.__loadTick && clearInterval(window.__loadTick); }catch(e){}
+    DB_EVER_ONLINE = true;
     dbShowStatus('online', totalRecords);
     try{ if(typeof renderDash==='function' && document.getElementById('page-dash')) renderDash(); }catch(e){}
     if(j.data&&j.data.platform_settings) settingsPullFromDB(j.data.platform_settings);
@@ -6934,25 +6941,56 @@ async function dbLoadAll(opts) {
 
     // ── v1609: Restore IPC Consumables / PAR system ──
     if (j.data) {
-      const _single = (key) => {
+      const _unwrap = (key) => {
         const arr = j.data[key];
-        if (Array.isArray(arr) && arr.length) {
-          const row = arr.find(r => r && r.data != null) || arr[0];
-          let d = row && row.data;
-          if (typeof d === 'string') { try { d = JSON.parse(d); } catch(e){ d = null; } }
-          if (d != null) sv(key, d);
-        }
+        if (!Array.isArray(arr) || !arr.length) return undefined;   // DB empty -> undefined -> keep local
+        const row = arr.find(r => r && r.data != null) || arr[0];
+        let d = row && row.data;
+        if (typeof d === 'string') { try { d = JSON.parse(d); } catch(e){ d = null; } }
+        return d;
       };
-      _single('ipc_items'); _single('ipc_stations'); _single('ipc_par_cfg');
-      if (Array.isArray(j.data.ipc_txns))     sv('ipc_txns',     j.data.ipc_txns.filter(r => r && r.id && r.type));
-      if (Array.isArray(j.data.ipc_reorders)) sv('ipc_reorders', j.data.ipc_reorders.filter(r => r && r.id));
+      // ipc_items — merge by id; never drop a local-only consumable, and purge any
+      // prior wrapper-corruption (rows without an id).
+      const dbItems = _unwrap('ipc_items');
+      if (Array.isArray(dbItems)) {
+        const cur = (Array.isArray(ld('ipc_items')) ? ld('ipc_items') : []).filter(x => x && x.id);
+        const dbIds = new Set(dbItems.map(x => String(x && x.id)));
+        sv('ipc_items', dbItems.concat(cur.filter(x => !dbIds.has(String(x.id)))));
+      }
+      // ipc_stations — union of station names
+      const dbStations = _unwrap('ipc_stations');
+      if (Array.isArray(dbStations)) {
+        const set = new Set(dbStations);
+        (Array.isArray(ld('ipc_stations')) ? ld('ipc_stations') : []).forEach(s => set.add(s));
+        sv('ipc_stations', Array.from(set));
+      }
+      // ipc_par_cfg — config object, DB authoritative when present
+      const dbPar = _unwrap('ipc_par_cfg');
+      if (dbPar != null) sv('ipc_par_cfg', dbPar);
+      // ledger + reorders — merge by id (append-only; never shrink)
+      if (Array.isArray(j.data.ipc_txns)) {
+        const dbT = j.data.ipc_txns.filter(r => r && r.id && r.type);
+        const cur = Array.isArray(ld('ipc_txns')) ? ld('ipc_txns') : [];
+        const dbIds = new Set(dbT.map(r => String(r.id)));
+        sv('ipc_txns', dbT.concat(cur.filter(r => r && r.id && !dbIds.has(String(r.id)))));
+      }
+      if (Array.isArray(j.data.ipc_reorders)) {
+        const dbR = j.data.ipc_reorders.filter(r => r && r.id);
+        const cur = Array.isArray(ld('ipc_reorders')) ? ld('ipc_reorders') : [];
+        const dbIds = new Set(dbR.map(r => String(r.id)));
+        sv('ipc_reorders', dbR.concat(cur.filter(r => r && r.id && !dbIds.has(String(r.id)))));
+      }
       try { if (typeof window.ipcInvalidate === 'function') window.ipcInvalidate(); } catch(e){}
     }
 
     // ── v1608: Restore Nursing Daily Census (census_daily rows + census_beds config) ──
     if (j.data && Array.isArray(j.data.census_daily)) {
-      const rows = j.data.census_daily.filter(r => r && r.date);
-      if (rows.length) { sv('census_daily', rows); console.log('Nursing census: restored ' + rows.length + ' daily entries from DB'); }
+      const dbRows = j.data.census_daily.filter(r => r && r.date);
+      const cur = Array.isArray(ld('census_daily')) ? ld('census_daily') : [];
+      const dbDates = new Set(dbRows.map(r => String(r.date)));
+      const localKept = cur.filter(r => r && r.date && !dbDates.has(String(r.date)));  // keep local-only days
+      const merged = dbRows.concat(localKept);
+      if (merged.length) { sv('census_daily', merged); console.log('Nursing census: merged ' + dbRows.length + ' DB + ' + localKept.length + ' local days'); }
     }
     if (j.data && Array.isArray(j.data.census_beds) && j.data.census_beds.length) {
       const bRow = j.data.census_beds.find(r => r && (r._id === 'census_beds_all' || r.data != null)) || j.data.census_beds[0];
@@ -7197,11 +7235,12 @@ async function dbTryReconnect() {
   try {
     const url = typeof CANONICAL_DB_URL !== 'undefined' ? CANONICAL_DB_URL : getDBUrl();
     if (!url) { dbShowStatus('offline'); return false; }
-    dbShowStatus('loading');
+    if (!DB_EVER_ONLINE) dbShowStatus('loading');
     const j = await dbGetAllShared(true);
     // Success — reset retry counter and do a full proper load
     DB_RETRY_ATTEMPT = 0;
     DB_ONLINE = true;
+    DB_EVER_ONLINE = true;
     const cnt = Object.values(j.data||{}).reduce((s,a)=>s+(Array.isArray(a)?a.length:0),0);
     dbShowStatus('online', cnt);
     console.log('✅ DB reconnected — ' + cnt + ' records. Running full sync...');
