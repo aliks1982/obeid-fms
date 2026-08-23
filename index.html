@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1616';
+  var v = '20260816-1618';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1616">
+<meta name="app-version" content="20260816-1618">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -5340,6 +5340,7 @@ if ('caches' in window) {
   <div style="display:flex;gap:9px;margin-bottom:14px;flex-wrap:wrap;align-items:center;">
     <button class="btn bp" onclick="openMod('newWO')">+ New Work Order</button>
     <div class="tb" style="margin:0;"><button class="tbtn active" onclick="fWO('all',this)">All</button><button class="tbtn" onclick="fWO('gen',this)">General</button><button class="tbtn" onclick="fWO('bio',this)">Biomedical</button><button class="tbtn" onclick="fWO('open',this)">Open Only</button></div>
+    <button class="btn bo" style="margin-left:auto;" onclick="woExportOpenPDF()">📄 Export Open / Pending (PDF)</button>
   </div>
   <div class="card"><div class="cb" style="padding:0;"><table class="tbl"><thead><tr><th>WO#</th><th>Type</th><th>Dept</th><th>Description</th><th>Priority</th><th>By</th><th>Date</th><th>Assigned</th><th>Status</th><th></th></tr></thead><tbody id="wo-tb"></tbody></table></div></div>
 </div>
@@ -6569,7 +6570,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1616';
+const APP_VERSION = '20260816-1618';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -6629,20 +6630,40 @@ function sv(k, v) {
   const data = JSON.stringify(v);
   try {
     localStorage.setItem(PX + k, data);
+    return true;
   } catch(e) {
     if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
-      // Auto-free: remove the biggest non-critical keys and retry
+      // Free rebuildable caches (file binaries, PPM/app_settings blobs) and retry.
       _emergencyFreeStorage();
-      try { localStorage.setItem(PX + k, data); }
-      catch(e2) {
-        // Still full — truncate array data and retry
-        if (Array.isArray(v) && v.length > 20) {
-          try { localStorage.setItem(PX + k, JSON.stringify(v.slice(0, 20))); } catch(e3) {}
+      try { localStorage.setItem(PX + k, data); return true; } catch(e2) {}
+      // Try harder: drop ALL rebuildable-from-DB caches, then retry once more.
+      _deepFreeStorage(k);
+      try { localStorage.setItem(PX + k, data); return true; } catch(e3) {}
+      // ── NEVER truncate or silently drop user data. Keep the prior stored value
+      //    intact and alert the user to free space. Data stays safe in memory/DB. ──
+      console.error('Storage full — could not save "' + k + '". User-entered data preserved (not truncated).');
+      try {
+        if (!window.__storageFullWarned || (Date.now() - window.__storageFullWarned) > 20000) {
+          window.__storageFullWarned = Date.now();
+          if (typeof toast === 'function') toast('⚠️ Device storage is full — could not save locally. Open Settings → Storage → “Clear File Data”, then re-save.', '#ef4444', 9000);
         }
-        console.warn('sv quota error for key:', k, '— data may be partial');
-      }
+      } catch(_) {}
+      return false;
     }
+    console.warn('sv error for key:', k, e && e.message);
+    return false;
   }
+}
+
+// Aggressive space reclaim: drop every cache that can be rebuilt from the cloud
+// (never touches user-entered record collections). Used as a last resort before
+// we would otherwise fail a save — so we still never truncate real data.
+function _deepFreeStorage(exceptKey) {
+  // ONLY pure caches that always reload from the cloud. Never user-entered records.
+  const rebuildable = ['obeid_ppm_overrides','obeid_ppm_overrides_ts','obeid3_app_settings',
+    'obeid_file_store_v1'];
+  rebuildable.forEach(k => { if (('obeid3_'+ (exceptKey||'')) !== k && (exceptKey||'') !== k) { try { localStorage.removeItem(k); } catch(e){} } });
+  console.warn('Deep storage free performed');
 }
 
 // Remove large non-essential keys to free space
@@ -6996,7 +7017,8 @@ async function dbLoadAll(opts) {
       const dbDates = new Set(dbRows.map(r => String(r.date)));
       const localKept = cur.filter(r => r && r.date && !dbDates.has(String(r.date)));  // keep local-only days
       const merged = dbRows.concat(localKept);
-      if (merged.length) { sv('census_daily', merged); console.log('Nursing census: merged ' + dbRows.length + ' DB + ' + localKept.length + ' local days'); }
+      if (merged.length) { sv('census_daily', merged); try{ localStorage.setItem((PX||'obeid3_')+'census_backup', JSON.stringify({ts:Date.now(), data:merged})); }catch(_){}
+        console.log('Nursing census: merged ' + dbRows.length + ' DB + ' + localKept.length + ' local days'); }
     }
     if (j.data && Array.isArray(j.data.census_beds) && j.data.census_beds.length) {
       const bRow = j.data.census_beds.find(r => r && (r._id === 'census_beds_all' || r.data != null)) || j.data.census_beds[0];
@@ -7838,6 +7860,49 @@ function renderWO(){
   </tr>`).join('');
 }
 function woBadge(){const c=ld('workorders').filter(w=>w.status==='Open'||w.status==='In Progress').length;const b=document.getElementById('woBadge');if(b)b.textContent=c;}
+
+// Export all OPEN / PENDING work orders as a PDF to share with the maintenance manager.
+function woExportOpenPDF(){
+  const JS=(window.jspdf&&window.jspdf.jsPDF)?window.jspdf.jsPDF:null;
+  if(!JS){ toast('PDF engine still loading (needs internet) — try again in a moment','#f59e0b',4000); return; }
+  // Authoritative source: live maintenance sheet (ROWS) via woOpenRows; else local store.
+  let rows=[];
+  try{
+    if(typeof woOpenRows==='function' && typeof ROWS!=='undefined' && Array.isArray(ROWS) && ROWS.length){
+      rows = woOpenRows().map(e=>{ const r=woRowInfo(e); return [r.id, r.bio?'Bio':'Gen', r.dept, r.problem, r.by, r.who, r.status, (typeof woFmtWhen==='function'?woFmtWhen(r.when):r.when)]; });
+    }
+  }catch(e){}
+  if(!rows.length){
+    rows = (ld('workorders')||[]).filter(w=>w && w.status!=='Completed' && w.status!=='Cancelled')
+      .map(w=>[w.id||'—', w.type==='bio'?'Bio':'Gen', w.dept||'—', w.desc||'—', w.name||'—', w.assigned||'(unassigned)', w.status||'Open', w.date||'']);
+  }
+  if(!rows.length){ toast('No open / pending work orders 🎉','#10b981'); return; }
+
+  const doc=new JS({unit:'pt',format:'a4',orientation:'landscape'});
+  const pw=doc.internal.pageSize.getWidth();
+  doc.setFillColor(30,58,92); doc.rect(0,0,pw,58,'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(15);
+  doc.text('Obeid Specialized Hospital', 40, 26);
+  doc.setFont('helvetica','normal'); doc.setFontSize(11);
+  doc.text('Open / Pending Work Orders — '+rows.length+' item(s)', 40, 44);
+  doc.setFontSize(9); doc.text('Generated '+new Date().toLocaleString('en-GB'), pw-40, 40, {align:'right'});
+
+  doc.autoTable({
+    startY:72,
+    head:[['WO #','Type','Department','Problem / Description','Requested By','Assigned To','Status','Received']],
+    body:rows,
+    theme:'striped', styles:{fontSize:8,cellPadding:4,overflow:'linebreak'},
+    headStyles:{fillColor:[59,130,246],textColor:255,fontStyle:'bold'},
+    columnStyles:{0:{cellWidth:60},1:{cellWidth:38,halign:'center'},3:{cellWidth:200},6:{cellWidth:70}},
+    margin:{left:40,right:40},
+    didParseCell:function(d){ if(d.section==='body' && d.column.index===6){ const s=String(d.cell.raw||'').toLowerCase(); if(s.indexOf('pending')>=0) d.cell.styles.textColor=[217,119,6]; else d.cell.styles.textColor=[220,38,38]; } }
+  });
+  const ph=doc.internal.pageSize.getHeight();
+  doc.setFontSize(8); doc.setTextColor(140,150,165);
+  doc.text('FMS Command Platform · Maintenance — Mostapha', 40, ph-18);
+  doc.save('Open_Pending_Work_Orders_'+new Date().toISOString().slice(0,10)+'.pdf');
+  toast('📄 Open/Pending Work Orders PDF generated','#10b981');
+}
 function openUpd(id){document.getElementById('upd-id').value=id;openMod('updWO');}
 function applyUpd(){
   const id=document.getElementById('upd-id').value,tc=document.getElementById('upd-tech').value,st2=document.getElementById('upd-status').value,nt=document.getElementById('upd-notes').value,dt=document.getElementById('upd-date').value,fl=document.getElementById('upd-file').files[0];
@@ -7943,6 +8008,13 @@ function buildAlerts(){
   const td=ld('tldReview').length;if(td<4)a.push({c:'alw',i:'🟡',t:`TLD reviews: ${td}/4 this year`,s:'Bashar — FMS.9.7'});
   const ex2=ld('shieldCert').filter(r=>r.expiry&&new Date(r.expiry)<now);if(ex2.length)a.push({c:'alc',i:'🔴',t:`${ex2.length} shielding cert(s) expired`,s:'Bashar — FMS.9.5'});
   const hi=ld('workorders').filter(w=>w.prio==='high'&&w.status==='Open').length;if(hi)a.push({c:'alc',i:'🔴',t:`${hi} emergency WO(s) open`,s:'Mostapha — Maintenance'});
+  // Open / Pending Work Orders — red flag for the Maintenance Manager (Mostapha)
+  try {
+    const _woOpen = (typeof woOpenRows==='function' && (typeof ROWS!=='undefined' && Array.isArray(ROWS) && ROWS.length))
+      ? woOpenRows().length
+      : (ld('workorders')||[]).filter(w=>w && w.status!=='Completed' && w.status!=='Cancelled').length;
+    if (_woOpen > 0) a.push({ c:'alc', i:'🔴', t:`${_woOpen} Open / Pending Work Order(s) awaiting action`, s:'Mostapha — Maintenance Manager · tap Work Orders → Export PDF to share' });
+  } catch(e) {}
   const _cd=codeDrillsThisYear(), _t=platCfg().codeDrillTarget;
   const _missing=Object.keys(_cd).filter(c=>_cd[c]<_t);
   if(_missing.length)a.push({c:'alw',i:'🟡',t:`Code drills pending (${_t}/yr each): ${_missing.join(', ')}`,s:'Moe — FMS.1.1.4/5'});
@@ -10509,7 +10581,7 @@ function applyRBAC() {
   }
   // Resolve custom roles to their template role for access lookup
   const effectiveRole = getEffectiveRole(CU.role);
-  let allowed = ROLE_ACCESS[effRole] || ROLE_ACCESS['security'] || []; { const ov=getAccessOverride(); if(ov[effRole]&&Array.isArray(ov[effRole])) allowed = ov[effRole].map(p=>'n-'+p); }
+  let allowed = ROLE_ACCESS[effectiveRole] || ROLE_ACCESS['security'] || []; { const ov=getAccessOverride(); if(ov[effectiveRole]&&Array.isArray(ov[effectiveRole])) allowed = ov[effectiveRole].map(p=>'n-'+p); }
 
   document.querySelectorAll('.ni[id]').forEach(el => {
     el.style.display = allowed.includes(el.id) ? '' : 'none';
@@ -10651,7 +10723,8 @@ function nukeAndReload() {
   const keepKeys = [];
   for (let k in localStorage) {
     if (k.includes('db_url') || k.includes('PIN') || k.includes('pin') || 
-        k.includes('login') || k === 'obeid_first_visit') {
+        k.includes('login') || k === 'obeid_first_visit' ||
+        k.indexOf('census') >= 0) {   // never drop nursing census on a reset
       keepKeys.push([k, localStorage.getItem(k)]);
     }
   }
@@ -22166,8 +22239,21 @@ if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,a
   // ---------- stores ----------
   function beds(){ try{ const a=ld('census_beds'); return (Array.isArray(a)&&a.length)?a:DEFAULT_BEDS.slice(); }catch(e){ return DEFAULT_BEDS.slice(); } }
   function saveBeds(list){ sv('census_beds',list); try{ dbWrite('census_beds',{_id:'census_beds_all',data:list,_ts:new Date().toISOString()}); }catch(e){} }
-  function daily(){ try{ const a=ld('census_daily'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
-  function saveDaily(list){ sv('census_daily',list); }
+  const CENSUS_BK = (typeof PX!=='undefined'?PX:'obeid3_') + 'census_backup';
+  function daily(){
+    try{ const a=ld('census_daily'); if(Array.isArray(a)&&a.length) return a; }catch(e){}
+    // Self-heal: if the primary store is empty/lost, recover from the redundant backup.
+    try{ const bk=JSON.parse(localStorage.getItem(CENSUS_BK)||'null'); if(bk && Array.isArray(bk.data) && bk.data.length){ try{sv('census_daily',bk.data);}catch(_){}
+      console.warn('Census recovered '+bk.data.length+' day(s) from local backup'); return bk.data; } }catch(e){}
+    return [];
+  }
+  function saveDaily(list){
+    const ok = sv('census_daily',list);
+    // Redundant backup in a separate, protected key — survives even if the main
+    // key is cleared, and lets daily() self-heal on next load.
+    try{ localStorage.setItem(CENSUS_BK, JSON.stringify({ts:Date.now(), data:list})); }catch(e){}
+    return ok;
+  }
   function byDate(d){ return daily().find(r=>r.date===d) || null; }
   function upsert(entry){
     if(!entry._id) entry._id='census_'+entry.date;
@@ -22337,8 +22423,13 @@ if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,a
     const e=collect();
     if(!e.date){ if(typeof toast==='function') toast('Pick a date first','#f59e0b'); return; }
     upsert(e); CUR=e.date;
+    // Verify it actually persisted to localStorage (guards against a silent
+    // storage-full failure — the user must never be told "saved" when it wasn't).
+    let persisted=false;
+    try{ persisted = (ld('census_daily')||[]).some(r=>r && r.date===e.date); }catch(_){}
     renderKPIs(); renderAnalytics();
-    if(typeof toast==='function') toast('💾 Census saved for '+e.date,'#10b981',3200);
+    if(persisted){ if(typeof toast==='function') toast('💾 Census saved for '+e.date,'#10b981',3200); }
+    else { if(typeof toast==='function') toast('⚠️ Could not save — device storage is full. Open Settings → Storage → “Clear File Data”, then save again.','#ef4444',9000); }
   };
 
   // ═══════════════ KPI + ANALYTICS ═══════════════
