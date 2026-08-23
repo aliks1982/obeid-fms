@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1615';
+  var v = '20260816-1616';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1615">
+<meta name="app-version" content="20260816-1616">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6569,7 +6569,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1615';
+const APP_VERSION = '20260816-1616';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -6985,7 +6985,13 @@ async function dbLoadAll(opts) {
 
     // ── v1608: Restore Nursing Daily Census (census_daily rows + census_beds config) ──
     if (j.data && Array.isArray(j.data.census_daily)) {
-      const dbRows = j.data.census_daily.filter(r => r && r.date);
+      const dbRows = j.data.census_daily.map(r => {
+        // rows are stored as { _id, date, data:"<json entry>" } — unwrap the blob
+        if (r && typeof r.data === 'string' && r.data.charAt(0) === '{') {
+          try { const ent = JSON.parse(r.data); if (ent && ent.date) return ent; } catch(_) {}
+        }
+        return r;
+      }).filter(r => r && r.date);
       const cur = Array.isArray(ld('census_daily')) ? ld('census_daily') : [];
       const dbDates = new Set(dbRows.map(r => String(r.date)));
       const localKept = cur.filter(r => r && r.date && !dbDates.has(String(r.date)));  // keep local-only days
@@ -17055,6 +17061,9 @@ function loxNormalizeDate(d) {
   // Pattern: ISO with time "2026-06-16T..."
   var iso = d.match(/^(\d{4}-\d{2}-\d{2})T/);
   if (iso) return iso[1];
+  // Pattern: M/D/YYYY or MM/DD/YYYY (locale/sheet display, e.g. 8/23/2026)
+  var sl = d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (sl) return sl[3] + '-' + ('0'+sl[1]).slice(-2) + '-' + ('0'+sl[2]).slice(-2);
   return d.slice(0,10);
 }
 
@@ -19387,11 +19396,11 @@ function achRoomRequirement(rm, readings) {
   const status = rm.occ ? achLatestStatus(rm.id, readings) : '';
 
   if (rm.occ && status === 'vacant') {
-    // Vacant isolation room: 1 reading within the last 7 days
-    const cutoff = achDaysAgo(7);
-    const recent = mineP.filter(r => (r.date||'').slice(0,10) >= cutoff);
-    return { need:1, done:recent.length, ok:recent.length>=1, freq:'weekly',
-             status:'vacant', label:'Vacant — 1 full reading / 7 days (MOH)' };
+    // Nurse marked the room VACANT (status-only tick — no readings expected).
+    // Policy: a vacant room is EXCLUDED from the daily KPI. It is neither a pass
+    // nor a miss, so an empty vacant room can never drag a station into the red.
+    return { need:0, done:0, ok:true, excluded:true, freq:'vacant',
+             status:'vacant', label:'Vacant — excluded from daily KPI' };
   }
   if (rm.occ && status === 'occupied') {
     // Occupied isolation room: 2 readings today
@@ -19411,12 +19420,14 @@ function achStats(readings) {
 
   // Frequency-aware gap list
   const missing = [];       // rooms not meeting their requirement
-  let roomsMeeting = 0;
+  let roomsMeeting = 0, roomsExcluded = 0;
   rooms.forEach(rm => {
     const req = achRoomRequirement(rm, readings);
+    if (req.excluded) { roomsExcluded++; return; }   // vacant rooms are excluded from the KPI
     if (req.ok) roomsMeeting++;
     else missing.push(Object.assign({}, rm, {_req: req}));
   });
+  const roomsApplicable = Math.max(0, rooms.length - roomsExcluded);
 
   let pass=0, fail=0;
   readings.forEach(r=>{ const e=achEval(r); if(e.overall==='pass')pass++; else if(e.overall==='fail')fail++; });
@@ -19447,6 +19458,8 @@ function achStats(readings) {
     todayCount: todays.length,
     roomsTotal: rooms.length,
     roomsMeeting: roomsMeeting,
+    roomsExcluded: roomsExcluded,
+    roomsApplicable: roomsApplicable,
     missingToday: missing,
     passRate: total ? Math.round(pass/total*100) : 0,
     pass, fail,
@@ -19467,7 +19480,7 @@ function achRender() {
   const cards =
     '<div class="g g4" style="margin-bottom:14px;">' +
     achKpiCard('🏥', s.roomsTotal, 'Monitored Rooms') +
-    achKpiCard('✅', s.roomsMeeting + '/' + s.roomsTotal, 'Meeting Reading Requirement', s.roomsMeeting===s.roomsTotal?'#16a34a':'#d97706') +
+    achKpiCard('✅', s.roomsMeeting + '/' + s.roomsApplicable, 'Meeting Reading Requirement', s.roomsMeeting>=s.roomsApplicable?'#16a34a':'#d97706') +
     achKpiCard('📊', s.passRate + '%', 'Parameter Compliance Rate', s.passRate>=90?'#16a34a':s.passRate>=75?'#d97706':'#dc2626') +
     achKpiCard('⚠️', s.missingToday.length, 'Rooms Below Required Frequency', s.missingToday.length?'#dc2626':'#16a34a') +
     '</div>' +
@@ -19986,20 +19999,19 @@ function repairCustomUserAccess() {
 //    saves to lox_gauge*, while the legacy Medical Gas checklist used mg_lox.
 //    Either one counts as today's check.
 function loxCheckDone(dateStr) {
-  // v1601: default to LOCAL date (not UTC) so an omitted arg matches locally-stored dates.
-  const d = dateStr || ((typeof fmsLocalToday==='function') ? fmsLocalToday() : new Date().toISOString().slice(0,10));
-  try {
-    // 1. LOX Reserve Calculator (gauge readings) — the live source
-    if (typeof loxGetReadings === 'function') {
-      const rs = loxGetReadings() || [];
-      if (rs.some(r => String(r.date||'').slice(0,10) === d)) return true;
-    }
-  } catch(e) {}
-  try {
-    // 2. Legacy Medical Gas LOX checklist
-    const mg = (typeof ld === 'function' ? (ld('mg_lox') || []) : []);
-    if (mg.some(r => String(r.date||'').slice(0,10) === d)) return true;
-  } catch(e) {}
+  // Normalize the target day, then match against a normalized date on EVERY LOX
+  // store (gauge readings AND the daily checklist), so a stored date in any format
+  // (YYYY-MM-DD, 8/23/2026, "Sun Aug 23 2026", ISO+time) still counts as "done today".
+  const raw = dateStr || ((typeof fmsLocalToday==='function') ? fmsLocalToday() : new Date().toISOString().slice(0,10));
+  const d = (typeof loxNormalizeDate==='function') ? (loxNormalizeDate(raw) || raw) : raw;
+  const match = r => r && (typeof loxNormalizeDate==='function'
+      ? loxNormalizeDate(String(r.date||''))
+      : String(r.date||'').slice(0,10)) === d;
+  try { if (typeof loxGetReadings === 'function' && (loxGetReadings()||[]).some(match)) return true; } catch(e) {}
+  const keys = ['mg_lox','lox_gauge','lox_gauge_readings','lox_daily_readings'];
+  for (let i=0;i<keys.length;i++) {
+    try { const arr = (typeof ld==='function') ? (ld(keys[i])||[]) : []; if (Array.isArray(arr) && arr.some(match)) return true; } catch(e) {}
+  }
   return false;
 }
 
@@ -22158,11 +22170,14 @@ if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,a
   function saveDaily(list){ sv('census_daily',list); }
   function byDate(d){ return daily().find(r=>r.date===d) || null; }
   function upsert(entry){
+    if(!entry._id) entry._id='census_'+entry.date;
     const list=daily(); const i=list.findIndex(r=>r.date===entry.date);
     if(i>=0) list[i]=entry; else list.push(entry);
     list.sort((a,b)=>a.date<b.date?-1:1);
     saveDaily(list);
-    try{ dbWrite('census_daily',entry); }catch(e){}
+    // Sync the WHOLE entry as one JSON blob — census has nested objects (occ, ld, er…)
+    // that would not survive being flattened into sheet columns.
+    try{ dbWrite('census_daily', { _id:entry._id, date:entry.date, data:JSON.stringify(entry), _ts:entry._ts||new Date().toISOString() }); }catch(e){}
   }
   const inpatient = ()=>beds().filter(b=>b.group==='inpatient');
   const capOf = st => { const b=beds().find(x=>x.station===st); return b?(+b.cap||0):0; };
@@ -22301,8 +22316,10 @@ if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,a
     document.querySelectorAll('#census-root .cs-rem').forEach(i=>{ if(i.value.trim()) rem[i.dataset.st]=i.value.trim(); });
     if(g('cs-ld-occ')!=='') occ['LR/DR']=num(g('cs-ld-occ'));
     if(g('cs-nur-occ')!=='') occ['NURSERY']=num(g('cs-nur-occ'));
+    const _d = g('cs-date')||CUR;
     return {
-      date:g('cs-date')||CUR, time:g('cs-time'), by:g('cs-by'),
+      _id:'census_'+_d,
+      date:_d, time:g('cs-time'), by:g('cs-by'),
       occ, rem,
       ld:{ nsvd:num(g('cs-ld-nsvd')), lscs:num(g('cs-ld-lscs')), abortion:num(g('cs-ld-ab')), hdu:num(g('cs-ld-hdu')), admissions:num(g('cs-ld-adm')) },
       er:{ seen:num(g('cs-er-seen')), adm:num(g('cs-er-adm')) },
