@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1618';
+  var v = '20260816-1619';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1618">
+<meta name="app-version" content="20260816-1619">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -4094,6 +4094,26 @@ if ('caches' in window) {
     <div style="background:rgba(30,30,30,.3);border:1px solid rgba(90,127,168,.3);border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:10px;color:var(--mu);">
       <b style="color:var(--tx);">DAILY CHECK LIST — CENTRAL VACUUM</b> · 3 Pumps · Pressure (mmHg) + Running Hours
     </div>
+    <div style="background:rgba(90,127,168,.08);border:1px solid rgba(90,127,168,.28);border-radius:10px;padding:12px 16px;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div style="font-size:10px;color:var(--mu);"><b style="color:var(--tx);">VACUUM PRESSURE — NORMAL RANGE</b> · pumps P1 / P2 / P3</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span style="font-size:10px;color:var(--mu);">Normal Vacuum Range (mmHg):</span>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <input type="number" id="vac-pmin" step="1" placeholder="Min"
+              style="width:64px;background:var(--s2);border:1px solid var(--b2);border-radius:5px;padding:4px 6px;color:var(--ac);font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;text-align:center;outline:none;"
+              oninput="saveVacRange()" title="Minimum normal vacuum">
+            <span style="color:var(--mu);font-size:11px;">to</span>
+            <input type="number" id="vac-pmax" step="1" placeholder="Max"
+              style="width:64px;background:var(--s2);border:1px solid var(--b2);border-radius:5px;padding:4px 6px;color:var(--ac);font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;text-align:center;outline:none;"
+              oninput="saveVacRange()" title="Maximum normal vacuum">
+            <span style="font-size:10px;color:var(--mu);">mmHg</span>
+          </div>
+          <span style="font-size:9px;color:var(--gn);">🟢 Within range</span>
+          <span style="font-size:9px;color:var(--rd);">🔴 Outside range</span>
+        </div>
+      </div>
+    </div>
     <div class="g g2">
       <div class="card"><div class="ch"><div class="ct">Submit Central Vacuum Daily Entry</div></div><div class="cb">
         <div class="fg fg2">
@@ -6570,7 +6590,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1618';
+const APP_VERSION = '20260816-1619';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -9437,13 +9457,18 @@ const MG_ROWS = {
     <td>${r.damage==='ok'?'<span class="bx bg2">✅</span>':'<span class="bx br2">❌</span>'}</td>
     <td style="font-size:10px;">${r._by||r.by||'—'}</td>`,
 
-  vacuum: r => `<td>${r.date||'—'}</td><td>${r.shift||'—'}</td>
-    <td style="color:${parseFloat(r.p1)<=-300?'var(--gn)':'var(--rd)'};">${r.p1||'—'}</td>
-    <td style="color:${parseFloat(r.p2)<=-300?'var(--gn)':'var(--rd)'};">${r.p2||'—'}</td>
-    <td style="color:${parseFloat(r.p3)<=-300?'var(--gn)':'var(--rd)'};">${r.p3||'—'}</td>
+  vacuum: r => {
+    const vmin = parseFloat(localStorage.getItem('vac_pmin')||'400');
+    const vmax = parseFloat(localStorage.getItem('vac_pmax')||'700');
+    const vc = v => { const n=parseFloat(v); return isNaN(n)?'var(--mu)':(n>=vmin&&n<=vmax?'var(--gn)':'var(--rd)'); };
+    return `<td>${r.date||'—'}</td><td>${r.shift||'—'}</td>
+    <td style="color:${vc(r.p1)};font-weight:600;">${r.p1||'—'}</td>
+    <td style="color:${vc(r.p2)};font-weight:600;">${r.p2||'—'}</td>
+    <td style="color:${vc(r.p3)};font-weight:600;">${r.p3||'—'}</td>
     <td>${r.h1||'—'}</td>
     <td>${r.leak==='ok'?'<span class="bx bg2">✅</span>':'<span class="bx br2">❌</span>'}</td>
-    <td style="font-size:10px;">${r._by||r.by||'—'}</td>`,
+    <td style="font-size:10px;">${r._by||r.by||'—'}</td>`;
+  },
 
   aircomp: r => `<td>${r.date||'—'}</td><td>${r.shift||'—'}</td>
     <td style="color:${parseFloat(r.pam)>=6&&parseFloat(r.pam)<=9.6?'var(--gn)':'var(--rd)'};">${r.pam||'—'}</td>
@@ -9483,6 +9508,21 @@ const MG_ROWS = {
     <td>${r.qty||'—'}</td><td style="font-size:10px;">${r._by||r.by||'—'}</td>`,
 };
 
+// Clean any date value (YYYY-MM-DD, M/D/YYYY, ISO+time, or a raw JS Date.toString()
+// like "Wed Aug 26 2026 00:00:00 GMT+0300 (...)") down to a tidy YYYY-MM-DD for display.
+function mgFmtDate(d) {
+  if (!d) return '—';
+  d = String(d);
+  var iso = d.match(/^(\d{4})-(\d{2})-(\d{2})/); if (iso) return iso[1]+'-'+iso[2]+'-'+iso[3];
+  var sl  = d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); if (sl) return sl[3]+'-'+('0'+sl[1]).slice(-2)+'-'+('0'+sl[2]).slice(-2);
+  // JS Date.toString() like "Wed Aug 26 2026 00:00:00 GMT+0300 (...)" — read the
+  // day/month/year straight out of the text (timezone-safe, no re-parsing shift).
+  var js = d.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\s+(\d{4})/);
+  if (js) { var M={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'}; return js[3]+'-'+M[js[1]]+'-'+('0'+js[2]).slice(-2); }
+  var t = Date.parse(d.replace(/\(.*\)/,'').trim());
+  if (!isNaN(t)) { var dt=new Date(t), p=n=>String(n).padStart(2,'0'); return dt.getFullYear()+'-'+p(dt.getMonth()+1)+'-'+p(dt.getDate()); }
+  return d.slice(0,10);
+}
 function renderMGTable(type) {
   const tb = document.getElementById(type + '-tb'); if (!tb) return;
   // Sort newest first by date then timestamp
@@ -9513,7 +9553,7 @@ function renderMGTable(type) {
   if (!data.length) { tb.innerHTML = '<tr><td colspan="12" class="em">No entries yet — submit a daily checklist above</td></tr>'; return; }
   const fn = MG_ROWS[type]; if (!fn) return;
   tb.innerHTML = data.map(r => `<tr>
-    ${fn(r)}
+    ${fn(Object.assign({}, r, { date: mgFmtDate(r.date) }))}
     <td style="white-space:nowrap;">
       <button class="btn bo" style="font-size:9px;padding:2px 5px;" onclick="mgEditRecord('${type}','${r._id}')">✏</button>
       <button class="btn br" style="font-size:9px;padding:2px 5px;margin-left:2px;" onclick="mgDeleteRecord('${type}','${r._id}')">✕</button>
@@ -9611,7 +9651,7 @@ function renderMGLog(filter) {
         ? '<span class="bx br2">⚠️ Issue</span>'
         : '<span class="bx bg2">✅ OK</span>';
       html += `<tr>
-        <td style="font-weight:600;">${r.date||r._ts?.slice(0,10)||'—'}</td>
+        <td style="font-weight:600;">${mgFmtDate(r.date||r._ts||'')}</td>
         <td>${(MG_DEFS[r._stype]?.icon||'') + ' ' + (MG_DEFS[r._stype]?.label||r._stype)}</td>
         <td>${r.shift||'—'}</td>
         <td style="font-size:11px;">${r._keyReading||'—'}</td>
@@ -11693,7 +11733,7 @@ function doLogin() {
       // Auto-push any pending PPM overrides to DB in background (no button needed)
       setTimeout(() => eqSyncAllOverridesToDB(true), 2000);
     }
-    if (id === 'medgas')    { renderAllMGTables(); renderMGLog('all'); setTimeout(loadLOXRange, 100); }
+    if (id === 'medgas')    { renderAllMGTables(); renderMGLog('all'); setTimeout(function(){ loadLOXRange(); loadVacRange(); }, 100); }
     if (id === 'risk')      { setTimeout(() => riskTab('heatmap', null), 80); }
     if (id === 'contracts') { setTimeout(() => ctrTab('list', null), 80); }
     if (id === 'settings') {
@@ -13700,6 +13740,21 @@ function loadLOXRange() {
   const maxEl = document.getElementById('lox-pmax');
   if (minEl) minEl.value = localStorage.getItem('lox_pmin') || '7';
   if (maxEl) maxEl.value = localStorage.getItem('lox_pmax') || '16';
+}
+
+// ── Vacuum Range Settings (editable normal range, mirrors LOX) ──
+function saveVacRange() {
+  const minEl = document.getElementById('vac-pmin');
+  const maxEl = document.getElementById('vac-pmax');
+  if (minEl && minEl.value !== '') localStorage.setItem('vac_pmin', minEl.value);
+  if (maxEl && maxEl.value !== '') localStorage.setItem('vac_pmax', maxEl.value);
+  renderMGTable('vacuum');
+}
+function loadVacRange() {
+  const minEl = document.getElementById('vac-pmin');
+  const maxEl = document.getElementById('vac-pmax');
+  if (minEl) minEl.value = localStorage.getItem('vac_pmin') || '400';
+  if (maxEl) maxEl.value = localStorage.getItem('vac_pmax') || '700';
 }
 
 // ── Inventory delete (for equipment added via eq_added) ──
