@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1619';
+  var v = '20260816-1621';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1619">
+<meta name="app-version" content="20260816-1621">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -2217,8 +2217,11 @@ if ('caches' in window) {
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;padding:12px;background:var(--s2);border-radius:10px;border:1px solid var(--bd);">
     <div class="card" style="margin-bottom:14px;" id="cbahi-ppm-card">
     <div class="ch">
-      <div class="ct">🗓 Annual Fire PPM Schedule 2026 — FMS 21.1–22.4 (read-only view)</div>
-      <button class="btn bo" style="font-size:10px;" onclick="fsPpmExport()">⬇ Export Schedule</button>
+      <div class="ct">🗓 Annual Fire PPM Schedule 2026 — FMS 21.1–22.4</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn bo" style="font-size:10px;" onclick="cbahiPpmEditRow()" id="cbahi-ppm-editbtn">✏ Add / Edit Row</button>
+        <button class="btn bo" style="font-size:10px;" onclick="fsPpmExport()">⬇ Export Schedule</button>
+      </div>
     </div>
     <div class="cb" style="padding:0;overflow-x:auto;"><div id="cbahi-ppm-grid"></div></div>
   </div>
@@ -6590,7 +6593,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1619';
+const APP_VERSION = '20260816-1621';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -7191,14 +7194,16 @@ async function dbLoadAll(opts) {
           const localIds = new Set(localReps.map(r => String(r._id)));
           let added = 0;
           repRows.forEach(row => {
-            if (!localIds.has(String(row._id))) {
-              ['floors','units'].forEach(function(f){
-                if (typeof row[f] === 'string' && row[f].trim().startsWith('[')) {
-                  try { row[f] = JSON.parse(row[f]); } catch(e){}
-                }
-              });
-              localReps.push(row); added++;
+            let rep = row;
+            // New format: full report JSON in the value column.
+            if (row.value && typeof row.value === 'string' && row.value.trim().charAt(0) === '{') {
+              try { const parsed = JSON.parse(row.value); if (parsed && parsed._id) rep = parsed; } catch(e){}
             }
+            // Old flattened rows: revive array fields.
+            ['floors','units'].forEach(function(f){
+              if (typeof rep[f] === 'string' && rep[f].trim().startsWith('[')) { try { rep[f] = JSON.parse(rep[f]); } catch(e){} }
+            });
+            if (!localIds.has(String(rep._id))) { localReps.push(rep); added++; }
           });
           if (added > 0) {
             // newest first, consistent with repSave's unshift ordering
@@ -11212,7 +11217,7 @@ function openRelocation(asset, currentDept, equipName) {
   document.getElementById('rel-to').value     = '';
   document.getElementById('rel-reason').value = '';
   document.getElementById('rel-by').value     = CU.name || '';
-  document.getElementById('rel-date').value   = new Date().toISOString().split('T')[0];
+  document.getElementById('rel-date').value   = fmsLocalToday();
   if (!asset) { setTimeout(()=>document.getElementById('rel-asset')?.focus(), 100); }
   openMod('relocate');
 }
@@ -11562,7 +11567,7 @@ function evPopulateContracts() {
   if (yrEl && !yrEl.value) yrEl.value = new Date().getFullYear();
   // Set date
   const dtEl = document.getElementById('ev-date');
-  if (dtEl && !dtEl.value) dtEl.value = new Date().toISOString().split('T')[0];
+  if (dtEl && !dtEl.value) dtEl.value = fmsLocalToday();
   evCalcScore();
 }
 
@@ -16087,6 +16092,9 @@ function cbahiUpdateScores() {
 }
 
 function cbahiShowTab(section) {
+  // Defensive: the Medical-Gas Annex panels can bleed into this view via a stray
+  // container. Hide them here — the Medical Gas page re-shows them via mgTab().
+  ['mg-gastest','mg-repair'].forEach(id => { const e = document.getElementById(id); if (e) e.style.display = 'none'; });
   if (section === 'reports') {
     setTimeout(() => { repBuildFATable(); repBuildFM200Table(); repLoadAll(); }, 50);
   }
@@ -16759,8 +16767,10 @@ function repSave(type) {
   allReps.unshift(data);
   localStorage.setItem('obeid3_fms_reports', JSON.stringify(allReps));
   
-  // Save to DB
-  dbWrite('app_settings', data);
+  // Save to DB as a self-contained JSON blob so date/month/floors survive the
+  // shared app_settings sheet (which otherwise drops fields it has no column for).
+  dbWrite('app_settings', { _id: data._id, key: data._id, type: data.type,
+    value: JSON.stringify(data), _ts: data._ts, _by: data._by });
   
   toast('✅ Report saved', '#10b981');
   repRenderLog(type);
@@ -16797,7 +16807,7 @@ function repRenderLog(type) {
   el.innerHTML = reps.map(r => {
     const resultClass = r.result === 'pass' ? 'rep-log-result-pass' : r.result === 'fail' ? 'rep-log-result-fail' : 'rep-log-result-partial';
     const resultLabel = r.result === 'pass' ? '✅ Pass' : r.result === 'fail' ? '❌ Fail' : r.result === 'partial' ? '⚠️ Partial' : '—';
-    const dateStr = repFmtDate(r.date) || r.month || '—';
+    const dateStr = repFmtDate(r.date) || r.month || repFmtDate((r._ts||'').slice(0,10)) || '—';
     return `<div class="rep-log-entry">
       <div class="rep-log-badge">${REP_ICONS[type] || '📋'}</div>
       <div class="rep-log-info">
@@ -16814,7 +16824,7 @@ function repRenderLog(type) {
 function repLoadAll() {
   repBuildFATable();
   repBuildFM200Table();
-  try { fsPpmRender('cbahi-ppm-grid', true); } catch(e) {}
+  try { fsPpmRender('cbahi-ppm-grid', !(CU.role==='director'||CU.role==='maintenance')); } catch(e) {}
   // One-time repair: restore lost 'type' fields on locally stored reports
   try {
     const _all = JSON.parse(localStorage.getItem('obeid3_fms_reports') || '[]');
@@ -17551,7 +17561,7 @@ function loxDebugStorage() {
 
 function loxInit() {
   var di=document.getElementById('lox-read-date');
-  if(di&&!di.value) di.value=new Date().toISOString().slice(0,10);
+  if(di&&!di.value) di.value=fmsLocalToday();
   loxDebugStorage(); // logs storage state to console
   loxRenderDashboard();
 }
@@ -17720,7 +17730,7 @@ function pmgAdd(comp) {
   document.getElementById('pmg-f-freq').value = 'Quarterly';
   document.getElementById('pmg-f-contractor').value = '';
   document.getElementById('pmg-f-nextdue').value = '';
-  document.getElementById('pmg-f-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('pmg-f-date').value = fmsLocalToday();
   const _sync = pmgWireDueSync(); if (_sync) _sync();   // prefill Next Due from date + frequency
   document.getElementById('pmg-modal').style.display = 'block';
 }
@@ -18366,8 +18376,17 @@ function fsPpmSave(s) {
     _by: ((window.CU&&CU.name)||'unknown'), _ts: s._ts });
 }
 
+let FSPPM_LAST_TARGET='fsppm-grid', FSPPM_LAST_RO=false;
+// From the CBAHI reports view, jump to the full editable Fire PPM schedule page/form.
+function cbahiPpmEditRow(){
+  if (!(CU.role==='director'||CU.role==='maintenance')) { toast('Only the FMS Director or Maintenance Manager can edit the schedule','#f59e0b'); return; }
+  // The editable grid + add/edit form live on the Fire Safety page — open it there.
+  try { if (typeof gp==='function') gp('fire'); } catch(e){}
+  setTimeout(function(){ const f=document.getElementById('fsppm-act'); if(f){ f.scrollIntoView({behavior:'smooth',block:'center'}); f.focus(); } else { try{ fsPpmRender('cbahi-ppm-grid', false); }catch(_){}}}, 200);
+}
 function fsPpmRender(targetId, readOnly) {
   const el = document.getElementById(targetId || 'fsppm-grid'); if (!el) return;
+  FSPPM_LAST_TARGET = targetId || 'fsppm-grid'; FSPPM_LAST_RO = !!readOnly;
   // Role gate (defense in depth — tab is also hidden for other roles)
   if (!readOnly && CU.role && CU.role !== 'director' && CU.role !== 'maintenance') {
     el.innerHTML = '<div style="padding:20px;color:var(--mu);">Access restricted to FMS Director and Maintenance Manager.</div>'; return;
@@ -18426,20 +18445,20 @@ function fsPpmSaveRow() {
   document.getElementById('fsppm-form-title').textContent = '➕ Add / Edit Schedule Row';
   ['fsppm-act','fsppm-ref','fsppm-by','fsppm-ev'].forEach(i=>{document.getElementById(i).value='';});
   FSPPM_MONTHS.forEach(m=>{const e=document.getElementById('fsppm-m-'+m); if(e) e.value='—';});
-  fsPpmRender(); toast('✅ Schedule row saved','#10b981');
+  fsPpmRender(FSPPM_LAST_TARGET, FSPPM_LAST_RO); toast('✅ Schedule row saved','#10b981');
 }
 
 function fsPpmDelete(id) {
   if (!confirm('Delete this schedule row?')) return;
   const s = fsPpmGet();
   s.rows = s.rows.filter(x=>x._id!==id);
-  fsPpmSave(s); fsPpmRender(); toast('🗑 Row deleted');
+  fsPpmSave(s); fsPpmRender(FSPPM_LAST_TARGET, FSPPM_LAST_RO); toast('🗑 Row deleted');
 }
 
 function fsPpmResetSeed() {
   if (!confirm('Reset the schedule to the CBAHI-compliant default (FMS 21.1–22.4)? Your current rows will be replaced.')) return;
   const s = { rows: fsPpmSeed(), year: new Date().getFullYear() };
-  fsPpmSave(s); fsPpmRender(); toast('✅ Schedule reset to compliant default','#10b981');
+  fsPpmSave(s); fsPpmRender(FSPPM_LAST_TARGET, FSPPM_LAST_RO); toast('✅ Schedule reset to compliant default','#10b981');
 }
 
 async function fsPpmSync() {
@@ -20020,14 +20039,23 @@ function achRenderInfographic() {
 
   // Per-department compliance
   const depts = {};
-  rooms.forEach(rm => { if(!depts[rm.dept]) depts[rm.dept] = {pass:0,total:0,rooms:0,read:new Set()}; depts[rm.dept].rooms++; });
-  const today = achToday();
-  readings.forEach(r => {
-    const rm = achRoomById(r.room); if(!rm) return;
-    const e = achEval(r);
-    if (e.overall!=='na') { depts[rm.dept].total++; if(e.overall==='pass') depts[rm.dept].pass++; }
-    if ((r.date||'').slice(0,10)===today) depts[rm.dept].read.add(r.room);
+  rooms.forEach(rm => {
+    if(!depts[rm.dept]) depts[rm.dept] = {passToday:0, readToday:new Set(), applicable:0, vacant:0};
+    const req = achRoomRequirement(rm, readings);
+    if (req && req.excluded) depts[rm.dept].vacant++; else depts[rm.dept].applicable++;  // vacant rooms excluded
   });
+  const today = achToday();
+  const roomLatestToday = {};
+  readings.forEach(r => {
+    if ((r.date||'').slice(0,10)!==today) return;
+    const rm = achRoomById(r.room); if(!rm || !depts[rm.dept]) return;
+    const e = achEval(r);
+    if (e.overall==='na') return;                       // status-only (vacant tick) — not a reading
+    depts[rm.dept].readToday.add(r.room);
+    const ts = String(r._ts||r.time||r.date||'');
+    if (!roomLatestToday[r.room] || ts > roomLatestToday[r.room].ts) roomLatestToday[r.room] = { ts, pass: e.overall==='pass', dept: rm.dept };
+  });
+  Object.keys(roomLatestToday).forEach(id => { const v=roomLatestToday[id]; if(v.pass && depts[v.dept]) depts[v.dept].passToday++; });
 
   // Parameter failures as % of readings where that parameter was actually evaluated
   let pf=0, af=0, tf=0, hf=0, okAll=0, evAll=0;
@@ -20043,13 +20071,16 @@ function achRenderInfographic() {
 
   const deptBars = Object.keys(depts).sort().map(dn=>{
     const d = depts[dn];
-    const rate = d.total ? Math.round(d.pass/d.total*100) : null;
+    // % = monitored (non-vacant) rooms compliant today / applicable rooms — consistent with the count shown
+    const rate = d.applicable ? Math.round(d.passToday/d.applicable*100) : null;
     const col = rate==null?'var(--mu)':rate>=90?'#16a34a':rate>=75?'#d97706':'#dc2626';
     const w = rate==null?0:rate;
+    const vac = d.vacant ? ' · '+d.vacant+' vacant (excluded)' : '';
+    const label = rate==null ? 'all vacant' : rate+'%';
     return '<div style="margin-bottom:10px;">'+
       '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;">'+
       '<span style="color:var(--tx);font-weight:600;">'+dn+'</span>'+
-      '<span style="color:'+col+';font-weight:700;">'+(rate==null?'no data':rate+'%')+' <span style="color:var(--mu);font-weight:400;">('+d.read.size+'/'+d.rooms+' read today)</span></span></div>'+
+      '<span style="color:'+col+';font-weight:700;">'+label+' <span style="color:var(--mu);font-weight:400;">('+d.readToday.size+'/'+d.applicable+' read today'+vac+')</span></span></div>'+
       '<div style="height:8px;background:var(--s2);border-radius:4px;overflow:hidden;"><div style="height:100%;width:'+w+'%;background:'+col+';border-radius:4px;transition:width .3s;"></div></div></div>';
   }).join('');
 
