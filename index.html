@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1621';
+  var v = '20260816-1622';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1621">
+<meta name="app-version" content="20260816-1622">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6593,7 +6593,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1621';
+const APP_VERSION = '20260816-1622';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -19541,13 +19541,13 @@ function achRoomRequirement(rm, readings) {
   const mineP  = mine.filter(achHasParams);
   const todays = mineP.filter(r => (r.date||'').slice(0,10)===today);
   const status = rm.occ ? achLatestStatus(rm.id, readings) : '';
-
-  if (rm.occ && status === 'vacant') {
-    // Nurse marked the room VACANT (status-only tick — no readings expected).
-    // Policy: a vacant room is EXCLUDED from the daily KPI. It is neither a pass
-    // nor a miss, so an empty vacant room can never drag a station into the red.
+  // A room marked VACANT today (by ANY of today's readings) is EXCLUDED from the
+  // daily KPI — this covers occupancy isolation rooms AND fixed rooms (an OR or
+  // CSSD area can be out of service). Vacant is neither pass nor miss.
+  const vacantToday = mine.some(r => (r.date||'').slice(0,10)===today && r.status==='vacant');
+  if (vacantToday || (rm.occ && status === 'vacant')) {
     return { need:0, done:0, ok:true, excluded:true, freq:'vacant',
-             status:'vacant', label:'Vacant — excluded from daily KPI' };
+             status:'vacant', label:'Vacant today — excluded from daily KPI' };
   }
   if (rm.occ && status === 'occupied') {
     // Occupied isolation room: 2 readings today
@@ -19564,6 +19564,9 @@ function achStats(readings) {
   const rooms = achRooms();
   const today = achToday();
   const todays = readings.filter(r => (r.date||'').slice(0,10) === today);
+  // Compliance rates ignore vacant readings (a vacant room's 0-values must not
+  // count as failures). Room-requirement checks still see all readings.
+  const readingsC = readings.filter(r => r && r.status !== 'vacant');
 
   // Frequency-aware gap list
   const missing = [];       // rooms not meeting their requirement
@@ -19577,14 +19580,14 @@ function achStats(readings) {
   const roomsApplicable = Math.max(0, rooms.length - roomsExcluded);
 
   let pass=0, fail=0;
-  readings.forEach(r=>{ const e=achEval(r); if(e.overall==='pass')pass++; else if(e.overall==='fail')fail++; });
+  readingsC.forEach(r=>{ const e=achEval(r); if(e.overall==='pass')pass++; else if(e.overall==='fail')fail++; });
   const total = pass+fail;
 
   // Split compliance by pressure type
   const negIds = new Set(rooms.filter(r=>r.p==='neg').map(r=>String(r.id)));
   const posIds = new Set(rooms.filter(r=>r.p==='pos').map(r=>String(r.id)));
   let np=0,nf=0,pp=0,pf=0;
-  readings.forEach(r=>{
+  readingsC.forEach(r=>{
     const e=achEval(r); if(e.overall==='na') return;
     const id=String(r.room);
     if(negIds.has(id)){ e.overall==='pass'?np++:nf++; }
@@ -20049,8 +20052,9 @@ function achRenderInfographic() {
   readings.forEach(r => {
     if ((r.date||'').slice(0,10)!==today) return;
     const rm = achRoomById(r.room); if(!rm || !depts[rm.dept]) return;
+    if (r.status === 'vacant') return;                   // vacant room — excluded from the daily KPI
     const e = achEval(r);
-    if (e.overall==='na') return;                       // status-only (vacant tick) — not a reading
+    if (e.overall==='na') return;                       // status-only — not a reading
     depts[rm.dept].readToday.add(r.room);
     const ts = String(r._ts||r.time||r.date||'');
     if (!roomLatestToday[r.room] || ts > roomLatestToday[r.room].ts) roomLatestToday[r.room] = { ts, pass: e.overall==='pass', dept: rm.dept };
@@ -20058,9 +20062,11 @@ function achRenderInfographic() {
   Object.keys(roomLatestToday).forEach(id => { const v=roomLatestToday[id]; if(v.pass && depts[v.dept]) depts[v.dept].passToday++; });
 
   // Parameter failures as % of readings where that parameter was actually evaluated
+  // (vacant readings excluded — their 0-values are not real measurements)
+  const readingsC = readings.filter(r => r && r.status !== 'vacant');
   let pf=0, af=0, tf=0, hf=0, okAll=0, evAll=0;
   let pe=0, ae=0, te=0, he=0;
-  readings.forEach(r=>{ const e=achEval(r);
+  readingsC.forEach(r=>{ const e=achEval(r);
     if(e.pressure!==null){pe++; if(e.pressure===false)pf++;}
     if(e.ach!==null){ae++; if(e.ach===false)af++;}
     if(e.temp!==null){te++; if(e.temp===false)tf++;}
