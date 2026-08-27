@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1622';
+  var v = '20260816-1624';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1622">
+<meta name="app-version" content="20260816-1624">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3769,6 +3769,9 @@ if ('caches' in window) {
         <div style="flex:1;min-width:200px;">
           <div style="font-size:12px;color:var(--tx);font-weight:600;margin-bottom:6px;">Scan with phone camera to open the ACH reading form</div>
           <div style="font-size:11px;color:var(--mu);line-height:1.6;">Staff select their room, enter pressure (Pa, with – sign for negative rooms), ACH, temperature and humidity. Submissions appear here automatically.</div>
+          <div style="font-size:11px;color:var(--tx);line-height:1.6;margin-top:8px;padding:8px 10px;background:rgba(22,163,74,.08);border:1px solid rgba(22,163,74,.28);border-radius:8px;">
+            🟢 <b>Room vacant / out of service?</b> Tick <b>Vacant</b> and enter <b>0</b> for pressure, ACH, temperature and humidity. The room is then <b>excluded</b> from that day's compliance (not counted as a miss). If the room is in use, take the real reading instead — don't tick vacant.
+          </div>
           <a href="https://forms.gle/JTaUSDhiCpjU6ibZ9" target="_blank" style="display:inline-block;margin-top:8px;font-size:11px;color:var(--ac);text-decoration:underline;">Open form in new tab ↗</a>
         </div>
       </div>
@@ -6593,7 +6596,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1622';
+const APP_VERSION = '20260816-1624';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -19427,14 +19430,20 @@ function achNormalizeRow(raw) {
   let rm = String(row.room||'').trim();
   const ids = achKnownIds();
   if (rm && ids.indexOf(rm) === -1) {
-    // try first token (e.g. "RM206 ST. C" -> "RM206", "OR1 — Operating" -> "OR1")
-    const first = rm.split(/[\s\u2014\u2013\-]+/)[0].trim();
-    if (ids.indexOf(first) !== -1) rm = first;
-    else {
-      // try case-insensitive full/prefix match
-      const hit = ids.find(id => id.toLowerCase() === rm.toLowerCase() || rm.toLowerCase().startsWith(id.toLowerCase()));
-      if (hit) rm = hit;
-    }
+    const norm = s => String(s||'').toLowerCase().replace(/\s+/g,' ').trim();
+    const rmN = norm(rm);
+    // 1) exact room NAME match (the Form dropdown stores the display name, e.g.
+    //    "Sterile Storage" -> CSSD_STORE, "ICU C.ST.A" -> ICU_CSTA). This is the
+    //    common case and must be tried before any ID-prefix guessing.
+    let hit = null;
+    try { const byName = achRooms().find(r => norm(r.name) === rmN); if (byName) hit = byName.id; } catch(e){}
+    // 2) first-token ID (e.g. "RM206 ST. C" -> "RM206", "OR1 — Operating" -> "OR1")
+    if (!hit) { const first = rm.split(/[\s\u2014\u2013\-]+/)[0].trim(); if (ids.indexOf(first) !== -1) hit = first; }
+    // 3) case-insensitive exact / prefix ID match
+    if (!hit) hit = ids.find(id => id.toLowerCase() === rmN || rmN.startsWith(id.toLowerCase()));
+    // 4) room NAME prefix (handles "ICU C.ST.A (isolation)" style suffixes)
+    if (!hit) { try { const byNameP = achRooms().find(r => rmN.startsWith(norm(r.name)) || norm(r.name).startsWith(rmN)); if (byNameP) hit = byNameP.id; } catch(e){} }
+    if (hit) rm = hit;
   }
   row.room = rm;
   // Normalize date to YYYY-MM-DD regardless of source format
@@ -19533,40 +19542,50 @@ function achHasParams(r){
   return [r&&r.pressure, r&&r.ach, r&&r.temp, r&&r.humidity]
     .some(v => v !== '' && v != null && String(v).trim() !== '');
 }
+// A genuine measurement: at least one parameter is a finite, non-zero number.
+function achIsRealReading(r){
+  if (!r) return false;
+  return ['pressure','ach','temp','humidity'].some(function(k){
+    const n = parseFloat(r[k]); return isFinite(n) && n !== 0;
+  });
+}
+// A vacancy marker: room ticked "vacant" with NO real measurement (all 0 / blank).
+// This means the room was out of service — exclude it from the daily KPI. A room
+// ticked vacant but with real values is still a REAL reading and gets evaluated.
+function achIsVacancyMarker(r){
+  return !!(r && r.status === 'vacant' && !achIsRealReading(r));
+}
+
 function achRoomRequirement(rm, readings) {
   const today = achToday();
-  const mine   = readings.filter(r => String(r.room)===String(rm.id));
-  // Only parameter-bearing rows are "readings"; status-only ticks set occupancy but
-  // never satisfy a reading requirement.
-  const mineP  = mine.filter(achHasParams);
-  const todays = mineP.filter(r => (r.date||'').slice(0,10)===today);
-  const status = rm.occ ? achLatestStatus(rm.id, readings) : '';
-  // A room marked VACANT today (by ANY of today's readings) is EXCLUDED from the
-  // daily KPI — this covers occupancy isolation rooms AND fixed rooms (an OR or
-  // CSSD area can be out of service). Vacant is neither pass nor miss.
-  const vacantToday = mine.some(r => (r.date||'').slice(0,10)===today && r.status==='vacant');
-  if (vacantToday || (rm.occ && status === 'vacant')) {
+  const mineToday = readings.filter(r => String(r.room)===String(rm.id) && (r.date||'').slice(0,10)===today);
+  const real    = mineToday.filter(achIsRealReading);      // genuine measurements today
+  const markers = mineToday.filter(achIsVacancyMarker);    // "out of service" ticks today
+  // EXCLUDED only when the room was ticked vacant AND no real reading was taken.
+  // A vacant tick that still carries real values is a real reading, not an exclusion.
+  if (real.length === 0 && markers.length > 0) {
     return { need:0, done:0, ok:true, excluded:true, freq:'vacant',
              status:'vacant', label:'Vacant today — excluded from daily KPI' };
   }
-  if (rm.occ && status === 'occupied') {
-    // Occupied isolation room: 2 readings today
-    return { need:2, done:todays.length, ok:todays.length>=2, freq:'2x-daily',
-             status:'occupied', label:'Occupied — 2 readings / day' };
+  // Occupancy isolation room that is occupied today → 2 readings/day; otherwise 1/day.
+  const occupied = rm.occ && real.some(r => r.status === 'occupied');
+  if (occupied) {
+    return { need:2, done:real.length, ok:real.length>=2, freq:'2x-daily',
+             status:'occupied', label:'Occupied isolation — 2 readings / day' };
   }
-  // Fixed daily (ORs, CSSD, Pharmacy) OR occupancy-room with unknown status
-  return { need:1, done:todays.length, ok:todays.length>=1, freq:'daily',
-           status: status || (rm.occ ? 'unknown' : ''),
-           label: rm.occ ? 'Status not recorded — 1 reading / day (default)' : 'Daily — 1 reading / day' };
+  return { need:1, done:real.length, ok:real.length>=1, freq:'daily',
+           status: rm.occ ? 'occupancy' : '',
+           label: rm.occ ? 'Isolation — 1 reading / day' : 'Daily — 1 reading / day' };
 }
 
 function achStats(readings) {
   const rooms = achRooms();
   const today = achToday();
   const todays = readings.filter(r => (r.date||'').slice(0,10) === today);
-  // Compliance rates ignore vacant readings (a vacant room's 0-values must not
-  // count as failures). Room-requirement checks still see all readings.
-  const readingsC = readings.filter(r => r && r.status !== 'vacant');
+  // All compliance rates are based on TODAY's REAL readings, so the dashboard is
+  // internally consistent (no all-time totals mixed with today's counts, and no
+  // vacancy 0-markers counted as failures).
+  const todayReal = readings.filter(r => (r.date||'').slice(0,10) === today && achIsRealReading(r));
 
   // Frequency-aware gap list
   const missing = [];       // rooms not meeting their requirement
@@ -19580,14 +19599,14 @@ function achStats(readings) {
   const roomsApplicable = Math.max(0, rooms.length - roomsExcluded);
 
   let pass=0, fail=0;
-  readingsC.forEach(r=>{ const e=achEval(r); if(e.overall==='pass')pass++; else if(e.overall==='fail')fail++; });
+  todayReal.forEach(r=>{ const e=achEval(r); if(e.overall==='pass')pass++; else if(e.overall==='fail')fail++; });
   const total = pass+fail;
 
   // Split compliance by pressure type
   const negIds = new Set(rooms.filter(r=>r.p==='neg').map(r=>String(r.id)));
   const posIds = new Set(rooms.filter(r=>r.p==='pos').map(r=>String(r.id)));
   let np=0,nf=0,pp=0,pf=0;
-  readingsC.forEach(r=>{
+  todayReal.forEach(r=>{
     const e=achEval(r); if(e.overall==='na') return;
     const id=String(r.room);
     if(negIds.has(id)){ e.overall==='pass'?np++:nf++; }
@@ -19599,12 +19618,12 @@ function achStats(readings) {
   const occRooms = rooms.filter(r=>r.occ);
   let occupied=0, vacant=0, unknownOcc=0;
   occRooms.forEach(rm=>{
-    const s = achLatestStatus(rm.id, readings);
-    if (s==='occupied') occupied++; else if (s==='vacant') vacant++; else unknownOcc++;
+    const req = achRoomRequirement(rm, readings);
+    if (req.excluded) vacant++; else if (req.done>0) occupied++; else unknownOcc++;
   });
 
   return {
-    totalReadings: readings.length,
+    totalReadings: todayReal.length,
     todayCount: todays.length,
     roomsTotal: rooms.length,
     roomsMeeting: roomsMeeting,
@@ -19707,6 +19726,15 @@ function achLogRowHtml(r){
   const room = e.room;
   const cell=(v,ok)=>(v==null||v==='')?'<td style="color:var(--mu);">—</td>'
     :'<td style="color:'+(ok===true?'#16a34a':ok===false?'#dc2626':'var(--tx)')+';font-weight:'+(ok===false?'700':'400')+';">'+v+(ok===false?' ✕':'')+'</td>';
+  // Pressure sanity: room-pressure differentials are single/low-double digits (Pa).
+  // A magnitude over 60 Pa is almost certainly a unit or entry error — flag it amber.
+  const presCell=(v,ok)=>{
+    if(v==null||v==='') return '<td style="color:var(--mu);">—</td>';
+    const n=parseFloat(v);
+    if(isFinite(n) && Math.abs(n)>60)
+      return '<td style="color:#d97706;font-weight:700;" title="Out of expected range (|Pa| &gt; 60) — likely a unit/entry error, please verify">'+v+' ⚠</td>';
+    return cell(v,ok);
+  };
   const statusOnly=!achHasParams(r);
   const badge = statusOnly ? '<span class="chip" style="font-size:8px;">📋 Status only</span>'
     : e.overall==='pass'?'<span class="chip chip-green">✅ Pass</span>'
@@ -19717,7 +19745,7 @@ function achLogRowHtml(r){
   return '<tr'+(statusOnly?' style="opacity:.75;"':'')+'><td style="font-size:10px;">'+String(r.date||'—').slice(0,16).replace('T',' ')+'</td>'+
     '<td style="font-size:11px;font-weight:600;">'+(room?room.name:(r.room||'—'))+'</td>'+
     '<td>'+stChip+'</td>'+
-    cell(r.pressure,e.pressure)+cell(r.ach,e.ach)+cell(r.temp,e.temp)+cell(r.humidity,e.hum)+
+    presCell(r.pressure,e.pressure)+cell(r.ach,e.ach)+cell(r.temp,e.temp)+cell(r.humidity,e.hum)+
     '<td style="font-size:10px;">'+(r.by||r.staff||'—')+'</td>'+
     '<td>'+badge+'</td></tr>';
 }
@@ -20052,9 +20080,9 @@ function achRenderInfographic() {
   readings.forEach(r => {
     if ((r.date||'').slice(0,10)!==today) return;
     const rm = achRoomById(r.room); if(!rm || !depts[rm.dept]) return;
-    if (r.status === 'vacant') return;                   // vacant room — excluded from the daily KPI
+    if (achIsVacancyMarker(r)) return;                   // out-of-service tick — not a reading
     const e = achEval(r);
-    if (e.overall==='na') return;                       // status-only — not a reading
+    if (e.overall==='na') return;                       // unscorable — skip
     depts[rm.dept].readToday.add(r.room);
     const ts = String(r._ts||r.time||r.date||'');
     if (!roomLatestToday[r.room] || ts > roomLatestToday[r.room].ts) roomLatestToday[r.room] = { ts, pass: e.overall==='pass', dept: rm.dept };
