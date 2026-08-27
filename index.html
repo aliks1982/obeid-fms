@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1625';
+  var v = '20260816-1626';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1625">
+<meta name="app-version" content="20260816-1626">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -689,6 +689,8 @@ if ('caches' in window) {
     <div class="ni" onclick="gp('wo')" id="n-wo"><span class="ni-ic">🔧</span>Work Orders<span class="nb" id="woBadge">0</span></div>
     <div class="ni" onclick="gp('ckpi')" id="n-ckpi"><span class="ni-ic">⚙</span>Custom KPIs</div>
     <div class="ni" onclick="gp('docs')" id="n-docs"><span class="ni-ic">📁</span>Documents</div>
+    <div class="nsc">Supply Chain</div>
+    <div class="ni" onclick="gp('supplychain')" id="n-supplychain"><span class="ni-ic">🔗</span>Supply Chain<span class="nb" id="scBadge" style="display:none;">0</span></div>
     <div class="nsc">Compliance</div>
     <div class="ni" onclick="gp('budget')" id="n-budget"><span class="ni-ic">💰</span>FMS Budget</div>
     <div class="ni" onclick="gp('risk')" id="n-risk"><span class="ni-ic">⚠️</span>Risk Assessment</div>
@@ -5733,6 +5735,85 @@ if ('caches' in window) {
 </div>
 
 <!-- ===== SETTINGS (Director only) ===== -->
+<div class="pg" id="page-supplychain">
+  <div class="ph"><h1>🔗 Supply Chain — Contract Authentication</h1><p>Independent quarterly evaluations · FMS + concerned department heads · Supply Chain Director authenticates the combined result</p></div>
+  <div class="tb">
+    <button class="tbtn active" id="scTab-auth-btn" onclick="scTab('auth',this)">🛡 Authentication <span class="nb" id="scAuthBadge" style="display:none;">0</span></button>
+    <button class="tbtn" id="scTab-eval-btn" onclick="scTab('eval',this)">📝 My Evaluation</button>
+    <button class="tbtn" id="scTab-contracts-btn" onclick="scTab('contracts',this)">📄 Contracts</button>
+  </div>
+
+  <!-- AUTHENTICATION QUEUE -->
+  <div id="sc-auth">
+    <div class="card"><div class="cb" id="sc-auth-list" style="padding:6px;"></div></div>
+  </div>
+
+  <!-- MY EVALUATION -->
+  <div id="sc-eval" style="display:none;">
+    <div class="card"><div class="ch"><div class="ct">📝 Submit Your Quarterly Evaluation</div></div><div class="cb">
+      <div class="fg" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="ff"><label>Contract / Service</label>
+          <select id="sce-contract" onchange="scEvalAutofill()"></select></div>
+        <div class="ff"><label>You are evaluating as</label>
+          <select id="sce-role"></select></div>
+        <div class="ff"><label>Quarter</label>
+          <select id="sce-quarter" onchange="scEvalDueHint()"><option value="Q1">Q1</option><option value="Q2">Q2</option><option value="Q3">Q3</option><option value="Q4">Q4</option></select></div>
+        <div class="ff"><label>Year</label><input type="number" id="sce-year" placeholder="2026"></div>
+        <div class="ff"><label>Evaluation Date (of this quarter)</label><input type="date" id="sce-date"></div>
+        <div class="ff"><label>Your Name</label><input type="text" id="sce-name" placeholder="Evaluator name"></div>
+      </div>
+      <div id="sce-duehint" style="font-size:11px;color:var(--mu);margin:4px 0 10px;"></div>
+      <div style="background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-top:6px;">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:var(--or);margin-bottom:10px;">Evaluation Criteria — Score 1 (poor) to 5 (excellent)</div>
+        <div id="sce-criteria"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;border-top:1px solid var(--bd);padding-top:10px;">
+          <div style="font-size:12px;color:var(--mu);">Your score: <b id="sce-raw" style="color:var(--tx);">0</b>/25 · <b id="sce-pct" style="color:var(--ac);font-size:16px;">0%</b></div>
+          <span id="sce-badge" class="chip">—</span>
+        </div>
+      </div>
+      <div class="ff" style="margin-top:10px;"><label>Comments (optional)</label><textarea id="sce-comment" placeholder="Notes on the contractor's performance this quarter..."></textarea></div>
+      <button class="btn bg" style="width:100%;margin-top:12px;" onclick="scEvalSubmit()">✓ Confirm &amp; Submit My Evaluation</button>
+      <div style="font-size:10px;color:var(--mu);text-align:center;margin-top:6px;">Once two evaluators confirm the same contract &amp; quarter, it is sent to the Supply Chain Director for authentication.</div>
+    </div></div>
+    <div class="card"><div class="ch"><div class="ct">📋 My Submitted Evaluations</div></div><div class="cb" id="sc-myevals" style="padding:6px;"></div></div>
+  </div>
+
+  <!-- CONTRACTS -->
+  <div id="sc-contracts" style="display:none;">
+    <div class="card"><div class="ch"><div class="ct">📄 Contracts</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn bo" style="font-size:10px;" onclick="scExportAll()" id="sc-export-btn">⬇ Export All (report)</button>
+        <button class="btn bp" style="font-size:10px;" onclick="scContractForm(null)" id="sc-addc-btn">+ Add Contract</button>
+      </div></div>
+      <div class="cb" id="sc-contract-list" style="padding:6px;"></div>
+    </div>
+    <div class="card" id="sc-contract-form" style="display:none;"><div class="ch"><div class="ct" id="sc-cf-title">Add Contract</div>
+      <button class="btn bo" style="font-size:10px;" onclick="document.getElementById('sc-contract-form').style.display='none';">← Cancel</button></div><div class="cb">
+      <input type="hidden" id="scf-id">
+      <div class="fg" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="ff"><label>Contract / Service Name</label><input type="text" id="scf-name" placeholder="e.g. Pest Control Service"></div>
+        <div class="ff"><label>Contractor Company</label><input type="text" id="scf-contractor" placeholder="Contractor name"></div>
+        <div class="ff"><label>Evaluator 1 role</label><select id="scf-ev1"></select></div>
+        <div class="ff"><label>Evaluator 2 role</label><select id="scf-ev2"></select></div>
+        <div class="ff"><label>Contract Start</label><input type="date" id="scf-start"></div>
+        <div class="ff"><label>Contract End</label><input type="date" id="scf-end"></div>
+        <div class="ff"><label>Contract Value (SAR)</label><input type="number" id="scf-value" placeholder="0"></div>
+        <div class="ff"><label>Evaluation frequency</label><select id="scf-freq"><option value="quarterly">Quarterly</option><option value="biannual">Bi-annual</option><option value="annual">Annual</option></select></div>
+      </div>
+      <div style="background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-top:8px;">
+        <div style="font-size:12px;font-weight:700;color:var(--or);margin-bottom:8px;">📅 Quarter period start dates (flexible — not fixed to January)</div>
+        <div class="fg" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+          <div class="ff"><label>Q1 starts</label><input type="date" id="scf-q1"></div>
+          <div class="ff"><label>Q2 starts</label><input type="date" id="scf-q2"></div>
+          <div class="ff"><label>Q3 starts</label><input type="date" id="scf-q3"></div>
+          <div class="ff"><label>Q4 starts</label><input type="date" id="scf-q4"></div>
+        </div>
+      </div>
+      <button class="btn bg" style="width:100%;margin-top:12px;" onclick="scContractSave()">✓ Save Contract</button>
+    </div></div>
+  </div>
+</div>
+
 <div class="pg" id="page-settings">
   <div class="ph"><h1>⚙ Settings</h1>
     <p id="settings-role-desc">Database connection · Platform configuration</p><p>Manage user accounts · Modify PINs · View access log · Platform version: <b style="color:var(--ac);" id="platform-version-display">…</b></p></div>
@@ -6596,7 +6677,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1625';
+const APP_VERSION = '20260816-1626';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -7669,6 +7750,7 @@ function gp(id){
   if(id==='census') setTimeout(function(){try{censusInit();}catch(e){}},80);
   if(id==='ipcstore') setTimeout(function(){try{ipcStoreInit();}catch(e){}},80);
   if(id==='ipcnurse') setTimeout(function(){try{ipcNurseInit();}catch(e){}},80);
+  if(id==='supplychain') setTimeout(function(){try{scTab('auth',document.getElementById('scTab-auth-btn'));scUpdateBadge();}catch(e){}},80);
   if(id==='settings') setTimeout(function(){try{meInit();}catch(e){}},120);
   window.scrollTo(0,0);
 }
@@ -10553,7 +10635,8 @@ const ROLE_ACCESS = {
   safety:      ['n-dash','n-kpi','n-cbahi','n-safety','n-hazmat','n-emergency','n-fire','n-wo','n-ckpi','n-docs','n-settings','n-pms'],
   security:    ['n-dash','n-kpi','n-security','n-wo','n-ckpi','n-settings'],
   // IPC (Infection Prevention & Control): read-only ACH compliance monitoring
-  ipc:         ['n-ach','n-temperature','n-settings'],   // IPC: ACH + Temperature Log
+  ipc:         ['n-ach','n-temperature','n-settings','n-supplychain'],   // IPC: ACH + Temperature Log + Contract eval
+  supplychain: ['n-supplychain','n-settings'],   // Supply Chain Director: contract authentication
 };
 
 // Page access — which pages each role can open
@@ -10563,7 +10646,8 @@ const PAGE_ACCESS = {
   biomedical:  ['dash','kpi','equip','medgas','pmg','radiation','wo','cbahi','ckpi','settings','pms'],
   safety:      ['dash','kpi','cbahi','safety','hazmat','emergency','fire','wo','ckpi','docs','settings','pms'],
   security:    ['dash','kpi','security','wo','ckpi','settings'],
-  ipc:         ['ach','temperature','census','ipcstore','ipcnurse','settings'], // IPC: ACH + Temperature + Nursing Census + IPC Consumables
+  ipc:         ['ach','temperature','census','ipcstore','ipcnurse','settings','supplychain'], // IPC: ACH + Temperature + Nursing Census + IPC + Contract eval
+  supplychain: ['supplychain','settings'],
 };
 
 // Page access — which page IDs each role can visit
@@ -10586,7 +10670,7 @@ const ALL_PAGES = [
   ['ipcstore','🧴 Store'],['ipcnurse','🧤 Nurse Dispensing'],
   ['medgas','🫧 Medical Gas (32)'],['pmg','📋 PMG PPM (32.1)'],['radiation','☢ Radiation (9)'],
   ['wo','🔧 Work Orders'],['ckpi','⚙ Custom KPIs'],['docs','📁 Documents'],
-  ['budget','💰 FMS Budget'],['risk','⚠️ Risk Assessment'],['contracts','📃 Contract Review'],
+  ['budget','💰 FMS Budget'],['risk','⚠️ Risk Assessment'],['contracts','📃 Contract Review'],['supplychain','🔗 Supply Chain'],
   ['pms','📊 FMS Performance Sheet'],['settings','⚙ Settings / DB']
 ];
 // Effective page list for a role: override if present, else built-in default
@@ -10664,9 +10748,9 @@ function canAccessPage(pageId) {
 function getDynPINs() {
   try {
     return JSON.parse(localStorage.getItem('obeid_pins') || 'null') || {
-      director:'1234', maintenance:'2222', biomedical:'3333', safety:'4444', security:'5555', ipc:'6666'
+      director:'1234', maintenance:'2222', biomedical:'3333', safety:'4444', security:'5555', ipc:'6666', supplychain:'7777'
     };
-  } catch(e) { return {director:'1234',maintenance:'2222',biomedical:'3333',safety:'4444',security:'5555',ipc:'6666'}; }
+  } catch(e) { return {director:'1234',maintenance:'2222',biomedical:'3333',safety:'4444',security:'5555',ipc:'6666',supplychain:'7777'}; }
 }
 function saveDynPINs(pins) { localStorage.setItem('obeid_pins', JSON.stringify(pins)); }
 
@@ -10674,9 +10758,9 @@ const USER_NAMES_KEY = 'obeid_user_names';
 function getDynNames() {
   try {
     return JSON.parse(localStorage.getItem(USER_NAMES_KEY) || 'null') || {
-      director:'FMS Director', maintenance:'Mostapha', biomedical:'Bashar', safety:'Moe', security:'Bader', ipc:'IPC'
+      director:'FMS Director', maintenance:'Mostapha', biomedical:'Bashar', safety:'Moe', security:'Bader', ipc:'IPC', supplychain:'Supply Chain'
     };
-  } catch(e) { return {director:'FMS Director',maintenance:'Mostapha',biomedical:'Bashar',safety:'Moe',security:'Bader',ipc:'IPC'}; }
+  } catch(e) { return {director:'FMS Director',maintenance:'Mostapha',biomedical:'Bashar',safety:'Moe',security:'Bader',ipc:'IPC',supplychain:'Supply Chain'}; }
 }
 function saveDynNames(names) { localStorage.setItem(USER_NAMES_KEY, JSON.stringify(names)); }
 
@@ -10954,6 +11038,7 @@ function getDynUsers() {
     {role:'safety',      label:'Safety Officer',       defaultName:'Moe',      access:'Safety · Hazmat · Emergency · Fire',  custom:false},
     {role:'security',    label:'Security Manager',     defaultName:'Bader',    access:'Security',                            custom:false},
     {role:'ipc',         label:'Infection Prevention & Control (IPC)', defaultName:'IPC', access:'ACH monitoring · Temperature Log', custom:false},
+    {role:'supplychain', label:'Supply Chain Director', defaultName:'Supply Chain', access:'Supply Chain · Contract Authentication', custom:false},
   ];
   try {
     const extra = JSON.parse(localStorage.getItem('obeid_extra_users')||'[]');
@@ -19503,6 +19588,220 @@ function achEval(r) {
   const checks = [out.pressure,out.ach,out.temp,out.hum].filter(v=>v!==null);
   out.overall = checks.length===0 ? 'na' : checks.every(v=>v) ? 'pass' : 'fail';
   return out;
+}
+
+/* ═══════════════ SUPPLY CHAIN — Contract Authentication ═══════════════ */
+const SC_CRITERIA = ['Service Quality & Reliability','Response Time & Availability','Staff Competency & Conduct','Compliance with Contract Terms','Documentation & Reporting'];
+function scCanManage(){ return CU && (CU.role==='director' || CU.role==='supplychain'); }
+function scContracts(){ try{ return (typeof getContracts==='function'?getContracts():ld('contracts'))||[]; }catch(e){ return []; } }
+function scSaveContracts(list){ sv('contracts', list); }
+function scEvals(){ const a=ld('sc_evals'); return Array.isArray(a)?a:[]; }
+function scSaveEvals(a){ sv('sc_evals', a); }
+function scAuths(){ const a=ld('sc_auth'); return Array.isArray(a)?a:[]; }
+function scSaveAuths(a){ sv('sc_auth', a); }
+function scKey(cid,q,y){ return cid+'|'+q+'|'+y; }
+function scRoleName(role){ try{ return (getDynNames()||{})[role] || role; }catch(e){ return role; } }
+function scRoleLabel(role){ try{ const u=(getDynUsers()||[]).find(x=>x.role===role); return u?u.label:role; }catch(e){ return role; } }
+function scRoleOptions(sel){ try{ return (getDynUsers()||[]).map(u=>'<option value="'+u.role+'"'+(u.role===sel?' selected':'')+'>'+u.label+' — '+scRoleName(u.role)+'</option>').join(''); }catch(e){ return ''; } }
+
+function scTab(tab, btn){
+  ['auth','eval','contracts'].forEach(t=>{ const p=document.getElementById('sc-'+t); if(p) p.style.display = t===tab?'':'none';
+    const b=document.getElementById('scTab-'+t+'-btn'); if(b) b.className='tbtn'+(t===tab?' active':''); });
+  if(btn) btn.className='tbtn active';
+  if(tab==='auth') scRenderAuth();
+  if(tab==='eval'){ scEvalInit(); scRenderMyEvals(); }
+  if(tab==='contracts') scRenderContracts();
+}
+
+/* ---------- Contracts ---------- */
+function scContractForm(id){
+  if(!scCanManage()){ toast('Only the FMS Director or Supply Chain Director can add/edit contracts','#f59e0b'); return; }
+  const f=document.getElementById('sc-contract-form'); f.style.display='';
+  document.getElementById('scf-ev1').innerHTML=scRoleOptions('director');
+  document.getElementById('scf-ev2').innerHTML=scRoleOptions('ipc');
+  const set=(i,v)=>{const e=document.getElementById(i); if(e) e.value=v||'';};
+  if(id){ const c=scContracts().find(x=>String(x._id)===String(id)); if(!c) return;
+    document.getElementById('sc-cf-title').textContent='Edit Contract';
+    set('scf-id',c._id); set('scf-name',c.name); set('scf-contractor',c.contractor||c.company);
+    set('scf-start',c.start); set('scf-end',c.end); set('scf-value',c.value);
+    document.getElementById('scf-freq').value=c.freq||'quarterly';
+    document.getElementById('scf-ev1').value=(c.evaluators&&c.evaluators[0])||'director';
+    document.getElementById('scf-ev2').value=(c.evaluators&&c.evaluators[1])||'ipc';
+    const q=c.qdates||{}; set('scf-q1',q.Q1); set('scf-q2',q.Q2); set('scf-q3',q.Q3); set('scf-q4',q.Q4);
+  } else {
+    document.getElementById('sc-cf-title').textContent='Add Contract';
+    ['scf-id','scf-name','scf-contractor','scf-start','scf-end','scf-value','scf-q1','scf-q2','scf-q3','scf-q4'].forEach(i=>set(i,''));
+  }
+  f.scrollIntoView({behavior:'smooth',block:'center'});
+}
+function scContractSave(){
+  if(!scCanManage()){ toast('Not permitted','#f59e0b'); return; }
+  const g=i=>document.getElementById(i).value.trim();
+  const name=g('scf-name'); if(!name){ toast('Enter a contract name','#f59e0b'); return; }
+  const list=scContracts().slice();
+  const id=document.getElementById('scf-id').value || ('ctr'+Date.now());
+  const rec={ _id:id, name, contractor:g('scf-contractor'), company:g('scf-contractor'),
+    evaluators:[document.getElementById('scf-ev1').value, document.getElementById('scf-ev2').value],
+    start:g('scf-start'), end:g('scf-end'), value:g('scf-value'), freq:document.getElementById('scf-freq').value,
+    qdates:{Q1:g('scf-q1'),Q2:g('scf-q2'),Q3:g('scf-q3'),Q4:g('scf-q4')} };
+  const i=list.findIndex(x=>String(x._id)===String(id));
+  if(i>=0) list[i]=Object.assign({},list[i],rec); else list.push(rec);
+  scSaveContracts(list); try{ dbWrite('contracts', rec); }catch(e){}
+  document.getElementById('sc-contract-form').style.display='none';
+  scRenderContracts(); toast('✓ Contract saved','#10b981');
+}
+function scDeleteContract(id){
+  if(!scCanManage()){ toast('Only FMS/Supply Chain Director can delete','#f59e0b'); return; }
+  if(!confirm('Delete this contract and its evaluations? This cannot be undone.')) return;
+  scSaveContracts(scContracts().filter(x=>String(x._id)!==String(id)));
+  scSaveEvals(scEvals().filter(e=>String(e.contractId)!==String(id)));
+  scRenderContracts(); scUpdateBadge(); toast('🗑 Contract deleted');
+}
+function scRenderContracts(){
+  const el=document.getElementById('sc-contract-list'); if(!el) return;
+  const mgr=scCanManage();
+  document.getElementById('sc-addc-btn').style.display=mgr?'':'none';
+  document.getElementById('sc-export-btn').style.display=mgr?'':'none';
+  const list=scContracts();
+  if(!list.length){ el.innerHTML='<div class="em" style="padding:16px;text-align:center;">No contracts yet.</div>'; return; }
+  el.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="text-align:left;color:var(--mu);border-bottom:1px solid var(--bd);"><th style="padding:6px;">Contract</th><th>Contractor</th><th>Evaluators</th><th>Next due</th>'+(mgr?'<th>Actions</th>':'')+'</tr></thead><tbody>'+
+    list.map(c=>{ const due=scNextDue(c); const overdue=due&&due.days!=null&&due.days<0;
+      return '<tr style="border-bottom:1px solid var(--bd);"><td style="padding:6px;font-weight:600;">'+(c.name||'—')+'</td>'+
+      '<td>'+(c.contractor||c.company||'—')+'</td>'+
+      '<td style="font-size:10px;">'+((c.evaluators||['director','ipc']).map(scRoleName).join(' + '))+'</td>'+
+      '<td style="font-size:11px;color:'+(overdue?'var(--rd)':'var(--tx)')+';">'+(due?due.label:'—')+'</td>'+
+      (mgr?'<td><button class="btn bo" style="font-size:9px;padding:2px 6px;" onclick="scContractForm(\''+c._id+'\')">✏</button> <button class="btn br" style="font-size:9px;padding:2px 6px;" onclick="scDeleteContract(\''+c._id+'\')">🗑</button></td>':'')+'</tr>';
+    }).join('')+'</tbody></table>';
+}
+/* next-due from quarter dates + frequency */
+function scNextDue(c){
+  const q=c.qdates||{}; const today=new Date(); today.setHours(0,0,0,0);
+  const arr=['Q1','Q2','Q3','Q4'].map(k=>({q:k,d:q[k]?new Date(q[k]):null})).filter(x=>x.d && !isNaN(x.d));
+  if(!arr.length) return null;
+  arr.sort((a,b)=>a.d-b.d);
+  let next=arr.find(x=>x.d>=today) || arr[0];
+  const days=Math.round((next.d-today)/86400000);
+  return { label: next.q+' · '+next.d.toISOString().slice(0,10)+(days<0?' (overdue '+(-days)+'d)':days<=14?' (in '+days+'d)':''), days };
+}
+
+/* ---------- My Evaluation ---------- */
+function scEvalInit(){
+  const cs=document.getElementById('sce-contract'); if(cs) cs.innerHTML='<option value="">— select —</option>'+scContracts().map(c=>'<option value="'+c._id+'">'+(c.name||c._id)+'</option>').join('');
+  const rs=document.getElementById('sce-role'); if(rs){ rs.innerHTML=scRoleOptions(CU&&CU.role); if(CU&&CU.role) rs.value=CU.role; }
+  const yr=document.getElementById('sce-year'); if(yr && !yr.value) yr.value=new Date().getFullYear();
+  const nm=document.getElementById('sce-name'); if(nm && !nm.value){ try{ nm.value=scRoleName(CU.role)||''; }catch(e){} }
+  const dt=document.getElementById('sce-date'); if(dt && !dt.value) dt.value=(typeof fmsLocalToday==='function'?fmsLocalToday():new Date().toISOString().slice(0,10));
+  const cr=document.getElementById('sce-criteria');
+  if(cr) cr.innerHTML=SC_CRITERIA.map((t,i)=>'<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);"><div style="font-size:12px;">'+(i+1)+'. '+t+'</div><select id="sce-c'+i+'" class="sce-score" onchange="scEvalCalc()" style="background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:4px 10px;color:var(--tx);">'+[1,2,3,4,5].map(n=>'<option value="'+n+'"'+(n===3?' selected':'')+'>'+n+'</option>').join('')+'</select></div>').join('');
+  scEvalCalc(); scEvalDueHint();
+}
+function scEvalAutofill(){ scEvalDueHint(); }
+function scEvalDueHint(){
+  const cid=document.getElementById('sce-contract').value; const q=document.getElementById('sce-quarter').value;
+  const c=scContracts().find(x=>String(x._id)===String(cid)); const el=document.getElementById('sce-duehint');
+  if(!el) return; if(!c||!c.qdates||!c.qdates[q]){ el.textContent=''; return; }
+  const d=document.getElementById('sce-date'); if(d && (!d.value)) d.value=c.qdates[q];
+  el.textContent='📅 '+q+' period for this contract begins '+c.qdates[q];
+}
+function scEvalCalc(){
+  let t=0; SC_CRITERIA.forEach((_,i)=>{ const e=document.getElementById('sce-c'+i); t+=parseInt(e?e.value:3)||3; });
+  const pct=Math.round(t/25*100);
+  const r=document.getElementById('sce-raw'); if(r) r.textContent=t;
+  const p=document.getElementById('sce-pct'); if(p) p.textContent=pct+'%';
+  const b=document.getElementById('sce-badge'); if(b){ b.textContent=pct>=80?'✅ Good':pct>=60?'⚠ Acceptable':'❌ Poor'; b.className='chip '+(pct>=80?'chip-green':pct>=60?'':'chip-red'); }
+  return {score:t,pct};
+}
+function scEvalSubmit(){
+  const cid=document.getElementById('sce-contract').value;
+  if(!cid){ toast('Select a contract','#f59e0b'); return; }
+  const role=document.getElementById('sce-role').value;
+  const q=document.getElementById('sce-quarter').value, y=document.getElementById('sce-year').value||new Date().getFullYear();
+  const sc=scEvalCalc(); const scores={}; SC_CRITERIA.forEach((_,i)=>scores['c'+i]=parseInt(document.getElementById('sce-c'+i).value));
+  const c=scContracts().find(x=>String(x._id)===String(cid));
+  const ev={ _id:'sceval_'+cid+'_'+q+'_'+y+'_'+role, contractId:cid, contractName:c?c.name:cid, contractor:c?(c.contractor||c.company):'',
+    quarter:q, year:String(y), date:document.getElementById('sce-date').value, evaluatorRole:role, evaluatorName:document.getElementById('sce-name').value||scRoleName(role),
+    scores, score:sc.score, pct:sc.pct, comment:document.getElementById('sce-comment').value||'', confirmed:true, at:new Date().toISOString() };
+  const arr=scEvals().filter(e=>e._id!==ev._id); arr.unshift(ev); scSaveEvals(arr);
+  try{ dbWrite('sc_evals', ev); }catch(e){}
+  document.getElementById('sce-comment').value='';
+  scRenderMyEvals(); scUpdateBadge(); toast('✓ Evaluation submitted & confirmed','#10b981');
+}
+function scRenderMyEvals(){
+  const el=document.getElementById('sc-myevals'); if(!el) return;
+  const mine=scEvals().filter(e=>!CU||e.evaluatorRole===CU.role||scCanManage());
+  if(!mine.length){ el.innerHTML='<div class="em" style="padding:14px;text-align:center;">No evaluations submitted yet.</div>'; return; }
+  el.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="text-align:left;color:var(--mu);border-bottom:1px solid var(--bd);"><th style="padding:6px;">Contract</th><th>Q</th><th>Year</th><th>Evaluator</th><th>Score</th><th>Status</th><th></th></tr></thead><tbody>'+
+    mine.map(e=>{ const a=scAuths().find(x=>x._id===scKey(e.contractId,e.quarter,e.year));
+      const st=a?(a.status==='authenticated'?'<span class="chip chip-green">✅ Authenticated</span>':'<span class="chip chip-red">↩ Review requested</span>'):'<span class="chip">⏳ Pending auth</span>';
+      return '<tr style="border-bottom:1px solid var(--bd);"><td style="padding:6px;font-weight:600;">'+e.contractName+'</td><td>'+e.quarter+'</td><td>'+e.year+'</td><td style="font-size:10px;">'+e.evaluatorName+'</td><td style="font-weight:700;color:var(--ac);">'+e.pct+'%</td><td>'+st+'</td>'+
+      '<td>'+(scCanManage()?'<button class="btn br" style="font-size:9px;padding:2px 6px;" onclick="scDeleteEval(\''+e._id+'\')">🗑</button>':'')+'</td></tr>';
+    }).join('')+'</tbody></table>';
+}
+function scDeleteEval(id){ if(!scCanManage()){ toast('Not permitted','#f59e0b'); return; } if(!confirm('Delete this evaluation?')) return; scSaveEvals(scEvals().filter(e=>e._id!==id)); scRenderMyEvals(); scRenderAuth(); scUpdateBadge(); toast('🗑 Deleted'); }
+
+/* ---------- Authentication (Supply Chain Director) ---------- */
+function scGroups(){
+  const g={}; scEvals().filter(e=>e.confirmed).forEach(e=>{ const k=scKey(e.contractId,e.quarter,e.year); (g[k]=g[k]||{key:k,contractId:e.contractId,contractName:e.contractName,contractor:e.contractor,quarter:e.quarter,year:e.year,evals:[]}).evals.push(e); });
+  return Object.values(g);
+}
+function scRenderAuth(){
+  const el=document.getElementById('sc-auth-list'); if(!el) return;
+  const groups=scGroups();
+  const ready=groups.filter(g=>g.evals.length>=2);
+  const badge=document.getElementById('scAuthBadge');
+  const pendCount=ready.filter(g=>!scAuths().find(a=>a._id===g.key)).length;
+  if(badge){ badge.textContent=pendCount; badge.style.display=pendCount?'':'none'; }
+  if(!groups.length){ el.innerHTML='<div class="em" style="padding:16px;text-align:center;">No confirmed evaluations yet. Evaluations appear here once two evaluators confirm the same contract &amp; quarter.</div>'; return; }
+  el.innerHTML=groups.sort((a,b)=>(a.evals.length>=2?0:1)-(b.evals.length>=2?0:1)).map(g=>{
+    const combined=Math.round(g.evals.reduce((s,e)=>s+e.pct,0)/g.evals.length);
+    const auth=scAuths().find(a=>a._id===g.key);
+    const twoDone=g.evals.length>=2;
+    const scRows=g.evals.map(e=>'<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;"><span>'+scRoleLabel(e.evaluatorRole)+' <span style="color:var(--mu);">('+e.evaluatorName+')</span></span><b style="color:var(--ac);">'+e.pct+'%</b></div>'+(e.comment?'<div style="font-size:10px;color:var(--mu);padding-left:8px;">💬 '+e.comment+'</div>':'')).join('');
+    let statusBar;
+    if(auth && auth.status==='authenticated') statusBar='<div style="color:var(--gn);font-size:11px;font-weight:700;">✅ Authenticated by '+auth.by+' · '+(auth.at||'').slice(0,10)+'</div>';
+    else if(auth && auth.status==='review') statusBar='<div style="color:var(--rd);font-size:11px;font-weight:700;">↩ Second review requested by '+auth.by+'</div>'+(auth.comment?'<div style="font-size:11px;color:var(--tx);margin-top:2px;">💬 '+auth.comment+'</div>':'');
+    else if(!twoDone) statusBar='<div style="color:var(--or);font-size:11px;">⏳ Waiting for '+(2-g.evals.length)+' more evaluator(s)</div>';
+    else statusBar='<div style="color:var(--or);font-size:11px;font-weight:700;">🔔 Ready for your authentication</div>';
+    const canAuth = CU && (CU.role==='supplychain'||CU.role==='director') && twoDone;
+    const btns = canAuth ? '<div style="display:flex;gap:6px;margin-top:8px;"><button class="btn bg" style="font-size:11px;flex:1;" onclick="scAuthenticate(\''+g.key+'\')">✅ Authenticate</button><button class="btn bo" style="font-size:11px;flex:1;" onclick="scRequestReview(\''+g.key+'\')">↩ Request 2nd Review</button></div>' : '';
+    return '<div style="background:var(--s2);border:1px solid '+(twoDone&&!auth?'var(--or)':'var(--bd)')+';border-radius:12px;padding:14px;margin-bottom:12px;">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;"><div><div style="font-weight:700;font-size:14px;">'+g.contractName+'</div><div style="font-size:11px;color:var(--mu);">'+(g.contractor||'')+' · '+g.quarter+' '+g.year+'</div></div>'+
+      '<div style="text-align:right;"><div style="font-size:22px;font-weight:800;color:'+(combined>=80?'var(--gn)':combined>=60?'var(--or)':'var(--rd)')+';">'+combined+'%</div><div style="font-size:9px;color:var(--mu);">COMBINED</div></div></div>'+
+      '<div style="margin-top:8px;border-top:1px solid var(--bd);padding-top:8px;">'+scRows+'</div>'+
+      '<div style="margin-top:8px;">'+statusBar+'</div>'+btns+'</div>';
+  }).join('');
+}
+function scAuthenticate(key){
+  if(!(CU&&(CU.role==='supplychain'||CU.role==='director'))){ toast('Only the Supply Chain Director can authenticate','#f59e0b'); return; }
+  const a=scAuths().filter(x=>x._id!==key); const rec={_id:key,status:'authenticated',by:scRoleName(CU.role),comment:'',at:new Date().toISOString()};
+  a.push(rec); scSaveAuths(a); try{ dbWrite('sc_auth', rec); }catch(e){}
+  scRenderAuth(); scUpdateBadge(); toast('✅ Result authenticated','#10b981');
+}
+function scRequestReview(key){
+  if(!(CU&&(CU.role==='supplychain'||CU.role==='director'))){ toast('Only the Supply Chain Director can request review','#f59e0b'); return; }
+  const comment=prompt('Comment for the evaluators (reason for second review):','');
+  if(comment===null) return;
+  const a=scAuths().filter(x=>x._id!==key); const rec={_id:key,status:'review',by:scRoleName(CU.role),comment:comment||'',at:new Date().toISOString()};
+  a.push(rec); scSaveAuths(a); try{ dbWrite('sc_auth', rec); }catch(e){}
+  scRenderAuth(); scUpdateBadge(); toast('↩ Second review requested','#f59e0b');
+}
+
+/* ---------- Badge + Export ---------- */
+function scUpdateBadge(){
+  try{ const ready=scGroups().filter(g=>g.evals.length>=2 && !scAuths().find(a=>a._id===g.key)).length;
+    const nav=document.getElementById('scBadge'); if(nav){ nav.textContent=ready; nav.style.display=ready?'':'none'; }
+  }catch(e){}
+}
+function scExportAll(){
+  if(!scCanManage()){ toast('Only FMS/Supply Chain Director can export','#f59e0b'); return; }
+  const rows=[['Contract','Contractor','Quarter','Year','Evaluator','Role','Score %','Confirmed','Combined %','Authentication','By','Comment']];
+  const groups=scGroups();
+  groups.forEach(g=>{ const combined=Math.round(g.evals.reduce((s,e)=>s+e.pct,0)/g.evals.length); const auth=scAuths().find(a=>a._id===g.key);
+    g.evals.forEach(e=>rows.push([g.contractName,g.contractor||'',g.quarter,g.year,e.evaluatorName,scRoleLabel(e.evaluatorRole),e.pct,'Yes',combined,auth?auth.status:'pending',auth?auth.by:'',e.comment||''])); });
+  const csv=rows.map(r=>r.map(v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='Supply_Chain_Contract_Evaluations_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+  toast('⬇ Exported','#10b981');
 }
 
 function fmsLocalToday(){
