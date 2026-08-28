@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1626';
+  var v = '20260816-1628';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1626">
+<meta name="app-version" content="20260816-1628">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3584,6 +3584,13 @@ if ('caches' in window) {
       <button class="btn bp" style="font-size:11px;padding:8px 14px;" onclick="censusExportPDF()">📄 Export Daily Report (PDF)</button>
     </div>
   </div>
+  <div id="census-sync-warn" style="display:none;background:rgba(239,68,68,.10);border:1px solid rgba(239,68,68,.4);border-radius:10px;padding:11px 15px;margin-bottom:12px;display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+    <div style="font-size:12px;color:var(--tx);">⚠️ You have <b class="csw-count" style="color:var(--rd);">0</b> census day(s) <b>not yet backed up to the cloud</b> — if this browser's data is cleared they could be lost. Export a backup now to be safe.</div>
+    <div style="display:flex;gap:6px;">
+      <button class="btn bg" style="font-size:11px;white-space:nowrap;" onclick="backupExportFull();">⬇ Export Backup</button>
+      <button class="btn bo" style="font-size:11px;white-space:nowrap;" onclick="if(typeof dbLoadAll==='function'){dbLoadAll({heavy:true});} if(typeof toast==='function') toast('Retrying cloud sync…','#3b82f6');">⟳ Retry Sync</button>
+    </div>
+  </div>
   <div id="census-root"></div>
 </div>
 
@@ -5727,7 +5734,7 @@ if ('caches' in window) {
       </div>
     </div>
       <div class="cb" style="padding:0;overflow-x:auto;"><table class="tbl">
-        <thead><tr><th>Quarter</th><th>Contract</th><th>Score</th><th>Level</th><th>FMS Evaluator</th><th>Joint Evaluator</th><th>Decision</th><th>Date</th><th>Proof</th></tr></thead>
+        <thead><tr><th>Quarter</th><th>Contract</th><th>Score</th><th>Level</th><th>FMS Evaluator</th><th>Joint Evaluator</th><th>Decision</th><th>Date</th><th>Proof</th><th>Actions</th></tr></thead>
         <tbody id="ctr-hist-tb"></tbody>
       </table></div>
     </div>
@@ -5920,11 +5927,6 @@ if ('caches' in window) {
       </div>
       <div class="ff" style="margin-bottom:10px;"><label>Account</label>
         <select id="perm-role" onchange="permLoad()" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:8px 12px;color:var(--tx);font-size:12px;">
-          <option value="maintenance">Maintenance — Mostapha</option>
-          <option value="biomedical">Biomedical — Bashar</option>
-          <option value="safety">Safety — Moe</option>
-          <option value="security">Security — Bader</option>
-          <option value="ipc">IPC — Infection Control</option>
         </select>
       </div>
       <div id="perm-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;margin-bottom:12px;"></div>
@@ -6677,7 +6679,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1626';
+const APP_VERSION = '20260816-1628';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -7125,6 +7127,8 @@ async function dbLoadAll(opts) {
       const localKept = cur.filter(r => r && r.date && !dbDates.has(String(r.date)));  // keep local-only days
       const merged = dbRows.concat(localKept);
       if (merged.length) { sv('census_daily', merged); try{ localStorage.setItem((PX||'obeid3_')+'census_backup', JSON.stringify({ts:Date.now(), data:merged})); }catch(_){}
+        // Any census day now confirmed present in the cloud is no longer "unsynced".
+        try{ const dbSet=new Set(dbRows.map(r=>String(r.date))); let u=JSON.parse(localStorage.getItem((PX||'obeid3_')+'census_unsynced')||'[]'); u=u.filter(d=>!dbSet.has(String(d))); localStorage.setItem((PX||'obeid3_')+'census_unsynced', JSON.stringify(u)); if(typeof censusSyncCheck==='function') censusSyncCheck(); }catch(_){}
         console.log('Nursing census: merged ' + dbRows.length + ' DB + ' + localKept.length + ' local days'); }
     }
     if (j.data && Array.isArray(j.data.census_beds) && j.data.census_beds.length) {
@@ -10682,7 +10686,7 @@ function effectivePageAccess(role){
 
 function getEffectiveRole(role) {
   // For built-in roles, return as-is
-  const builtIn = ['director','maintenance','biomedical','safety','security','ipc'];
+  const builtIn = ['director','maintenance','biomedical','safety','security','ipc','supplychain'];
   if (builtIn.includes(role)) return role;
   // For custom roles, look up their template role from extra_users
   try {
@@ -11044,7 +11048,8 @@ function getDynUsers() {
     const extra = JSON.parse(localStorage.getItem('obeid_extra_users')||'[]');
     // dedupe: a synced extra user must not duplicate a built-in role (e.g. legacy 'ipc' extras)
     const builtin = new Set(defaults.map(d=>d.role));
-    return [...defaults, ...extra.filter(x=>!builtin.has(x.role))];
+    let disabled=[]; try{ disabled=JSON.parse(localStorage.getItem('obeid_disabled_users')||'[]'); }catch(e){}
+    return [...defaults, ...extra.filter(x=>!builtin.has(x.role))].filter(u=>disabled.indexOf(u.role)<0);
   } catch(e) { return defaults; }
 }
 
@@ -11142,10 +11147,11 @@ function settingsAddUser() {
 
 function settingsDeleteUser(role) {
   const u = getDynUsers().find(x=>x.role===role);
-  if (!u?.custom) { toast('Cannot delete built-in users','#f59e0b'); return; }
+  if (u && u.role==='director') { toast('The FMS Director account cannot be deleted','#f59e0b'); return; }
   if (!confirm('Delete user "'+u.label+'"? This cannot be undone.')) return;
   const extras = JSON.parse(localStorage.getItem('obeid_extra_users')||'[]').filter(x=>x.role!==role);
   localStorage.setItem('obeid_extra_users', JSON.stringify(extras));
+  try{ const dis=JSON.parse(localStorage.getItem('obeid_disabled_users')||'[]'); if(dis.indexOf(role)<0){ dis.push(role); localStorage.setItem('obeid_disabled_users', JSON.stringify(dis)); } }catch(e){}
   const pins=getDynPINs(); delete pins[role]; saveDynPINs(pins);
   const names=getDynNames(); delete names[role]; saveDynNames(names);
   settingsRenderUsers();
@@ -11161,7 +11167,18 @@ function buildLoginRoles() {
   sel.innerHTML = '<option value="">— Choose your role —</option>' +
     users.map(u => `<option value="${u.role}"${u.role===current?' selected':''}>${u.label} — ${names[u.role]||u.defaultName}</option>`).join('');
 }
+function permBuildRoles(){
+  const sel=document.getElementById('perm-role'); if(!sel) return;
+  const cur=sel.value;
+  try{
+    const users=getDynUsers().filter(u=>u.role!=='director');
+    const names=getDynNames();
+    sel.innerHTML=users.map(u=>'<option value="'+u.role+'"'+(u.role===cur?' selected':'')+'>'+u.label+' — '+(names[u.role]||u.defaultName)+'</option>').join('');
+    if(typeof permLoad==='function') permLoad();
+  }catch(e){}
+}
 function settingsRenderUsers() {
+  try{ permBuildRoles(); }catch(e){}
   const tb    = document.getElementById('users-tb'); if (!tb) return;
   const pins  = getDynPINs();
   const names = getDynNames();
@@ -11175,7 +11192,7 @@ function settingsRenderUsers() {
     <td style="font-size:10px;color:var(--mu);">${u.access}</td>
     <td>
       <button class="btn bo" style="font-size:9px;padding:3px 8px;" onclick="settingsEditUser('${u.role}')">✏ Edit</button>
-      ${u.custom ? `<button class="btn br" style="font-size:9px;padding:3px 6px;margin-left:3px;" onclick="settingsDeleteUser('${u.role}')">✕</button>` : ''}
+      ${u.role!=='director' ? `<button class="btn br" style="font-size:9px;padding:3px 6px;margin-left:3px;" onclick="settingsDeleteUser('${u.role}')">✕</button>` : ''}
     </td>
   </tr>`).join('');
 
@@ -11717,12 +11734,34 @@ function saveEvaluation() {
     proof:      file ? {n:file.name,s:Math.round(file.size/1024)+'KB'} : null,
     _by:        CU.name, _ts: new Date().toISOString()
   };
-  const arr = ld('evaluations'); arr.unshift(ev); sv('evaluations', arr);
+  let arr = ld('evaluations')||[]; if(window._evEditId){ arr=arr.filter(x=>String(x._id)!==String(window._evEditId)); window._evEditId=null; } arr.unshift(ev); sv('evaluations', arr);
   dbWrite('evaluations', ev);
   toast('✓ Evaluation saved — ' + ev.contractName + ' Q' + ev.quarter + ' ' + ev.year);
   ctrTab('history', document.querySelector('[onclick="ctrTab(\'history\',this)"]'));
 }
 
+function evDelete(id){
+  if(!(CU&&CU.role==='director')){ toast('Only the FMS Director can delete evaluations','#f59e0b'); return; }
+  if(!confirm('Delete this evaluation? This cannot be undone.')) return;
+  const arr=(ld('evaluations')||[]).filter(e=>String(e._id)!==String(id));
+  sv('evaluations', arr); renderEvalHistory();
+  if(typeof renderContractCards==='function'){ try{renderContractCards();}catch(e){} }
+  toast('🗑 Evaluation deleted');
+}
+function evEditLoad(id){
+  if(!(CU&&CU.role==='director')){ toast('Only the FMS Director can edit evaluations','#f59e0b'); return; }
+  const e=(ld('evaluations')||[]).find(x=>String(x._id)===String(id)); if(!e){ toast('Not found','#f59e0b'); return; }
+  if(typeof ctrTab==='function') ctrTab('eval', null);
+  const set=(i,v)=>{const el=document.getElementById(i); if(el) el.value=(v==null?'':v);};
+  setTimeout(function(){
+    set('ev-quarter',e.quarter); set('ev-year',e.year); set('ev-date',e.date); set('ev-fms',e.fms); set('ev-joint',e.joint);
+    if(e.scores){ ['q1','q2','q3','q4','q5'].forEach(k=>{ const el=document.getElementById('ev-'+k); if(el&&e.scores[k]!=null) el.value=e.scores[k]; }); }
+    // remember we're editing so evSave replaces instead of adding a duplicate
+    window._evEditId=id;
+    if(typeof evCalcScore==='function') evCalcScore();
+    toast('Loaded — adjust and Save to update. The old entry will be replaced.','#3b82f6',4000);
+  },120);
+}
 function renderEvalHistory() {
   const tb  = document.getElementById('ctr-hist-tb'); if (!tb) return;
   const evals = ld('evaluations') || [];
@@ -11740,7 +11779,7 @@ function renderEvalHistory() {
       <div class="sc" style="--c:var(--or)"><div class="ico">📎</div><div class="val">${withProof}</div><div class="lbl">With Proof Uploaded</div></div>`;
   }
 
-  if (!evals.length) { tb.innerHTML='<tr><td colspan="9" class="em">No evaluations yet</td></tr>'; return; }
+  if (!evals.length) { tb.innerHTML='<tr><td colspan="10" class="em">No evaluations yet</td></tr>'; return; }
   const decColor = { renew:'var(--gn)', conditional:'var(--or)', change:'var(--rd)', review:'var(--mu)' };
   const decLabel = { renew:'✅ Renew', conditional:'⚠️ Conditional', change:'❌ Change', review:'🔄 Review' };
   tb.innerHTML = evals.map(e => {
@@ -11755,6 +11794,7 @@ function renderEvalHistory() {
       <td style="color:${decColor[e.decision]||'var(--mu)'};font-weight:600;font-size:11px;">${decLabel[e.decision]||e.decision||'—'}</td>
       <td style="font-size:10px;color:var(--mu);">${e.date||'—'}</td>
       <td>${e.proof?`<span class="bx bb2">📎 ${e.proof.n?.slice(0,15)||'Uploaded'}</span>`:'<span class="bx bm2">—</span>'}</td>
+      <td style="white-space:nowrap;">${(CU&&CU.role==='director')?`<button class="btn bo" style="font-size:9px;padding:2px 6px;" onclick="evEditLoad('${e._id}')">✏</button> <button class="btn br" style="font-size:9px;padding:2px 6px;" onclick="evDelete('${e._id}')">🗑</button>`:'—'}</td>
     </tr>`;
   }).join('');
 }
@@ -11788,6 +11828,8 @@ function doLogin() {
 
   // Repair any custom user whose access was copied from a stale template
   try { repairCustomUserAccess(); } catch(e) {}
+  // Remind about census days not yet backed up to the cloud
+  try{ const u=JSON.parse(localStorage.getItem('obeid3_census_unsynced')||'[]'); if(u.length){ setTimeout(function(){ if(typeof toast==='function') toast('⚠️ '+u.length+' census day(s) not yet backed up to cloud — open Nursing Census to export a backup.', '#ef4444', 8000); }, 2500); } }catch(e){}
   // Apply role-based access
   applyRBAC();
   // Log access event
@@ -22683,7 +22725,19 @@ if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,a
     // Sync the WHOLE entry as one JSON blob — census has nested objects (occ, ld, er…)
     // that would not survive being flattened into sheet columns.
     try{ dbWrite('census_daily', { _id:entry._id, date:entry.date, data:JSON.stringify(entry), _ts:entry._ts||new Date().toISOString() }); }catch(e){}
+    // Track as unsynced until it round-trips back from the cloud (see census restore).
+    try{ const u=JSON.parse(localStorage.getItem('obeid3_census_unsynced')||'[]'); if(u.indexOf(entry.date)<0){ u.push(entry.date); localStorage.setItem('obeid3_census_unsynced', JSON.stringify(u)); } }catch(e){}
+    try{ censusSyncCheck(); }catch(e){}
   }
+  // Show/hide the "unsaved census" banner based on the unsynced list.
+  window.censusSyncCheck = function(){
+    try{
+      const u=JSON.parse(localStorage.getItem('obeid3_census_unsynced')||'[]');
+      const el=document.getElementById('census-sync-warn'); if(!el) return;
+      if(u.length){ el.style.display='flex'; const c=el.querySelector('.csw-count'); if(c) c.textContent=u.length; }
+      else el.style.display='none';
+    }catch(e){}
+  };
   const inpatient = ()=>beds().filter(b=>b.group==='inpatient');
   const capOf = st => { const b=beds().find(x=>x.station===st); return b?(+b.cap||0):0; };
   const num = v => { const n=parseInt(v,10); return isNaN(n)?0:n; };
@@ -22707,6 +22761,7 @@ if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,a
       formHTML() +
       '<div id="census-analytics"></div>';
     loadInto(CUR);
+    try{ censusSyncCheck(); }catch(e){}
     renderKPIs();
     renderAnalytics();
   };
