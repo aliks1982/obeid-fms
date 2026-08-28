@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1629';
+  var v = '20260816-1630';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1629">
+<meta name="app-version" content="20260816-1630">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3581,6 +3581,7 @@ if ('caches' in window) {
     <div><h1>🛏 Nursing Department Daily Census</h1><p>Daily bed occupancy · 24-hour ER / OR / L&amp;D / OPD activity · KPIs, infographics &amp; trend analysis</p></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
       <button class="btn bo" style="font-size:11px;padding:8px 14px;" onclick="censusEditCapacity()">🛏 Edit Bed Capacity</button>
+      <button class="btn bo" style="font-size:11px;padding:8px 14px;" onclick="censusSyncFromDB(true)">☁ Sync from Cloud</button>
       <button class="btn bp" style="font-size:11px;padding:8px 14px;" onclick="censusExportPDF()">📄 Export Daily Report (PDF)</button>
     </div>
   </div>
@@ -6679,7 +6680,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1629';
+const APP_VERSION = '20260816-1630';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -7770,7 +7771,7 @@ function gp(id){
   if(id==='settings') setTimeout(function(){try{backupInit();}catch(e){}},200);
   if(id==='ach') setTimeout(function(){try{achInit();}catch(e){}},120);
   if(id==='temperature') setTimeout(function(){try{tmpInit();}catch(e){}},120);
-  if(id==='census') setTimeout(function(){try{censusInit();}catch(e){}},80);
+  if(id==='census') setTimeout(function(){try{censusInit(); if(typeof daily==='function'){}else{} var d=JSON.parse(localStorage.getItem('obeid3_census_daily')||'[]'); if((!Array.isArray(d)||!d.length) && typeof censusSyncFromDB==='function') censusSyncFromDB(false); }catch(e){}},80);
   if(id==='ipcstore') setTimeout(function(){try{ipcStoreInit();}catch(e){}},80);
   if(id==='ipcnurse') setTimeout(function(){try{ipcNurseInit();}catch(e){}},80);
   if(id==='supplychain') setTimeout(function(){try{scTab('auth',document.getElementById('scTab-auth-btn'));scUpdateBadge();}catch(e){}},80);
@@ -22771,6 +22772,41 @@ if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,a
   let CUR = todayStr();
 
   // ═══════════════ RENDER ═══════════════
+  // Directly fetch the census sheet (getType) — reliable even if the big getAll
+  // drops it. Handles both the new blob rows and the old flattened columns.
+  var _censusSyncBusy=false;
+  window.censusSyncFromDB = function(force){
+    var url=(typeof CANONICAL_DB_URL!=='undefined'&&CANONICAL_DB_URL)?CANONICAL_DB_URL:null;
+    if(!url){ if(typeof toast==='function') toast('No database URL configured','#f59e0b'); return; }
+    if(_censusSyncBusy) return; _censusSyncBusy=true;
+    if(typeof toast==='function' && force) toast('☁ Fetching census from cloud…','#3b82f6');
+    fetch(url+'?action=getType&type=census_daily',{signal:AbortSignal.timeout(60000)})
+      .then(function(r){return r.json();})
+      .then(function(j){
+        if(!j||!j.ok||!Array.isArray(j.rows)){ if(force&&typeof toast==='function') toast('No census returned from cloud','#f59e0b'); return; }
+        var cleanD=function(d){ return (typeof mgFmtDate==='function'?mgFmtDate(d):String(d||'').slice(0,10)); };
+        var pj=function(v){ if(v&&typeof v==='object')return v; if(typeof v==='string'&&v.trim().charAt(0)==='{'){try{return JSON.parse(v);}catch(e){}} return {}; };
+        var rows=j.rows.map(function(r){
+          if(!r) return null;
+          if(typeof r.data==='string'&&r.data.trim().charAt(0)==='{'){ try{ var e=JSON.parse(r.data); if(e&&e.date){ e.date=cleanD(e.date); e._id=e._id||('census_'+e.date); return e; } }catch(_){} }
+          var date=cleanD(r.date); if(!date||date==='—') return null;
+          return { _id:r._id||('census_'+date), date:date, time:r.time||'', by:r.by||'', occ:pj(r.occ), rem:pj(r.rem), ld:pj(r.ld), er:pj(r.er), opd:pj(r.opd), or:pj(r.or), _ts:r._ts||'' };
+        }).filter(function(r){return r&&r.date&&r.date!=='—';});
+        var byD={}; rows.forEach(function(r){ var p=byD[r.date]; if(!p||String(r._ts||'')>=String(p._ts||'')) byD[r.date]=r; });
+        rows=Object.keys(byD).map(function(k){return byD[k];});
+        var cur=daily(); var dbDates={}; rows.forEach(function(r){dbDates[r.date]=1;});
+        var localKept=cur.filter(function(r){return r&&r.date&&!dbDates[r.date];});
+        var merged=rows.concat(localKept); merged.sort(function(a,b){return a.date<b.date?-1:1;});
+        if(merged.length) saveDaily(merged);
+        try{ localStorage.setItem((typeof PX!=='undefined'?PX:'obeid3_')+'census_backup', JSON.stringify({ts:Date.now(),data:merged})); }catch(e){}
+        try{ var u=JSON.parse(localStorage.getItem('obeid3_census_unsynced')||'[]'); u=u.filter(function(d){return !dbDates[d];}); localStorage.setItem('obeid3_census_unsynced',JSON.stringify(u)); }catch(e){}
+        if(merged.length){ CUR = merged[merged.length-1].date; }
+        censusInit();
+        if(typeof toast==='function') toast('☁ Loaded '+rows.length+' census day(s) from cloud','#10b981',4000);
+      })
+      .catch(function(){ if(typeof toast==='function') toast('Census cloud sync failed — try ⟳ again','#f59e0b'); })
+      .finally(function(){ _censusSyncBusy=false; });
+  };
   window.censusInit = function(){
     const root=document.getElementById('census-root'); if(!root) return;
     if(!byDate(CUR)) CUR = (daily().length? daily()[daily().length-1].date : todayStr());
