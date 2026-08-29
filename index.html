@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1632';
+  var v = '20260816-1633';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1632">
+<meta name="app-version" content="20260816-1633">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3589,7 +3589,7 @@ if ('caches' in window) {
     <div style="font-size:12px;color:var(--tx);">⚠️ You have <b class="csw-count" style="color:var(--rd);">0</b> census day(s) <b>not yet backed up to the cloud</b> — if this browser's data is cleared they could be lost. Export a backup now to be safe.</div>
     <div style="display:flex;gap:6px;">
       <button class="btn bg" style="font-size:11px;white-space:nowrap;" onclick="backupExportFull();">⬇ Export Backup</button>
-      <button class="btn bo" style="font-size:11px;white-space:nowrap;" onclick="if(typeof dbLoadAll==='function'){dbLoadAll({heavy:true});} if(typeof toast==='function') toast('Retrying cloud sync…','#3b82f6');">⟳ Retry Sync</button>
+      <button class="btn bo" style="font-size:11px;white-space:nowrap;" onclick="if(typeof censusRetryPush==='function'){censusRetryPush();}">⟳ Retry Sync</button>
     </div>
   </div>
   <div id="census-root"></div>
@@ -5732,6 +5732,7 @@ if ('caches' in window) {
       <div style="display:flex;gap:8px;">
         <button class="btn bo" style="font-size:10px;padding:4px 10px;" onclick="exportContracts('report')">📄 Report</button>
         <button class="btn bo" style="font-size:10px;padding:4px 10px;" onclick="exportContracts('csv')">📥 CSV</button>
+      <button class="btn br" style="font-size:10px;" onclick="evDeleteAll()" id="ctr-delall-btn">🗑 Delete All</button>
       </div>
     </div>
       <div class="cb" style="padding:0;overflow-x:auto;"><table class="tbl">
@@ -6672,7 +6673,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1632';
+const APP_VERSION = '20260816-1633';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -11754,11 +11755,23 @@ function saveEvaluation() {
 
 function evDelete(id){
   if(!(CU&&CU.role==='director')){ toast('Only the FMS Director can delete evaluations','#f59e0b'); return; }
-  if(!confirm('Delete this evaluation? This cannot be undone.')) return;
+  if(!confirm('Delete this evaluation from all accounts? This cannot be undone.')) return;
   const arr=(ld('evaluations')||[]).filter(e=>String(e._id)!==String(id));
-  sv('evaluations', arr); renderEvalHistory();
+  sv('evaluations', arr);
+  try{ if(typeof dbDelete==='function') dbDelete('evaluations', id); }catch(e){}   // remove from cloud so it can't re-sync back
+  renderEvalHistory();
   if(typeof renderContractCards==='function'){ try{renderContractCards();}catch(e){} }
-  toast('🗑 Evaluation deleted');
+  toast('🗑 Evaluation deleted from all accounts');
+}
+function evDeleteAll(){
+  if(!(CU&&CU.role==='director')){ toast('Only the FMS Director can delete evaluations','#f59e0b'); return; }
+  const all=ld('evaluations')||[];
+  if(!all.length){ toast('No evaluations to delete'); return; }
+  if(!confirm('Delete ALL '+all.length+' evaluations from EVERY account? This cannot be undone.')) return;
+  all.forEach(e=>{ try{ if(typeof dbDelete==='function' && e._id) dbDelete('evaluations', e._id); }catch(_){} });
+  sv('evaluations', []); renderEvalHistory();
+  if(typeof renderContractCards==='function'){ try{renderContractCards();}catch(e){} }
+  toast('🗑 All evaluations deleted from all accounts','#ef4444',5000);
 }
 function evEditLoad(id){
   if(!(CU&&CU.role==='director')){ toast('Only the FMS Director can edit evaluations','#f59e0b'); return; }
@@ -22815,6 +22828,25 @@ if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,a
       })
       .catch(function(){ if(typeof toast==='function') toast('Census cloud sync failed — try ⟳ again','#f59e0b'); })
       .finally(function(){ _censusSyncBusy=false; });
+  };
+  // Re-push any census days that never reached the cloud, then fetch to confirm.
+  window.censusRetryPush = function(){
+    var url=(typeof CANONICAL_DB_URL!=='undefined'&&CANONICAL_DB_URL)?CANONICAL_DB_URL:null;
+    if(!url){ if(typeof toast==='function') toast('No database URL configured','#f59e0b'); return; }
+    var u=[]; try{ u=JSON.parse(localStorage.getItem('obeid3_census_unsynced')||'[]'); }catch(e){}
+    var all=daily(); var pushed=0;
+    u.forEach(function(date){ var e=all.find(function(x){return x.date===date;});
+      if(e){ try{ dbWrite('census_daily', { _id:e._id||('census_'+date), date:date, data:JSON.stringify(e), _ts:e._ts||new Date().toISOString() }); pushed++; }catch(_){} } });
+    if(typeof toast==='function') toast('⟳ Re-sent '+pushed+' day(s) to cloud — verifying…','#3b82f6',3000);
+    // give the write a moment, then confirm by reading the census sheet directly
+    setTimeout(function(){
+      if(typeof censusSyncFromDB==='function') censusSyncFromDB(false);
+      setTimeout(function(){
+        var left=[]; try{ left=JSON.parse(localStorage.getItem('obeid3_census_unsynced')||'[]'); }catch(e){}
+        if(left.length && typeof toast==='function') toast('⚠️ '+left.length+' day(s) still not confirmed. The database may need its census sheet enabled (redeploy FMS_DB script). Your data is safe locally — use Export Backup.', '#ef4444', 9000);
+        else if(typeof toast==='function') toast('✅ Census confirmed in cloud','#10b981');
+      }, 3500);
+    }, 1800);
   };
   window.censusInit = function(){
     const root=document.getElementById('census-root'); if(!root) return;
