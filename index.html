@@ -19694,6 +19694,22 @@ function scSaveAuths(a){ sv('sc_auth', a); }
 function scRoleName(role){ try{ return (getDynNames()||{})[role]||role; }catch(e){ return role; } }
 function scRoleLabel(role){ try{ const u=(getDynUsers()||[]).find(x=>x.role===role); return u?u.label:role; }catch(e){ return role; } }
 function scRoleOpts(sel,withNone){ try{ const base=withNone?'<option value="">— none (single evaluator) —</option>':''; return base+(getDynUsers()||[]).filter(u=>u.role!=='supplychain').map(u=>'<option value="'+u.role+'"'+(u.role===sel?' selected':'')+'>'+u.label+' — '+scRoleName(u.role)+'</option>').join(''); }catch(e){ return ''; } }
+// ── Evaluator identity matching ────────────────────────────────────────────
+// A request stores its evaluators by role token (e.g. 'ipc'). Visibility,
+// completion tracking and the badge all compared those tokens to the logged-in
+// user's CU.role with an EXACT match. That silently hid a request from an
+// evaluator whose login token differs from the assigned token even though they
+// are the same role — e.g. a custom/named IPC officer (custom role, templateRole
+// 'ipc') vs. the built-in 'ipc' the Supply Chain Director picked when assigning.
+// The request then showed for the FMS Director but never reached IPC. Resolve
+// both sides through the effective (template) role so they line up. scRoleKnown
+// guards against the getEffectiveRole()='security' fallback for orphaned tokens,
+// so an unknown/deleted token can never over-match a real security user.
+function scEffRole(role){ try{ return (typeof getEffectiveRole==='function' && role) ? getEffectiveRole(role) : role; }catch(e){ return role; } }
+function scRoleKnown(role){ try{ return (getDynUsers()||[]).some(function(u){ return u&&u.role===role; }); }catch(e){ return false; } }
+function scRoleMatches(a,b){ if(!a||!b) return false; if(a===b) return true; if(scRoleKnown(a)&&scRoleKnown(b)) return scEffRole(a)===scEffRole(b); return false; }
+function scIsEvaluatorOf(r){ return !!(CU && CU.role && ((r&&r.evaluators)||[]).some(function(role){ return scRoleMatches(CU.role, role); })); }
+function scEvalPending(r,evs){ evs=evs||scReqEvals(r._id); return ((r&&r.evaluators)||[]).filter(function(role){ return !evs.some(function(e){ return scRoleMatches(e.evaluatorRole, role); }); }); }
 
 function scTab(tab, btn){
   ['requests','contracts','history'].forEach(t=>{ const p=document.getElementById('sc-'+t); if(p) p.style.display = t===tab?'':'none';
@@ -19785,18 +19801,18 @@ function scRenderRequests(){
   const sc=scIsSC(); const nb=document.getElementById('sc-newreq-btn'); if(nb) nb.style.display=sc?'':'none';
   document.getElementById('sc-req-title').textContent = sc?'All Evaluation Requests':'My Assigned Evaluations';
   let reqs=scRequests();
-  if(!sc && CU) reqs=reqs.filter(r=>(r.evaluators||[]).indexOf(CU.role)>=0);
+  if(!sc && CU) reqs=reqs.filter(scIsEvaluatorOf);
   if(!reqs.length){ el.innerHTML='<div class="em" style="padding:16px;text-align:center;">'+(sc?'No requests yet. Create one with “+ New Request”.':'No evaluation requests assigned to you.')+'</div>'; return; }
   el.innerHTML=reqs.map(r=>{
-    const evs=scReqEvals(r._id); const done=evs.map(e=>e.evaluatorRole);
-    const pending=(r.evaluators||[]).filter(role=>done.indexOf(role)<0);
+    const evs=scReqEvals(r._id);
+    const pending=scEvalPending(r,evs);
     const all=pending.length===0; const auth=scAuths().find(a=>a._id===r._id);
     const combined=evs.length?Math.round(evs.reduce((s,e)=>s+e.pct,0)/evs.length):null;
-    const evRows=(r.evaluators||[]).map(role=>{ const e=evs.find(x=>x.evaluatorRole===role);
+    const evRows=(r.evaluators||[]).map(role=>{ const e=evs.find(x=>scRoleMatches(x.evaluatorRole,role));
       return '<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;"><span>'+scRoleLabel(role)+'</span>'+(e?'<b style="color:var(--ac);">'+e.pct+'% ✓</b>':'<span style="color:var(--or);">⏳ pending</span>')+'</div>'+(e&&e.comment?'<div style="font-size:10px;color:var(--mu);padding-left:8px;">💬 '+e.comment+'</div>':''); }).join('');
     let status,btns='';
-    const iAmEvaluator = CU && (r.evaluators||[]).indexOf(CU.role)>=0;
-    const iSubmitted = done.indexOf(CU&&CU.role)>=0;
+    const iAmEvaluator = scIsEvaluatorOf(r);
+    const iSubmitted = !!(CU && evs.some(e=>scRoleMatches(e.evaluatorRole, CU.role)));
     if(auth&&auth.status==='authenticated') status='<span style="color:var(--gn);font-weight:700;font-size:11px;">✅ Authenticated by '+auth.by+'</span>';
     else if(auth&&auth.status==='review') status='<span style="color:var(--rd);font-weight:700;font-size:11px;">↩ 2nd review requested</span>'+(auth.comment?'<div style="font-size:11px;">💬 '+auth.comment+'</div>':'');
     else if(all) status='<span style="color:var(--or);font-weight:700;font-size:11px;">🔔 All evaluations done — ready to authenticate</span>';
@@ -19824,7 +19840,7 @@ function scDeleteRequest(reqId){
 /* ---------- Evaluation (department head) ---------- */
 function scOpenEval(reqId){
   const r=scRequests().find(x=>x._id===reqId); if(!r){ toast('Request not found','#f59e0b'); return; }
-  if(!(CU && (r.evaluators||[]).indexOf(CU.role)>=0)){ toast('This evaluation is not assigned to you','#f59e0b'); return; }
+  if(!scIsEvaluatorOf(r)){ toast('This evaluation is not assigned to you','#f59e0b'); return; }
   document.getElementById('sce-reqid').value=reqId;
   document.getElementById('sc-eval-title').textContent='Evaluate: '+r.contractName;
   document.getElementById('sc-eval-meta').innerHTML=(r.contractor||'')+' · <b>'+r.quarter+' '+r.year+'</b> · period '+(r.date||'—');
@@ -19868,7 +19884,7 @@ function scRenderHistory(){
   const el=document.getElementById('sc-history-list'); if(!el) return;
   const sc=scIsSC(); const canDel=scCanDelete(); const del=document.getElementById('sc-delall-btn'); if(del) del.style.display=canDel?'':'none';
   let evs=scEvals();
-  if(!sc && !canDel && CU){ const myReqIds=new Set(scRequests().filter(r=>(r.evaluators||[]).indexOf(CU.role)>=0).map(r=>r._id)); evs=evs.filter(e=>myReqIds.has(e.requestId)); }
+  if(!sc && !canDel && CU){ const myReqIds=new Set(scRequests().filter(scIsEvaluatorOf).map(r=>r._id)); evs=evs.filter(e=>myReqIds.has(e.requestId)); }
   if(!evs.length){ el.innerHTML='<div class="em" style="padding:16px;text-align:center;">No evaluations yet.</div>'; return; }
   el.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="text-align:left;color:var(--mu);border-bottom:1px solid var(--bd);"><th style="padding:6px;">Contract</th><th>Q/Year</th><th>Evaluator</th><th>Score</th><th>Status</th>'+((sc||CU&&CU.role==='director')?'<th></th>':'')+'</tr></thead><tbody>'+
     evs.map(e=>{ const a=scAuths().find(x=>x._id===e.requestId);
@@ -19895,8 +19911,8 @@ function scDeleteAllEvals(){
 function scUpdateBadge(){
   try{
     let count=0;
-    if(scIsSC()){ count=scRequests().filter(r=>{ const done=scReqEvals(r._id).map(e=>e.evaluatorRole); const all=(r.evaluators||[]).every(role=>done.indexOf(role)>=0); const auth=scAuths().find(a=>a._id===r._id); return all && !(auth&&auth.status==='authenticated'); }).length; }
-    else if(CU){ count=scRequests().filter(r=>(r.evaluators||[]).indexOf(CU.role)>=0 && !scReqEvals(r._id).some(e=>e.evaluatorRole===CU.role)).length; }
+    if(scIsSC()){ count=scRequests().filter(r=>{ const all=scEvalPending(r).length===0; const auth=scAuths().find(a=>a._id===r._id); return all && !(auth&&auth.status==='authenticated'); }).length; }
+    else if(CU){ count=scRequests().filter(r=>scIsEvaluatorOf(r) && !scReqEvals(r._id).some(e=>scRoleMatches(e.evaluatorRole, CU.role))).length; }
     ['scBadge','scReqBadge'].forEach(id=>{ const b=document.getElementById(id); if(b){ b.textContent=count; b.style.display=count?'':'none'; } });
   }catch(e){}
 }
