@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1640';
+  var v = '20260816-1641';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1640">
+<meta name="app-version" content="20260816-1641">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -694,7 +694,6 @@ if ('caches' in window) {
     <div class="nsc">Compliance</div>
     <div class="ni" onclick="gp('budget')" id="n-budget"><span class="ni-ic">💰</span>FMS Budget</div>
     <div class="ni" onclick="gp('risk')" id="n-risk"><span class="ni-ic">⚠️</span>Risk Assessment</div>
-    <div class="ni" onclick="gp('contracts')" id="n-contracts"><span class="ni-ic">📃</span>Contract Review</div>
     <div class="ni" onclick="gp('pms')" id="n-pms"><span class="ni-ic">📊</span>FMS Performance Sheet</div>
     <div class="ni" onclick="gp('settings')" id="n-settings"><span class="ni-ic">⚙</span>Settings / DB</div>
   </nav>
@@ -5747,11 +5746,13 @@ if ('caches' in window) {
 <div class="pg" id="page-supplychain">
   <div class="ph"><h1>🔗 Supply Chain — Contract Authentication</h1><p>Supply Chain Director assigns quarterly evaluations · department heads evaluate · Supply Chain authenticates the combined result</p></div>
   <div class="tb">
-    <button class="tbtn active" id="scTab-requests-btn" onclick="scTab('requests',this)">📋 Evaluation Requests <span class="nb" id="scReqBadge" style="display:none;">0</span></button>
+    <button class="tbtn active" id="scTab-dashboard-btn" onclick="scTab('dashboard',this)">📊 Dashboard</button>
+    <button class="tbtn" id="scTab-requests-btn" onclick="scTab('requests',this)">📋 Evaluation Requests <span class="nb" id="scReqBadge" style="display:none;">0</span></button>
     <button class="tbtn" id="scTab-contracts-btn" onclick="scTab('contracts',this)">📄 Contracts</button>
     <button class="tbtn" id="scTab-history-btn" onclick="scTab('history',this)">📊 Evaluation History</button>
   </div>
-  <div id="sc-requests">
+  <div id="sc-dashboard"><div class="cb" id="sc-dashboard-body" style="padding:4px;"></div></div>
+  <div id="sc-requests" style="display:none;">
     <div class="card" id="sc-newreq-card" style="display:none;"><div class="ch"><div class="ct">➕ New Evaluation Request</div>
       <button class="btn bo" style="font-size:10px;" onclick="document.getElementById('sc-newreq-card').style.display='none';">← Cancel</button></div><div class="cb">
       <div class="fg" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
@@ -6673,7 +6674,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1640';
+const APP_VERSION = '20260816-1641';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -7792,7 +7793,7 @@ function gp(id){
   if(id==='census') setTimeout(function(){try{censusInit(); if(typeof daily==='function'){}else{} var d=JSON.parse(localStorage.getItem('obeid3_census_daily')||'[]'); if((!Array.isArray(d)||!d.length) && typeof censusSyncFromDB==='function') censusSyncFromDB(false); }catch(e){}},80);
   if(id==='ipcstore') setTimeout(function(){try{ipcStoreInit();}catch(e){}},80);
   if(id==='ipcnurse') setTimeout(function(){try{ipcNurseInit();}catch(e){}},80);
-  if(id==='supplychain') setTimeout(function(){try{scTab('requests',document.getElementById('scTab-requests-btn'));scUpdateBadge(); if(typeof scSyncFromCloud==='function') scSyncFromCloud(false);}catch(e){}},80);
+  if(id==='supplychain') setTimeout(function(){try{scTab('dashboard',document.getElementById('scTab-dashboard-btn'));scUpdateBadge(); if(typeof scSyncFromCloud==='function') scSyncFromCloud(false);}catch(e){}},80);
   if(id==='settings') setTimeout(function(){try{meInit();}catch(e){}},120);
   window.scrollTo(0,0);
 }
@@ -19742,10 +19743,85 @@ function scSyncFromCloud(manual){
       .finally(function(){ done++; if(done===types.length){ try{ scTab(document.querySelector('#page-supplychain .tbtn.active')?.id.replace('scTab-','').replace('-btn','')||'requests'); }catch(e){} scUpdateBadge(); if(manual&&typeof toast==='function') toast(pulled?('☁ Synced '+pulled+' Supply Chain records'):'No new Supply Chain records found','#10b981',4000); } });
   });
 }
+function scNextDue(c){
+  var q=(c&&c.qdates)||{}; var today=new Date(); today.setHours(0,0,0,0);
+  var arr=['Q1','Q2','Q3','Q4'].map(function(k){ return {q:k, d:q[k]?new Date(q[k]):null}; }).filter(function(x){ return x.d && !isNaN(x.d); });
+  if(!arr.length) return null;
+  arr.sort(function(a,b){ return a.d-b.d; });
+  var next=arr.find(function(x){ return x.d>=today; }) || arr[arr.length-1];
+  var days=Math.round((next.d-today)/86400000);
+  return { label: next.q+' · '+next.d.toISOString().slice(0,10)+(days<0?' (overdue '+(-days)+'d)':days<=14?' (in '+days+'d)':''), days:days };
+}
+function scContractIcon(c){
+  var t=((c&&c.name||'')+' '+(c&&c.cat||'')).toLowerCase();
+  if(/secur|guard/.test(t)) return '🛡';
+  if(/pest/.test(t)) return '🐜';
+  if(/waste|environ|garbage/.test(t)) return '♻️';
+  if(/generat|electr|power|diesel/.test(t)) return '⚡';
+  if(/elevat|lift/.test(t)) return '🛗';
+  if(/fire|alarm|suppress/.test(t)) return '🔥';
+  if(/clean|housekeep|janitor/.test(t)) return '🧹';
+  if(/kitchen|duct|food|catering/.test(t)) return '🍳';
+  if(/water|tank/.test(t)) return '💧';
+  if(/gas|oxygen|medical gas|lox/.test(t)) return '🧪';
+  if(/laundr|linen/.test(t)) return '🧺';
+  if(/hvac|air|ac /.test(t)) return '❄️';
+  return '📄';
+}
+function scQuarterResult(cid, q, year){
+  var reqId='screq_'+cid+'_'+q+'_'+year;
+  var evs=scReqEvals(reqId);
+  if(!evs.length) return {status:'none'};
+  var combined=Math.round(evs.reduce(function(s,e){return s+(parseFloat(e.pct)||0);},0)/evs.length);
+  var auth=scAuths().find(function(a){return a._id===reqId;});
+  return {status: auth?(auth.status==='authenticated'?'auth':'review'):'pending', combined:combined};
+}
+function scRenderDashboard(){
+  var el=document.getElementById('sc-dashboard-body'); if(!el) return;
+  var year=String(new Date().getFullYear());
+  var contracts=scContracts();
+  if(!contracts.length){ el.innerHTML='<div class="em" style="padding:20px;text-align:center;">No contracts yet.'+(scIsSC()?' Add contracts to see the compliance dashboard.':'')+'</div>'; return; }
+  // top summary strip
+  var allAuth=[], totalQ=0, doneQ=0, overdueCount=0;
+  contracts.forEach(function(c){ ['Q1','Q2','Q3','Q4'].forEach(function(q){ var r=scQuarterResult(c._id,q,year); if(r.status!=='none'){ totalQ++; if(r.status==='auth'){ doneQ++; allAuth.push(r.combined); } } }); var d=scNextDue(c); if(d&&d.days!=null&&d.days<0) overdueCount++; });
+  var portfolio=allAuth.length?Math.round(allAuth.reduce(function(a,b){return a+b;},0)/allAuth.length):null;
+  var strip='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">'+
+    '<div style="background:var(--s2);border:1px solid var(--bd);border-radius:12px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:800;">'+contracts.length+'</div><div style="font-size:10px;color:var(--mu);">📄 Contracts</div></div>'+
+    '<div style="background:var(--s2);border:1px solid var(--bd);border-radius:12px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:800;color:'+(portfolio==null?'var(--mu)':portfolio>=80?'#16a34a':portfolio>=60?'#d97706':'#dc2626')+';">'+(portfolio==null?'—':portfolio+'%')+'</div><div style="font-size:10px;color:var(--mu);">📊 Portfolio compliance</div></div>'+
+    '<div style="background:var(--s2);border:1px solid var(--bd);border-radius:12px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:800;color:var(--ac);">'+doneQ+'</div><div style="font-size:10px;color:var(--mu);">✅ Quarters authenticated</div></div>'+
+    '<div style="background:var(--s2);border:1px solid '+(overdueCount?'var(--rd)':'var(--bd)')+';border-radius:12px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:800;color:'+(overdueCount?'var(--rd)':'#16a34a')+';">'+overdueCount+'</div><div style="font-size:10px;color:var(--mu);">⚠️ Overdue</div></div>'+
+  '</div>';
+  var cards=contracts.map(function(c){
+    var qs=['Q1','Q2','Q3','Q4'].map(function(q){ return scQuarterResult(c._id,q,year); });
+    var done=qs.filter(function(x){return x.status==='auth';}).length;
+    var authScores=qs.filter(function(x){return x.status==='auth';}).map(function(x){return x.combined;});
+    var overall=authScores.length?Math.round(authScores.reduce(function(a,b){return a+b;},0)/authScores.length):null;
+    var completion=Math.round(done/4*100);
+    var due=scNextDue(c); var overdue=due&&due.days!=null&&due.days<0;
+    var oc=overall==null?'var(--mu)':overall>=80?'#16a34a':overall>=60?'#d97706':'#dc2626';
+    var qbars=['Q1','Q2','Q3','Q4'].map(function(q,i){ var r=qs[i];
+      var col=r.status==='auth'?(r.combined>=80?'#16a34a':r.combined>=60?'#d97706':'#dc2626'):r.status==='pending'?'#f59e0b':r.status==='review'?'#dc2626':'var(--bd)';
+      var ht=r.status==='auth'?Math.max(6,Math.round(r.combined*0.42)):6;
+      var lbl=r.status==='auth'?r.combined+'%':r.status==='pending'?'⏳':r.status==='review'?'↩':'—';
+      return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;"><div style="width:100%;height:'+ht+'px;background:'+col+';border-radius:3px 3px 0 0;"></div><div style="font-size:9px;color:var(--mu);margin-top:2px;">'+q+'</div><div style="font-size:9px;font-weight:700;color:'+col+';">'+lbl+'</div></div>';
+    }).join('');
+    return '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:14px;padding:14px;">'+
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><div style="font-size:30px;line-height:1;">'+scContractIcon(c)+'</div><div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(c.name||'—')+'</div><div style="font-size:10px;color:var(--mu);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(c.contractor||c.company||'')+'</div></div></div>'+
+      '<div style="display:flex;gap:10px;margin-bottom:12px;">'+
+        '<div style="flex:1;text-align:center;background:var(--s2);border-radius:10px;padding:8px;"><div style="font-size:22px;font-weight:800;color:'+oc+';">'+(overall==null?'—':overall+'%')+'</div><div style="font-size:9px;color:var(--mu);">OVERALL</div></div>'+
+        '<div style="flex:1;text-align:center;background:var(--s2);border-radius:10px;padding:8px;"><div style="font-size:22px;font-weight:800;color:var(--ac);">'+completion+'%</div><div style="font-size:9px;color:var(--mu);">'+done+' / 4 DONE</div></div>'+
+      '</div>'+
+      '<div style="display:flex;gap:6px;align-items:flex-end;height:56px;">'+qbars+'</div>'+
+      '<div style="font-size:11px;color:'+(overdue?'var(--rd)':'var(--mu)')+';border-top:1px solid var(--bd);padding-top:8px;margin-top:8px;">📅 Next due: <b style="color:'+(overdue?'var(--rd)':'var(--tx)')+';">'+(due?due.label:'not set')+'</b></div>'+
+    '</div>';
+  }).join('');
+  el.innerHTML=strip+'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">'+cards+'</div>';
+}
 function scTab(tab, btn){
-  ['requests','contracts','history'].forEach(t=>{ const p=document.getElementById('sc-'+t); if(p) p.style.display = t===tab?'':'none';
+  ['dashboard','requests','contracts','history'].forEach(t=>{ const p=document.getElementById('sc-'+t); if(p) p.style.display = t===tab?'':'none';
     const b=document.getElementById('scTab-'+t+'-btn'); if(b) b.className='tbtn'+(t===tab?' active':''); });
   if(btn) btn.className='tbtn active';
+  if(tab==='dashboard') scRenderDashboard();
   if(tab==='requests') scRenderRequests();
   if(tab==='contracts') scRenderContracts();
   if(tab==='history') scRenderHistory();
@@ -19838,7 +19914,7 @@ function scRenderRequests(){
     const evs=scReqEvals(r._id); const done=evs.map(e=>e.evaluatorRole);
     const pending=(r.evaluators||[]).filter(role=>done.indexOf(role)<0);
     const all=pending.length===0; const auth=scAuths().find(a=>a._id===r._id);
-    const combined=evs.length?Math.round(evs.reduce((s,e)=>s+e.pct,0)/evs.length):null;
+    const combined=evs.length?Math.round(evs.reduce((s,e)=>s+(parseFloat(e.pct)||0),0)/evs.length):null;
     const evRows=(r.evaluators||[]).map(role=>{ const e=evs.find(x=>x.evaluatorRole===role);
       return '<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;"><span>'+scRoleLabel(role)+'</span>'+(e?'<b style="color:var(--ac);">'+e.pct+'% ✓</b>':'<span style="color:var(--or);">⏳ pending</span>')+'</div>'+(e&&e.comment?'<div style="font-size:10px;color:var(--mu);padding-left:8px;">💬 '+e.comment+'</div>':''); }).join('');
     let status,btns='';
@@ -19924,7 +20000,7 @@ function scRenderHistory(){
   el.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="text-align:left;color:var(--mu);border-bottom:1px solid var(--bd);"><th style="padding:6px;">Contract</th><th>Q/Year</th><th>Evaluator</th><th>Score</th><th>Status</th>'+((sc||CU&&CU.role==='director')?'<th></th>':'')+'</tr></thead><tbody>'+
     evs.map(e=>{ const a=scAuths().find(x=>x._id===e.requestId);
       const st=a?(a.status==='authenticated'?'<span class="chip chip-green">✅ Auth</span>':'<span class="chip chip-red">↩ Review</span>'):'<span class="chip">⏳ Pending</span>';
-      return '<tr style="border-bottom:1px solid var(--bd);"><td style="padding:6px;font-weight:600;">'+e.contractName+'</td><td>'+e.quarter+' '+e.year+'</td><td style="font-size:10px;">'+scRoleLabel(e.evaluatorRole)+'<br><span style="color:var(--mu);">'+e.evaluatorName+'</span></td><td style="font-weight:700;color:var(--ac);">'+e.pct+'%</td><td>'+st+'</td>'+
+      return '<tr style="border-bottom:1px solid var(--bd);"><td style="padding:6px;font-weight:600;">'+e.contractName+'</td><td>'+e.quarter+' '+e.year+'</td><td style="font-size:10px;">'+scRoleLabel(e.evaluatorRole)+'<br><span style="color:var(--mu);">'+e.evaluatorName+'</span></td><td style="font-weight:700;color:var(--ac);">'+(parseFloat(e.pct)||0)+'%</td><td>'+st+'</td>'+
       (canDel?'<td><button class="btn br" style="font-size:9px;padding:2px 6px;" onclick="scDeleteEval(\''+e._id+'\')">🗑</button></td>':'')+'</tr>'; }).join('')+'</tbody></table>';
 }
 function scDeleteEval(id){
@@ -19954,7 +20030,7 @@ function scUpdateBadge(){
 function scExportAll(){
   if(!scIsSC()){ toast('Only the Supply Chain Director can export','#f59e0b'); return; }
   const rows=[['Contract','Contractor','Quarter','Year','Evaluator','Role','Score %','Combined %','Authentication','By']];
-  scRequests().forEach(r=>{ const evs=scReqEvals(r._id); const combined=evs.length?Math.round(evs.reduce((s,e)=>s+e.pct,0)/evs.length):''; const auth=scAuths().find(a=>a._id===r._id);
+  scRequests().forEach(r=>{ const evs=scReqEvals(r._id); const combined=evs.length?Math.round(evs.reduce((s,e)=>s+(parseFloat(e.pct)||0),0)/evs.length):''; const auth=scAuths().find(a=>a._id===r._id);
     if(evs.length) evs.forEach(e=>rows.push([r.contractName,r.contractor||'',r.quarter,r.year,e.evaluatorName,scRoleLabel(e.evaluatorRole),e.pct,combined,auth?auth.status:'pending',auth?auth.by:'']));
     else rows.push([r.contractName,r.contractor||'',r.quarter,r.year,'(no evaluations yet)','','','','pending','']); });
   const csv=rows.map(r=>r.map(v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"').join(',')).join('\n');
