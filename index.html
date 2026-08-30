@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1635';
+  var v = '20260816-1636';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1635">
+<meta name="app-version" content="20260816-1636">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6673,7 +6673,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1635';
+const APP_VERSION = '20260816-1636';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -11771,9 +11771,15 @@ function saveEvaluation() {
   ctrTab('history', document.querySelector('[onclick="ctrTab(\'history\',this)"]'));
 }
 
+function evTombstones(){ try{ var a=JSON.parse(localStorage.getItem('obeid3_deleted_evals')||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function evAddTombstone(id){ try{ var t=evTombstones(); if(t.indexOf(String(id))<0){ t.push(String(id)); localStorage.setItem('obeid3_deleted_evals', JSON.stringify(t)); } }catch(e){} }
+// Remove any tombstoned evaluations from local storage — called after every sync/render
+// so a cloud copy that survived a failed delete can never resurrect on this device.
+function evApplyTombstones(){ try{ var t=evTombstones(); if(!t.length) return; var arr=(ld('evaluations')||[]); var f=arr.filter(function(e){ return e && t.indexOf(String(e._id))<0; }); if(f.length!==arr.length) sv('evaluations', f); }catch(e){} }
 function evDelete(id){
   if(!(CU&&CU.role==='director')){ toast('Only the FMS Director can delete evaluations','#f59e0b'); return; }
   if(!confirm('Delete this evaluation from all accounts? This cannot be undone.')) return;
+  evAddTombstone(id);
   const arr=(ld('evaluations')||[]).filter(e=>String(e._id)!==String(id));
   sv('evaluations', arr);
   try{ if(typeof dbDelete==='function') dbDelete('evaluations', id); }catch(e){}   // remove from cloud so it can't re-sync back
@@ -11786,7 +11792,7 @@ function evDeleteAll(){
   const all=ld('evaluations')||[];
   if(!all.length){ toast('No evaluations to delete'); return; }
   if(!confirm('Delete ALL '+all.length+' evaluations from EVERY account? This cannot be undone.')) return;
-  all.forEach(e=>{ try{ if(typeof dbDelete==='function' && e._id) dbDelete('evaluations', e._id); }catch(_){} });
+  all.forEach(e=>{ try{ if(e._id) evAddTombstone(e._id); if(typeof dbDelete==='function' && e._id) dbDelete('evaluations', e._id); }catch(_){} });
   sv('evaluations', []); renderEvalHistory();
   if(typeof renderContractCards==='function'){ try{renderContractCards();}catch(e){} }
   toast('🗑 All evaluations deleted from all accounts','#ef4444',5000);
@@ -11806,6 +11812,7 @@ function evEditLoad(id){
   },120);
 }
 function renderEvalHistory() {
+  try{ evApplyTombstones(); }catch(e){}
   const tb  = document.getElementById('ctr-hist-tb'); if (!tb) return;
   const evals = ld('evaluations') || [];
   const kpiEl = document.getElementById('ctr-kpi-stats');
@@ -11872,6 +11879,7 @@ function doLogin() {
   // Repair any custom user whose access was copied from a stale template
   try { repairCustomUserAccess(); } catch(e) {}
   try{ setTimeout(function(){ dbCheckVersion(false); }, 6000); }catch(e){}
+  try{ setTimeout(function(){ if(typeof evApplyTombstones==='function') evApplyTombstones(); }, 7000); }catch(e){}
   // Remind about census days not yet backed up to the cloud
   try{ const u=JSON.parse(localStorage.getItem('obeid3_census_unsynced')||'[]'); if(u.length){ setTimeout(function(){ if(typeof toast==='function') toast('⚠️ '+u.length+' census day(s) not yet backed up to cloud — open Nursing Census to export a backup.', '#ef4444', 8000); }, 2500); } }catch(e){}
   // Apply role-based access
@@ -19678,6 +19686,14 @@ function achEval(r) {
 
 /* ═══════════════ SUPPLY CHAIN — Contract Authentication (request-driven) ═══════════════ */
 const SC_CRITERIA = ['Service Quality & Reliability','Response Time & Availability','Staff Competency & Conduct','Compliance with Contract Terms','Documentation & Reporting'];
+var SC_ROLE_ALIASES = { ipc:['ipc','infection_control','ipc_control'], infection_control:['infection_control','ipc'] };
+function scMatchedRole(userRole, evaluators){
+  evaluators = Array.isArray(evaluators)?evaluators:[];
+  if(evaluators.indexOf(userRole)>=0) return userRole;
+  var al = SC_ROLE_ALIASES[userRole] || [userRole];
+  for(var i=0;i<al.length;i++){ if(evaluators.indexOf(al[i])>=0) return al[i]; }
+  return null;
+}
 function scIsSC(){ return CU && CU.role==='supplychain'; }               // owns requests/auth/contracts
 function scCanDelete(){ return CU && (CU.role==='supplychain' || CU.role==='director'); } // FMS + Supply Chain can delete
 function scPJ(v){ if(v&&typeof v==='object') return v; if(typeof v==='string'&&v.trim().charAt(0)==='{'){ try{ return JSON.parse(v); }catch(e){} } return {}; }
@@ -19694,22 +19710,6 @@ function scSaveAuths(a){ sv('sc_auth', a); }
 function scRoleName(role){ try{ return (getDynNames()||{})[role]||role; }catch(e){ return role; } }
 function scRoleLabel(role){ try{ const u=(getDynUsers()||[]).find(x=>x.role===role); return u?u.label:role; }catch(e){ return role; } }
 function scRoleOpts(sel,withNone){ try{ const base=withNone?'<option value="">— none (single evaluator) —</option>':''; return base+(getDynUsers()||[]).filter(u=>u.role!=='supplychain').map(u=>'<option value="'+u.role+'"'+(u.role===sel?' selected':'')+'>'+u.label+' — '+scRoleName(u.role)+'</option>').join(''); }catch(e){ return ''; } }
-// ── Evaluator identity matching ────────────────────────────────────────────
-// A request stores its evaluators by role token (e.g. 'ipc'). Visibility,
-// completion tracking and the badge all compared those tokens to the logged-in
-// user's CU.role with an EXACT match. That silently hid a request from an
-// evaluator whose login token differs from the assigned token even though they
-// are the same role — e.g. a custom/named IPC officer (custom role, templateRole
-// 'ipc') vs. the built-in 'ipc' the Supply Chain Director picked when assigning.
-// The request then showed for the FMS Director but never reached IPC. Resolve
-// both sides through the effective (template) role so they line up. scRoleKnown
-// guards against the getEffectiveRole()='security' fallback for orphaned tokens,
-// so an unknown/deleted token can never over-match a real security user.
-function scEffRole(role){ try{ return (typeof getEffectiveRole==='function' && role) ? getEffectiveRole(role) : role; }catch(e){ return role; } }
-function scRoleKnown(role){ try{ return (getDynUsers()||[]).some(function(u){ return u&&u.role===role; }); }catch(e){ return false; } }
-function scRoleMatches(a,b){ if(!a||!b) return false; if(a===b) return true; if(scRoleKnown(a)&&scRoleKnown(b)) return scEffRole(a)===scEffRole(b); return false; }
-function scIsEvaluatorOf(r){ return !!(CU && CU.role && ((r&&r.evaluators)||[]).some(function(role){ return scRoleMatches(CU.role, role); })); }
-function scEvalPending(r,evs){ evs=evs||scReqEvals(r._id); return ((r&&r.evaluators)||[]).filter(function(role){ return !evs.some(function(e){ return scRoleMatches(e.evaluatorRole, role); }); }); }
 
 function scTab(tab, btn){
   ['requests','contracts','history'].forEach(t=>{ const p=document.getElementById('sc-'+t); if(p) p.style.display = t===tab?'':'none';
@@ -19801,18 +19801,19 @@ function scRenderRequests(){
   const sc=scIsSC(); const nb=document.getElementById('sc-newreq-btn'); if(nb) nb.style.display=sc?'':'none';
   document.getElementById('sc-req-title').textContent = sc?'All Evaluation Requests':'My Assigned Evaluations';
   let reqs=scRequests();
-  if(!sc && CU) reqs=reqs.filter(scIsEvaluatorOf);
+  if(!sc && CU) reqs=reqs.filter(r=>scMatchedRole(CU.role, r.evaluators)!==null);
   if(!reqs.length){ el.innerHTML='<div class="em" style="padding:16px;text-align:center;">'+(sc?'No requests yet. Create one with “+ New Request”.':'No evaluation requests assigned to you.')+'</div>'; return; }
   el.innerHTML=reqs.map(r=>{
-    const evs=scReqEvals(r._id);
-    const pending=scEvalPending(r,evs);
+    const evs=scReqEvals(r._id); const done=evs.map(e=>e.evaluatorRole);
+    const pending=(r.evaluators||[]).filter(role=>done.indexOf(role)<0);
     const all=pending.length===0; const auth=scAuths().find(a=>a._id===r._id);
     const combined=evs.length?Math.round(evs.reduce((s,e)=>s+e.pct,0)/evs.length):null;
-    const evRows=(r.evaluators||[]).map(role=>{ const e=evs.find(x=>scRoleMatches(x.evaluatorRole,role));
+    const evRows=(r.evaluators||[]).map(role=>{ const e=evs.find(x=>x.evaluatorRole===role);
       return '<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;"><span>'+scRoleLabel(role)+'</span>'+(e?'<b style="color:var(--ac);">'+e.pct+'% ✓</b>':'<span style="color:var(--or);">⏳ pending</span>')+'</div>'+(e&&e.comment?'<div style="font-size:10px;color:var(--mu);padding-left:8px;">💬 '+e.comment+'</div>':''); }).join('');
     let status,btns='';
-    const iAmEvaluator = scIsEvaluatorOf(r);
-    const iSubmitted = !!(CU && evs.some(e=>scRoleMatches(e.evaluatorRole, CU.role)));
+    const myRole = CU ? scMatchedRole(CU.role, r.evaluators) : null;
+    const iAmEvaluator = !!myRole;
+    const iSubmitted = myRole && done.indexOf(myRole)>=0;
     if(auth&&auth.status==='authenticated') status='<span style="color:var(--gn);font-weight:700;font-size:11px;">✅ Authenticated by '+auth.by+'</span>';
     else if(auth&&auth.status==='review') status='<span style="color:var(--rd);font-weight:700;font-size:11px;">↩ 2nd review requested</span>'+(auth.comment?'<div style="font-size:11px;">💬 '+auth.comment+'</div>':'');
     else if(all) status='<span style="color:var(--or);font-weight:700;font-size:11px;">🔔 All evaluations done — ready to authenticate</span>';
@@ -19840,12 +19841,14 @@ function scDeleteRequest(reqId){
 /* ---------- Evaluation (department head) ---------- */
 function scOpenEval(reqId){
   const r=scRequests().find(x=>x._id===reqId); if(!r){ toast('Request not found','#f59e0b'); return; }
-  if(!scIsEvaluatorOf(r)){ toast('This evaluation is not assigned to you','#f59e0b'); return; }
+  var _mr = CU ? scMatchedRole(CU.role, r.evaluators) : null;
+  if(!_mr){ toast('This evaluation is not assigned to you','#f59e0b'); return; }
+  window._scEvalRole = _mr;
   document.getElementById('sce-reqid').value=reqId;
   document.getElementById('sc-eval-title').textContent='Evaluate: '+r.contractName;
   document.getElementById('sc-eval-meta').innerHTML=(r.contractor||'')+' · <b>'+r.quarter+' '+r.year+'</b> · period '+(r.date||'—');
   const nm=document.getElementById('sce-name'); if(!nm.value) nm.value=scRoleName(CU.role)||'';
-  const existing=scReqEvals(reqId).find(e=>e.evaluatorRole===CU.role);
+  const existing=scReqEvals(reqId).find(e=>e.evaluatorRole===(window._scEvalRole||CU.role));
   document.getElementById('sce-criteria').innerHTML=SC_CRITERIA.map((t,i)=>{ const v=existing&&existing.scores?existing.scores['c'+i]:3;
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);"><div style="font-size:12px;">'+(i+1)+'. '+t+'</div><select id="sce-c'+i+'" onchange="scEvalCalc()" style="background:var(--s1);border:1px solid var(--bd);border-radius:6px;padding:4px 10px;color:var(--tx);">'+[1,2,3,4,5].map(n=>'<option value="'+n+'"'+(n===v?' selected':'')+'>'+n+'</option>').join('')+'</select></div>'; }).join('');
   document.getElementById('sce-comment').value=existing?existing.comment||'':'';
@@ -19856,8 +19859,9 @@ function scEvalCalc(){ let t=0; SC_CRITERIA.forEach((_,i)=>{ const e=document.ge
 function scSubmitEval(){
   const reqId=document.getElementById('sce-reqid').value; const req=scRequests().find(x=>x._id===reqId); if(!req) return;
   const sc=scEvalCalc(); const scores={}; SC_CRITERIA.forEach((_,i)=>scores['c'+i]=parseInt(document.getElementById('sce-c'+i).value));
-  const ev={ _id:'sceval_'+reqId+'_'+CU.role, requestId:reqId, contractId:req.contractId, contractName:req.contractName, contractor:req.contractor, quarter:req.quarter, year:req.year, date:req.date,
-    evaluatorRole:CU.role, evaluatorName:document.getElementById('sce-name').value||scRoleName(CU.role), scores, score:sc.score, pct:sc.pct, comment:document.getElementById('sce-comment').value||'', confirmed:true, at:new Date().toISOString() };
+  var _role = scMatchedRole(CU.role, req.evaluators) || CU.role;
+  const ev={ _id:'sceval_'+reqId+'_'+_role, requestId:reqId, contractId:req.contractId, contractName:req.contractName, contractor:req.contractor, quarter:req.quarter, year:req.year, date:req.date,
+    evaluatorRole:_role, evaluatorName:document.getElementById('sce-name').value||scRoleName(CU.role), scores, score:sc.score, pct:sc.pct, comment:document.getElementById('sce-comment').value||'', confirmed:true, at:new Date().toISOString() };
   const arr=scEvals().filter(e=>e._id!==ev._id); arr.unshift(ev); scSaveEvals(arr);
   try{ dbWrite('sc_evals', ev); }catch(e){}
   document.getElementById('sc-eval-modal').style.display='none'; scRenderRequests(); scRenderHistory(); scUpdateBadge();
@@ -19884,7 +19888,7 @@ function scRenderHistory(){
   const el=document.getElementById('sc-history-list'); if(!el) return;
   const sc=scIsSC(); const canDel=scCanDelete(); const del=document.getElementById('sc-delall-btn'); if(del) del.style.display=canDel?'':'none';
   let evs=scEvals();
-  if(!sc && !canDel && CU){ const myReqIds=new Set(scRequests().filter(scIsEvaluatorOf).map(r=>r._id)); evs=evs.filter(e=>myReqIds.has(e.requestId)); }
+  if(!sc && !canDel && CU){ const myReqIds=new Set(scRequests().filter(r=>(r.evaluators||[]).indexOf(CU.role)>=0).map(r=>r._id)); evs=evs.filter(e=>myReqIds.has(e.requestId)); }
   if(!evs.length){ el.innerHTML='<div class="em" style="padding:16px;text-align:center;">No evaluations yet.</div>'; return; }
   el.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="text-align:left;color:var(--mu);border-bottom:1px solid var(--bd);"><th style="padding:6px;">Contract</th><th>Q/Year</th><th>Evaluator</th><th>Score</th><th>Status</th>'+((sc||CU&&CU.role==='director')?'<th></th>':'')+'</tr></thead><tbody>'+
     evs.map(e=>{ const a=scAuths().find(x=>x._id===e.requestId);
@@ -19911,8 +19915,8 @@ function scDeleteAllEvals(){
 function scUpdateBadge(){
   try{
     let count=0;
-    if(scIsSC()){ count=scRequests().filter(r=>{ const all=scEvalPending(r).length===0; const auth=scAuths().find(a=>a._id===r._id); return all && !(auth&&auth.status==='authenticated'); }).length; }
-    else if(CU){ count=scRequests().filter(r=>scIsEvaluatorOf(r) && !scReqEvals(r._id).some(e=>scRoleMatches(e.evaluatorRole, CU.role))).length; }
+    if(scIsSC()){ count=scRequests().filter(r=>{ const done=scReqEvals(r._id).map(e=>e.evaluatorRole); const all=(r.evaluators||[]).every(role=>done.indexOf(role)>=0); const auth=scAuths().find(a=>a._id===r._id); return all && !(auth&&auth.status==='authenticated'); }).length; }
+    else if(CU){ count=scRequests().filter(function(r){ var mr=scMatchedRole(CU.role, r.evaluators); return mr && !scReqEvals(r._id).some(function(e){return e.evaluatorRole===mr;}); }).length; }
     ['scBadge','scReqBadge'].forEach(id=>{ const b=document.getElementById(id); if(b){ b.textContent=count; b.style.display=count?'':'none'; } });
   }catch(e){}
 }
