@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1641';
+  var v = '20260816-1642';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1641">
+<meta name="app-version" content="20260816-1642">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6674,7 +6674,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1641';
+const APP_VERSION = '20260816-1642';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -6911,7 +6911,7 @@ async function dbDelete(type, id) {
 // Heavy, fast-growing collections are excluded from the light boot load and
 // fetched by a background pass (and by the app_settings consumers) instead.
 // Profiling: app_settings≈61%, eq_added≈16%, ach_readings≈7% of getAll.
-const DB_HEAVY_SKIP = 'app_settings,eq_added,ach_readings,ipc_txns,census_daily,sc_evals,sc_requests,sc_auth,evaluations';
+const DB_HEAVY_SKIP = 'app_settings,eq_added,ach_readings,ipc_txns';
 let DB_GETALL_CACHE = null, DB_GETALL_TS = 0;            // legacy "best available" cache (other readers use this)
 let DB_GA_LIGHT = { cache:null, ts:0, inflight:null };   // boot payload (heavies skipped)
 let DB_GA_FULL  = { cache:null, ts:0, inflight:null };   // full payload (includes heavies)
@@ -7236,14 +7236,22 @@ async function dbLoadAll(opts) {
       if (ppmRows.length > 0) {
         const localOv = getPPMOverrides();
         let updated = 0;
+        const _isDate = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(String(v).slice(0,10));
         ppmRows.forEach(row => {
-          const assetNo = row._id.replace('ppm_ov_', '');
+          const rawId = String(row._id || '');
+          const assetNo = rawId.replace('ppm_ov_', '');
           if (!assetNo) return;
-          // Build clean override object (exclude meta fields)
+          // GUARD: a corrupted row (column-misalignment) puts a date/timestamp where the
+          // asset number should be — reject it so it can't overwrite good inventory data.
+          if (/^\d{4}-\d{2}-\d{2}/.test(assetNo) || /T\d{2}:/.test(assetNo)) return;
+          // Build clean override object (exclude meta fields), validating date fields.
           const ov = {};
           ['lastPPM','nextPPM','ppmBy','ppmType','ppmFreq','notes','status',
            'fileKey','updatedBy','updatedAt','_ts','_by'].forEach(k => {
-            if (row[k] !== undefined && row[k] !== '') ov[k] = row[k];
+            let val = row[k];
+            if (val === undefined || val === '') return;
+            if ((k === 'lastPPM' || k === 'nextPPM') && !_isDate(val)) return;  // drop garbage dates
+            ov[k] = val;
           });
           // Only update if DB row is newer than local
           const dbTs    = row._ts || row.updatedAt || '';
@@ -11888,6 +11896,17 @@ function doLogin() {
 
   // Repair any custom user whose access was copied from a stale template
   try { repairCustomUserAccess(); } catch(e) {}
+  // One-time cleanup: purge corrupted PPM overrides (date-like asset numbers / bad dates)
+  try {
+    const ov = JSON.parse(localStorage.getItem('obeid_ppm_overrides') || '{}');
+    let cleaned = false; const okDate = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(String(v).slice(0,10));
+    Object.keys(ov).forEach(k => {
+      if (/^\d{4}-\d{2}-\d{2}/.test(k) || /T\d{2}:/.test(k)) { delete ov[k]; cleaned = true; return; }
+      const o = ov[k]; if (!o) return;
+      ['lastPPM','nextPPM'].forEach(f => { if (o[f] && !okDate(o[f])) { delete o[f]; cleaned = true; } });
+    });
+    if (cleaned) { localStorage.setItem('obeid_ppm_overrides', JSON.stringify(ov)); try{ EQ_ALL = null; }catch(_){} }
+  } catch(e) {}
   try{ setTimeout(function(){ dbCheckVersion(false); }, 6000); }catch(e){}
   try{ setTimeout(function(){ if(typeof evApplyTombstones==='function') evApplyTombstones(); }, 7000); }catch(e){}
   // Remind about census days not yet backed up to the cloud
