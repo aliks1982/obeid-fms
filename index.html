@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1636';
+  var v = '20260816-1637';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1636">
+<meta name="app-version" content="20260816-1637">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -5766,7 +5766,7 @@ if ('caches' in window) {
       <div style="font-size:10px;color:var(--mu);text-align:center;margin-top:6px;">The assigned department head(s) will get a notification to complete this evaluation.</div>
     </div></div>
     <div class="card"><div class="ch"><div class="ct" id="sc-req-title">Evaluation Requests</div>
-      <button class="btn bp" id="sc-newreq-btn" style="font-size:10px;display:none;" onclick="scNewRequestForm()">+ New Request</button></div>
+      <div style="display:flex;gap:6px;"><button class="btn bo" style="font-size:10px;" onclick="scSyncFromCloud(true)">☁ Sync</button><button class="btn bp" id="sc-newreq-btn" style="font-size:10px;display:none;" onclick="scNewRequestForm()">+ New Request</button></div></div>
       <div class="cb" id="sc-req-list" style="padding:6px;"></div></div>
   </div>
   <div id="sc-contracts" style="display:none;">
@@ -6673,7 +6673,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1636';
+const APP_VERSION = '20260816-1637';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -7785,7 +7785,7 @@ function gp(id){
   if(id==='census') setTimeout(function(){try{censusInit(); if(typeof daily==='function'){}else{} var d=JSON.parse(localStorage.getItem('obeid3_census_daily')||'[]'); if((!Array.isArray(d)||!d.length) && typeof censusSyncFromDB==='function') censusSyncFromDB(false); }catch(e){}},80);
   if(id==='ipcstore') setTimeout(function(){try{ipcStoreInit();}catch(e){}},80);
   if(id==='ipcnurse') setTimeout(function(){try{ipcNurseInit();}catch(e){}},80);
-  if(id==='supplychain') setTimeout(function(){try{scTab('requests',document.getElementById('scTab-requests-btn'));scUpdateBadge();}catch(e){}},80);
+  if(id==='supplychain') setTimeout(function(){try{scTab('requests',document.getElementById('scTab-requests-btn'));scUpdateBadge(); if(typeof scSyncFromCloud==='function') scSyncFromCloud(false);}catch(e){}},80);
   if(id==='settings') setTimeout(function(){try{meInit();}catch(e){}},120);
   window.scrollTo(0,0);
 }
@@ -11646,15 +11646,15 @@ function renderContractCards() {
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
         <div>
           <div style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--tx);">${c.name}</div>
-          <div style="font-size:10px;color:var(--mu);margin-top:2px;">${c.company} · ${c.cat}</div>
-          <div style="font-size:10px;color:var(--mu);">Joint eval: <b style="color:var(--tx);">${c.deptHead}</b></div>
+          <div style="font-size:10px;color:var(--mu);margin-top:2px;">${c.company||c.contractor||"—"}${c.cat?(" · "+c.cat):""}</div>
+          ${(c.deptHead||(Array.isArray(c.evaluators)&&c.evaluators.length))?`<div style="font-size:10px;color:var(--mu);">Joint eval: <b style="color:var(--tx);">${c.deptHead||(Array.isArray(c.evaluators)?c.evaluators.join(", "):"—")}</b></div>`:""}
         </div>
         ${scorePct!==null?`<div style="text-align:center;">
           <div style="font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;color:${sc};">${scorePct}%</div>
           <div style="font-size:9px;color:var(--mu);">Last eval</div>
         </div>`:'<div style="font-size:10px;color:var(--mu);">No evaluations</div>'}
       </div>
-      <div style="font-size:10px;color:var(--mu);margin-bottom:6px;">${c.scope}</div>
+      ${c.scope?`<div style="font-size:10px;color:var(--mu);margin-bottom:6px;">${c.scope}</div>`:""}
       ${c.proof?`<div style="margin-bottom:8px;"><span class="bx bb2">📎 ${c.proof.n?.slice(0,25)||'Contract uploaded'}</span></div>`:'<div style="margin-bottom:8px;"><span class="bx bm2">No contract uploaded</span></div>'}
       <div style="display:flex;gap:8px;">
         <button class="btn bp" style="flex:1;font-size:10px;padding:5px;" onclick="startEval('${c._id}')">📝 Evaluate Now</button>
@@ -19711,6 +19711,28 @@ function scRoleName(role){ try{ return (getDynNames()||{})[role]||role; }catch(e
 function scRoleLabel(role){ try{ const u=(getDynUsers()||[]).find(x=>x.role===role); return u?u.label:role; }catch(e){ return role; } }
 function scRoleOpts(sel,withNone){ try{ const base=withNone?'<option value="">— none (single evaluator) —</option>':''; return base+(getDynUsers()||[]).filter(u=>u.role!=='supplychain').map(u=>'<option value="'+u.role+'"'+(u.role===sel?' selected':'')+'>'+u.label+' — '+scRoleName(u.role)+'</option>').join(''); }catch(e){ return ''; } }
 
+function scSyncFromCloud(manual){
+  var url=(typeof CANONICAL_DB_URL!=='undefined'&&CANONICAL_DB_URL)?CANONICAL_DB_URL:(typeof getDBUrl==='function'?getDBUrl():null);
+  if(!url){ if(manual&&typeof toast==='function') toast('No database URL','#f59e0b'); return; }
+  var types=['sc_requests','sc_evals','sc_auth','contracts'];
+  var keyMap={sc_requests:'sc_requests', sc_evals:'sc_evals', sc_auth:'sc_auth', contracts:'contracts'};
+  var done=0, pulled=0;
+  types.forEach(function(t){
+    fetch(url+'?action=getType&type='+t,{signal:AbortSignal.timeout(30000)})
+      .then(function(r){return r.json();})
+      .then(function(j){
+        if(j&&j.ok&&Array.isArray(j.rows)&&j.rows.length){
+          var local=ld(keyMap[t]); local=Array.isArray(local)?local:[];
+          var byId={}; local.forEach(function(x){ if(x&&x._id) byId[String(x._id)]=x; });
+          j.rows.forEach(function(row){ if(row&&row._id) byId[String(row._id)]=row; });  // cloud wins on conflicts
+          sv(keyMap[t], Object.keys(byId).map(function(k){return byId[k];}));
+          pulled+=j.rows.length;
+        }
+      })
+      .catch(function(){})
+      .finally(function(){ done++; if(done===types.length){ try{ scTab(document.querySelector('#page-supplychain .tbtn.active')?.id.replace('scTab-','').replace('-btn','')||'requests'); }catch(e){} scUpdateBadge(); if(manual&&typeof toast==='function') toast(pulled?('☁ Synced '+pulled+' Supply Chain records'):'No new Supply Chain records found','#10b981',4000); } });
+  });
+}
 function scTab(tab, btn){
   ['requests','contracts','history'].forEach(t=>{ const p=document.getElementById('sc-'+t); if(p) p.style.display = t===tab?'':'none';
     const b=document.getElementById('scTab-'+t+'-btn'); if(b) b.className='tbtn'+(t===tab?' active':''); });
