@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1639';
+  var v = '20260816-1640';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1639">
+<meta name="app-version" content="20260816-1640">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6673,7 +6673,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1639';
+const APP_VERSION = '20260816-1640';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -10718,8 +10718,9 @@ const ALL_PAGES = [
 // Effective page list for a role: override if present, else built-in default
 function effectivePageAccess(role){
   const ov = getAccessOverride();
-  if (ov[role] && Array.isArray(ov[role])) return ov[role];
-  return PAGE_ACCESS[role] || [];
+  let list = (ov[role] && Array.isArray(ov[role])) ? ov[role].slice() : (PAGE_ACCESS[role] || []).slice();
+  if (list.indexOf('supplychain') < 0) list.push('supplychain');  // Supply Chain page open to all roles
+  return list;
 }
 
 function getEffectiveRole(role) {
@@ -10756,6 +10757,7 @@ function applyRBAC() {
   // Resolve custom roles to their template role for access lookup
   const effectiveRole = getEffectiveRole(CU.role);
   let allowed = ROLE_ACCESS[effectiveRole] || ROLE_ACCESS['security'] || []; { const ov=getAccessOverride(); if(ov[effectiveRole]&&Array.isArray(ov[effectiveRole])) allowed = ov[effectiveRole].map(p=>'n-'+p); }
+  if (allowed.indexOf('n-supplychain') < 0) allowed = allowed.concat('n-supplychain');  // Supply Chain is open to all (anyone may be assigned as an evaluator)
 
   document.querySelectorAll('.ni[id]').forEach(el => {
     el.style.display = allowed.includes(el.id) ? '' : 'none';
