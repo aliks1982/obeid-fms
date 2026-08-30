@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1637';
+  var v = '20260816-1639';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1637">
+<meta name="app-version" content="20260816-1639">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6673,7 +6673,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1637';
+const APP_VERSION = '20260816-1639';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -6867,19 +6867,26 @@ const EXPECTED_DB_VERSION = '20260816-1635';
 async function dbCheckVersion(manual){
   const url = (typeof CANONICAL_DB_URL!=='undefined'&&CANONICAL_DB_URL) ? CANONICAL_DB_URL : (typeof getDBUrl==='function'?getDBUrl():null);
   if(!url){ if(manual) toast('No database URL configured','#f59e0b'); return; }
+  let j = null;
   try{
-    const r = await fetch(url+'?action=version',{signal:AbortSignal.timeout(20000)});
-    const j = await r.json();
-    if(j && j.ok && j.version){
-      const types = j.types||[];
-      const hasAll = types.indexOf('census_daily')>=0 && types.indexOf('sc_requests')>=0 && types.indexOf('sc_evals')>=0 && types.indexOf('sc_auth')>=0;
-      if(j.version===EXPECTED_DB_VERSION && hasAll){ if(manual) toast('✅ Database script is up to date (v'+j.version+') — census & Supply Chain sync are enabled.','#10b981',6000); }
-      else if(!hasAll){ toast('⚠️ Deployed database is missing sheets ('+['census_daily','sc_requests','sc_evals','sc_auth'].filter(t=>types.indexOf(t)<0).join(', ')+'). Redeploy FMS_DB script as a NEW VERSION.', '#ef4444', 14000); }
-      else { toast('⚠️ Deployed database is v'+j.version+' but the app expects v'+EXPECTED_DB_VERSION+'. Redeploy FMS_DB script (Deploy → Manage deployments → New version).', '#f59e0b', 12000); }
-    } else if(manual) toast('Could not read DB version — the deployment may be outdated.','#f59e0b',8000);
-  }catch(e){
-    toast('⚠️ Your deployed database script is OUTDATED (no version endpoint). This is why census & Supply Chain sync fail. Redeploy FMS_DB script as a NEW VERSION.', '#ef4444', 16000);
+    // Read exactly like the working getAll: long timeout + text()+JSON.parse (robust to wrappers).
+    const r = await fetch(url+'?action=version',{signal:AbortSignal.timeout(90000)});
+    const text = await r.text();
+    try{ j = JSON.parse(text); }catch(_){ const i=text.indexOf('{'), k=text.lastIndexOf('}'); if(i>=0&&k>i){ try{ j=JSON.parse(text.slice(i,k+1)); }catch(__){} } }
+  }catch(e){ j = null; }
+
+  if(j && j.ok && j.version){
+    const types = j.types||[];
+    const missing = ['census_daily','sc_requests','sc_evals','sc_auth'].filter(t=>types.indexOf(t)<0);
+    if(missing.length){ toast('⚠️ Deployed database is missing sheets ('+missing.join(', ')+'). Redeploy FMS_DB script as a NEW VERSION.', '#f59e0b', 12000); }
+    else if(manual){ toast('✅ Database is current (v'+j.version+') — census & Supply Chain sync are enabled.','#10b981',6000); }
+    // version matches or is newer with all sheets → all good, stay silent on boot
+    return;
   }
+  // Could NOT read the version. A failed check does NOT mean the DB is outdated
+  // (the endpoint may just be slow under load). Never show the scary banner on boot;
+  // only give quiet feedback if the user asked explicitly.
+  if(manual) toast('Couldn\'t read the DB version just now (the database may be busy). Your data is safe — try again in a moment.', '#f59e0b', 7000);
 }
 async function dbDelete(type, id) {
   const url = CANONICAL_DB_URL || getDBUrl();
@@ -6903,7 +6910,7 @@ async function dbDelete(type, id) {
 // Heavy, fast-growing collections are excluded from the light boot load and
 // fetched by a background pass (and by the app_settings consumers) instead.
 // Profiling: app_settings≈61%, eq_added≈16%, ach_readings≈7% of getAll.
-const DB_HEAVY_SKIP = 'app_settings,eq_added,ach_readings,ipc_txns';
+const DB_HEAVY_SKIP = 'app_settings,eq_added,ach_readings,ipc_txns,census_daily,sc_evals,sc_requests,sc_auth,evaluations';
 let DB_GETALL_CACHE = null, DB_GETALL_TS = 0;            // legacy "best available" cache (other readers use this)
 let DB_GA_LIGHT = { cache:null, ts:0, inflight:null };   // boot payload (heavies skipped)
 let DB_GA_FULL  = { cache:null, ts:0, inflight:null };   // full payload (includes heavies)
@@ -7371,7 +7378,7 @@ async function dbLoadAll(opts) {
     // After a fast light boot, pull the heavy collections in the background
     // (app_settings, eq_added, ach_readings, ipc_txns) so the UI is never blocked.
     if (!opts.heavy) {
-      setTimeout(function(){ try { dbLoadAll({ heavy:true, background:true }); } catch(e){} }, 2500);
+      setTimeout(function(){ try { if(document.visibilityState!=='hidden') dbLoadAll({ heavy:true, background:true }); } catch(e){} }, 8000);
     }
     return true;
   } catch(e) {
@@ -21887,9 +21894,8 @@ if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,a
     // show seed button to directors only, when the seeded rounds aren't already present
     const seedBtn = document.getElementById('esr-seed-btn');
     if (seedBtn) {
-      const isDir = (typeof CU==='undefined') || !CU.role || CU.role==='director';
-      const already = data.some(r => (r.round==='ESR-01'||r.round==='ESR-02'||r.round==='ESR-03') && String(r.date||'').startsWith('2026-01'));
-      seedBtn.style.display = (isDir && !already) ? '' : 'none';
+      const isDir = (typeof CU==='undefined') || !CU.role || CU.role==='director' || CU.role==='safety';
+      seedBtn.style.display = isDir ? '' : 'none';
     }
     if (!data.length) { tb.innerHTML = '<tr><td colspan="8" class="em">No ESR rounds logged yet</td></tr>'; return; }
     tb.innerHTML = data.map(r => {
