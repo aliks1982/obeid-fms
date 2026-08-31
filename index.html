@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1643';
+  var v = '20260816-1644';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1643">
+<meta name="app-version" content="20260816-1644">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3587,8 +3587,9 @@ if ('caches' in window) {
   <div id="census-sync-warn" style="display:none;background:rgba(239,68,68,.10);border:1px solid rgba(239,68,68,.4);border-radius:10px;padding:11px 15px;margin-bottom:12px;display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
     <div style="font-size:12px;color:var(--tx);">⚠️ You have <b class="csw-count" style="color:var(--rd);">0</b> census day(s) <b>not yet backed up to the cloud</b> — if this browser's data is cleared they could be lost. Export a backup now to be safe.</div>
     <div style="display:flex;gap:6px;">
-      <button class="btn bg" style="font-size:11px;white-space:nowrap;" onclick="backupExportFull();">⬇ Export Backup</button>
+      <button class="btn bg" style="font-size:11px;white-space:nowrap;" onclick="censusExportBackup();">⬇ Export Backup</button>
       <button class="btn bo" style="font-size:11px;white-space:nowrap;" onclick="if(typeof censusRetryPush==='function'){censusRetryPush();}">⟳ Retry Sync</button>
+      <button class="btn bo" style="font-size:11px;white-space:nowrap;" onclick="try{localStorage.setItem('obeid3_census_unsynced','[]');censusSyncCheck();toast('Dismissed. Remember your data is only safe if backed up or in the cloud.','#6b7280',5000);}catch(e){}">✓ Dismiss</button>
     </div>
   </div>
   <div id="census-root"></div>
@@ -6674,7 +6675,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1643';
+const APP_VERSION = '20260816-1644';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -23030,6 +23031,24 @@ if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,a
       .finally(function(){ _censusSyncBusy=false; });
   };
   // Re-push any census days that never reached the cloud, then fetch to confirm.
+  // Census-only backup — available to every role (nurses enter census). Downloads a
+  // JSON file of all census days and clears the "unsaved" flags (the data is now safe).
+  window.censusExportBackup = function(){
+    try{
+      var census = (typeof daily==='function') ? daily() : (JSON.parse(localStorage.getItem('obeid3_census_daily')||'[]'));
+      if(!census || !census.length){ if(typeof toast==='function') toast('No census data to back up yet.','#f59e0b'); return; }
+      var payload = { type:'ObeidFMS_Census_Backup', exportedAt:new Date().toISOString(), days:census.length, census:census };
+      var blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a'); a.href=url;
+      a.download='ObeidFMS_Census_Backup_'+new Date().toISOString().slice(0,10)+'.json';
+      document.body.appendChild(a); a.click();
+      setTimeout(function(){ try{ document.body.removeChild(a); URL.revokeObjectURL(url); }catch(e){} }, 500);
+      // File-level copy secured → clear the unsaved flags so the banner stops nagging.
+      try{ localStorage.setItem('obeid3_census_unsynced','[]'); if(typeof censusSyncCheck==='function') censusSyncCheck(); }catch(e){}
+      if(typeof toast==='function') toast('✅ Census backup downloaded ('+census.length+' days). Your data is safe.','#10b981',6000);
+    }catch(e){ if(typeof toast==='function') toast('Backup failed: '+(e&&e.message||e),'#ef4444',7000); }
+  };
   window.censusRetryPush = function(){
     var url=(typeof CANONICAL_DB_URL!=='undefined'&&CANONICAL_DB_URL)?CANONICAL_DB_URL:null;
     if(!url){ if(typeof toast==='function') toast('No database URL configured','#f59e0b'); return; }
