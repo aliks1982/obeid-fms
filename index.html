@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1642';
+  var v = '20260816-1643';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1642">
+<meta name="app-version" content="20260816-1643">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6674,7 +6674,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1642';
+const APP_VERSION = '20260816-1643';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -10084,6 +10084,7 @@ function isValidAssetNo(a) {
   if (/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/.test(a)) return false;  // day name prefix
   if (/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/.test(a)) return false;
   if (/\d{4}.*GMT/.test(a)) return false;  // contains year + GMT
+  if (/^\d{4}-\d{2}-\d{2}/.test(a)) return false;  // ISO date like 2026-04-02 — corrupted asset (was 04-02)
   return true;
 }
 
@@ -10097,26 +10098,33 @@ function sanitizeEqAdded() {
   const decF = v => (typeof v === 'number') ? dd[v] : (v || '');
   const baseAssets = new Set(EQ_PAYLOAD.r.map(r => decF(r[0])));
 
-  added.forEach(rec => {
-    if (isValidAssetNo(rec.asset)) { clean.push(rec); return; }
-    // CORRUPTED: asset is a date string like "Fri Jul 17 2026 00:00:00 GMT+0300..."
-    // The corruption is deterministic: "07-17" was parsed as July 17.
-    // REVERSE IT: parse the date, reconstruct MM-DD.
-    // Extract month/day from the STRING directly (timezone-immune, no Date parsing)
-    const dm = String(rec.asset).match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})/);
-    if (dm) {
-      const MONTHS = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
-      const candidate = MONTHS[dm[1]] + '-' + String(dm[2]).padStart(2, '0');
-      if (baseAssets.has(candidate)) {
-        rec.asset = candidate;
-        if (rec._id && String(rec._id).startsWith('eq_ov_')) rec._id = 'eq_ov_' + candidate;
-        clean.push(rec);
-        fixed++;
-        console.warn('✓ Recovered asset from date string: → ' + candidate);
-        return;
+  const seen = new Set();          // dedupe by final asset number
+  const fixDates = rec => {          // repair PPM dates that round-tripped as JS date strings
+    ['lastPPM','nextPPM'].forEach(f => {
+      if (rec[f] && /GMT|(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s|(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s/.test(String(rec[f]))) {
+        try { rec[f] = (typeof mgFmtDate==='function') ? mgFmtDate(rec[f]) : String(rec[f]).slice(0,10); } catch(e){}
       }
+    });
+  };
+  const keep = rec => { if (seen.has(rec.asset)) { fixed++; return; } seen.add(rec.asset); fixDates(rec); clean.push(rec); };
+  const MONTHS = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+  added.forEach(rec => {
+    if (isValidAssetNo(rec.asset)) { keep(rec); return; }
+    let candidate = null;
+    // (a) JS date string: "Fri Jul 17 2026..." → 07-17
+    const dm = String(rec.asset).match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})/);
+    if (dm) candidate = MONTHS[dm[1]] + '-' + String(dm[2]).padStart(2,'0');
+    // (b) ISO date: "2026-04-02" → 04-02
+    if (!candidate) { const iso = String(rec.asset).match(/^\d{4}-(\d{2})-(\d{2})/); if (iso) candidate = iso[1] + '-' + iso[2]; }
+    if (candidate && baseAssets.has(candidate)) {
+      rec.asset = candidate;
+      if (rec._id && String(rec._id).startsWith('eq_ov_')) rec._id = 'eq_ov_' + candidate;
+      keep(rec);
+      fixed++;
+      console.warn('✓ Recovered corrupted asset → ' + candidate);
+      return;
     }
-    // Unrecoverable — drop the override (base record will display correctly)
+    // Unrecoverable — drop it; the base inventory record displays correctly on its own
     fixed++;
     console.warn('✗ Dropped unrecoverable eq_added record: ' + String(rec.asset).slice(0,40));
   });
@@ -11907,6 +11915,8 @@ function doLogin() {
     });
     if (cleaned) { localStorage.setItem('obeid_ppm_overrides', JSON.stringify(ov)); try{ EQ_ALL = null; }catch(_){} }
   } catch(e) {}
+  try{ if(typeof sanitizeEqAdded==='function') sanitizeEqAdded(); }catch(e){}
+  try{ setTimeout(function(){ if(typeof sanitizeEqAdded==='function'){ sanitizeEqAdded(); try{ EQ_ALL=null; }catch(_){} } }, 9000); }catch(e){}
   try{ setTimeout(function(){ dbCheckVersion(false); }, 6000); }catch(e){}
   try{ setTimeout(function(){ if(typeof evApplyTombstones==='function') evApplyTombstones(); }, 7000); }catch(e){}
   // Remind about census days not yet backed up to the cloud
