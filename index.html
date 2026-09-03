@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1646';
+  var v = '20260816-1647';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1646">
+<meta name="app-version" content="20260816-1647">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6675,7 +6675,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1646';
+const APP_VERSION = '20260816-1647';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -21019,10 +21019,10 @@ function tmpRender(){
   const el=document.getElementById('tmp-dash'); if(!el) return;
   const s=tmpStats();
   const cards='<div class="g g4" style="margin-bottom:14px;">'+
-    tmpKpiCard('🌡', (s.rate==null?'—':s.rate+'%'), 'Temperature Compliance Rate ('+s.pass+'/'+s.total+' readings in range)', s.rate==null?'var(--mu)':s.rate>=95?'#16a34a':s.rate>=85?'#d97706':'#dc2626')+
+    tmpKpiCard('🌡', (s.rate==null?'—':s.rate+'%'), 'Temperature Compliance Rate ('+s.pass+'/'+s.total+' checks in range)', s.rate==null?'var(--mu)':s.rate>=95?'#16a34a':s.rate>=85?'#d97706':'#dc2626')+
     tmpKpiCard('🗓', (s.completeness==null?'—':s.completeness+'%'), 'Twice-Daily Logging Completeness ('+s.fullDays+'/'+s.reqDays+' days AM+PM)', s.completeness==null?'var(--mu)':s.completeness>=90?'#16a34a':s.completeness>=75?'#d97706':'#dc2626')+
     tmpKpiCard('⚠️', s.fail, 'Temperature Excursions (out of range)', s.fail?'#dc2626':'#16a34a')+
-    tmpKpiCard('📋', s.M.length+s.W.length, 'Total Readings Logged')+
+    tmpKpiCard('📋', s.total, 'Temperature Checks · '+(s.M.length+s.W.length)+' log entries')+
     '</div>';
   const todayCard='<div class="card" style="margin-bottom:14px;"><div class="ch"><div class="ct">📅 Today ('+s.today+') — twice-daily status</div></div>'+
     '<div class="cb" style="display:flex;gap:24px;flex-wrap:wrap;">'+
@@ -21042,12 +21042,13 @@ function tmpRenderInfographic(){
   let bars='';
   Object.values(per).forEach(p=>{ const t=p.pass+p.fail; const rate=t?Math.round(p.pass/t*100):null;
     const col=rate==null?'#9ca3af':rate>=95?'#16a34a':rate>=85?'#d97706':'#dc2626';
-    bars+='<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;"><span>'+p.label+' <span style="color:var(--mu);">· '+p.loc+'</span></span><span style="font-weight:700;color:'+col+';">'+(rate==null?'no data':rate+'%')+'</span></div>'+
+    bars+='<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;"><span>'+p.label+' <span style="color:var(--mu);">· '+p.loc+'</span></span><span style="font-weight:700;color:'+col+';">'+(rate==null?'no data':rate+'% <span style="color:var(--mu);font-weight:400;font-size:10px;">('+p.pass+'/'+t+')</span>')+'</span></div>'+
       '<div style="height:8px;background:var(--s2);border-radius:5px;overflow:hidden;"><div style="height:100%;width:'+(rate||0)+'%;background:'+col+';"></div></div></div>';
   });
   let exc='';
   if(s.excursions.length){
     exc='<div class="card"><div class="ch"><div class="ct">⚠️ Excursion Log — every out-of-range reading</div></div>'+
+      '<div style="font-size:10px;color:var(--mu);padding:0 14px 8px;">'+s.excursions.length+' out-of-range reading(s), most recent first. Readings in range are not listed here — see the Reading Log tab for the full history.</div>'+
       '<div class="cb" style="padding:0;overflow-x:auto;"><table class="tbl"><thead><tr><th>Date</th><th>Shift</th><th>Location</th><th>Asset</th><th>Value °C</th><th>By</th></tr></thead><tbody>'+
       s.excursions.map(e=>'<tr><td>'+e.date+'</td><td>'+e.shift+'</td><td>'+e.loc+'</td><td>'+e.asset+'</td><td style="color:#dc2626;font-weight:700;">'+e.val+' ✕</td><td>'+(e.by||'—')+'</td></tr>').join('')+
       '</tbody></table></div></div>';
