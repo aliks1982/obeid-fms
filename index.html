@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1652';
+  var v = '20260816-1653';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1652">
+<meta name="app-version" content="20260816-1653">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6738,7 +6738,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1652';
+const APP_VERSION = '20260816-1653';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -20337,10 +20337,70 @@ function fm200ExportSummary(){
 
 /* ---- Init + QR deep-link ---- */
 function fm200Init(){ try{ fm200PanelDash(); fm200RenderLog(); }catch(e){} }
+/* ── Standalone (login-free) FM-200 inspection form opened by scanning a panel QR ── */
+function fm200StandaloneForm(){
+  try{
+    var pid = new URLSearchParams(location.search).get('fm200');
+    if(!pid) return false;
+    var panel = fm200Panel(pid);
+    if(!panel){ return false; }
+    var ls=document.getElementById('loginScreen'); if(ls) ls.style.display='none';
+    var app=document.getElementById('app'); if(app) app.style.display='none';
+    var old=document.getElementById('fm200-standalone'); if(old) old.remove();
+    var ov=document.createElement('div'); ov.id='fm200-standalone';
+    ov.style.cssText='position:fixed;inset:0;background:#0e1522;overflow:auto;z-index:99999;padding:14px;color:#e6eef7;font-family:system-ui,-apple-system,sans-serif;';
+    var itemsHtml=FM200_ITEMS.map(function(t,i){
+      return '<div style="display:grid;grid-template-columns:22px 1fr;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06);">'
+        +'<div style="font-size:12px;color:#8aa;">'+(i+1)+'</div>'
+        +'<div><div style="font-size:13px;margin-bottom:5px;">'+t+'</div>'
+        +'<div style="display:flex;gap:8px;">'
+        +'<select id="sa-it-'+i+'" style="flex:0 0 110px;padding:8px;border:1px solid #2a3547;border-radius:8px;background:#182234;color:#e6eef7;font-size:13px;"><option value="">— status —</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option></select>'
+        +'<input id="sa-rm-'+i+'" placeholder="Remarks (if any)" style="flex:1;padding:8px;border:1px solid #2a3547;border-radius:8px;background:#182234;color:#e6eef7;font-size:13px;">'
+        +'</div></div></div>';
+    }).join('');
+    ov.innerHTML=''
+      +'<div style="max-width:640px;margin:0 auto;">'
+      +'<div style="text-align:center;padding:10px 0 6px;"><div style="font-size:22px;">🧯</div><div style="font-family:Rajdhani,sans-serif;font-size:20px;font-weight:800;color:#4fa3e3;">FM-200 Panel Inspection</div><div style="font-size:12px;color:#8aa;">Obeid Specialized Hospital · FMS 22.2</div></div>'
+      +'<div style="background:#152033;border:1px solid #2a3547;border-radius:12px;padding:14px;margin-bottom:12px;">'
+      +'  <div style="font-size:16px;font-weight:700;">'+panel.loc+'</div>'
+      +'  <div style="font-size:13px;color:#8aa;">'+panel.floor+'</div>'
+      +'  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">'
+      +'    <div><label style="font-size:11px;color:#8aa;">Date</label><input type="date" id="sa-date" style="width:100%;padding:9px;border:1px solid #2a3547;border-radius:8px;background:#182234;color:#e6eef7;"></div>'
+      +'    <div><label style="font-size:11px;color:#8aa;">Inspected By</label><input type="text" id="sa-by" placeholder="Your name" style="width:100%;padding:9px;border:1px solid #2a3547;border-radius:8px;background:#182234;color:#e6eef7;"></div>'
+      +'  </div></div>'
+      +'<div style="background:#152033;border:1px solid #2a3547;border-radius:12px;padding:14px;margin-bottom:12px;">'
+      +'  <div style="font-size:13px;font-weight:700;color:#f0a848;margin-bottom:6px;">Inspection Checklist — Pass / Fail</div>'
+      + itemsHtml
+      +'  <div style="margin-top:12px;"><label style="font-size:11px;color:#8aa;">Overall Result</label><select id="sa-result" style="width:100%;padding:9px;border:1px solid #2a3547;border-radius:8px;background:#182234;color:#e6eef7;"><option value="pass">✅ All Pass</option><option value="partial">⚠️ Partial — CA Issued</option><option value="fail">❌ Major Failure</option></select></div>'
+      +'  <div style="margin-top:10px;"><label style="font-size:11px;color:#8aa;">General Remarks / Corrective Actions</label><textarea id="sa-remarks" rows="2" style="width:100%;padding:9px;border:1px solid #2a3547;border-radius:8px;background:#182234;color:#e6eef7;"></textarea></div>'
+      +'</div>'
+      +'<button id="sa-submit" style="width:100%;padding:14px;border:none;border-radius:10px;background:#16a34a;color:#fff;font-size:16px;font-weight:700;cursor:pointer;">💾 Submit Inspection</button>'
+      +'<div id="sa-msg" style="text-align:center;margin-top:10px;font-size:13px;"></div>'
+      +'<div style="text-align:center;margin-top:16px;"><a href="'+location.pathname+'" style="color:#8aa;font-size:12px;">← Open full platform (staff login)</a></div>'
+      +'</div>';
+    document.body.appendChild(ov);
+    document.getElementById('sa-date').value=(typeof fmsLocalToday==='function'?fmsLocalToday():new Date().toISOString().slice(0,10));
+    document.getElementById('sa-submit').onclick=function(){
+      var items=FM200_ITEMS.map(function(t,i){ return {n:i+1,item:t,status:(document.getElementById('sa-it-'+i)||{}).value||'',remarks:(document.getElementById('sa-rm-'+i)||{}).value||''}; });
+      var by=(document.getElementById('sa-by').value||'').trim();
+      if(!by){ document.getElementById('sa-msg').innerHTML='<span style="color:#f0a848;">Please enter your name first.</span>'; return; }
+      var rec={ _id:'fm200i_'+pid+'_'+Date.now(), panelId:pid, floor:panel.floor, loc:panel.loc,
+        date:document.getElementById('sa-date').value, by:by, items:items,
+        result:document.getElementById('sa-result').value, remarks:document.getElementById('sa-remarks').value||'',
+        _ts:new Date().toISOString(), _by:by };
+      try{ var arr=fm200Insp(); arr.unshift(rec); fm200SaveInsp(arr); }catch(e){}
+      try{ dbWrite('fm200_insp', rec); }catch(e){}
+      document.getElementById('fm200-standalone').innerHTML='<div style="max-width:520px;margin:60px auto;text-align:center;padding:24px;"><div style="font-size:56px;">✅</div><div style="font-size:22px;font-weight:800;color:#16a34a;margin:12px 0;">Inspection Submitted</div><div style="color:#c6d2e0;">'+panel.loc+' · '+panel.floor+'</div><div style="color:#8aa;font-size:13px;margin-top:8px;">Recorded on '+rec.date+' by '+by+'</div><button onclick="location.reload()" style="margin-top:20px;padding:12px 24px;border:none;border-radius:10px;background:#2a3547;color:#fff;font-size:14px;cursor:pointer;">➕ Another Inspection</button><div style="margin-top:14px;"><a href="'+location.pathname+'" style="color:#8aa;font-size:12px;">Open full platform →</a></div></div>';
+    };
+    return true;
+  }catch(e){ return false; }
+}
+
 function fm200CheckDeepLink(){
   try{ const p=new URLSearchParams(location.search).get('fm200'); if(p && fm200Panel(p)){ setTimeout(function(){ try{ if(typeof gp==='function') gp('reports'); }catch(e){} setTimeout(function(){ fm200OpenForm(p); }, 400); }, 600); } }catch(e){}
 }
 
+try{ if(document.readyState!=='loading'){ if(new URLSearchParams(location.search).get('fm200')) setTimeout(function(){ try{ fm200StandaloneForm(); }catch(e){} }, 60); } else { document.addEventListener('DOMContentLoaded', function(){ if(new URLSearchParams(location.search).get('fm200')) setTimeout(function(){ try{ fm200StandaloneForm(); }catch(e){} }, 60); }); } }catch(e){}
 function fmsLocalToday(){
   // Local calendar date (not UTC) — shared 'today' basis for all log filters so
   // readings entered late at night or stored as UTC timestamps are not hidden.
