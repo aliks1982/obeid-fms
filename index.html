@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1650';
+  var v = '20260816-1651';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1650">
+<meta name="app-version" content="20260816-1651">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6685,7 +6685,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1650';
+const APP_VERSION = '20260816-1651';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -22100,15 +22100,17 @@ if(typeof gp==='function'){ const _g=gp; gp=function(p){ const r=_g.apply(this,a
         +'<td style="padding:5px 8px;border:1px solid #e2e8f0;font-size:10px;">'+(it.obs||'')+'</td>'
         +'<td style="padding:5px 8px;border:1px solid #e2e8f0;font-size:10px;">'+(it.action||'')+'</td>'
         +'<td style="padding:5px 8px;border:1px solid #e2e8f0;font-size:10px;font-weight:600;">'+(it.actionTaken||'—')+'</td>'
-        +'<td style="padding:5px 8px;border:1px solid #e2e8f0;font-size:10px;">'+(it.fuDate||'—')+'</td>'
+        +'<td style="padding:5px 8px;border:1px solid #e2e8f0;font-size:10px;white-space:nowrap;min-width:92px;">'+(it.fuDate||'—')+'</td>'
         +'<td style="padding:5px 8px;border:1px solid #e2e8f0;font-size:10px;font-weight:700;">'+((it.state==='closed')?'✅ Closed':'⏳ Open')+'</td></tr>'; }); });
+    var _issuedBy=''; try{ _issuedBy = (typeof getDynNames==='function' && CU && CU.role && getDynNames()[CU.role]) || (CU&&CU.name) || 'FMS Director'; }catch(e){ _issuedBy='FMS Director'; }
     var html='<html><head><meta charset="utf-8"><title>ESR Follow-Up — '+(rec.round||'')+'</title></head><body style="font-family:Arial,sans-serif;padding:24px;color:#1e293b;">'
       +'<h1 style="color:#1e3a5c;">Obeid Specialized Hospital — FMS</h1>'
       +'<h2 style="color:#1e3a5c;">Environmental Safety Round — Follow-Up Report</h2>'
       +'<p><b>Round:</b> '+(rec.round||'')+' &nbsp; <b>Areas:</b> '+(rec.areas||'')+' &nbsp; <b>Round date:</b> '+(rec.date||'')+'</p>'
-      +'<p><b>Findings:</b> '+tot+' &nbsp; <b>Closed:</b> '+closed+' &nbsp; <b>Open:</b> '+(tot-closed)+' &nbsp; <b>Follow-up updated:</b> '+((rec._fuUpdated||'').slice(0,10)||'—')+' by '+(rec._fuBy||'—')+'</p>'
-      +'<table style="width:100%;border-collapse:collapse;margin-top:12px;"><tr style="background:#1e3a5c;color:#fff;"><th style="padding:6px 8px;">Category</th><th>Finding</th><th>Observation</th><th>Recommended Action</th><th>Action Taken</th><th>F/U Date</th><th>Status</th></tr>'+rows+'</table>'
-      +'<p style="margin-top:24px;font-size:11px;color:#64748b;">Generated '+new Date().toLocaleString()+' · FMS Command Platform</p></body></html>';
+      +'<p><b>Findings:</b> '+tot+' &nbsp; <b>Closed:</b> '+closed+' &nbsp; <b>Open:</b> '+(tot-closed)+'</p>'
+      +'<table style="width:100%;border-collapse:collapse;margin-top:12px;"><tr style="background:#1e3a5c;color:#fff;"><th style="padding:6px 8px;">Category</th><th>Finding</th><th>Observation</th><th>Recommended Action</th><th>Action Taken</th><th style="white-space:nowrap;min-width:92px;">F/U Date</th><th>Status</th></tr>'+rows+'</table>'
+      +'<p style="margin-top:24px;font-size:12px;"><b>Issued by:</b> '+_issuedBy+'</p>'
+      +'<p style="font-size:11px;color:#64748b;">Generated '+new Date().toLocaleString()+' · FMS Command Platform</p></body></html>';
     var w=window.open('','_blank'); if(w){ w.document.write(html); w.document.close(); } else { var blob=new Blob([html],{type:'text/html'}); var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='ESR_FollowUp_'+(rec.round||'round')+'.html'; a.click(); }
     toast('⬇ Follow-up report generated','#10b981');
   };
