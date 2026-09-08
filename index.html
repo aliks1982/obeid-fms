@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1655';
+  var v = '20260816-1657';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1655">
+<meta name="app-version" content="20260816-1657">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -5981,6 +5981,11 @@ if ('caches' in window) {
     </div></div>
 
     <!-- Tab Access Permissions (Director only) -->
+    <div class="card director-settings-only"><div class="ch"><div class="ct">📊 KPI Control — include / exclude indicators</div>
+      <button class="btn bg" style="font-size:10px;" onclick="kpiControlSave()">✓ Save KPI Selection</button></div><div class="cb">
+      <div style="font-size:11px;color:var(--mu);margin-bottom:10px;">Untick an indicator to <b>exclude</b> it from its department KPIs, the KPI Dashboard, and the exported reports (useful when you have no data yet, so it stops dragging the score down). Changes apply after Save.</div>
+      <div id="kpi-control-body" style="max-height:420px;overflow:auto;"></div>
+    </div></div>
     <div class="card director-settings-only"><div class="ch"><div class="ct">🔐 Tab Access Permissions</div><button class="btn bp" style="font-size:10px;" onclick="permReset()">↺ Reset to Defaults</button></div><div class="cb">
       <div style="background:rgba(59,130,246,.06);border:1px solid var(--bd);border-radius:9px;padding:9px 13px;margin-bottom:12px;font-size:10px;color:var(--mu);">
         Select an account, tick the tabs it may access, and Save. Changes take effect at that user's next login (or Sync). The Director always sees everything.
@@ -6739,7 +6744,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1655';
+const APP_VERSION = '20260816-1657';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -8395,7 +8400,26 @@ function renderKPI(tab){
     return roleDomains.includes(key);
   }) : allGroups;
   const pdl={ytd:'Year-to-Date',q1:'Q1 Jan–Mar',q2:'Q2 Apr–Jun',q3:'Q3 Jul–Sep',q4:'Q4 Oct–Dec'}[kpiPd]||kpiPd;
-  el.innerHTML=`<div style="font-size:10px;color:var(--or);margin-bottom:12px;">📅 Period: ${pdl}</div>`+groups.map(g=>`<div style="margin-bottom:20px;"><div class="st">${g.lbl}</div>${g.kpis.map(k=>{
+  // ── Live overall compliance — from INCLUDED indicators only ──
+  let _oMet=0,_oPar=0,_oGap=0,_oSum=0,_oN=0;
+  groups.forEach(function(g){ const gk=Object.keys(KGS).find(function(kk){return KGS[kk]===g;});
+    kpiActive(gk,g.kpis).forEach(function(k){ let a=0; try{ a=k.c(fpd(ld(k.k),kpiPd)); }catch(e){}
+      const p=k.lb?(a===0?100:Math.max(0,100-a*20)):Math.min(100,k.tgt>0?Math.round((a/k.tgt)*100):0);
+      _oSum+=p; _oN++; if(p>=90)_oMet++; else if(p>=50)_oPar++; else _oGap++; });
+  });
+  const _overall=_oN?Math.round(_oSum/_oN):0;
+  const _oc=_overall>=90?'var(--gn)':_overall>=50?'var(--or)':'var(--rd)';
+  const _summary='<div style="display:flex;gap:16px;align-items:center;background:var(--s1);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:16px;flex-wrap:wrap;">'
+    +'<div style="text-align:center;min-width:120px;"><div style="font-size:40px;font-weight:800;color:'+_oc+';line-height:1;">'+_overall+'%</div><div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-top:4px;">Overall Compliance</div></div>'
+    +'<div style="flex:1;min-width:200px;">'
+    +'  <div style="height:14px;background:var(--s2);border-radius:8px;overflow:hidden;margin-bottom:8px;"><div style="height:100%;width:'+_overall+'%;background:linear-gradient(90deg,'+_oc+','+_oc+');border-radius:8px;transition:width .4s;"></div></div>'
+    +'  <div style="display:flex;gap:10px;font-size:11px;flex-wrap:wrap;">'
+    +'    <span style="color:var(--gn);font-weight:700;">✅ '+_oMet+' Met</span>'
+    +'    <span style="color:var(--or);font-weight:700;">⚠️ '+_oPar+' Partial</span>'
+    +'    <span style="color:var(--rd);font-weight:700;">❌ '+_oGap+' Gap</span>'
+    +'    <span style="color:var(--mu);">· '+_oN+' active indicator(s)</span>'
+    +'  </div></div></div>';
+  el.innerHTML=_summary+`<div style="font-size:10px;color:var(--or);margin-bottom:12px;">📅 Period: ${pdl}</div>`+groups.map(g=>`<div style="margin-bottom:20px;"><div class="st">${g.lbl}</div>${kpiActive(Object.keys(KGS).find(function(kk){return KGS[kk]===g;}),g.kpis).map(k=>{
     const actual=k.c(fpd(ld(k.k),kpiPd));
     const pct=k.lb?(actual===0?100:Math.max(0,100-actual*20)):Math.min(100,k.tgt>0?Math.round((actual/k.tgt)*100):0);
     const fl=pct>=90?'linear-gradient(90deg,#10b981,var(--gn))':pct>=50?'linear-gradient(90deg,var(--or),#f97316)':'linear-gradient(90deg,var(--rd),#dc2626)';
@@ -8442,7 +8466,7 @@ function kpiMeta(name, k){
 function kpiExportReport(domain){
   const key=(typeof DKM!=='undefined')?DKM[domain]:null; const g=key&&KGS[key];
   if(!g){ toast('No KPIs to export for this section','#f59e0b'); return; }
-  const rows=g.kpis.map(k=>{ let actual=0; try{ actual=k.c((typeof fireKpiData==='function'?fireKpiData(k.k):null)||ld(k.k)); }catch(e){}
+  const rows=kpiActive(key,g.kpis).map(k=>{ let actual=0; try{ actual=k.c((typeof fireKpiData==='function'?fireKpiData(k.k):null)||ld(k.k)); }catch(e){}
     const pct=k.lb?(actual===0?100:Math.max(0,100-actual*20)):Math.min(100,k.tgt>0?Math.round((actual/k.tgt)*100):0);
     return {k, actual, pct, meta:kpiMeta(k.n,k)}; });
   // infographic — horizontal compliance bars (SVG)
@@ -8481,13 +8505,33 @@ function kpiExportReport(domain){
   toast('⬇ KPI report generated','#10b981');
 }
 
+function kpiDisabledSet(){ try{ var a=JSON.parse(localStorage.getItem('obeid_kpi_disabled')||'[]'); return new Set(Array.isArray(a)?a:[]); }catch(e){ return new Set(); } }
+function kpiControlRender(){
+  var el=document.getElementById('kpi-control-body'); if(!el||typeof KGS==='undefined') return;
+  var dis=kpiDisabledSet();
+  el.innerHTML=Object.keys(KGS).map(function(gk){ var g=KGS[gk];
+    return '<div style="margin-bottom:14px;"><div style="font-size:12px;font-weight:700;color:var(--or);margin-bottom:6px;">'+g.lbl+'</div>'
+      +(g.kpis||[]).map(function(k){ var id=gk+'::'+k.n; var on=!dis.has(id);
+        return '<label style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;cursor:pointer;"><input type="checkbox" class="kpi-ctrl" data-key="'+id.replace(/"/g,'&quot;')+'"'+(on?' checked':'')+'> <span>'+k.n+'</span></label>';
+      }).join('')+'</div>';
+  }).join('');
+}
+function kpiControlSave(){
+  var off=[];
+  document.querySelectorAll('#kpi-control-body .kpi-ctrl').forEach(function(c){ if(!c.checked) off.push(c.dataset.key); });
+  localStorage.setItem('obeid_kpi_disabled', JSON.stringify(off));
+  try{ if(typeof dbWrite==='function') dbWrite('app_settings', {_id:'kpi_disabled_cfg', key:'kpi_disabled', value:JSON.stringify(off)}); }catch(e){}
+  toast('✓ KPI selection saved — '+off.length+' indicator(s) excluded','#10b981',4000);
+}
+function kpiActive(gk, kpis){ var dis=kpiDisabledSet(); return (kpis||[]).filter(function(k){ return !dis.has(gk+'::'+k.n); }); }
 function renderDomainKPI(domain){
   const key=DKM[domain];const g=key&&KGS[key];const el=document.getElementById(domain+'-kpi-out')||document.getElementById((domain==='equip'?'eq':domain)+'-kpi-out');if(!el)return;
   el.style.display='block'; // st() hides all [id^=domain-] incl. this inner div — restore it
   if(domain==='fire'){ setTimeout(fireKpiInfographic, 60); }
   if(!g){el.innerHTML='<div class="em">KPIs auto-calculated from records entered above</div>';return;}
   const _expBtn='<div style="text-align:right;margin-bottom:8px;"><button class="btn bo" style="font-size:10px;" onclick="kpiExportReport(\''+domain+'\')">⬇ Export KPI Report (surveyor-ready)</button></div>';
-  el.innerHTML=_expBtn+`<div class="st">${g.lbl}</div>`+g.kpis.map(k=>{
+  const _act=kpiActive(key,g.kpis); if(!_act.length){ el.innerHTML=_expBtn+`<div class="st">${g.lbl}</div><div class="em">All indicators for this section are currently excluded (Settings → KPI Control).</div>`; return; }
+  el.innerHTML=_expBtn+`<div class="st">${g.lbl}</div>`+_act.map(k=>{
     const actual=k.c(fireKpiData(k.k) || ld(k.k));
     const pct=k.lb?(actual===0?100:Math.max(0,100-actual*20)):Math.min(100,k.tgt>0?Math.round((actual/k.tgt)*100):0);
     const fl=pct>=90?'linear-gradient(90deg,#10b981,var(--gn))':pct>=50?'linear-gradient(90deg,var(--or),#f97316)':'linear-gradient(90deg,var(--rd),#dc2626)';
@@ -11389,6 +11433,7 @@ function permBuildRoles(){
 }
 function settingsRenderUsers() {
   try{ permBuildRoles(); }catch(e){}
+  try{ kpiControlRender(); }catch(e){}
   const tb    = document.getElementById('users-tb'); if (!tb) return;
   const pins  = getDynPINs();
   const names = getDynNames();
