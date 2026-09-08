@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1653';
+  var v = '20260816-1654';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1653">
+<meta name="app-version" content="20260816-1654">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -4642,6 +4642,7 @@ if ('caches' in window) {
 
   <!-- ═══ 13. KPIs ═══ -->
   <div id="mg-kpi" style="display:none;">
+    <div style="text-align:right;margin-bottom:8px;"><button class="btn bo" style="font-size:10px;" onclick="kpiExportReport('medgas')">⬇ Export KPI Report (surveyor-ready)</button></div>
     <div id="mg-kpi-content"></div>
   </div>
 </div>
@@ -6738,7 +6739,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1653';
+const APP_VERSION = '20260816-1654';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -8326,7 +8327,7 @@ const KGS={
     {n:'PM Completion Rate — High-Risk (live)',k:'eq_added',tgt:95,c:d=>{const s2=(typeof pmsPmAutoStats==='function')?pmsPmAutoStats():null;return s2?s2.rate:0;},unit:'%'},
     {n:'High-Risk Devices (configured depts)',k:'eq_added',tgt:1,c:d=>{const s2=(typeof pmsPmAutoStats==='function')?pmsPmAutoStats():null;return s2?s2.den:0;}},
     {n:'High-Risk Devices with ✅ VALID PPM',k:'eq_added',tgt:1,c:d=>{const s2=(typeof pmsPmAutoStats==='function')?pmsPmAutoStats():null;return s2?s2.num:0;}}]},
-  '118':{lbl:'⚡ FMS.1.1.8 — Utilities (Mostapha)',kpis:[{n:'Generator Tests (12/yr)',k:'genTest',tgt:12,c:d=>d.length},{n:'Generator Pass Rate',k:'genTest',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.res==='pass').length/t)*100):0;},unit:'%'},{n:'Water Safety Tests (4/yr)',k:'waterTest',tgt:4,c:d=>d.length},{n:'Hot Water Compliance ≥55°C',k:'waterTest',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>Number(r.hot)>=55).length/t)*100):0;},unit:'%'},{n:'PMG Daily Checklist Coverage',k:'pmgCheck',tgt:100,c:d=>{const days=Math.max(1,Math.ceil((Date.now()-new Date(new Date().getFullYear(),0,1))/864e5));return Math.min(100,Math.round(d.length/days*100));},unit:'%'},{n:'Water Tank Logging (every '+(platCfg().waterFreqDays||2)+'d)',k:'waterTank',tgt:100,c:d=>{const f=Number(platCfg().waterFreqDays)||2;const days=Math.max(1,Math.ceil((Date.now()-new Date(new Date().getFullYear(),0,1))/864e5));const exp=Math.max(1,Math.floor(days/f));return Math.min(100,Math.round(d.length/exp*100));},unit:'%'},{n:'Diesel Tank Logging (every '+(platCfg().dieselFreqDays||7)+'d)',k:'dieselTank',tgt:100,c:d=>{const f=Number(platCfg().dieselFreqDays)||7;const days=Math.max(1,Math.ceil((Date.now()-new Date(new Date().getFullYear(),0,1))/864e5));const exp=Math.max(1,Math.floor(days/f));return Math.min(100,Math.round(d.length/exp*100));},unit:'%'},{n:'Air Purity Tests (2/yr)',k:'airPurity',tgt:2,c:d=>d.length},{n:'Air Purity Pass Rate',k:'airPurity',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.res==='pass').length/t)*100):0;},unit:'%'},{n:'TLD Quarterly Reviews (4/yr)',k:'tldReview',tgt:4,c:d=>d.length}]},
+  '132':{lbl:'🫧 FMS.32 — Medical Gas (Bashar)',kpis:[{n:'PMG Daily Checklist Coverage',k:'pmgCheck',tgt:100,c:d=>{const days=Math.max(1,Math.ceil((Date.now()-new Date(new Date().getFullYear(),0,1))/864e5));return Math.min(100,Math.round(d.length/days*100));},unit:'%'},{n:'Air Purity Tests (2/yr)',k:'airPurity',tgt:2,c:d=>d.length},{n:'Air Purity Pass Rate',k:'airPurity',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.res==='pass').length/t)*100):0;},unit:'%'}]},'119':{lbl:'☢ FMS.9 — Radiation Safety (Bashar)',kpis:[{n:'TLD Quarterly Reviews (4/yr)',k:'tldReview',tgt:4,c:d=>d.length},{n:'Lead Apron Integrity Checks',k:'leadApron',tgt:1,c:d=>d.length},{n:'Shielding Certifications',k:'shieldCert',tgt:1,c:d=>d.length}]},'118':{lbl:'⚡ FMS.1.1.8 — Utilities (Mostapha)',kpis:[{n:'Generator Tests (12/yr)',k:'genTest',tgt:12,c:d=>d.length},{n:'Generator Pass Rate',k:'genTest',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.res==='pass').length/t)*100):0;},unit:'%'},{n:'Water Safety Tests (4/yr)',k:'waterTest',tgt:4,c:d=>d.length},{n:'Hot Water Compliance ≥55°C',k:'waterTest',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>Number(r.hot)>=55).length/t)*100):0;},unit:'%'},{n:'Water Tank Logging (every '+(platCfg().waterFreqDays||2)+'d)',k:'waterTank',tgt:100,c:d=>{const f=Number(platCfg().waterFreqDays)||2;const days=Math.max(1,Math.ceil((Date.now()-new Date(new Date().getFullYear(),0,1))/864e5));const exp=Math.max(1,Math.floor(days/f));return Math.min(100,Math.round(d.length/exp*100));},unit:'%'},{n:'Diesel Tank Logging (every '+(platCfg().dieselFreqDays||7)+'d)',k:'dieselTank',tgt:100,c:d=>{const f=Number(platCfg().dieselFreqDays)||7;const days=Math.max(1,Math.ceil((Date.now()-new Date(new Date().getFullYear(),0,1))/864e5));const exp=Math.max(1,Math.floor(days/f));return Math.min(100,Math.round(d.length/exp*100));},unit:'%'}]},
 };
 let kpiPd='ytd';
 function setKpiPd(p,btn){kpiPd=p;renderKPI();if(btn){btn.closest('.pb').querySelectorAll('.pbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}}
@@ -8403,13 +8404,85 @@ function renderKPI(tab){
     return`<div class="kc"><div class="kch"><div class="kcn">${k.n}</div><div class="kcv"><div class="kca" style="color:${vc};">${actual}${k.unit==='%'?'%':''}</div><div class="kct">/${k.tgt} ${k.unit||'recs'}</div>${bd}</div></div><div class="kbar"><div class="kfill" style="width:${pct}%;background:${fl};"></div></div></div>`;
   }).join('')}</div>`).join('');
 }
-const DKM={safety:'111',security:'112',hazmat:'113',emergency:'1145',fire:'116',equip:'117',utils:'118',medgas:'118',radiation:'118'};
+const DKM={safety:'111',security:'112',hazmat:'113',emergency:'1145',fire:'116',equip:'117',utils:'118',medgas:'132',radiation:'119'};
+/* ═══════════════ KPI EXPORT — surveyor-ready report with metadata + infographics ═══════════════ */
+const KPI_META = {
+  'ESR Rounds (4/yr)':{rat:'Environmental Safety Rounds proactively identify hazards across all hospital areas each quarter, driving corrective action before incidents occur (CBAHI FMS.1.1.1).',num:'ESR rounds completed',den:'4 required rounds/year',tool:'ESR Round Log (FMS Command Platform)',freq:'Quarterly · reviewed quarterly'},
+  'Training Sessions (4/yr)':{rat:'Regular safety training maintains staff competency in fire, hazmat and emergency response (CBAHI FMS.1.1.1).',num:'Training sessions delivered',den:'4 required sessions/year',tool:'Training Log',freq:'Quarterly · reviewed quarterly'},
+  'Total Staff Trained':{rat:'Demonstrates breadth of safety-training coverage across the workforce.',num:'Staff attendees across sessions',den:'Target headcount',tool:'Training attendance records',freq:'Continuous · reviewed monthly'},
+  'Incidents Logged':{rat:'Tracks safety incidents to trend risk and verify reporting culture (lower is better).',num:'Safety incidents recorded',den:'Target = 0',tool:'Incident Report Log',freq:'Continuous · reviewed monthly'},
+  'Security Incidents':{rat:'Monitors security events (theft, aggression, breach) to protect patients, staff and assets (CBAHI FMS.1.1.2).',num:'Security incidents recorded',den:'Target = 0',tool:'Security Command Center Log',freq:'Continuous · reviewed monthly'},
+  'Security Drills (2/yr)':{rat:'Drills validate readiness for security codes and infant-abduction response.',num:'Security drills conducted',den:'2 required drills/year',tool:'Security Drill Log',freq:'Bi-annual · reviewed per drill'},
+  'Infant Abduction Drills (1/yr)':{rat:'Verifies Code Pink response capability in maternal/neonatal areas.',num:'Infant abduction drills conducted',den:'1 required/year',tool:'Security Drill Log',freq:'Annual'},
+  'Unit Level Fire Drill Compliance (live)':{rat:'Confirms each clinical unit rehearses fire response (RACE/PASS) to the required frequency (CBAHI FMS.1.1.6 / FMS.21).',num:'Unit fire drills completed on schedule',den:'Unit fire drills required',tool:'Unit Fire Drill Log',freq:'Monthly · reviewed monthly'},
+  'Unit Fire Drills Logged (59 req/yr)':{rat:'Total unit-level fire drills executed against the annual requirement across all units/shifts.',num:'Unit fire drills logged',den:'59 required/year',tool:'Unit Fire Drill Log',freq:'Monthly'},
+  'FA Monthly Inspections (12/yr)':{rat:'Monthly in-house fire-alarm inspection ensures detection integrity (FMS.21.1).',num:'Monthly FA inspections completed',den:'12 required/year',tool:'Fire Alarm Inspection Report (CBAHI page)',freq:'Monthly'},
+  'FA Quarterly PPM — Civil Defense (4/yr)':{rat:'Quarterly certified PPM by Civil Defense-approved contractor (FMS.21.2).',num:'Quarterly certified PPMs completed',den:'4 required/year',tool:'Contractor PPM certificates',freq:'Quarterly'},
+  'Suppression System PPM (8/yr)':{rat:'Preventive maintenance of sprinkler/clean-agent suppression systems (FMS.22).',num:'Suppression PPM visits completed',den:'8 required/year',tool:'Suppression PPM Log',freq:'Bi-monthly'},
+  'Fire Exit Inspections (4/yr)':{rat:'Ensures egress routes and exit doors remain unobstructed and functional (FMS.23).',num:'Fire exit inspections completed',den:'4 required/year',tool:'Fire Exit Inspection Log',freq:'Quarterly'},
+  'Generator Tests (12/yr)':{rat:'Monthly on-load generator testing assures emergency power availability (CBAHI FMS.1.1.8 / FMS.31).',num:'Generator tests performed',den:'12 required/year',tool:'Generator Testing Log',freq:'Monthly'},
+  'Generator Pass Rate':{rat:'Proportion of generator tests meeting start/transfer criteria — reliability of emergency power.',num:'Passed generator tests',den:'Total generator tests',tool:'Generator Testing Log',freq:'Monthly'},
+  'Water Safety Tests (4/yr)':{rat:'Legionella / potable water safety testing protects patients from water-borne pathogens (FMS.1.1.8).',num:'Water safety tests performed',den:'4 required/year',tool:'Water Testing Records',freq:'Quarterly'},
+  'Hot Water Compliance ≥55°C':{rat:'Hot-water ≥55°C suppresses Legionella growth in the distribution system.',num:'Tests with hot water ≥55°C',den:'Total water tests',tool:'Water Testing Records',freq:'Quarterly'},
+  'Air Purity Tests (2/yr)':{rat:'Medical air purity testing ensures breathable-quality gas to patients (CBAHI FMS.32).',num:'Air purity tests performed',den:'2 required/year',tool:'Medical Gas Air Purity Reports',freq:'Bi-annual'},
+  'Air Purity Pass Rate':{rat:'Proportion of medical-air tests meeting purity specification.',num:'Passed air purity tests',den:'Total air purity tests',tool:'Air Purity Reports',freq:'Bi-annual'},
+  'PMG Daily Checklist Coverage':{rat:'Daily medical-gas plant checklist coverage assures continuous monitoring of source equipment (FMS.32.1).',num:'Days with completed PMG checklist',den:'Days elapsed this year',tool:'PMG Daily Checklist',freq:'Daily · reviewed monthly'},
+  'TLD Quarterly Reviews (4/yr)':{rat:'Quarterly review of staff dosimetry (TLD) badges ensures occupational radiation safety (CBAHI FMS.9).',num:'TLD reviews completed',den:'4 required/year',tool:'TLD / Dosimetry Review Log',freq:'Quarterly'}
+};
+function kpiMeta(name, k){
+  const m=KPI_META[name]; if(m) return m;
+  const perYear=(name.match(/(\d+)\s*\/yr/)||[])[1];
+  return { rat:'Monitors compliance for “'+name+'” against the CBAHI FMS requirement.', num:'Achieved / completed count', den: perYear?(perYear+' required/year'):(k&&k.tgt?('Target: '+k.tgt+(k.unit==='%'?'%':'')):'Target'), tool:'FMS Command Platform records', freq:'Reviewed monthly' };
+}
+function kpiExportReport(domain){
+  const key=(typeof DKM!=='undefined')?DKM[domain]:null; const g=key&&KGS[key];
+  if(!g){ toast('No KPIs to export for this section','#f59e0b'); return; }
+  const rows=g.kpis.map(k=>{ let actual=0; try{ actual=k.c((typeof fireKpiData==='function'?fireKpiData(k.k):null)||ld(k.k)); }catch(e){}
+    const pct=k.lb?(actual===0?100:Math.max(0,100-actual*20)):Math.min(100,k.tgt>0?Math.round((actual/k.tgt)*100):0);
+    return {k, actual, pct, meta:kpiMeta(k.n,k)}; });
+  // infographic — horizontal compliance bars (SVG)
+  const bw=560, rh=34, top=8; const svgH=top+rows.length*rh+8;
+  const bars=rows.map((r,i)=>{ const y=top+i*rh; const w=Math.max(2,Math.round((bw-180)*r.pct/100));
+    const col=r.pct>=90?'#16a34a':r.pct>=50?'#d97706':'#dc2626';
+    return '<text x="0" y="'+(y+15)+'" font-size="11" fill="#334155">'+(r.k.n.length>34?r.k.n.slice(0,33)+'…':r.k.n)+'</text>'
+      +'<rect x="180" y="'+(y+4)+'" width="'+(bw-180)+'" height="18" rx="4" fill="#e2e8f0"/>'
+      +'<rect x="180" y="'+(y+4)+'" width="'+w+'" height="18" rx="4" fill="'+col+'"/>'
+      +'<text x="'+(bw-4)+'" y="'+(y+17)+'" font-size="11" font-weight="bold" fill="'+col+'" text-anchor="end">'+r.pct+'%</text>'; }).join('');
+  const svg='<svg width="'+bw+'" height="'+svgH+'" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;">'+bars+'</svg>';
+  const met=rows.filter(r=>r.pct>=90).length, part=rows.filter(r=>r.pct>=50&&r.pct<90).length, gap=rows.filter(r=>r.pct<50).length;
+  const donut=(function(){ const tot=rows.length||1; const seg=[['#16a34a',met],['#d97706',part],['#dc2626',gap]]; let a=-90,cx=60,cy=60,r=48,paths='';
+    seg.forEach(function(s){ const ang=s[1]/tot*360; const a2=a+ang; const large=ang>180?1:0; const x1=cx+r*Math.cos(a*Math.PI/180),y1=cy+r*Math.sin(a*Math.PI/180),x2=cx+r*Math.cos(a2*Math.PI/180),y2=cy+r*Math.sin(a2*Math.PI/180); if(s[1]>0) paths+='<path d="M'+cx+','+cy+' L'+x1+','+y1+' A'+r+','+r+' 0 '+large+' 1 '+x2+','+y2+' Z" fill="'+s[0]+'"/>'; a=a2; });
+    return '<svg width="120" height="120" xmlns="http://www.w3.org/2000/svg">'+paths+'<circle cx="60" cy="60" r="26" fill="#fff"/><text x="60" y="58" font-size="16" font-weight="bold" text-anchor="middle" fill="#1e3a5c">'+Math.round(met/tot*100)+'%</text><text x="60" y="72" font-size="8" text-anchor="middle" fill="#64748b">MET</text></svg>'; })();
+  const tableRows=rows.map(r=>'<tr><td style="padding:7px 9px;border:1px solid #e2e8f0;font-weight:600;">'+r.k.n+'</td>'
+    +'<td style="padding:7px 9px;border:1px solid #e2e8f0;text-align:center;font-weight:700;color:'+(r.pct>=90?'#16a34a':r.pct>=50?'#d97706':'#dc2626')+';">'+r.actual+(r.k.unit==='%'?'%':'')+' / '+r.k.tgt+'<br><span style="font-size:10px;">'+(r.pct>=90?'✅ Met':r.pct>=50?'⚠️ Partial':'❌ Gap')+'</span></td>'
+    +'<td style="padding:7px 9px;border:1px solid #e2e8f0;font-size:11px;">'+r.meta.rat+'</td>'
+    +'<td style="padding:7px 9px;border:1px solid #e2e8f0;font-size:11px;">'+r.meta.num+'</td>'
+    +'<td style="padding:7px 9px;border:1px solid #e2e8f0;font-size:11px;">'+r.meta.den+'</td>'
+    +'<td style="padding:7px 9px;border:1px solid #e2e8f0;font-size:11px;">'+r.meta.tool+'</td>'
+    +'<td style="padding:7px 9px;border:1px solid #e2e8f0;font-size:11px;">'+r.meta.freq+'</td></tr>').join('');
+  const issuedBy=((typeof getDynNames==='function'&&typeof CU!=='undefined'&&CU&&CU.role)?getDynNames()[CU.role]:'')||(typeof CU!=='undefined'&&CU&&CU.name)||'FMS Director';
+  const html='<html><head><meta charset="utf-8"><title>KPI Report — '+g.lbl.replace(/<[^>]+>/g,'')+'</title></head><body style="font-family:Arial,Helvetica,sans-serif;padding:26px;color:#1e293b;">'
+    +'<div style="border-bottom:3px solid #1e3a5c;padding-bottom:10px;margin-bottom:16px;"><h1 style="color:#1e3a5c;margin:0;">Obeid Specialized Hospital — Facilities Management</h1>'
+    +'<h2 style="color:#1e3a5c;margin:6px 0 0;">Key Performance Indicators — '+g.lbl.replace(/<[^>]+>/g,'')+'</h2>'
+    +'<div style="color:#64748b;font-size:12px;margin-top:4px;">Evidence-based · CBAHI Surveyor-ready · Generated '+new Date().toLocaleString()+'</div></div>'
+    +'<div style="display:flex;gap:20px;align-items:center;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:18px;flex-wrap:wrap;">'
+    +'  <div style="text-align:center;">'+donut+'<div style="font-size:11px;color:#64748b;">'+met+' Met · '+part+' Partial · '+gap+' Gap</div></div>'
+    +'  <div style="flex:1;min-width:340px;"><div style="font-size:12px;font-weight:bold;color:#1e3a5c;margin-bottom:6px;">KPI Compliance Overview</div>'+svg+'</div>'
+    +'</div>'
+    +'<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:#1e3a5c;color:#fff;"><th style="padding:8px;">Indicator</th><th style="padding:8px;">Result / Target</th><th style="padding:8px;">Rationale</th><th style="padding:8px;">Numerator</th><th style="padding:8px;">Denominator</th><th style="padding:8px;">Data Collection Tool</th><th style="padding:8px;">Frequency</th></tr></thead><tbody>'+tableRows+'</tbody></table>'
+    +'<p style="margin-top:22px;font-size:12px;"><b>Issued by:</b> '+issuedBy+'</p>'
+    +'<p style="font-size:11px;color:#64748b;">FMS Command Platform · Obeid Specialized Hospital</p></body></html>';
+  const w=window.open('','_blank'); if(w){ w.document.write(html); w.document.close(); } else { const blob=new Blob([html],{type:'text/html'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='KPI_Report_'+domain+'.html'; a.click(); }
+  toast('⬇ KPI report generated','#10b981');
+}
+
 function renderDomainKPI(domain){
   const key=DKM[domain];const g=key&&KGS[key];const el=document.getElementById(domain+'-kpi-out');if(!el)return;
   el.style.display='block'; // st() hides all [id^=domain-] incl. this inner div — restore it
   if(domain==='fire'){ setTimeout(fireKpiInfographic, 60); }
   if(!g){el.innerHTML='<div class="em">KPIs auto-calculated from records entered above</div>';return;}
-  el.innerHTML=`<div class="st">${g.lbl}</div>`+g.kpis.map(k=>{
+  const _expBtn='<div style="text-align:right;margin-bottom:8px;"><button class="btn bo" style="font-size:10px;" onclick="kpiExportReport(\''+domain+'\')">⬇ Export KPI Report (surveyor-ready)</button></div>';
+  el.innerHTML=_expBtn+`<div class="st">${g.lbl}</div>`+g.kpis.map(k=>{
     const actual=k.c(fireKpiData(k.k) || ld(k.k));
     const pct=k.lb?(actual===0?100:Math.max(0,100-actual*20)):Math.min(100,k.tgt>0?Math.round((actual/k.tgt)*100):0);
     const fl=pct>=90?'linear-gradient(90deg,#10b981,var(--gn))':pct>=50?'linear-gradient(90deg,var(--or),#f97316)':'linear-gradient(90deg,var(--rd),#dc2626)';
