@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1654';
+  var v = '20260816-1655';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1654">
+<meta name="app-version" content="20260816-1655">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3632,7 +3632,7 @@ if ('caches' in window) {
 
   <!-- ══ KPIs ══ -->
   <div id="eq-kpi" style="display:none;">
-    <div id="eq-kpi-out"></div>
+    <div id="equip-kpi-out"></div>
   </div>
 
 </div>
@@ -6739,7 +6739,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1654';
+const APP_VERSION = '20260816-1655';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -8327,7 +8327,7 @@ const KGS={
     {n:'PM Completion Rate — High-Risk (live)',k:'eq_added',tgt:95,c:d=>{const s2=(typeof pmsPmAutoStats==='function')?pmsPmAutoStats():null;return s2?s2.rate:0;},unit:'%'},
     {n:'High-Risk Devices (configured depts)',k:'eq_added',tgt:1,c:d=>{const s2=(typeof pmsPmAutoStats==='function')?pmsPmAutoStats():null;return s2?s2.den:0;}},
     {n:'High-Risk Devices with ✅ VALID PPM',k:'eq_added',tgt:1,c:d=>{const s2=(typeof pmsPmAutoStats==='function')?pmsPmAutoStats():null;return s2?s2.num:0;}}]},
-  '132':{lbl:'🫧 FMS.32 — Medical Gas (Bashar)',kpis:[{n:'PMG Daily Checklist Coverage',k:'pmgCheck',tgt:100,c:d=>{const days=Math.max(1,Math.ceil((Date.now()-new Date(new Date().getFullYear(),0,1))/864e5));return Math.min(100,Math.round(d.length/days*100));},unit:'%'},{n:'Air Purity Tests (2/yr)',k:'airPurity',tgt:2,c:d=>d.length},{n:'Air Purity Pass Rate',k:'airPurity',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.res==='pass').length/t)*100):0;},unit:'%'}]},'119':{lbl:'☢ FMS.9 — Radiation Safety (Bashar)',kpis:[{n:'TLD Quarterly Reviews (4/yr)',k:'tldReview',tgt:4,c:d=>d.length},{n:'Lead Apron Integrity Checks',k:'leadApron',tgt:1,c:d=>d.length},{n:'Shielding Certifications',k:'shieldCert',tgt:1,c:d=>d.length}]},'118':{lbl:'⚡ FMS.1.1.8 — Utilities (Mostapha)',kpis:[{n:'Generator Tests (12/yr)',k:'genTest',tgt:12,c:d=>d.length},{n:'Generator Pass Rate',k:'genTest',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.res==='pass').length/t)*100):0;},unit:'%'},{n:'Water Safety Tests (4/yr)',k:'waterTest',tgt:4,c:d=>d.length},{n:'Hot Water Compliance ≥55°C',k:'waterTest',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>Number(r.hot)>=55).length/t)*100):0;},unit:'%'},{n:'Water Tank Logging (every '+(platCfg().waterFreqDays||2)+'d)',k:'waterTank',tgt:100,c:d=>{const f=Number(platCfg().waterFreqDays)||2;const days=Math.max(1,Math.ceil((Date.now()-new Date(new Date().getFullYear(),0,1))/864e5));const exp=Math.max(1,Math.floor(days/f));return Math.min(100,Math.round(d.length/exp*100));},unit:'%'},{n:'Diesel Tank Logging (every '+(platCfg().dieselFreqDays||7)+'d)',k:'dieselTank',tgt:100,c:d=>{const f=Number(platCfg().dieselFreqDays)||7;const days=Math.max(1,Math.ceil((Date.now()-new Date(new Date().getFullYear(),0,1))/864e5));const exp=Math.max(1,Math.floor(days/f));return Math.min(100,Math.round(d.length/exp*100));},unit:'%'}]},
+  '132':{lbl:'🫧 FMS.32 — Medical Gas (Bashar)',kpis:[{n:'LOX / O₂ Reserve Logs',k:'mg_lox',tgt:1,c:d=>Array.isArray(d)?d.length:0},{n:'O₂ Backup Cylinder Logs',k:'mg_o2backup',tgt:1,c:d=>Array.isArray(d)?d.length:0},{n:'Medical Vacuum Monitoring Logs',k:'mg_vacuum',tgt:1,c:d=>Array.isArray(d)?d.length:0},{n:'N₂O Monitoring Logs',k:'mg_n2o',tgt:1,c:d=>Array.isArray(d)?d.length:0},{n:'Medical Gas Cylinder Tests',k:'cyl_test',tgt:1,c:d=>Array.isArray(d)?d.length:0},{n:'PMG Daily Checklist Coverage',k:'pmgCheck',tgt:100,c:d=>{const days=Math.max(1,Math.ceil((Date.now()-new Date(new Date().getFullYear(),0,1))/864e5));return Math.min(100,Math.round(d.length/days*100));},unit:'%'},{n:'Air Purity Tests (2/yr)',k:'airPurity',tgt:2,c:d=>d.length},{n:'Air Purity Pass Rate',k:'airPurity',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.res==='pass').length/t)*100):0;},unit:'%'}]},'119':{lbl:'☢ FMS.9 — Radiation Safety (Bashar)',kpis:[{n:'TLD Quarterly Reviews (4/yr)',k:'tldReview',tgt:4,c:d=>d.length},{n:'Lead Apron Integrity Checks',k:'leadApron',tgt:1,c:d=>d.length},{n:'Shielding Certifications',k:'shieldCert',tgt:1,c:d=>d.length}]},'118':{lbl:'⚡ FMS.1.1.8 — Utilities (Mostapha)',kpis:[{n:'Generator Tests (12/yr)',k:'genTest',tgt:12,c:d=>d.length},{n:'Generator Pass Rate',k:'genTest',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>r.res==='pass').length/t)*100):0;},unit:'%'},{n:'Water Safety Tests (4/yr)',k:'waterTest',tgt:4,c:d=>d.length},{n:'Hot Water Compliance ≥55°C',k:'waterTest',tgt:100,c:d=>{const t=d.length;return t?Math.round((d.filter(r=>Number(r.hot)>=55).length/t)*100):0;},unit:'%'},{n:'Water Tank Logging (every '+(platCfg().waterFreqDays||2)+'d)',k:'waterTank',tgt:100,c:d=>{const f=Number(platCfg().waterFreqDays)||2;const days=Math.max(1,Math.ceil((Date.now()-new Date(new Date().getFullYear(),0,1))/864e5));const exp=Math.max(1,Math.floor(days/f));return Math.min(100,Math.round(d.length/exp*100));},unit:'%'},{n:'Diesel Tank Logging (every '+(platCfg().dieselFreqDays||7)+'d)',k:'dieselTank',tgt:100,c:d=>{const f=Number(platCfg().dieselFreqDays)||7;const days=Math.max(1,Math.ceil((Date.now()-new Date(new Date().getFullYear(),0,1))/864e5));const exp=Math.max(1,Math.floor(days/f));return Math.min(100,Math.round(d.length/exp*100));},unit:'%'}]},
 };
 let kpiPd='ytd';
 function setKpiPd(p,btn){kpiPd=p;renderKPI();if(btn){btn.closest('.pb').querySelectorAll('.pbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}}
@@ -8426,6 +8426,11 @@ const KPI_META = {
   'Hot Water Compliance ≥55°C':{rat:'Hot-water ≥55°C suppresses Legionella growth in the distribution system.',num:'Tests with hot water ≥55°C',den:'Total water tests',tool:'Water Testing Records',freq:'Quarterly'},
   'Air Purity Tests (2/yr)':{rat:'Medical air purity testing ensures breathable-quality gas to patients (CBAHI FMS.32).',num:'Air purity tests performed',den:'2 required/year',tool:'Medical Gas Air Purity Reports',freq:'Bi-annual'},
   'Air Purity Pass Rate':{rat:'Proportion of medical-air tests meeting purity specification.',num:'Passed air purity tests',den:'Total air purity tests',tool:'Air Purity Reports',freq:'Bi-annual'},
+  'LOX / O₂ Reserve Logs':{rat:'Liquid-oxygen / O₂ reserve logging assures continuous bulk-oxygen availability and early low-level detection (CBAHI FMS.32).',num:'Reserve readings logged',den:'≥1 per required interval',tool:'LOX Reserve Log (Medical Gas)',freq:'Daily · reviewed monthly'},
+  'O₂ Backup Cylinder Logs':{rat:'Backup oxygen cylinder monitoring guarantees fallback supply if the bulk source fails.',num:'O₂ backup readings logged',den:'≥1 per required interval',tool:'O₂ Backup Log',freq:'Daily · reviewed monthly'},
+  'Medical Vacuum Monitoring Logs':{rat:'Medical vacuum pressure monitoring ensures suction availability for clinical care (FMS.32).',num:'Vacuum readings logged',den:'≥1 per required interval',tool:'Medical Vacuum Log',freq:'Daily · reviewed monthly'},
+  'N₂O Monitoring Logs':{rat:'Nitrous-oxide source monitoring supports safe anaesthetic gas supply.',num:'N₂O readings logged',den:'≥1 per required interval',tool:'N₂O Monitoring Log',freq:'Periodic · reviewed monthly'},
+  'Medical Gas Cylinder Tests':{rat:'Cylinder integrity / pressure testing prevents supply failure and safety hazards.',num:'Cylinder tests logged',den:'Per maintenance schedule',tool:'Cylinder Test Log',freq:'Periodic · reviewed monthly'},
   'PMG Daily Checklist Coverage':{rat:'Daily medical-gas plant checklist coverage assures continuous monitoring of source equipment (FMS.32.1).',num:'Days with completed PMG checklist',den:'Days elapsed this year',tool:'PMG Daily Checklist',freq:'Daily · reviewed monthly'},
   'TLD Quarterly Reviews (4/yr)':{rat:'Quarterly review of staff dosimetry (TLD) badges ensures occupational radiation safety (CBAHI FMS.9).',num:'TLD reviews completed',den:'4 required/year',tool:'TLD / Dosimetry Review Log',freq:'Quarterly'}
 };
@@ -8477,7 +8482,7 @@ function kpiExportReport(domain){
 }
 
 function renderDomainKPI(domain){
-  const key=DKM[domain];const g=key&&KGS[key];const el=document.getElementById(domain+'-kpi-out');if(!el)return;
+  const key=DKM[domain];const g=key&&KGS[key];const el=document.getElementById(domain+'-kpi-out')||document.getElementById((domain==='equip'?'eq':domain)+'-kpi-out');if(!el)return;
   el.style.display='block'; // st() hides all [id^=domain-] incl. this inner div — restore it
   if(domain==='fire'){ setTimeout(fireKpiInfographic, 60); }
   if(!g){el.innerHTML='<div class="em">KPIs auto-calculated from records entered above</div>';return;}
