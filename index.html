@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1660';
+  var v = '20260816-1661';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1660">
+<meta name="app-version" content="20260816-1661">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -5378,6 +5378,32 @@ if ('caches' in window) {
   <!-- ══ LEAD APRONS ══ -->
   <div id="radiation-apron" style="display:none;">
     <div class="g g2">
+      <div class="card"><div class="ch"><div class="ct">🧥 Lead Apron Inventory — Full Hospital (FMS.9.6)</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <input type="text" id="apron-search" placeholder="🔍 search..." oninput="apronRenderInv()" style="font-size:11px;padding:4px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--s2);color:var(--tx);width:120px;">
+          <select id="apron-filter-loc" onchange="apronRenderInv()" style="font-size:11px;padding:4px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--s2);color:var(--tx);"><option value="">All Locations</option></select>
+          <button class="btn bo" style="font-size:10px;" onclick="apronExport()">⬇ Export</button>
+          <button class="btn bp" style="font-size:10px;" onclick="apronForm(null)" id="apron-add-btn">+ Add Item</button>
+        </div></div>
+        <div class="cb" style="padding:6px;">
+          <div id="apron-inv-summary" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;"></div>
+          <div id="apron-inv-body" style="max-height:460px;overflow:auto;"></div>
+        </div>
+      </div>
+      <div class="card" id="apron-form-card" style="display:none;"><div class="ch"><div class="ct" id="apron-f-title">Add Lead Apron</div>
+        <button class="btn bo" style="font-size:10px;" onclick="document.getElementById('apron-form-card').style.display='none';">← Cancel</button></div><div class="cb">
+        <input type="hidden" id="apron-f-id">
+        <div class="fg fg2">
+          <div class="ff"><label>Center Number</label><input type="text" id="apron-f-center" placeholder="e.g. CL-2"></div>
+          <div class="ff"><label>Serial Number</label><input type="text" id="apron-f-serial" placeholder="e.g. 66077-11-2-A"></div>
+          <div class="ff"><label>Manufacturer</label><input type="text" id="apron-f-manuf" placeholder="e.g. WOLF X-RAY"></div>
+          <div class="ff"><label>Type</label><input type="text" id="apron-f-type" placeholder="Vest / Skirt / Thyroid / Frontal / Gonad / Chest / Glove"></div>
+          <div class="ff"><label>Location / Department</label><input type="text" id="apron-f-loc" placeholder="e.g. Cath Lab"></div>
+          <div class="ff"><label>Cracks / Defects</label><input type="text" id="apron-f-cracks" placeholder="None / describe"></div>
+          <div class="ff"><label>Result</label><select id="apron-f-pf"><option value="Pass">✅ Pass</option><option value="Fail">❌ Fail / Condemn</option></select></div>
+        </div>
+        <button class="btn bg" style="width:100%;margin-top:10px;" onclick="apronSaveItem()">✓ Save Item</button>
+      </div></div>
       <div class="card"><div class="ch"><div class="ct">Log Lead Apron Inspection</div></div><div class="cb">
         <div class="fg fg2">
           <div class="ff"><label>Inspection Period Label</label>
@@ -6748,7 +6774,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1660';
+const APP_VERSION = '20260816-1661';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -7909,6 +7935,7 @@ function st(domain,sub,btn){
   const e=document.getElementById(domain+'-'+sub);if(e)e.style.display='block';
   if(btn){btn.closest('.tb').querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
   if(sub==='kpi') renderDomainKPI(domain);
+  if(domain==='radiation'&&sub==='apron'){ try{ apronRenderInv(); }catch(e){} }
   // Fire — Unit Level Drills
   if(domain==='fire' && sub==='unitdrill')       { setTimeout(()=>{renderUnitDrills();renderUnitDrillKPIs();},60); }
   // Fire — Annual PPM Schedule (FMS 21-22)
@@ -10911,6 +10938,7 @@ const ROLE_ACCESS = {
   // IPC (Infection Prevention & Control): read-only ACH compliance monitoring
   ipc:         ['n-ach','n-temperature','n-settings','n-supplychain'],   // IPC: ACH + Temperature Log + Contract eval
   supplychain: ['n-supplychain','n-settings'],   // Supply Chain Director: contract authentication
+  rso:         ['n-radiation','n-settings'],   // Radiation Safety Officer
 };
 
 // Page access — which pages each role can open
@@ -10922,6 +10950,7 @@ const PAGE_ACCESS = {
   security:    ['dash','kpi','security','wo','ckpi','settings'],
   ipc:         ['ach','temperature','census','ipcstore','ipcnurse','settings','supplychain'], // IPC: ACH + Temperature + Nursing Census + IPC + Contract eval
   supplychain: ['supplychain','settings'],
+  rso:         ['radiation','settings'],
 };
 
 // Page access — which page IDs each role can visit
@@ -10944,7 +10973,7 @@ const ALL_PAGES = [
   ['ipcstore','🧴 Store'],['ipcnurse','🧤 Nurse Dispensing'],
   ['medgas','🫧 Medical Gas (32)'],['pmg','📋 PMG PPM (32.1)'],['radiation','☢ Radiation (9)'],
   ['wo','🔧 Work Orders'],['ckpi','⚙ Custom KPIs'],['docs','📁 Documents'],
-  ['budget','💰 FMS Budget'],['risk','⚠️ Risk Assessment'],['contracts','📃 Contract Review'],['supplychain','🔗 Supply Chain'],
+  ['budget','💰 FMS Budget'],['risk','⚠️ Risk Assessment'],['contracts','📃 Contract Review'],['supplychain','🔗 Supply Chain'],['radiation','☢ Radiation Safety'],
   ['pms','📊 FMS Performance Sheet'],['settings','⚙ Settings / DB']
 ];
 // Effective page list for a role: override if present, else built-in default
@@ -10957,7 +10986,7 @@ function effectivePageAccess(role){
 
 function getEffectiveRole(role) {
   // For built-in roles, return as-is
-  const builtIn = ['director','maintenance','biomedical','safety','security','ipc','supplychain'];
+  const builtIn = ['director','maintenance','biomedical','safety','security','ipc','supplychain','rso'];
   if (builtIn.includes(role)) return role;
   // For custom roles, look up their template role from extra_users
   try {
@@ -11024,9 +11053,9 @@ function canAccessPage(pageId) {
 function getDynPINs() {
   try {
     return JSON.parse(localStorage.getItem('obeid_pins') || 'null') || {
-      director:'1234', maintenance:'2222', biomedical:'3333', safety:'4444', security:'5555', ipc:'6666', supplychain:'7777'
+      director:'1234', maintenance:'2222', biomedical:'3333', safety:'4444', security:'5555', ipc:'6666', supplychain:'7777', rso:'8888'
     };
-  } catch(e) { return {director:'1234',maintenance:'2222',biomedical:'3333',safety:'4444',security:'5555',ipc:'6666',supplychain:'7777'}; }
+  } catch(e) { return {director:'1234',maintenance:'2222',biomedical:'3333',safety:'4444',security:'5555',ipc:'6666',supplychain:'7777',rso:'8888'}; }
 }
 function saveDynPINs(pins) { localStorage.setItem('obeid_pins', JSON.stringify(pins)); }
 
@@ -11034,9 +11063,9 @@ const USER_NAMES_KEY = 'obeid_user_names';
 function getDynNames() {
   try {
     return JSON.parse(localStorage.getItem(USER_NAMES_KEY) || 'null') || {
-      director:'FMS Director', maintenance:'Mostapha', biomedical:'Bashar', safety:'Moe', security:'Bader', ipc:'IPC', supplychain:'Supply Chain'
+      director:'FMS Director', maintenance:'Mostapha', biomedical:'Bashar', safety:'Moe', security:'Bader', ipc:'IPC', supplychain:'Supply Chain', rso:'RSO'
     };
-  } catch(e) { return {director:'FMS Director',maintenance:'Mostapha',biomedical:'Bashar',safety:'Moe',security:'Bader',ipc:'IPC',supplychain:'Supply Chain'}; }
+  } catch(e) { return {director:'FMS Director',maintenance:'Mostapha',biomedical:'Bashar',safety:'Moe',security:'Bader',ipc:'IPC',supplychain:'Supply Chain',rso:'RSO'}; }
 }
 function saveDynNames(names) { localStorage.setItem(USER_NAMES_KEY, JSON.stringify(names)); }
 
@@ -11315,6 +11344,7 @@ function getDynUsers() {
     {role:'security',    label:'Security Manager',     defaultName:'Bader',    access:'Security',                            custom:false},
     {role:'ipc',         label:'Infection Prevention & Control (IPC)', defaultName:'IPC', access:'ACH monitoring · Temperature Log', custom:false},
     {role:'supplychain', label:'Supply Chain Director', defaultName:'Supply Chain', access:'Supply Chain · Contract Authentication', custom:false},
+    {role:'rso',         label:'Radiation Safety Officer', defaultName:'RSO', access:'Radiation Safety · Lead Aprons · TLD · Shielding', custom:false},
   ];
   try {
     const extra = JSON.parse(localStorage.getItem('obeid_extra_users')||'[]');
@@ -20622,6 +20652,96 @@ function fm200CheckDeepLink(){
 }
 
 try{ if(document.readyState!=='loading'){ if(new URLSearchParams(location.search).get('fm200')) setTimeout(function(){ try{ fm200StandaloneForm(); }catch(e){} }, 60); } else { document.addEventListener('DOMContentLoaded', function(){ if(new URLSearchParams(location.search).get('fm200')) setTimeout(function(){ try{ fm200StandaloneForm(); }catch(e){} }, 60); }); } }catch(e){}
+/* ═══════════════ LEAD APRON INVENTORY — FMS.9.6 ═══════════════ */
+const APRON_SEED=[{"id": "apr_1", "center": "CL-2", "serial": "66077-11-2-A", "manuf": "WOLF X-RAY", "type": "Vest", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_2", "center": "Ca-2024A", "serial": "B-034349", "manuf": "MAVIC", "type": "Vest", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_3", "center": "CL-27", "serial": "2005130000001", "manuf": "MAVIC", "type": "Vest", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_4", "center": "CL-17", "serial": "2005030000001-A", "manuf": "MAVIC", "type": "Skirt", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_5", "center": "CL-30", "serial": "2005050000001-A", "manuf": "MAVIC", "type": "Vest", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_6", "center": "CL-24", "serial": "65021-22-B", "manuf": "WOLF X-RAY", "type": "Frontal", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_7", "center": "CL-23", "serial": "65021-22-A", "manuf": "WOLF X-RAY", "type": "Frontal", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_8", "center": "CL-7", "serial": "2005060000001-A", "manuf": "MAVIC", "type": "Vest", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_9", "center": "CF-1", "serial": "4323/4558", "manuf": "Intell itrack", "type": "Frontal", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_10", "center": "B-034384", "serial": "2005030000Z-A", "manuf": "Mavic", "type": "Chest", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_11", "center": "B-034358", "serial": "4/4/2011", "manuf": "Wolf", "type": "Chest", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_12", "center": "CF-3", "serial": "4488", "manuf": "Intell itrack", "type": "Frontal", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_13", "center": "B-034360", "serial": "11/23/2010", "manuf": "Wolf", "type": "Skirt", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_14", "center": "Cath-2", "serial": "119292", "manuf": "XenoLite-NL", "type": "Chest", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_15", "center": "CT-11", "serial": "NA", "manuf": "XenoLite-NL", "type": "Thyroid", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_16", "center": "Cath-1", "serial": "119293", "manuf": "XenoLite-NL", "type": "Skirt", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_17", "center": "B-034362", "serial": "20050300002", "manuf": "Mavic", "type": "Skirt", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_18", "center": "CL-1", "serial": "66077-11-1-A", "manuf": "Wolf", "type": "Chest", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_19", "center": "CL-13", "serial": "66077-11-Z-B", "manuf": "Wolf", "type": "Skirt", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_20", "center": "CL-12", "serial": "66077-11-1-5", "manuf": "Wolf", "type": "Skirt", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_21", "center": "CT-2", "serial": "NA", "manuf": "Minc", "type": "Thyroid", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_22", "center": "CF-2", "serial": "2004", "manuf": "Minc", "type": "Chest", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_23", "center": "CS-1", "serial": "2004", "manuf": "Minc", "type": "Skirt", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_24", "center": "CT-1", "serial": "4558", "manuf": "Eyewear", "type": "Thyroid", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_25", "center": "CT-5", "serial": "00198183", "manuf": "Mavic", "type": "Thyroid", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_26", "center": "CT-8", "serial": "B-034368", "manuf": "Mavic", "type": "Thyroid", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_27", "center": "CT-4", "serial": "B-034377", "manuf": "Mavic", "type": "Thyroid", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_28", "center": "CT-6", "serial": "NA", "manuf": "XenoLite-NL", "type": "Thyroid", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_29", "center": "CT-3", "serial": "B-034372", "manuf": "Mavic", "type": "Thyroid", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_30", "center": "CL-9", "serial": "2005080000001-A", "manuf": "Mavic", "type": "Chest", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_31", "center": "B-034376", "serial": "NA", "manuf": "Mavic", "type": "Thyroid", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_32", "center": "CL-6", "serial": "2005050000001-A", "manuf": "Mavic", "type": "Chest", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_33", "center": "CT-7", "serial": "C-122801", "manuf": "Mavic", "type": "Thyroid", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_34", "center": "RD-1", "serial": "127259", "manuf": "CAWO", "type": "Frontal", "loc": "CT-Scan", "cracks": "None", "pf": "Pass"}, {"id": "apr_35", "center": "Rd-6", "serial": "65022-22", "manuf": "Cawo", "type": "Frontal", "loc": "CT-Scan", "cracks": "None", "pf": "Pass"}, {"id": "apr_36", "center": "RD-8", "serial": "65021-22", "manuf": "CAWO", "type": "Frontal", "loc": "CT-Scan", "cracks": "None", "pf": "Pass"}, {"id": "apr_37", "center": "RD-9", "serial": "128591", "manuf": "NA", "type": "Frontal", "loc": "ER", "cracks": "None", "pf": "Pass"}, {"id": "apr_38", "center": "RD-16", "serial": "12422", "manuf": "WOLF X-RAY", "type": "Glaves", "loc": "Fluroscopy", "cracks": "None", "pf": "Pass"}, {"id": "apr_39", "center": "RD-23", "serial": "LAO16", "manuf": "WOLF X-RAY", "type": "Gonadls", "loc": "Fluroscopy", "cracks": "None", "pf": "Pass"}, {"id": "apr_40", "center": "RD-7", "serial": "65024-22", "manuf": "WOLF X-RAY", "type": "Frontal", "loc": "Fluroscopy", "cracks": "None", "pf": "Pass"}, {"id": "apr_41", "center": "RD-5", "serial": "65023-22", "manuf": "WOLF X-RAY", "type": "Frontal", "loc": "Fluroscopy", "cracks": "None", "pf": "Pass"}, {"id": "apr_42", "center": "RD-22", "serial": "127450", "manuf": "CAWO", "type": "Frontal", "loc": "Fluroscopy", "cracks": "None", "pf": "Pass"}, {"id": "apr_43", "center": "RD-16", "serial": "12422", "manuf": "WOLF X-RAY", "type": "Glaves", "loc": "Fluroscopy", "cracks": "None", "pf": "Pass"}, {"id": "apr_44", "center": "RD-19", "serial": "LA012", "manuf": "CAWO", "type": "Thyroid", "loc": "Fluroscopy", "cracks": "None", "pf": "Pass"}, {"id": "apr_45", "center": "Li-01", "serial": "65023-15", "manuf": "WOLF X-RAY", "type": "Frontal", "loc": "Lithotripsy", "cracks": "None", "pf": "Pass"}, {"id": "apr_46", "center": "Li-02", "serial": "65022-15", "manuf": "WOLF X-RAY", "type": "Frontal", "loc": "Lithotripsy", "cracks": "None", "pf": "Pass"}, {"id": "apr_47", "center": "RD-3", "serial": "65021-22", "manuf": "WOLF X-RAY", "type": "Frontal", "loc": "Mammography", "cracks": "None", "pf": "Pass"}, {"id": "apr_48", "center": "RD-14", "serial": "LA011", "manuf": "NA", "type": "Gonadls", "loc": "Mammography", "cracks": "None", "pf": "Pass"}, {"id": "apr_49", "center": "OR-Front-1", "serial": "15-2024C", "manuf": "NA", "type": "Frontal", "loc": "OR", "cracks": "None", "pf": "Pass"}, {"id": "apr_50", "center": "OR-T-1", "serial": "B-55", "manuf": "WOLF X-RAY", "type": "Thyroid", "loc": "OR", "cracks": "None", "pf": "Pass"}, {"id": "apr_51", "center": "OR-T-2", "serial": "B-66", "manuf": "WOLF X-RAY", "type": "Thyroid", "loc": "OR", "cracks": "None", "pf": "Pass"}, {"id": "apr_52", "center": "OR-T-3", "serial": "B-77", "manuf": "WOLF X-RAY", "type": "Thyroid", "loc": "OR", "cracks": "None", "pf": "Pass"}, {"id": "apr_53", "center": "OR-8", "serial": "7550023B", "manuf": "WOLF X-RAY", "type": "Gonadls", "loc": "OR", "cracks": "None", "pf": "Pass"}, {"id": "apr_54", "center": "OR-7", "serial": "7550023A", "manuf": "WOLF X-RAY", "type": "Gonadls", "loc": "OR", "cracks": "None", "pf": "Pass"}, {"id": "apr_55", "center": "OR-Pelv3", "serial": "C-2024B", "manuf": "NA", "type": "Plevic", "loc": "OR", "cracks": "None", "pf": "Pass"}, {"id": "apr_56", "center": "OR-4", "serial": "63022-A", "manuf": "WOLF X-RAY", "type": "Frontal", "loc": "OR", "cracks": "None", "pf": "Pass"}, {"id": "apr_57", "center": "OR-3", "serial": "63022-C", "manuf": "WOLF X-RAY", "type": "Frontal", "loc": "OR", "cracks": "None", "pf": "Pass"}, {"id": "apr_58", "center": "OR-2", "serial": "63022-D", "manuf": "WOLF X-RAY", "type": "Frontal", "loc": "OR", "cracks": "None", "pf": "Pass"}, {"id": "apr_59", "center": "OR-Front-2", "serial": "Pb-2019-02", "manuf": "LAYAN", "type": "Frontal", "loc": "OR", "cracks": "None", "pf": "Pass"}, {"id": "apr_60", "center": "OR-71B", "serial": "63022G", "manuf": "WOLF X-RAY", "type": "Frontal", "loc": "OR", "cracks": "None", "pf": "Pass"}, {"id": "apr_61", "center": "RD-4", "serial": "120505", "manuf": "WOLF", "type": "Frontal", "loc": "Panorama", "cracks": "None", "pf": "Pass"}, {"id": "apr_62", "center": "CL-1", "serial": "23081710", "manuf": "LAYAN", "type": "Frontal", "loc": "Portable", "cracks": "None", "pf": "Pass"}, {"id": "apr_63", "center": "RD-11", "serial": "31808", "manuf": "NA", "type": "Frontal", "loc": "Portable", "cracks": "None", "pf": "Pass"}, {"id": "apr_64", "center": "RD-13", "serial": "LA-015", "manuf": "NA", "type": "Gonadls", "loc": "XRAY 1", "cracks": "None", "pf": "Pass"}, {"id": "apr_65", "center": "RD-12", "serial": "LA-013", "manuf": "NA", "type": "Frontal", "loc": "XRAY 1", "cracks": "None", "pf": "Pass"}];
+function apronCanEdit(){ return CU && (CU.role==='director'||CU.role==='rso'||CU.role==='biomedical'); }
+function apronInv(){ var a=ld('apron_inv'); if(!Array.isArray(a)||!a.length){ a=APRON_SEED.map(function(x){return Object.assign({},x);}); sv('apron_inv',a); } return a; }
+function apronSaveInv(a){ sv('apron_inv',a); }
+function apronRenderInv(){
+  var el=document.getElementById('apron-inv-body'); if(!el) return;
+  var all=apronInv();
+  // populate location filter
+  var locSel=document.getElementById('apron-filter-loc');
+  if(locSel){ var cur=locSel.value; var locs=Array.from(new Set(all.map(function(x){return x.loc||'—';}))).sort();
+    locSel.innerHTML='<option value="">All Locations</option>'+locs.map(function(l){return '<option value="'+l+'"'+(l===cur?' selected':'')+'>'+l+'</option>';}).join(''); }
+  var q=(document.getElementById('apron-search')||{}).value||''; q=q.toLowerCase();
+  var fl=(document.getElementById('apron-filter-loc')||{}).value||'';
+  var rows=all.filter(function(x){
+    if(fl && (x.loc||'')!==fl) return false;
+    if(q){ var s=((x.center||'')+' '+(x.serial||'')+' '+(x.manuf||'')+' '+(x.type||'')+' '+(x.loc||'')).toLowerCase(); if(s.indexOf(q)<0) return false; }
+    return true;
+  });
+  // summary
+  var total=all.length, passed=all.filter(function(x){return (x.pf||'').toLowerCase()==='pass';}).length, failed=total-passed;
+  var byType={}; all.forEach(function(x){ byType[x.type||'—']=(byType[x.type||'—']||0)+1; });
+  var sm=document.getElementById('apron-inv-summary');
+  if(sm) sm.innerHTML=''
+    +'<div style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:8px 12px;text-align:center;"><div style="font-size:18px;font-weight:800;">'+total+'</div><div style="font-size:9px;color:var(--mu);">Total Items</div></div>'
+    +'<div style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:8px 12px;text-align:center;"><div style="font-size:18px;font-weight:800;color:var(--gn);">'+passed+'</div><div style="font-size:9px;color:var(--mu);">Pass</div></div>'
+    +'<div style="background:var(--s2);border:1px solid '+(failed?'var(--rd)':'var(--bd)')+';border-radius:8px;padding:8px 12px;text-align:center;"><div style="font-size:18px;font-weight:800;color:'+(failed?'var(--rd)':'var(--mu)')+';">'+failed+'</div><div style="font-size:9px;color:var(--mu);">Fail / Condemn</div></div>'
+    +'<div style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:8px 12px;text-align:center;"><div style="font-size:18px;font-weight:800;color:var(--ac);">'+Object.keys(byType).length+'</div><div style="font-size:9px;color:var(--mu);">Types</div></div>';
+  var canEdit=apronCanEdit();
+  var ab=document.getElementById('apron-add-btn'); if(ab) ab.style.display=canEdit?'':'none';
+  if(!rows.length){ el.innerHTML='<div class="em" style="padding:16px;text-align:center;">No matching items.</div>'; return; }
+  el.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="text-align:left;color:var(--mu);border-bottom:1px solid var(--bd);position:sticky;top:0;background:var(--s1);"><th style="padding:5px;">#</th><th>Center No.</th><th>Serial No.</th><th>Manufacturer</th><th>Type</th><th>Location</th><th>Cracks</th><th>Result</th>'+(canEdit?'<th>Actions</th>':'')+'</tr></thead><tbody>'
+    +rows.map(function(x,i){ var fail=(x.pf||'').toLowerCase()==='fail';
+      return '<tr style="border-bottom:1px solid var(--bd);'+(fail?'background:rgba(220,38,38,.06);':'')+'"><td style="padding:5px;color:var(--mu);">'+(i+1)+'</td>'
+        +'<td style="font-weight:600;">'+(x.center||'—')+'</td><td>'+(x.serial||'—')+'</td><td>'+(x.manuf||'—')+'</td><td>'+(x.type||'—')+'</td><td>'+(x.loc||'—')+'</td>'
+        +'<td style="color:'+((x.cracks||'None').toLowerCase()!=='none'?'var(--rd)':'var(--mu)')+';">'+(x.cracks||'None')+'</td>'
+        +'<td style="font-weight:700;color:'+(fail?'var(--rd)':'var(--gn)')+';">'+(fail?'❌ Fail':'✅ Pass')+'</td>'
+        +(canEdit?'<td style="white-space:nowrap;"><button class="btn bo" style="font-size:9px;padding:2px 5px;" title="Edit / Relocate" onclick="apronForm(\''+x.id+'\')">✏</button> <button class="btn br" style="font-size:9px;padding:2px 5px;" title="Discard / Condemn" onclick="apronDelete(\''+x.id+'\')">🗑</button></td>':'')+'</tr>';
+    }).join('')+'</tbody></table>';
+}
+function apronForm(id){
+  if(!apronCanEdit()){ toast('Only the RSO / FMS Director / Biomedical can edit the inventory','#f59e0b'); return; }
+  var f=document.getElementById('apron-form-card'); f.style.display='';
+  var set=function(i,v){ var e=document.getElementById(i); if(e) e.value=(v==null?'':v); };
+  if(id){ var x=apronInv().find(function(a){return String(a.id)===String(id);}); if(!x) return;
+    document.getElementById('apron-f-title').textContent='Edit / Relocate Lead Apron';
+    set('apron-f-id',x.id); set('apron-f-center',x.center); set('apron-f-serial',x.serial); set('apron-f-manuf',x.manuf); set('apron-f-type',x.type); set('apron-f-loc',x.loc); set('apron-f-cracks',x.cracks);
+    document.getElementById('apron-f-pf').value=((x.pf||'Pass').toLowerCase()==='fail')?'Fail':'Pass';
+  } else { document.getElementById('apron-f-title').textContent='Add Lead Apron'; ['apron-f-id','apron-f-center','apron-f-serial','apron-f-manuf','apron-f-type','apron-f-loc'].forEach(function(i){set(i,'');}); set('apron-f-cracks','None'); document.getElementById('apron-f-pf').value='Pass'; }
+  f.scrollIntoView({behavior:'smooth',block:'center'});
+}
+function apronSaveItem(){
+  if(!apronCanEdit()){ toast('Not permitted','#f59e0b'); return; }
+  var g=function(i){ return (document.getElementById(i)||{}).value||''; };
+  var center=g('apron-f-center').trim(); if(!center){ toast('Enter a center number','#f59e0b'); return; }
+  var list=apronInv().slice(); var id=g('apron-f-id')||('apr_'+Date.now());
+  var rec={ id:id, center:center, serial:g('apron-f-serial').trim(), manuf:g('apron-f-manuf').trim(), type:g('apron-f-type').trim(), loc:g('apron-f-loc').trim(), cracks:g('apron-f-cracks').trim()||'None', pf:g('apron-f-pf') };
+  var i=list.findIndex(function(a){return String(a.id)===String(id);});
+  if(i>=0) list[i]=rec; else list.push(rec);
+  apronSaveInv(list); try{ dbWrite('rad_apron', rec); }catch(e){}
+  document.getElementById('apron-form-card').style.display='none'; apronRenderInv(); toast('✓ Lead apron saved','#10b981');
+}
+function apronDelete(id){
+  if(!apronCanEdit()){ toast('Not permitted','#f59e0b'); return; }
+  var x=apronInv().find(function(a){return String(a.id)===String(id);}); if(!x) return;
+  if(!confirm('Discard / condemn this lead apron?\\n'+(x.center||'')+' · '+(x.type||'')+' · '+(x.loc||''))) return;
+  apronSaveInv(apronInv().filter(function(a){return String(a.id)!==String(id);}));
+  try{ dbDelete('rad_apron', id); }catch(e){}
+  apronRenderInv(); toast('🗑 Item discarded / condemned','#ef4444');
+}
+function apronExport(){
+  var rows=[['#','Center No.','Serial No.','Manufacturer','Type','Location','Cracks','Result']];
+  apronInv().forEach(function(x,i){ rows.push([i+1,x.center,x.serial,x.manuf,x.type,x.loc,x.cracks,x.pf]); });
+  var esc=function(v){ return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'; };
+  var csv=rows.map(function(r){ return r.map(esc).join(','); }).join('\\n');
+  var issuedBy=((typeof getDynNames==='function'&&CU&&CU.role)?getDynNames()[CU.role]:'')||(CU&&CU.name)||'RSO';
+  // also a printable HTML report
+  var trows=apronInv().map(function(x,i){ var fail=(x.pf||'').toLowerCase()==='fail'; return '<tr style="background:'+(fail?'#fee2e2':((x.cracks||'None').toLowerCase()!=='none'?'#fef9c3':'#fff'))+';"><td style="padding:4px 7px;border:1px solid #e2e8f0;">'+(i+1)+'</td><td style="padding:4px 7px;border:1px solid #e2e8f0;font-weight:600;">'+(x.center||'')+'</td><td style="padding:4px 7px;border:1px solid #e2e8f0;">'+(x.serial||'')+'</td><td style="padding:4px 7px;border:1px solid #e2e8f0;">'+(x.manuf||'')+'</td><td style="padding:4px 7px;border:1px solid #e2e8f0;">'+(x.type||'')+'</td><td style="padding:4px 7px;border:1px solid #e2e8f0;">'+(x.loc||'')+'</td><td style="padding:4px 7px;border:1px solid #e2e8f0;">'+(x.cracks||'None')+'</td><td style="padding:4px 7px;border:1px solid #e2e8f0;font-weight:700;color:'+(fail?'#dc2626':'#16a34a')+';">'+(x.pf||'')+'</td></tr>'; }).join('');
+  var total=apronInv().length, passed=apronInv().filter(function(x){return (x.pf||'').toLowerCase()==='pass';}).length;
+  var html='<html><head><meta charset="utf-8"><title>Lead Apron Inventory — FMS.9.6</title></head><body style="font-family:Arial;padding:24px;color:#1e293b;">'
+    +'<h1 style="color:#1e3a5c;">Obeid Specialized Hospital — Facilities Management</h1><h2 style="color:#1e3a5c;">Lead Apron Inventory & Integrity Register (FMS.9.6)</h2>'
+    +'<p><b>Total items:</b> '+total+' &nbsp; <b>Pass:</b> '+passed+' &nbsp; <b>Fail/Condemn:</b> '+(total-passed)+' &nbsp; <b>Date:</b> '+new Date().toISOString().slice(0,10)+'</p>'
+    +'<table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#1e3a5c;color:#fff;"><th style="padding:6px;">#</th><th>Center No.</th><th>Serial No.</th><th>Manufacturer</th><th>Type</th><th>Location</th><th>Cracks</th><th>Result</th></tr>'+trows+'</table>'
+    +'<p style="margin-top:22px;font-size:12px;"><b>Issued by:</b> '+issuedBy+'</p><p style="font-size:11px;color:#64748b;">Generated '+new Date().toLocaleString()+' · FMS Command Platform</p></body></html>';
+  var w=window.open('','_blank'); if(w){ w.document.write(html); w.document.close(); }
+  // trigger CSV download too
+  try{ var blob=new Blob([csv],{type:'text/csv'}); var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='Lead_Apron_Inventory_'+new Date().toISOString().slice(0,10)+'.csv'; a.click(); }catch(e){}
+  toast('⬇ Inventory exported (report + CSV)','#10b981');
+}
+
 function fmsLocalToday(){
   // Local calendar date (not UTC) — shared 'today' basis for all log filters so
   // readings entered late at night or stored as UTC timestamps are not hidden.
