@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1657';
+  var v = '20260816-1659';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1657">
+<meta name="app-version" content="20260816-1659">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -5847,11 +5847,11 @@ if ('caches' in window) {
         <div class="ff"><label>Contractor Company</label><input type="text" id="scf-contractor"></div>
         <div class="ff"><label>Category</label><input type="text" id="scf-cat" placeholder="e.g. Facility Services"></div>
         <div class="ff"><label>Contract Value (SAR)</label><input type="number" id="scf-value"></div>
-        <div class="ff"><label>Contract Start</label><input type="date" id="scf-start"></div>
-        <div class="ff"><label>Contract End</label><input type="date" id="scf-end"></div>
+        <div class="ff"><label>Contract Start</label><input type="date" id="scf-start" onchange="scAutoQuarters()"></div>
+        <div class="ff"><label>Contract End</label><input type="date" id="scf-end" onchange="scAutoQuarters()"></div>
       </div>
       <div style="background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-top:8px;">
-        <div style="font-size:12px;font-weight:700;color:var(--or);margin-bottom:8px;">📅 Quarter period start dates (flexible)</div>
+        <div style="font-size:12px;font-weight:700;color:var(--or);margin-bottom:8px;">📅 Quarter period start dates <span style="font-weight:400;color:var(--mu);">(auto-filled from Start/End — editable)</span></div>
         <div class="fg" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
           <div class="ff"><label>Q1</label><input type="date" id="scf-q1"></div><div class="ff"><label>Q2</label><input type="date" id="scf-q2"></div>
           <div class="ff"><label>Q3</label><input type="date" id="scf-q3"></div><div class="ff"><label>Q4</label><input type="date" id="scf-q4"></div>
@@ -6022,6 +6022,10 @@ if ('caches' in window) {
         </div>
         <div class="ff"><label>Confirm New PIN</label>
           <input type="password" id="set-pin2" maxlength="8" placeholder="Repeat the new PIN exactly">
+        </div>
+        <div class="ff"><label>Email (for notifications)</label>
+          <input type="email" id="set-email" placeholder="name@obeidhospital.com">
+          <div class="ht">Used for contract evaluation requests, due-date &amp; expiry alerts</div>
         </div>
       </div>
       <button class="btn bg" style="width:100%;margin-top:12px;" onclick="settingsSaveUser()">✓ Save Changes</button>
@@ -6744,7 +6748,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1657';
+const APP_VERSION = '20260816-1659';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -7350,6 +7354,20 @@ async function dbLoadAll(opts) {
       }
 
       // ── Restore budget data from DB (fms_budget_ keys) ──
+      // Restore per-user notification emails (synced across devices)
+      try {
+        const emailRows = j.data.app_settings.filter(r => r && r._id && String(r._id).startsWith('user_email_'));
+        if (emailRows.length) {
+          let em = {}; try { em = JSON.parse(localStorage.getItem('obeid_user_emails')||'{}'); } catch(e){}
+          emailRows.forEach(r => { const role = String(r._id).replace('user_email_',''); const val = (r.value!=null?r.value:r.email); if (role && val!==undefined && val!=='') em[role] = String(val).trim(); });
+          localStorage.setItem('obeid_user_emails', JSON.stringify(em));
+        }
+      } catch(e){}
+      // Restore KPI include/exclude selection (synced across devices)
+      try {
+        const kd = j.data.app_settings.find(r => r && String(r._id)==='kpi_disabled_cfg');
+        if (kd && kd.value) { const arr = JSON.parse(kd.value); if (Array.isArray(arr)) localStorage.setItem('obeid_kpi_disabled', JSON.stringify(arr)); }
+      } catch(e){}
       const budgetRows = j.data.app_settings.filter(r => r._id && r._id.startsWith('fms_budget_'));
       if (budgetRows.length > 0) {
         let budgetRestored = 0;
@@ -11471,6 +11489,8 @@ function settingsRenderUsers() {
   if (!role) { toast('Select a user first','#f59e0b'); return; }
 
   let changed = false;
+  // Save email
+  try{ const em=(document.getElementById('set-email')||{}).value; if(em!==undefined){ const map=getUserEmails(); map[role]=(em||'').trim(); saveUserEmails(map); changed=true; try{ dbWrite('app_settings',{_id:'user_email_'+role,key:'user_email_'+role,value:(em||'').trim()}); }catch(_){}}}catch(e){}
 
   // Update name if provided
   if (name) {
@@ -12131,6 +12151,7 @@ function doLogin() {
   try{ setTimeout(function(){ dbCheckVersion(false); }, 6000); }catch(e){}
   try{ setTimeout(function(){ if(typeof evApplyTombstones==='function') evApplyTombstones(); }, 7000); }catch(e){}
   try{ if(typeof fm200CheckDeepLink==='function') fm200CheckDeepLink(); }catch(e){}
+  try{ setTimeout(function(){ if(typeof scDueNotify==='function') scDueNotify(); }, 9000); }catch(e){}
   // Remind about census days not yet backed up to the cloud
   try{ const u=JSON.parse(localStorage.getItem('obeid3_census_unsynced')||'[]'); if(u.length){ setTimeout(function(){ if(typeof toast==='function') toast('⚠️ '+u.length+' census day(s) not yet backed up to cloud — open Nursing Census to export a backup.', '#ef4444', 8000); }, 2500); } }catch(e){}
   // Apply role-based access
@@ -20024,6 +20045,62 @@ function scQuarterResult(cid, q, year){
   var auth=scAuths().find(function(a){return a._id===reqId;});
   return {status: auth?(auth.status==='authenticated'?'auth':'review'):'pending', combined:combined};
 }
+/* ── Contract status (renew / terminate) ── */
+function scContractStatus(c){ return (c&&c.status)||'active'; }
+function scSetStatus(id, status){
+  if(!scIsSC()){ toast('Only the Supply Chain Director can decide','#f59e0b'); return; }
+  var list=scContracts().slice(); var i=list.findIndex(function(x){return String(x._id)===String(id);}); if(i<0) return;
+  list[i]=Object.assign({},list[i],{status:status, statusAt:new Date().toISOString(), statusBy:scRoleName(CU.role)});
+  scSaveContracts(list); try{ dbWrite('contracts', list[i]); }catch(e){}
+  scRenderDashboard(); toast(status==='renewed'?'✅ Contract marked RENEWED':'⛔ Contract marked TERMINATED', status==='renewed'?'#10b981':'#dc2626',4000);
+}
+/* ── Scan contracts for overdue evaluations & expiring/expired contracts ── */
+function scDueScan(){
+  var today=new Date(); today.setHours(0,0,0,0); var year=String(today.getFullYear());
+  var overdue=[], expiring=[], expired=[];
+  scContracts().forEach(function(c){
+    if(scContractStatus(c)==='terminated') return;
+    // quarterly evaluations overdue (quarter date passed & not authenticated)
+    ['Q1','Q2','Q3','Q4'].forEach(function(q){ var qd=(c.qdates||{})[q]; if(!qd) return; var d=new Date(qd); if(isNaN(d)||d>today) return;
+      var reqId='screq_'+c._id+'_'+q+'_'+year; var auth=scAuths().find(function(a){return a._id===reqId;});
+      if(!(auth&&auth.status==='authenticated')){ var days=Math.round((today-d)/86400000); overdue.push({c:c,q:q,date:qd,days:days}); }
+    });
+    // contract expiry
+    if(c.end){ var e=new Date(c.end); if(!isNaN(e)){ var dl=Math.round((e-today)/86400000);
+      if(dl<0) expired.push({c:c,days:-dl}); else if(dl<=30) expiring.push({c:c,days:dl}); } }
+  });
+  return {overdue:overdue, expiring:expiring, expired:expired};
+}
+function scRenderDueAlerts(){
+  var el=document.getElementById('sc-due-alerts'); if(!el) return;
+  var s=scDueScan(); var parts='';
+  if(s.overdue.length){ parts+='<div style="background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.4);border-radius:10px;padding:10px 12px;margin-bottom:8px;"><div style="font-size:12px;font-weight:700;color:var(--or);">⏰ '+s.overdue.length+' quarterly evaluation(s) overdue</div>'
+    +s.overdue.slice(0,6).map(function(o){ return '<div style="font-size:11px;color:var(--tx);margin-top:3px;">• <b>'+o.c.name+'</b> — '+o.q+' (due '+o.date+', '+o.days+'d overdue)</div>'; }).join('')+'</div>'; }
+  if(s.expiring.length){ parts+='<div style="background:rgba(59,130,246,.10);border:1px solid rgba(59,130,246,.4);border-radius:10px;padding:10px 12px;margin-bottom:8px;"><div style="font-size:12px;font-weight:700;color:#3b82f6;">📅 '+s.expiring.length+' contract(s) expiring within 30 days</div>'
+    +s.expiring.map(function(o){ return '<div style="font-size:11px;margin-top:4px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;"><span>• <b>'+o.c.name+'</b> — expires '+o.c.end+' (in '+o.days+'d)</span>'+(scIsSC()?'<span><button class="btn bg" style="font-size:9px;padding:2px 6px;" onclick="scSetStatus(\''+o.c._id+'\',\'renewed\')">✅ Renew</button> <button class="btn br" style="font-size:9px;padding:2px 6px;" onclick="scSetStatus(\''+o.c._id+'\',\'terminated\')">⛔ Terminate</button></span>':'')+'</div>'; }).join('')+'</div>'; }
+  if(s.expired.length){ parts+='<div style="background:rgba(220,38,38,.10);border:1px solid rgba(220,38,38,.45);border-radius:10px;padding:10px 12px;margin-bottom:8px;"><div style="font-size:12px;font-weight:700;color:var(--rd);">⛔ '+s.expired.length+' contract(s) EXPIRED — decision required</div>'
+    +s.expired.map(function(o){ var st=scContractStatus(o.c); return '<div style="font-size:11px;margin-top:4px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;"><span>• <b>'+o.c.name+'</b> — expired '+o.c.end+' ('+o.days+'d ago)'+(st!=='active'?' · <b style="color:'+(st==='renewed'?'var(--gn)':'var(--rd)')+'">'+st.toUpperCase()+'</b>':'')+'</span>'+(scIsSC()&&st==='active'?'<span><button class="btn bg" style="font-size:9px;padding:2px 6px;" onclick="scSetStatus(\''+o.c._id+'\',\'renewed\')">✅ Renew</button> <button class="btn br" style="font-size:9px;padding:2px 6px;" onclick="scSetStatus(\''+o.c._id+'\',\'terminated\')">⛔ Terminate</button></span>':'')+'</div>'; }).join('')+'</div>'; }
+  el.innerHTML=parts;
+}
+/* ── Fire due/expiry EMAILS (throttled: once per item per day) ── */
+function scDueNotify(){
+  try{
+    var s=scDueScan(); var today=new Date().toISOString().slice(0,10);
+    var sent=JSON.parse(localStorage.getItem('sc_due_notified')||'{}'); var changed=false;
+    var scEmail=userEmail('supplychain');
+    var mail=function(key, to, subj, body){ if(!to) return; if(sent[key]===today) return; dbSendEmail(to,subj,body); sent[key]=today; changed=true; };
+    s.overdue.forEach(function(o){ var k='ov_'+o.c._id+'_'+o.q+'_'+today.slice(0,7);
+      (o.c.evaluators||[]).forEach(function(role){ mail(k+'_'+role, userEmail(role), 'FMS — Overdue Evaluation: '+o.c.name+' ('+o.q+')', '<p>The <b>'+o.q+'</b> evaluation for <b>'+o.c.name+'</b> is <b>'+o.days+' day(s) overdue</b> (was due '+o.date+'). Please complete it in Supply Chain → Evaluation Requests.</p>'); });
+      mail(k+'_sc', scEmail, 'FMS — Overdue Evaluation: '+o.c.name+' ('+o.q+')', '<p><b>'+o.c.name+'</b> — '+o.q+' evaluation is '+o.days+'d overdue.</p>'); });
+    s.expiring.forEach(function(o){ mail('exp_'+o.c._id+'_'+today, scEmail, 'FMS — Contract Expiring: '+o.c.name, '<p><b>'+o.c.name+'</b> expires on '+o.c.end+' (in '+o.days+' days). Decide to <b>renew or terminate</b> in Supply Chain.</p>'); });
+    s.expired.forEach(function(o){ if(scContractStatus(o.c)==='active') mail('expd_'+o.c._id+'_'+today, scEmail, 'FMS — Contract EXPIRED: '+o.c.name, '<p><b>'+o.c.name+'</b> EXPIRED on '+o.c.end+' ('+o.days+'d ago) and awaits a renew/terminate decision.</p>'); });
+    if(changed) localStorage.setItem('sc_due_notified', JSON.stringify(sent));
+    // in-app login toast
+    var totalOpen=s.overdue.length+s.expiring.length+s.expired.length;
+    if(totalOpen && typeof toast==='function') toast('🔔 Supply Chain: '+s.overdue.length+' overdue eval(s), '+s.expiring.length+' expiring, '+s.expired.length+' expired contract(s)','#f59e0b',7000);
+  }catch(e){}
+}
+
 function scRenderDashboard(){
   var el=document.getElementById('sc-dashboard-body'); if(!el) return;
   var year=String(new Date().getFullYear());
@@ -20063,7 +20140,8 @@ function scRenderDashboard(){
       '<div style="font-size:11px;color:'+(overdue?'var(--rd)':'var(--mu)')+';border-top:1px solid var(--bd);padding-top:8px;margin-top:8px;">📅 Next due: <b style="color:'+(overdue?'var(--rd)':'var(--tx)')+';">'+(due?due.label:'not set')+'</b></div>'+
     '</div>';
   }).join('');
-  el.innerHTML=strip+'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">'+cards+'</div>';
+  el.innerHTML='<div id="sc-due-alerts"></div>'+strip+'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">'+cards+'</div>';
+  try{ scRenderDueAlerts(); }catch(e){}
 }
 function scTab(tab, btn){
   ['dashboard','requests','contracts','history'].forEach(t=>{ const p=document.getElementById('sc-'+t); if(p) p.style.display = t===tab?'':'none';
@@ -20077,6 +20155,20 @@ function scTab(tab, btn){
 }
 
 /* ---------- Contracts (editable) ---------- */
+function getUserEmails(){ try{ return JSON.parse(localStorage.getItem('obeid_user_emails')||'{}'); }catch(e){ return {}; } }
+function saveUserEmails(m){ try{ localStorage.setItem('obeid_user_emails', JSON.stringify(m)); }catch(e){} }
+function userEmail(role){ return (getUserEmails()[role]||'').trim(); }
+function dbSendEmail(to, subject, body){
+  if(!to) return false; var url=(typeof CANONICAL_DB_URL!=='undefined'&&CANONICAL_DB_URL)?CANONICAL_DB_URL:(typeof getDBUrl==='function'?getDBUrl():null); if(!url) return false;
+  try{ fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action:'email',to:to,subject:subject||'FMS Notification',body:body||''})}); return true; }catch(e){ return false; }
+}
+function scAutoQuarters(){
+  var s=(document.getElementById('scf-start')||{}).value, e=(document.getElementById('scf-end')||{}).value;
+  if(!s||!e) return; var start=new Date(s), end=new Date(e); if(isNaN(start)||isNaN(end)||end<=start) return;
+  var span=(end-start)/4; var fmt=function(t){ return new Date(t).toISOString().slice(0,10); };
+  var set=function(id,v){ var el=document.getElementById(id); if(el) el.value=v; };
+  set('scf-q1',fmt(start.getTime())); set('scf-q2',fmt(start.getTime()+span)); set('scf-q3',fmt(start.getTime()+span*2)); set('scf-q4',fmt(start.getTime()+span*3));
+}
 function scContractForm(id){
   if(!scIsSC()){ toast('Only the Supply Chain Director can add/edit contracts','#f59e0b'); return; }
   const f=document.getElementById('sc-contract-form'); f.style.display='';
@@ -20148,7 +20240,8 @@ function scCreateRequest(){
   const arr=scRequests().filter(r=>r._id!==rec._id); arr.unshift(rec); scSaveRequests(arr);
   try{ dbWrite('sc_requests', rec); }catch(e){}
   document.getElementById('sc-newreq-card').style.display='none'; scRenderRequests(); scUpdateBadge();
-  toast('📨 Request sent to '+evaluators.map(scRoleName).join(' & '),'#10b981',4000);
+  evaluators.forEach(function(role){ var em=userEmail(role); if(em) dbSendEmail(em, 'FMS — Contract Evaluation Request: '+rec.contractName+' ('+rec.quarter+' '+rec.year+')', '<div style="font-family:Arial"><h3>Contract Evaluation Request</h3><p>You have been assigned by the Supply Chain Director to evaluate:</p><p><b>Contract:</b> '+rec.contractName+'<br><b>Contractor:</b> '+(rec.contractor||'')+'<br><b>Quarter:</b> '+rec.quarter+' '+rec.year+'<br><b>Period date:</b> '+(rec.date||'')+'</p><p>Please log in to the FMS Command Platform → <b>Supply Chain → Evaluation Requests → Complete My Evaluation</b>.</p></div>'); });
+  toast('📨 Request sent'+(evaluators.map(userEmail).some(Boolean)?' + email notified':'')+': '+evaluators.map(scRoleName).join(' & '),'#10b981',4000);
 }
 function scReqEvals(reqId){ return scEvals().filter(e=>e.requestId===reqId); }
 function scRenderRequests(){
@@ -20220,6 +20313,7 @@ function scSubmitEval(){
   const arr=scEvals().filter(e=>e._id!==ev._id); arr.unshift(ev); scSaveEvals(arr);
   try{ dbWrite('sc_evals', ev); }catch(e){}
   document.getElementById('sc-eval-modal').style.display='none'; scRenderRequests(); scRenderHistory(); scUpdateBadge();
+  try{ var _evs=scReqEvals(reqId).map(function(x){return x.evaluatorRole;}); var _all=(req.evaluators||[]).every(function(r){return _evs.indexOf(r)>=0;}); if(_all){ var sce=userEmail('supplychain'); if(sce) dbSendEmail(sce, 'FMS — Evaluation Complete: '+req.contractName+' ('+req.quarter+' '+req.year+')', '<div style="font-family:Arial"><h3>All evaluations complete</h3><p><b>'+req.contractName+'</b> — '+req.quarter+' '+req.year+' has been evaluated by all assigned parties and is ready for your <b>authentication</b>.</p><p>Log in → Supply Chain → Evaluation Requests → Authenticate.</p></div>'); } }catch(e){}
   toast('✓ Evaluation submitted','#10b981');
 }
 
