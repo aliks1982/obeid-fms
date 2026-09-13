@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1664';
+  var v = '20260816-1666';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1664">
+<meta name="app-version" content="20260816-1666">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3825,6 +3825,7 @@ if ('caches' in window) {
   <div id="utils-hepa" style="display:none;">
     <div class="card"><div class="ch"><div class="ct">🌀 HEPA Filters — Monthly Inspection (FMS.1.1.8)</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn bo" style="font-size:10px;" onclick="aiSyncFromDB('hepa');toast('☁ Syncing from cloud…','#3b82f6')">☁ Sync</button>
         <button class="btn bo" style="font-size:10px;" onclick="aiPrintQR('hepa')">🖨 Print QR Labels</button>
         <button class="btn bo" style="font-size:10px;" onclick="aiExport('hepa')">⬇ Export</button>
         <button class="btn bp" style="font-size:10px;" onclick="aiItemForm('hepa',null)">+ Add Item</button>
@@ -3841,6 +3842,7 @@ if ('caches' in window) {
   <div id="utils-hosereel" style="display:none;">
     <div class="card"><div class="ch"><div class="ct">🧯 Fire Hose Reels — Monthly Inspection (FMS.1.1.8)</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn bo" style="font-size:10px;" onclick="aiSyncFromDB('hosereel');toast('☁ Syncing from cloud…','#3b82f6')">☁ Sync</button>
         <button class="btn bo" style="font-size:10px;" onclick="aiPrintQR('hosereel')">🖨 Print QR Labels</button>
         <button class="btn bo" style="font-size:10px;" onclick="aiExport('hosereel')">⬇ Export</button>
         <button class="btn bp" style="font-size:10px;" onclick="aiItemForm('hosereel',null)">+ Add Item</button>
@@ -3857,6 +3859,7 @@ if ('caches' in window) {
   <div id="utils-standpipe" style="display:none;">
     <div class="card"><div class="ch"><div class="ct">🚰 Stand Pipes — Monthly Inspection (FMS.1.1.8)</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn bo" style="font-size:10px;" onclick="aiSyncFromDB('standpipe');toast('☁ Syncing from cloud…','#3b82f6')">☁ Sync</button>
         <button class="btn bo" style="font-size:10px;" onclick="aiPrintQR('standpipe')">🖨 Print QR Labels</button>
         <button class="btn bo" style="font-size:10px;" onclick="aiExport('standpipe')">⬇ Export</button>
         <button class="btn bp" style="font-size:10px;" onclick="aiItemForm('standpipe',null)">+ Add Item</button>
@@ -6834,7 +6837,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1664';
+const APP_VERSION = '20260816-1666';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -20808,9 +20811,9 @@ function apronExport(){
 
 /* ═══════════════ GENERIC ASSET INSPECTION ENGINE (HEPA · Hose Reel · Stand Pipe) — FMS.1.1.8 ═══════════════ */
 const AI_CONFIGS = {
-  hepa: { label:'🌀 HEPA Filters', short:'HEPA Filter', icon:'🌀', freq:'monthly',
+  hepa: { label:'🌀 HEPA Filters', short:'HEPA Room', icon:'🌀', freq:'monthly', nested:true,
     checklist:['Check HEPA Grills','Check for Any Misalignment','Clean Vicinity'],
-    roles:['maintenance','biomedical'] },
+    roles:['maintenance','biomedical'], seed:[{"id": "hepa_ccsd_sterile_storage", "loc": "CCSD Sterile Storage", "dept": "CCSD", "filters": [{"sr": "001", "size": "43X43X15", "dim": "43x43x15 CM"}, {"sr": "002", "size": "43X43X15", "dim": "43x43x15 CM"}, {"sr": "003", "size": "43X43X15", "dim": "43x43x15 CM"}, {"sr": "004", "size": "43X43X15", "dim": "43x43x15 CM"}, {"sr": "005", "size": "30X30X15", "dim": "43x43x15 CM"}]}, {"id": "hepa_ccsd_clean_room", "loc": "CCSD Clean Room", "dept": "CCSD", "filters": [{"sr": "006", "size": "43X43X15", "dim": "51.5x51.5x 7 CM"}, {"sr": "007", "size": "43X43X15", "dim": "51.5x51.5x 7 CM"}, {"sr": "008", "size": "43X43X15", "dim": "51.5x51.5x 7 CM"}, {"sr": "009", "size": "43X43X15", "dim": "51.5x51.5x 7 CM"}, {"sr": "010", "size": "51.5X51.5X15", "dim": "51.5x51.5x 7 CM"}]}, {"id": "hepa_ccsd_decontamination_roo", "loc": "CCSD Decontamination Room", "dept": "CCSD", "filters": [{"sr": "011", "size": "43X43X15", "dim": "51.5x51.5x 7 CM"}, {"sr": "012", "size": "51.5X51.5X15", "dim": "51.5x51.5x 7 CM"}, {"sr": "013", "size": "51.5X51.5X15", "dim": "51.5x51.5x 7 CM"}]}, {"id": "hepa_lab", "loc": "LAB", "dept": "Other", "filters": [{"sr": "014", "size": "43X43X15", "dim": "43x43x 7 CM"}]}, {"id": "hepa_inpatient_pharmacy_sc", "loc": "Inpatient Pharmacy SC", "dept": "Other", "filters": [{"sr": "015", "size": "51.5X51.5X15", "dim": "43x43x 7 CM"}]}, {"id": "hepa_chemo", "loc": "CHEMO", "dept": "Other", "filters": [{"sr": "016", "size": "43X43X15", "dim": "43x43x15 CM"}]}, {"id": "hepa_er_observation_room", "loc": "ER Observation Room", "dept": "Emergency", "filters": [{"sr": "017", "size": "51.5X51.5X15", "dim": "43x43x15 CM"}, {"sr": "018", "size": "30X30X15", "dim": "43x43x15 CM"}]}, {"id": "hepa_er_critical_isolation", "loc": "ER Critical Isolation", "dept": "Emergency", "filters": [{"sr": "019", "size": "51.5X51.5X15", "dim": "51.5x51.5x51.5 CM"}, {"sr": "020", "size": "30X30X15", "dim": "51.5x51.5x51.5 CM"}]}, {"id": "hepa_er_respiratory_triage", "loc": "ER Respiratory Triage", "dept": "Emergency", "filters": [{"sr": "021", "size": "51.5X51.5X15", "dim": "30x30x10"}, {"sr": "022", "size": "30X30X15", "dim": "30x30x10"}]}, {"id": "hepa_icu_isolationt", "loc": "ICU Isolationt", "dept": "Inpatient / ICU", "filters": [{"sr": "023", "size": "73X58X30", "dim": "73x58x30 CM"}, {"sr": "024", "size": "30X30X15", "dim": "73x58x30 CM"}]}, {"id": "hepa_cathlab_astra", "loc": "CATHLAB ASTRA", "dept": "Cardiac", "filters": [{"sr": "025", "size": "54X54X6.9", "dim": "53.5x53.5x 7 CM"}, {"sr": "026", "size": "54X54X6.9", "dim": "53.5x53.5x 7 CM"}, {"sr": "027", "size": "82.5X23.2X6.9", "dim": "53.5x53.5x 7 CM"}]}, {"id": "hepa_open_heart", "loc": "Open Heart", "dept": "Cardiac", "filters": [{"sr": "028", "size": "54X54X6.9", "dim": "30x30x10"}]}, {"id": "hepa_or_room_01", "loc": "OR Room-01", "dept": "Operating Rooms", "filters": [{"sr": "029", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "030", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "031", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "032", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "033", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "034", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "035", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "036", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "037", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}]}, {"id": "hepa_or_room_02", "loc": "OR Room-02", "dept": "Operating Rooms", "filters": [{"sr": "038", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "039", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "040", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "041", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "042", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "043", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "044", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "045", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "046", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}]}, {"id": "hepa_or_room_03", "loc": "OR Room-03", "dept": "Operating Rooms", "filters": [{"sr": "047", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "048", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "049", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "050", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "051", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "052", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "053", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "054", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "055", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}]}, {"id": "hepa_or_room_04", "loc": "OR Room-04", "dept": "Operating Rooms", "filters": [{"sr": "056", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "057", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "058", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "059", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "060", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "061", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "062", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "063", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "064", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}]}, {"id": "hepa_or_room_05", "loc": "OR Room-05", "dept": "Operating Rooms", "filters": [{"sr": "065", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "066", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "067", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "068", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "069", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "070", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "071", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "072", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "073", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}]}, {"id": "hepa_or_room_06", "loc": "OR Room-06", "dept": "Operating Rooms", "filters": [{"sr": "074", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "075", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "076", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "077", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "078", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "079", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "080", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "081", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}, {"sr": "082", "size": "54X54X6.9", "dim": "51.5x51.5x 7 CM"}]}, {"id": "hepa_staion_c_isolation_room_", "loc": "Staion - C Isolation Room 208", "dept": "Inpatient / ICU", "filters": [{"sr": "083", "size": "51.5X51.5X15", "dim": "51.5x51.5x10 CM"}, {"sr": "084", "size": "30X30X15", "dim": "30x30x 7CM"}]}, {"id": "hepa_staion_c_isolation_room_", "loc": "Staion - C Isolation Room 209", "dept": "Inpatient / ICU", "filters": [{"sr": "085", "size": "51.5X51.5X15", "dim": "51.5x51.5x10 CM"}, {"sr": "086", "size": "30X30X15", "dim": "30x30x 7CM"}]}, {"id": "hepa_staion_c_isolation_room_", "loc": "Staion - C Isolation Room 210", "dept": "Inpatient / ICU", "filters": [{"sr": "087", "size": "73X58X30", "dim": "51.5x51.5x10 CM"}, {"sr": "088", "size": "30X30X15", "dim": "30x30x 7CM"}]}, {"id": "hepa_staion_c_isolation_room_", "loc": "Staion - C Isolation Room 211", "dept": "Inpatient / ICU", "filters": [{"sr": "089", "size": "73X58X30", "dim": "51.5x51.5x10 CM"}, {"sr": "090", "size": "30X30X15", "dim": "30x30x 7CM"}]}, {"id": "hepa_staion_c_isolation_room_", "loc": "Staion - C Isolation Room 207", "dept": "Inpatient / ICU", "filters": [{"sr": "089", "size": "73X58X30", "dim": "51.5x51.5x10 CM"}, {"sr": "090", "size": "30X30X15", "dim": "30x30x 7CM"}]}, {"id": "hepa_gastro", "loc": "Gastro", "dept": "Other", "filters": [{"sr": "091", "size": "NaN", "dim": "43x43x7 CM"}]}] },
   hosereel: { label:'🧯 Fire Hose Reels', short:'Fire Hose Reel', icon:'🧯', freq:'monthly',
     checklist:['Check cabinet door lock','Keep hose valve tight (leakage will damage hose)','Water test availability of fire hose reel','Check gate valve in good operating condition','Check hose thoroughly dried & returned to service','Check cabinet for traces of water leaks','Examine hose visually, replace damaged hose','Check fire hose nozzles for easy operation','Check fire hose cabinet door opens easily','Check & clean fire hose cabinet, repaint if necessary'],
     roles:['maintenance','safety'], seed:[{"loc": "OSH/FHC-001 · NEAR OLD MRI", "dept": "Basement"}, {"loc": "OSH/FHC-002 · NEAR ELEVATOR 2,3", "dept": "Basement"}, {"loc": "OSH/FHC-003 · NEAR IN-PAITENT PHARMACY", "dept": "Basement"}, {"loc": "OSH/FHC-004 · NEAR Gastro", "dept": "Basement"}, {"loc": "OSH/FHC-005 · MEDICAL RECORD", "dept": "Basement"}, {"loc": "OSH/FHC-006 · PHYSIOTHERAPY", "dept": "Basement"}, {"loc": "OSH/FHC-007 · NEAR INSURANCE", "dept": "Basement"}, {"loc": "OSH/FHC-008 · NEAR OBG", "dept": "Ground Floor"}, {"loc": "OSH/FHC-009 · OPD CLINICS", "dept": "Ground Floor"}, {"loc": "OSH/FHC-010 · OPD PHARMACY GATE 1", "dept": "Ground Floor"}, {"loc": "OSH/FHC-011 · Surgery CLINICS RECEPTION", "dept": "Ground Floor"}, {"loc": "OSH/FHC-012 · INTERNAL CLINICS RECIPTION", "dept": "Ground Floor"}, {"loc": "OSH/FHC-013 · ORTHOPEDIC RECEPTION", "dept": "Ground Floor"}, {"loc": "OSH/FHC-014 · EMERGENCY DEPT", "dept": "Ground Floor"}, {"loc": "OSH/FHC-015 · NEAR ICU C", "dept": "1st Floor"}, {"loc": "OSH/FHC-016 · STATION A 102", "dept": "1st Floor"}, {"loc": "OSH/FHC-017 · STATION A RECEPTION", "dept": "1st Floor"}, {"loc": "OSH/FHC-018 · STATION B RECEPTION", "dept": "1st Floor"}, {"loc": "OSH/FHC-019 · NEAR HOUSEKEEPING", "dept": "1st Floor"}, {"loc": "OSH/FHC-020 · STATION G RECEPTION RM 131", "dept": "1st Floor"}, {"loc": "OSH/FHC-021 · STATION E HALLWAY", "dept": "1st Floor"}, {"loc": "OSH/FHC-022 · STATION F NEAR ELEVATOR", "dept": "2nd Floor"}, {"loc": "OSH/FHC-023 · STATION H NEAR RM 233", "dept": "2nd Floor"}, {"loc": "OSH/FHC-024 · STATION H RECEPTION", "dept": "2nd Floor"}, {"loc": "OSH/FHC-025 · STATION D RECEPTION", "dept": "2nd Floor"}, {"loc": "OSH/FHC-026 · STATION C RECEPTION", "dept": "2nd Floor"}, {"loc": "OSH/FHC-027 · STATION C HALLWAY", "dept": "2nd Floor"}, {"loc": "OSH/FHC-028 · WAITING AREA ONCOLOGY", "dept": "3rd Floor"}, {"loc": "OSH/FHC-029 · ONCOLOGY CLINIC RECEPTION", "dept": "3rd Floor"}, {"loc": "OSH/FHC-030 · NEAR SPA RECEPTION", "dept": "3rd Floor"}] },
@@ -20823,13 +20826,48 @@ function aiCfg(key){ return AI_CONFIGS[key]; }
 function aiCanEdit(){ return CU && ['director','maintenance','biomedical','safety'].indexOf(CU.role)>=0; }
 function aiItems(key){
   var a=ld('ai_items_'+key);
-  if(!Array.isArray(a)||!a.length){
+  var need = !Array.isArray(a) || !a.length;
+  if(key==='hepa' && Array.isArray(a) && a.length && !a[0].filters) need=true;
+  if(need){
     var seed=[];
-    if(key==='hepa'){ try{ seed=achRooms().map(function(r){ return {id:'hepa_'+r.id, loc:r.name, dept:r.dept, p:r.p}; }); }catch(e){} }
-    else if(aiCfg(key).seed){ seed=aiCfg(key).seed.map(function(s,i){ return {id:key+'_'+(i+1), loc:s.loc, dept:s.dept||''}; }); }
+    if(aiCfg(key).seed){ seed=aiCfg(key).seed.map(function(s,i){ return Object.assign({id:s.id||(key+'_'+(i+1))}, s); }); }
+    else if(key==='hepa'){ try{ seed=achRooms().map(function(r){ return {id:'hepa_'+r.id, loc:r.name, dept:r.dept}; }); }catch(e){} }
     a=seed; sv('ai_items_'+key, a);
   }
   return a;
+}
+function aiHepaChecklistHTML(room, existing, P){
+  var cfg=aiCfg('hepa'); var filters=(room.filters||[]);
+  var prevByR={}; if(existing&&existing.filterResults){ existing.filterResults.forEach(function(fr){ prevByR[fr.sr]=fr; }); }
+  var dark = P==='sai';
+  var box = dark ? 'background:#182234;border:1px solid #2a3547;' : 'background:var(--s1);border:1px solid var(--bd);';
+  var inp = dark ? 'background:#0e1522;color:#e6eef7;' : 'background:var(--s2);color:var(--tx);';
+  var head='<button type="button" onclick="aiApplyAllHepa(\''+P+'\')" style="width:100%;padding:9px;margin-bottom:10px;border:none;border-radius:8px;background:#16a34a;color:#fff;font-weight:700;cursor:pointer;">✅ Apply Pass / Done to All Filters</button>';
+  var blocks=filters.map(function(f,fi){
+    var pr=prevByR[f.sr]||{}; var pit=pr.items||[];
+    var rows=cfg.checklist.map(function(t,ci){ var v=pit[ci]||{};
+      return '<div style="display:grid;grid-template-columns:1fr 84px 1fr;gap:5px;align-items:center;padding:3px 0;"><div style="font-size:11px;">'+t+'</div>'
+        +'<select id="'+P+'-'+fi+'-'+ci+'" style="padding:3px 5px;border-radius:6px;border:1px solid #2a3547;'+inp+'font-size:11px;"><option value=""'+(!v.status?' selected':'')+'>—</option><option value="pass"'+(v.status==='pass'?' selected':'')+'>✅ Pass</option><option value="fail"'+(v.status==='fail'?' selected':'')+'>❌ Fail</option><option value="na"'+(v.status==='na'?' selected':'')+'>N/A</option></select>'
+        +'<input id="'+P+'r-'+fi+'-'+ci+'" placeholder="remarks" value="'+((v.remarks||'').replace(/"/g,'&quot;'))+'" style="padding:3px 5px;border-radius:6px;border:1px solid #2a3547;'+inp+'font-size:11px;"></div>';
+    }).join('');
+    return '<div data-sr="'+f.sr+'" style="'+box+'border-radius:10px;padding:10px;margin-bottom:8px;">'
+      +'<div style="font-weight:700;font-size:12px;color:'+(dark?'#4fa3e3':'var(--ac)')+';">🔲 Filter S/R '+f.sr+' <span style="font-weight:400;font-size:10px;opacity:.8;">· '+(f.size||'')+' · '+(f.dim||'')+'</span></div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0;"><div><label style="font-size:9px;opacity:.7;">Installed</label><input type="date" id="'+P+'inst-'+fi+'" value="'+(f.installed||'')+'" style="width:100%;padding:5px;border-radius:6px;border:1px solid #2a3547;'+inp+'font-size:11px;"></div><div><label style="font-size:9px;opacity:.7;">Replacement Due</label><input type="date" id="'+P+'due-'+fi+'" value="'+(f.replaceDue||'')+'" style="width:100%;padding:5px;border-radius:6px;border:1px solid #2a3547;'+inp+'font-size:11px;"></div></div>'
+      + rows + '</div>';
+  }).join('');
+  return head+blocks;
+}
+function aiApplyAllHepa(P){ document.querySelectorAll('[id^="'+P+'-"]').forEach(function(s){ if(s.tagName==='SELECT') s.value='pass'; }); }
+function aiHepaCollect(room, P){
+  var cfg=aiCfg('hepa'); var filters=(room.filters||[]); var out=[];
+  filters.forEach(function(f,fi){
+    var items=cfg.checklist.map(function(t,ci){ return {n:ci+1,item:t,status:(document.getElementById(P+'-'+fi+'-'+ci)||{}).value||'',remarks:(document.getElementById(P+'r-'+fi+'-'+ci)||{}).value||''}; });
+    var inst=(document.getElementById(P+'inst-'+fi)||{}).value||f.installed||'';
+    var due=(document.getElementById(P+'due-'+fi)||{}).value||f.replaceDue||'';
+    out.push({sr:f.sr, size:f.size, dim:f.dim, installed:inst, replaceDue:due, items:items});
+    f.installed=inst; f.replaceDue=due;
+  });
+  return out;
 }
 function aiSaveItems(key,a){ sv('ai_items_'+key, a); }
 function aiItem(key,id){ return aiItems(key).find(function(x){return String(x.id)===String(id);}); }
@@ -20892,14 +20930,15 @@ function aiOpenForm(key,itemId,editId){
   document.getElementById('ai-modal-result').value=existing?existing.result:'pass';
   document.getElementById('ai-modal-remarks').value=existing?(existing.remarks||''):'';
   var items=(existing&&existing.items)||[];
+  if(cfg.nested){ document.getElementById('ai-modal-items').innerHTML=aiHepaChecklistHTML(it, existing, 'ai'); } else
   document.getElementById('ai-modal-items').innerHTML=cfg.checklist.map(function(t,i){ var v=(items[i]||{}); return '<div style="display:grid;grid-template-columns:22px 1fr 90px 1fr;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05);"><div style="font-size:11px;color:var(--mu);">'+(i+1)+'</div><div style="font-size:11px;">'+t+'</div><select id="ai-it-'+i+'" style="padding:3px 6px;border:1px solid var(--bd);border-radius:6px;background:var(--s1);color:var(--tx);font-size:11px;"><option value=""'+(!v.status?' selected':'')+'>—</option><option value="pass"'+(v.status==='pass'?' selected':'')+'>✅ Pass</option><option value="fail"'+(v.status==='fail'?' selected':'')+'>❌ Fail</option><option value="na"'+(v.status==='na'?' selected':'')+'>N/A</option></select><input id="ai-rm-'+i+'" placeholder="Remarks" value="'+((v.remarks||'').replace(/"/g,'&quot;'))+'" style="padding:3px 6px;border:1px solid var(--bd);border-radius:6px;background:var(--s1);color:var(--tx);font-size:11px;"></div>'; }).join('');
   document.getElementById('ai-modal').style.display='flex';
 }
 function aiInspSave(){
   var key=document.getElementById('ai-modal-key').value, itemId=document.getElementById('ai-modal-itemid').value, editId=document.getElementById('ai-modal-editid').value;
   var it=aiItem(key,itemId); if(!it) return; var cfg=aiCfg(key);
-  var items=cfg.checklist.map(function(t,i){ return {n:i+1,item:t,status:(document.getElementById('ai-it-'+i)||{}).value||'',remarks:(document.getElementById('ai-rm-'+i)||{}).value||''}; });
-  var rec={ _id:editId||('aii_'+key+'_'+itemId+'_'+Date.now()), key:key, itemId:itemId, loc:it.loc, dept:it.dept||'', date:document.getElementById('ai-modal-date').value, by:document.getElementById('ai-modal-by').value||'', items:items, result:document.getElementById('ai-modal-result').value, remarks:document.getElementById('ai-modal-remarks').value||'', _ts:new Date().toISOString(), _by:(CU&&CU.name)||'' };
+  var items=[], filterResults=null; if(cfg.nested){ filterResults=aiHepaCollect(it,'ai'); var _all=[]; filterResults.forEach(function(fr){ _all=_all.concat(fr.items); }); items=_all; try{ var _li=aiItems(key).slice(); var _ix=_li.findIndex(function(x){return String(x.id)===String(itemId);}); if(_ix>=0){ _li[_ix].filters=it.filters; aiSaveItems(key,_li); dbWrite('ai_items_'+key,_li[_ix]); } }catch(e){} } else { items=cfg.checklist.map(function(t,i){ return {n:i+1,item:t,status:(document.getElementById('ai-it-'+i)||{}).value||'',remarks:(document.getElementById('ai-rm-'+i)||{}).value||''}; }); }
+  var rec={ _id:editId||('aii_'+key+'_'+itemId+'_'+Date.now()), key:key, itemId:itemId, loc:it.loc, dept:it.dept||'', date:document.getElementById('ai-modal-date').value, by:document.getElementById('ai-modal-by').value||'', items:items, filterResults:filterResults, result:document.getElementById('ai-modal-result').value, remarks:document.getElementById('ai-modal-remarks').value||'', _ts:new Date().toISOString(), _by:(CU&&CU.name)||'' };
   var arr=aiInsp(key).filter(function(x){return String(x._id)!==String(rec._id);}); arr.unshift(rec); aiSaveInsp(key,arr);
   try{ dbWrite('ai_insp_'+key, rec); }catch(e){}
   document.getElementById('ai-modal').style.display='none'; aiDash(key); toast('✓ Inspection saved','#10b981');
@@ -20956,7 +20995,7 @@ function aiStandalone(){
     var statusBanner = st.done
       ? '<div style="background:rgba(22,163,74,.12);border:1px solid rgba(22,163,74,.4);border-radius:10px;padding:10px;text-align:center;margin-bottom:12px;color:#4ade80;font-weight:700;">✅ Already checked this month ('+st.date+', '+(st.by||'—')+') — you may re-inspect</div>'
       : '<div style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4);border-radius:10px;padding:10px;text-align:center;margin-bottom:12px;color:#fbbf24;font-weight:700;">⚠ NOT YET CHECKED THIS MONTH</div>';
-    var items=cfg.checklist.map(function(t,i){ return '<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06);"><div style="font-size:13px;margin-bottom:5px;">'+(i+1)+'. '+t+'</div><div style="display:flex;gap:8px;"><select id="sai-it-'+i+'" style="flex:0 0 110px;padding:8px;border:1px solid #2a3547;border-radius:8px;background:#182234;color:#e6eef7;font-size:13px;"><option value="">— status —</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option><option value="na">N/A</option></select><input id="sai-rm-'+i+'" placeholder="Remarks (if any)" style="flex:1;padding:8px;border:1px solid #2a3547;border-radius:8px;background:#182234;color:#e6eef7;font-size:13px;"></div></div>'; }).join('');
+    var items = cfg.nested ? aiHepaChecklistHTML(it, null, 'sai') : cfg.checklist.map(function(t,i){ return '<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06);"><div style="font-size:13px;margin-bottom:5px;">'+(i+1)+'. '+t+'</div><div style="display:flex;gap:8px;"><select id="sai-it-'+i+'" style="flex:0 0 110px;padding:8px;border:1px solid #2a3547;border-radius:8px;background:#182234;color:#e6eef7;font-size:13px;"><option value="">— status —</option><option value="pass">✅ Pass</option><option value="fail">❌ Fail</option><option value="na">N/A</option></select><input id="sai-rm-'+i+'" placeholder="Remarks (if any)" style="flex:1;padding:8px;border:1px solid #2a3547;border-radius:8px;background:#182234;color:#e6eef7;font-size:13px;"></div></div>'; }).join('');
     var ov=document.createElement('div'); ov.id='ai-standalone'; ov.style.cssText='position:fixed;inset:0;background:#0e1522;overflow:auto;z-index:99999;padding:14px;color:#e6eef7;font-family:system-ui,-apple-system,sans-serif;';
     ov.innerHTML='<div style="max-width:640px;margin:0 auto;">'
       +'<div style="text-align:center;padding:10px 0 6px;"><div style="font-size:22px;">'+cfg.icon+'</div><div style="font-family:Rajdhani,sans-serif;font-size:20px;font-weight:800;color:#4fa3e3;">'+cfg.short+' Inspection</div><div style="font-size:12px;color:#8aa;">Obeid Specialized Hospital · FMS.1.1.8</div></div>'
@@ -20972,8 +21011,8 @@ function aiStandalone(){
     document.getElementById('sai-date').value=(typeof fmsLocalToday==='function'?fmsLocalToday():new Date().toISOString().slice(0,10));
     document.getElementById('sai-submit').onclick=function(){
       var by=(document.getElementById('sai-by').value||'').trim(); if(!by){ alert('Please enter your name'); return; }
-      var arr2=cfg.checklist.map(function(t,i){ return {n:i+1,item:t,status:(document.getElementById('sai-it-'+i)||{}).value||'',remarks:(document.getElementById('sai-rm-'+i)||{}).value||''}; });
-      var rec={ _id:'aii_'+key+'_'+itemId+'_'+Date.now(), key:key, itemId:itemId, loc:it.loc, dept:it.dept||'', date:document.getElementById('sai-date').value, by:by, items:arr2, result:document.getElementById('sai-result').value, remarks:document.getElementById('sai-remarks').value||'', _ts:new Date().toISOString(), _by:by };
+      var arr2=[], filterResults2=null; if(cfg.nested){ filterResults2=aiHepaCollect(it,'sai'); filterResults2.forEach(function(fr){ arr2=arr2.concat(fr.items); }); } else { arr2=cfg.checklist.map(function(t,i){ return {n:i+1,item:t,status:(document.getElementById('sai-it-'+i)||{}).value||'',remarks:(document.getElementById('sai-rm-'+i)||{}).value||''}; }); }
+      var rec={ _id:'aii_'+key+'_'+itemId+'_'+Date.now(), key:key, itemId:itemId, loc:it.loc, dept:it.dept||'', date:document.getElementById('sai-date').value, by:by, items:arr2, filterResults:filterResults2, result:document.getElementById('sai-result').value, remarks:document.getElementById('sai-remarks').value||'', _ts:new Date().toISOString(), _by:by };
       try{ var a=aiInsp(key); a.unshift(rec); aiSaveInsp(key,a); }catch(e){}
       try{ dbWrite('ai_insp_'+key, rec); }catch(e){}
       document.getElementById('ai-standalone').innerHTML='<div style="max-width:520px;margin:60px auto;text-align:center;padding:24px;"><div style="font-size:56px;">✅</div><div style="font-size:22px;font-weight:800;color:#16a34a;margin:12px 0;">Inspection Submitted</div><div style="color:#c6d2e0;">'+(it.loc||itemId)+'</div><div style="color:#8aa;font-size:13px;margin-top:8px;">'+rec.date+' by '+by+'</div><button onclick="location.reload()" style="margin-top:20px;padding:12px 24px;border:none;border-radius:10px;background:#2a3547;color:#fff;cursor:pointer;">➕ Another Inspection</button></div>';
