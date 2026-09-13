@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1662';
+  var v = '20260816-1664';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1662">
+<meta name="app-version" content="20260816-1664">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3834,7 +3834,7 @@ if ('caches' in window) {
     <div class="card" id="ai-itemform-hepa" style="display:none;"><div class="ch"><div class="ct">Add / Edit Item</div>
       <button class="btn bo" style="font-size:10px;" onclick="document.getElementById('ai-itemform-hepa').style.display='none';">← Cancel</button></div><div class="cb">
       <input type="hidden" id="aif-id-hepa">
-      <div class="fg fg2"><div class="ff"><label>Location / Item Name</label><input type="text" id="aif-loc-hepa"></div><div class="ff"><label>Department / Area</label><input type="text" id="aif-dept-hepa"></div></div>
+      <div class="fg fg2"><div class="ff"><label>Location / Item Name</label><input type="text" id="aif-loc-hepa"></div><div class="ff"><label>Department / Area</label><input type="text" id="aif-dept-hepa"></div><div class="ff"><label>Date Installed</label><input type="date" id="aif-inst-hepa"></div><div class="ff"><label>Replacement Due Date</label><input type="date" id="aif-due-hepa"></div></div>
       <button class="btn bg" style="width:100%;margin-top:10px;" onclick="aiItemSave('hepa')">✓ Save Item</button>
     </div></div>
   </div>
@@ -6834,7 +6834,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1662';
+const APP_VERSION = '20260816-1664';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -20813,7 +20813,7 @@ const AI_CONFIGS = {
     roles:['maintenance','biomedical'] },
   hosereel: { label:'🧯 Fire Hose Reels', short:'Fire Hose Reel', icon:'🧯', freq:'monthly',
     checklist:['Check cabinet door lock','Keep hose valve tight (leakage will damage hose)','Water test availability of fire hose reel','Check gate valve in good operating condition','Check hose thoroughly dried & returned to service','Check cabinet for traces of water leaks','Examine hose visually, replace damaged hose','Check fire hose nozzles for easy operation','Check fire hose cabinet door opens easily','Check & clean fire hose cabinet, repaint if necessary'],
-    roles:['maintenance','safety'] },
+    roles:['maintenance','safety'], seed:[{"loc": "OSH/FHC-001 · NEAR OLD MRI", "dept": "Basement"}, {"loc": "OSH/FHC-002 · NEAR ELEVATOR 2,3", "dept": "Basement"}, {"loc": "OSH/FHC-003 · NEAR IN-PAITENT PHARMACY", "dept": "Basement"}, {"loc": "OSH/FHC-004 · NEAR Gastro", "dept": "Basement"}, {"loc": "OSH/FHC-005 · MEDICAL RECORD", "dept": "Basement"}, {"loc": "OSH/FHC-006 · PHYSIOTHERAPY", "dept": "Basement"}, {"loc": "OSH/FHC-007 · NEAR INSURANCE", "dept": "Basement"}, {"loc": "OSH/FHC-008 · NEAR OBG", "dept": "Ground Floor"}, {"loc": "OSH/FHC-009 · OPD CLINICS", "dept": "Ground Floor"}, {"loc": "OSH/FHC-010 · OPD PHARMACY GATE 1", "dept": "Ground Floor"}, {"loc": "OSH/FHC-011 · Surgery CLINICS RECEPTION", "dept": "Ground Floor"}, {"loc": "OSH/FHC-012 · INTERNAL CLINICS RECIPTION", "dept": "Ground Floor"}, {"loc": "OSH/FHC-013 · ORTHOPEDIC RECEPTION", "dept": "Ground Floor"}, {"loc": "OSH/FHC-014 · EMERGENCY DEPT", "dept": "Ground Floor"}, {"loc": "OSH/FHC-015 · NEAR ICU C", "dept": "1st Floor"}, {"loc": "OSH/FHC-016 · STATION A 102", "dept": "1st Floor"}, {"loc": "OSH/FHC-017 · STATION A RECEPTION", "dept": "1st Floor"}, {"loc": "OSH/FHC-018 · STATION B RECEPTION", "dept": "1st Floor"}, {"loc": "OSH/FHC-019 · NEAR HOUSEKEEPING", "dept": "1st Floor"}, {"loc": "OSH/FHC-020 · STATION G RECEPTION RM 131", "dept": "1st Floor"}, {"loc": "OSH/FHC-021 · STATION E HALLWAY", "dept": "1st Floor"}, {"loc": "OSH/FHC-022 · STATION F NEAR ELEVATOR", "dept": "2nd Floor"}, {"loc": "OSH/FHC-023 · STATION H NEAR RM 233", "dept": "2nd Floor"}, {"loc": "OSH/FHC-024 · STATION H RECEPTION", "dept": "2nd Floor"}, {"loc": "OSH/FHC-025 · STATION D RECEPTION", "dept": "2nd Floor"}, {"loc": "OSH/FHC-026 · STATION C RECEPTION", "dept": "2nd Floor"}, {"loc": "OSH/FHC-027 · STATION C HALLWAY", "dept": "2nd Floor"}, {"loc": "OSH/FHC-028 · WAITING AREA ONCOLOGY", "dept": "3rd Floor"}, {"loc": "OSH/FHC-029 · ONCOLOGY CLINIC RECEPTION", "dept": "3rd Floor"}, {"loc": "OSH/FHC-030 · NEAR SPA RECEPTION", "dept": "3rd Floor"}] },
   standpipe: { label:'🚰 Stand Pipes', short:'Stand Pipe', icon:'🚰', freq:'monthly',
     checklist:['Is there any obstruction in the stand pipe','Is the gate valve easy to open','Is it rusty (repaint if needed)','Check for leaks, cracks, valve tightness','Does the stand pipe have a cover','Is the gate valve in good condition'],
     roles:['maintenance','safety'],
@@ -20842,12 +20842,14 @@ function aiDash(key){
   var el=document.getElementById('ai-dash-'+key); if(!el) return; var cfg=aiCfg(key); var items=aiItems(key); var m=aiMonth();
   var done=0; items.forEach(function(it){ if(aiItemStatus(key,it.id).done) done++; });
   var byDept={}; items.forEach(function(it){ (byDept[it.dept||'—']=byDept[it.dept||'—']||[]).push(it); });
+  if(!items.length){ el.innerHTML=(document.getElementById('ai-dash-'+key)?'':'')+'<div class="em" style="padding:16px;text-align:center;">No '+cfg.short+' items yet.'+(aiCanEdit()?' Use <b>+ Add Item</b> to register your '+cfg.short+'s, then print their QR labels.':'')+'</div>'; var ab0=document.getElementById('ai-additem'); return; }
   var grid=Object.keys(byDept).map(function(dp){
     return '<div style="margin-bottom:12px;"><div style="font-size:12px;font-weight:700;color:var(--or);margin-bottom:6px;">'+dp+'</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;">'
       +byDept[dp].map(function(it){ var st=aiItemStatus(key,it.id);
         var col=!st.done?'var(--mu)':st.result==='fail'?'var(--rd)':st.result==='partial'?'var(--or)':'var(--gn)';
         var lbl=!st.done?'⚠ Not checked this month':st.result==='pass'?'✅ Passed '+st.date:st.result==='partial'?'⚠️ Partial':'❌ Fail';
-        return '<div style="background:var(--s2);border:1px solid '+col+';border-radius:10px;padding:9px;cursor:pointer;" onclick="aiOpenForm(\''+key+'\',\''+it.id+'\')"><div style="font-size:12px;font-weight:700;">'+(it.loc||it.id)+'</div><div style="font-size:9px;color:'+col+';font-weight:600;margin-top:3px;">'+lbl+'</div>'+(aiCanEdit()?'<div style="margin-top:4px;"><button class="btn bo" style="font-size:8px;padding:1px 4px;" onclick="event.stopPropagation();aiItemForm(\''+key+'\',\''+it.id+'\')">✏</button> <button class="btn br" style="font-size:8px;padding:1px 4px;" onclick="event.stopPropagation();aiDeleteItem(\''+key+'\',\''+it.id+'\')">🗑</button></div>':'')+'</div>';
+        var due=''; if(it.replaceDue){ var dd=new Date(it.replaceDue); var days=Math.round((dd-new Date())/864e5); due='<div style="font-size:8px;color:'+(days<0?'var(--rd)':days<90?'var(--or)':'var(--mu)')+';margin-top:2px;">🔧 Replace: '+it.replaceDue+(days<0?' (overdue)':days<90?' ('+days+'d)':'')+'</div>'; }
+        return '<div style="background:var(--s2);border:1px solid '+col+';border-radius:10px;padding:9px;cursor:pointer;" onclick="aiOpenForm(\''+key+'\',\''+it.id+'\')"><div style="font-size:12px;font-weight:700;">'+(it.loc||it.id)+'</div><div style="font-size:9px;color:'+col+';font-weight:600;margin-top:3px;">'+lbl+'</div>'+due+''+(aiCanEdit()?'<div style="margin-top:4px;"><button class="btn bo" style="font-size:8px;padding:1px 4px;" onclick="event.stopPropagation();aiItemForm(\''+key+'\',\''+it.id+'\')">✏</button> <button class="btn br" style="font-size:8px;padding:1px 4px;" onclick="event.stopPropagation();aiDeleteItem(\''+key+'\',\''+it.id+'\')">🗑</button></div>':'')+'</div>';
       }).join('')+'</div></div>';
   }).join('');
   var summary='<div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;">'
@@ -20860,8 +20862,8 @@ function aiItemForm(key,id){
   if(!aiCanEdit()){ toast('Not permitted','#f59e0b'); return; }
   var f=document.getElementById('ai-itemform-'+key); f.style.display='';
   var set=function(i,v){ var e=document.getElementById(i); if(e) e.value=(v==null?'':v); };
-  if(id){ var x=aiItem(key,id); set('aif-id-'+key,x.id); set('aif-loc-'+key,x.loc); set('aif-dept-'+key,x.dept); }
-  else { set('aif-id-'+key,''); set('aif-loc-'+key,''); set('aif-dept-'+key,''); }
+  if(id){ var x=aiItem(key,id); set('aif-id-'+key,x.id); set('aif-loc-'+key,x.loc); set('aif-dept-'+key,x.dept); set('aif-inst-'+key,x.installed); set('aif-due-'+key,x.replaceDue); }
+  else { ['aif-id-','aif-loc-','aif-dept-','aif-inst-','aif-due-'].forEach(function(p){set(p+key,'');}); }
   f.scrollIntoView({behavior:'smooth',block:'center'});
 }
 function aiItemSave(key){
@@ -20869,7 +20871,7 @@ function aiItemSave(key){
   var g=function(i){ return (document.getElementById(i)||{}).value.trim(); };
   var loc=g('aif-loc-'+key); if(!loc){ toast('Enter a location / name','#f59e0b'); return; }
   var list=aiItems(key).slice(); var id=g('aif-id-'+key)||(key+'_'+Date.now());
-  var rec={id:id, loc:loc, dept:g('aif-dept-'+key)};
+  var rec={id:id, _id:id, loc:loc, dept:g('aif-dept-'+key), installed:g('aif-inst-'+key), replaceDue:g('aif-due-'+key)};
   var i=list.findIndex(function(x){return String(x.id)===String(id);}); if(i>=0) list[i]=Object.assign({},list[i],rec); else list.push(rec);
   aiSaveItems(key,list); try{ dbWrite('ai_items_'+key, rec); }catch(e){}
   document.getElementById('ai-itemform-'+key).style.display='none'; aiDash(key); toast('✓ '+aiCfg(key).short+' saved','#10b981');
@@ -20907,6 +20909,7 @@ function aiCloseForm(){ document.getElementById('ai-modal').style.display='none'
 /* ── QR labels (one per item) ── */
 function aiPrintQR(key){
   var cfg=aiCfg(key); var base=location.origin+location.pathname; var items=aiItems(key);
+  if(!items.length){ toast('Add '+cfg.short+' items first (+ Add Item), then print QR labels','#f59e0b',5000); return; }
   var w=window.open('','_blank'); if(!w){ toast('Allow pop-ups','#f59e0b'); return; }
   var cards=items.map(function(it){ var url=base+'?inspect='+key+':'+it.id;
     return '<div style="border:2px solid #1e3a5c;border-radius:10px;padding:12px;text-align:center;width:230px;display:inline-block;margin:6px;vertical-align:top;page-break-inside:avoid;"><div style="font-weight:bold;color:#1e3a5c;font-size:13px;">'+cfg.icon+' '+cfg.short+'</div><div style="font-size:15px;font-weight:bold;margin:4px 0;">'+(it.loc||it.id)+'</div><div style="font-size:12px;color:#475569;">'+(it.dept||'')+'</div><div class="qrbox" data-url="'+url+'" style="margin:8px auto;width:150px;height:150px;"></div><div style="font-size:9px;color:#64748b;">Scan to log monthly inspection</div></div>';
@@ -20922,7 +20925,23 @@ function aiExport(key){
   var html='<html><head><meta charset="utf-8"><title>'+cfg.short+' Monthly Inspection</title></head><body style="font-family:Arial;padding:24px;color:#1e293b;"><h1 style="color:#1e3a5c;">Obeid Specialized Hospital — Facilities Management</h1><h2 style="color:#1e3a5c;">'+cfg.short+' — Monthly Inspection Summary (FMS.1.1.8)</h2><p><b>Month:</b> '+m+' &nbsp; <b>Inspected:</b> '+done+' / '+items.length+'</p><table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#1e3a5c;color:#fff;"><th style="padding:6px;">Dept</th><th>Location / Item</th><th>Last Inspection</th><th>Status</th><th>By</th></tr>'+rows+'</table><p style="margin-top:22px;font-size:12px;"><b>Issued by:</b> '+issuedBy+'</p><p style="font-size:11px;color:#64748b;">Generated '+new Date().toLocaleString()+'</p></body></html>';
   var w=window.open('','_blank'); if(w){ w.document.write(html); w.document.close(); } toast('⬇ Report generated','#10b981');
 }
-function aiInit(key){ try{ aiDash(key); }catch(e){} }
+function aiSyncFromDB(key){
+  var url=(typeof CANONICAL_DB_URL!=='undefined'&&CANONICAL_DB_URL)?CANONICAL_DB_URL:(typeof getDBUrl==='function'?getDBUrl():null); if(!url) return;
+  ['ai_items_'+key,'ai_insp_'+key].forEach(function(type){
+    fetch(url+'?action=getType&type='+type,{signal:AbortSignal.timeout(30000)})
+      .then(function(r){return r.text();})
+      .then(function(t){ var j=null; try{ j=JSON.parse(t); }catch(e){ var i=t.indexOf('{'),k=t.lastIndexOf('}'); if(i>=0&&k>i){ try{ j=JSON.parse(t.slice(i,k+1)); }catch(_){} } }
+        if(j&&j.ok&&Array.isArray(j.rows)&&j.rows.length){
+          var local=ld(type); local=Array.isArray(local)?local:[];
+          var byId={}; local.forEach(function(x){ var id=(x&&(x._id!=null?x._id:x.id)); if(id!=null) byId[String(id)]=x; });
+          j.rows.forEach(function(row){ var id=(row&&(row._id!=null?row._id:row.id)); if(id!=null){ if(typeof row.items==='string'){ try{ row.items=JSON.parse(row.items); }catch(e){} } byId[String(id)]=row; } });
+          sv(type, Object.keys(byId).map(function(k){return byId[k];}));
+          try{ aiDash(key); }catch(e){}
+        }
+      }).catch(function(){});
+  });
+}
+function aiInit(key){ try{ aiDash(key); if(typeof aiSyncFromDB==='function') aiSyncFromDB(key); }catch(e){} }
 
 /* ── Standalone (login-free) scan form for HEPA / Hose Reel / Stand Pipe with MONTHLY STATUS ── */
 function aiStandalone(){
