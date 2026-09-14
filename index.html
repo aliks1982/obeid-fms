@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1666';
+  var v = '20260816-1667';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1666">
+<meta name="app-version" content="20260816-1667">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6837,7 +6837,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1666';
+const APP_VERSION = '20260816-1667';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -10741,6 +10741,28 @@ function eqRender() {
         else if (/annual|year|12.?month/i.test(f))      d.setFullYear(d.getFullYear() + 1);
         else if (/2.?year/i.test(f))                    d.setFullYear(d.getFullYear() + 2);
         np = d.toISOString().split('T')[0];
+      }
+    }
+
+    // ── Consistency guard: Last PPM and Next Due must match the frequency ──
+    // If both exist but don't reconcile, Next Due is authoritative → derive Last PPM from it.
+    if (lp && np && (ov.ppmFreq || r.ppmFreq)) {
+      const _f = (ov.ppmFreq || r.ppmFreq || '').toLowerCase();
+      const _dl = new Date(lp), _dn = new Date(np);
+      if (!isNaN(_dl) && !isNaN(_dn)) {
+        const _add = (dt, sign) => { const x = new Date(dt);
+          if      (/month|30d/i.test(_f))                 x.setMonth(x.getMonth() + 1*sign);
+          else if (/quarter|3.?month|90/i.test(_f))       x.setMonth(x.getMonth() + 3*sign);
+          else if (/6.?month|semi|bi.?ann|180/i.test(_f)) x.setMonth(x.getMonth() + 6*sign);
+          else if (/2.?year/i.test(_f))                   x.setFullYear(x.getFullYear() + 2*sign);
+          else if (/annual|year|12.?month/i.test(_f))     x.setFullYear(x.getFullYear() + 1*sign);
+          else return null;
+          return x; };
+        const _expected = _add(_dl, 1);   // lastPPM + one interval
+        if (_expected && Math.abs((_dn - _expected) / 864e5) > 31) {
+          const _derived = _add(_dn, -1);  // nextDue − one interval
+          if (_derived) lp = _derived.toISOString().split('T')[0];
+        }
       }
     }
 
