@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1667';
+  var v = '20260816-1668';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1667">
+<meta name="app-version" content="20260816-1668">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6837,7 +6837,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1667';
+const APP_VERSION = '20260816-1668';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -13217,6 +13217,22 @@ async function saveEqEdit() {
 }
 
 // Export department equipment list as printable HTML
+function ppmReconcileLast(lp, np, freq){
+  if(!lp || !np || !freq) return lp;
+  var f=String(freq).toLowerCase(); var dl=new Date(lp), dn=new Date(np);
+  if(isNaN(dl)||isNaN(dn)) return lp;
+  var add=function(dt,s){ var x=new Date(dt);
+    if      (/month|30d/i.test(f))                 x.setMonth(x.getMonth()+1*s);
+    else if (/quarter|3.?month|90/i.test(f))       x.setMonth(x.getMonth()+3*s);
+    else if (/6.?month|semi|bi.?ann|180/i.test(f)) x.setMonth(x.getMonth()+6*s);
+    else if (/2.?year/i.test(f))                   x.setFullYear(x.getFullYear()+2*s);
+    else if (/annual|year|12.?month/i.test(f))     x.setFullYear(x.getFullYear()+1*s);
+    else return null;
+    return x; };
+  var exp=add(dl,1); if(!exp) return lp;
+  if(Math.abs((dn-exp)/864e5) > 31){ var d=add(dn,-1); if(d) return d.toISOString().split('T')[0]; }
+  return lp;
+}
 function exportDeptList() {
   const dept = document.getElementById('eq-dept-filter')?.value;
   if (!dept) { toast('Select a department first to export its list','#f59e0b'); return; }
@@ -13231,8 +13247,10 @@ function exportDeptList() {
 
   const rows = recs.map((r,i) => {
     const o = ov[r.asset] || {};
-    const last = o.lastPPM || r.lastPPM || '—';
-    const next = o.nextPPM || r.nextPPM || '—';
+    let last = o.lastPPM || r.lastPPM || '';
+    const next = o.nextPPM || r.nextPPM || '';
+    last = ppmReconcileLast(last, next, o.ppmFreq || r.ppmFreq) || last;
+    const _lastDisp = last || '—'; const _nextDisp = next || '—';
     const by   = o.ppmBy   || '—';
     const stat = o.status  || r.status  || 'Active';
     const s    = ppmStatus(r);
@@ -13247,8 +13265,8 @@ function exportDeptList() {
       <td>${r.serial||'—'}</td>
       <td>${r.mfr||'—'}</td>
       <td>${r.ppmFreq||'—'}</td>
-      <td>${last}</td>
-      <td>${next}</td>
+      <td>${_lastDisp}</td>
+      <td>${_nextDisp}</td>
       <td style="font-weight:700;color:${sc};">${sl}</td>
       <td>${by}</td>
       <td>${r.warranty||'—'}</td>
