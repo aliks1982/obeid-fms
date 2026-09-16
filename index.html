@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1668';
+  var v = '20260816-1669';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1668">
+<meta name="app-version" content="20260816-1669">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -2453,6 +2453,7 @@ if ('caches' in window) {
         </div>
         <div style="background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:10px;">
           <div style="font-size:12px;font-weight:700;color:var(--or);margin-bottom:8px;">Inspection Checklist — Status: Pass / Fail · add Remarks if any</div>
+          <button type="button" class="btn bg" style="width:100%;margin-bottom:8px;font-size:12px;" onclick="fm200ApplyAll('fm200-it-')">✅ Apply Pass / Done to All</button>
           <div id="fm200-insp-items"></div>
         </div>
         <div class="fg" style="display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px;">
@@ -3835,7 +3836,8 @@ if ('caches' in window) {
     <div class="card" id="ai-itemform-hepa" style="display:none;"><div class="ch"><div class="ct">Add / Edit Item</div>
       <button class="btn bo" style="font-size:10px;" onclick="document.getElementById('ai-itemform-hepa').style.display='none';">← Cancel</button></div><div class="cb">
       <input type="hidden" id="aif-id-hepa">
-      <div class="fg fg2"><div class="ff"><label>Location / Item Name</label><input type="text" id="aif-loc-hepa"></div><div class="ff"><label>Department / Area</label><input type="text" id="aif-dept-hepa"></div><div class="ff"><label>Date Installed</label><input type="date" id="aif-inst-hepa"></div><div class="ff"><label>Replacement Due Date</label><input type="date" id="aif-due-hepa"></div></div>
+      <div class="fg fg2"><div class="ff"><label>Location / Room Name</label><input type="text" id="aif-loc-hepa"></div><div class="ff"><label>Department / Area</label><input type="text" id="aif-dept-hepa"></div></div>
+      <div class="ff" style="margin-top:8px;"><label>Filters in this room — one per line: <b>S/R | Size | Dimension</b></label><textarea id="aif-filters-hepa" rows="4" placeholder="056 | 54X54X6.9 | 51.5x51.5x7 CM&#10;057 | 54X54X6.9 | 51.5x51.5x7 CM" style="width:100%;font-family:monospace;font-size:12px;"></textarea><div class="ht">Each line becomes one HEPA filter with its own checklist. Install/replacement dates are set per filter inside the inspection form.</div></div>
       <button class="btn bg" style="width:100%;margin-top:10px;" onclick="aiItemSave('hepa')">✓ Save Item</button>
     </div></div>
   </div>
@@ -6837,7 +6839,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1668';
+const APP_VERSION = '20260816-1669';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -12470,7 +12472,22 @@ async function saveESR() {
   toast('✓ ESR Round saved');
 }
 
+function esrCleanup(){
+  try{
+    var arr=ld('eoc'); if(!Array.isArray(arr)||!arr.length) return;
+    // keep the richest entry per round-name; drop empties (0 found & 0 closed) when a real one exists
+    var cnt=function(r){ var f=0,cl=0; var d=(r&&r.disc)||{}; try{ Object.keys(d).forEach(function(k){ (d[k]||[]).forEach(function(it){ if(it&&(it.std||it.obs||it.action)){ f++; if((it.state||'open')==='closed') cl++; } }); }); }catch(e){} return {f:f,cl:cl}; };
+    var byRound={};
+    arr.forEach(function(r){ var k=(r.round||r.date||r._id); var c=cnt(r); r.__f=c.f; r.__cl=c.cl;
+      if(!byRound[k]) byRound[k]=r; else { var e=byRound[k]; if((r.__f+r.__cl) > (e.__f+e.__cl)) byRound[k]=r; } });
+    var kept=Object.keys(byRound).map(function(k){ var r=byRound[k]; delete r.__f; delete r.__cl; return r; });
+    // drop any round that is completely empty (0 found & 0 closed)
+    kept=kept.filter(function(r){ var c=cnt(r); return (c.f+c.cl)>0; });
+    if(kept.length!==arr.length){ sv('eoc', kept); }
+  }catch(e){}
+}
 function renderESRTable() {
+  try{ esrCleanup(); }catch(e){}
   const tb = document.getElementById('eoc-tb'); if (!tb) return;
   const data = ld('eoc');
   if (!data.length) { tb.innerHTML='<tr><td colspan="8" class="em">No ESR rounds logged yet</td></tr>'; return; }
@@ -12626,6 +12643,17 @@ async function saveRadiation(type) {
   toast('✓ Saved');
 }
 
+function radEdit(type, id){
+  var data=ld('rad_'+type)||[]; var r=data.find(function(x){return String(x._id)===String(id);}); if(!r){ toast('Record not found','#f59e0b'); return; }
+  var fields={ tld:['q','start','end','count','dose','over','rso'], apron:['q','date','count','pass','fail','by'], shield:['period','date','exp','area','body','res'] }[type]||[];
+  fields.forEach(function(f){ var el=document.getElementById(type+'-'+f); if(el) el.value=(r[f]!=null?r[f]:''); });
+  // remove the old record so the next Save writes the edited version cleanly
+  var kept=data.filter(function(x){return String(x._id)!==String(id);}); sv('rad_'+type, kept);
+  try{ dbDelete('rad_'+type, id); }catch(e){}
+  renderRadTable(type);
+  var form=document.getElementById(type+'-q')||document.getElementById(type+'-period'); if(form) form.scrollIntoView({behavior:'smooth',block:'center'});
+  toast('✏ Loaded for editing — adjust and press Save','#3b82f6',4000);
+}
 function renderRadTable(type) {
   const tbId = { tld:'tld-tb', apron:'apr-tb', shield:'shld-tb' }[type];
   const tb = document.getElementById(tbId); if (!tb) return;
@@ -12643,7 +12671,7 @@ function renderRadTable(type) {
     const fb = files.length
       ? `<span class="bx bb2" style="cursor:pointer;" onclick="showFilesModal('${r.fileKey}','Radiation ${type}')">📎 ${files.length}</span>`
       : '—';
-    return `<tr>${rows[type](r)}<td>${fb}</td><td><button class="btn br" style="font-size:9px;padding:2px 6px;" onclick="delRecord('rad_${type}','${r._id}',()=>renderRadTable('${type}'))">✕</button></td></tr>`;
+    return `<tr>${rows[type](r)}<td>${fb}</td><td style="white-space:nowrap;"><button class="btn bo" style="font-size:9px;padding:2px 6px;" onclick="radEdit('${type}','${r._id}')">✏</button> <button class="btn br" style="font-size:9px;padding:2px 6px;" onclick="delRecord('rad_${type}','${r._id}',()=>renderRadTable('${type}'))">✕</button></td></tr>`;
   }).join('');
 }
 
@@ -20383,6 +20411,7 @@ function scCreateRequest(){
   toast('📨 Request sent'+(evaluators.map(userEmail).some(Boolean)?' + email notified':'')+': '+evaluators.map(scRoleName).join(' & '),'#10b981',4000);
 }
 function scReqEvals(reqId){ return scEvals().filter(e=>e.requestId===reqId); }
+function scEvalForRole(evs, role){ return (evs||[]).find(function(x){ var er=x.evaluatorRole; if(er===role) return true; if((SC_ROLE_ALIASES[role]||[]).indexOf(er)>=0) return true; if((SC_ROLE_ALIASES[er]||[]).indexOf(role)>=0) return true; return false; }); }
 function scRenderRequests(){
   const el=document.getElementById('sc-req-list'); if(!el) return;
   const sc=scIsSC(); const nb=document.getElementById('sc-newreq-btn'); if(nb) nb.style.display=sc?'':'none';
@@ -20391,16 +20420,16 @@ function scRenderRequests(){
   if(!sc && CU) reqs=reqs.filter(r=>scMatchedRole(CU.role, r.evaluators)!==null);
   if(!reqs.length){ el.innerHTML='<div class="em" style="padding:16px;text-align:center;">'+(sc?'No requests yet. Create one with “+ New Request”.':'No evaluation requests assigned to you.')+'</div>'; return; }
   el.innerHTML=reqs.map(r=>{
-    const evs=scReqEvals(r._id); const done=evs.map(e=>e.evaluatorRole);
-    const pending=(r.evaluators||[]).filter(role=>done.indexOf(role)<0);
+    const evs=scReqEvals(r._id);
+    const pending=(r.evaluators||[]).filter(role=>!scEvalForRole(evs,role));
     const all=pending.length===0; const auth=scAuths().find(a=>a._id===r._id);
     const combined=evs.length?Math.round(evs.reduce((s,e)=>s+(parseFloat(e.pct)||0),0)/evs.length):null;
-    const evRows=(r.evaluators||[]).map(role=>{ const e=evs.find(x=>x.evaluatorRole===role);
+    const evRows=(r.evaluators||[]).map(role=>{ const e=scEvalForRole(evs,role);
       return '<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;"><span>'+scRoleLabel(role)+'</span>'+(e?'<b style="color:var(--ac);">'+e.pct+'% ✓</b>':'<span style="color:var(--or);">⏳ pending</span>')+'</div>'+(e&&e.comment?'<div style="font-size:10px;color:var(--mu);padding-left:8px;">💬 '+e.comment+'</div>':''); }).join('');
     let status,btns='';
     const myRole = CU ? scMatchedRole(CU.role, r.evaluators) : null;
     const iAmEvaluator = !!myRole;
-    const iSubmitted = myRole && done.indexOf(myRole)>=0;
+    const iSubmitted = myRole && !!scEvalForRole(evs, myRole);
     if(auth&&auth.status==='authenticated') status='<span style="color:var(--gn);font-weight:700;font-size:11px;">✅ Authenticated by '+auth.by+'</span>';
     else if(auth&&auth.status==='review') status='<span style="color:var(--rd);font-weight:700;font-size:11px;">↩ 2nd review requested</span>'+(auth.comment?'<div style="font-size:11px;">💬 '+auth.comment+'</div>':'');
     else if(all) status='<span style="color:var(--or);font-weight:700;font-size:11px;">🔔 All evaluations done — ready to authenticate</span>';
@@ -20503,7 +20532,7 @@ function scDeleteAllEvals(){
 function scUpdateBadge(){
   try{
     let count=0;
-    if(scIsSC()){ count=scRequests().filter(r=>{ const done=scReqEvals(r._id).map(e=>e.evaluatorRole); const all=(r.evaluators||[]).every(role=>done.indexOf(role)>=0); const auth=scAuths().find(a=>a._id===r._id); return all && !(auth&&auth.status==='authenticated'); }).length; }
+    if(scIsSC()){ count=scRequests().filter(r=>{ const _evs=scReqEvals(r._id); const all=(r.evaluators||[]).every(role=>scEvalForRole(_evs,role)); const auth=scAuths().find(a=>a._id===r._id); return all && !(auth&&auth.status==='authenticated'); }).length; }
     else if(CU){ count=scRequests().filter(function(r){ var mr=scMatchedRole(CU.role, r.evaluators); return mr && !scReqEvals(r._id).some(function(e){return e.evaluatorRole===mr;}); }).length; }
     ['scBadge','scReqBadge'].forEach(id=>{ const b=document.getElementById(id); if(b){ b.textContent=count; b.style.display=count?'':'none'; } });
   }catch(e){}
@@ -20519,6 +20548,7 @@ function scExportAll(){
 }
 
 /* ═══════════════ FM-200 PANEL QR INSPECTION SYSTEM — FMS 22.2 ═══════════════ */
+function fm200ApplyAll(prefix){ try{ FM200_ITEMS.forEach(function(t,i){ var s=document.getElementById(prefix+i); if(s) s.value='pass'; }); }catch(e){} }
 const FM200_ITEMS = ['Cleaning the external & Internal Cabinet','Inspecting the battery','Checking Electrical Supply','Checking All Terminal','Cleaning Heat Detector','Cleaning Smoke Detector','Silence Sound Alarm','Battery 24 Volts','Checking Local Door Panel','Heat Detector','Battery Fault Alarm','Check Terminal if tighten','Silence Buzzer','Reset','Lamp Test'];
 const FM200_SEED = [
   {id:'fm01',floor:'Basement',loc:'Medical Record'},{id:'fm02',floor:'Basement',loc:'X-Ray Department'},{id:'fm03',floor:'Basement',loc:'Electrical Room (Elev 2&3)'},
@@ -20940,16 +20970,23 @@ function aiItemForm(key,id){
   if(!aiCanEdit()){ toast('Not permitted','#f59e0b'); return; }
   var f=document.getElementById('ai-itemform-'+key); f.style.display='';
   var set=function(i,v){ var e=document.getElementById(i); if(e) e.value=(v==null?'':v); };
-  if(id){ var x=aiItem(key,id); set('aif-id-'+key,x.id); set('aif-loc-'+key,x.loc); set('aif-dept-'+key,x.dept); set('aif-inst-'+key,x.installed); set('aif-due-'+key,x.replaceDue); }
-  else { ['aif-id-','aif-loc-','aif-dept-','aif-inst-','aif-due-'].forEach(function(p){set(p+key,'');}); }
+  if(id){ var x=aiItem(key,id); set('aif-id-'+key,x.id); set('aif-loc-'+key,x.loc); set('aif-dept-'+key,x.dept); set('aif-inst-'+key,x.installed); set('aif-due-'+key,x.replaceDue); if(key==='hepa'){ var ta=document.getElementById('aif-filters-hepa'); if(ta) ta.value=(x.filters||[]).map(function(f){return f.sr+' | '+(f.size||'')+' | '+(f.dim||'');}).join('\n'); } }
+  else { ['aif-id-','aif-loc-','aif-dept-','aif-inst-','aif-due-'].forEach(function(p){set(p+key,'');}); if(key==='hepa'){ var ta2=document.getElementById('aif-filters-hepa'); if(ta2) ta2.value=''; } }
   f.scrollIntoView({behavior:'smooth',block:'center'});
 }
 function aiItemSave(key){
   if(!aiCanEdit()){ toast('Not permitted','#f59e0b'); return; }
-  var g=function(i){ return (document.getElementById(i)||{}).value.trim(); };
+  var g=function(i){ return ((document.getElementById(i)||{}).value||'').trim(); };
   var loc=g('aif-loc-'+key); if(!loc){ toast('Enter a location / name','#f59e0b'); return; }
   var list=aiItems(key).slice(); var id=g('aif-id-'+key)||(key+'_'+Date.now());
   var rec={id:id, _id:id, loc:loc, dept:g('aif-dept-'+key), installed:g('aif-inst-'+key), replaceDue:g('aif-due-'+key)};
+  if(key==='hepa'){
+    var raw=(document.getElementById('aif-filters-hepa')||{}).value||'';
+    var flt=raw.split('\n').map(function(ln){ return ln.trim(); }).filter(Boolean).map(function(ln){ var p=ln.split('|').map(function(x){return x.trim();}); return {sr:p[0]||'', size:p[1]||'', dim:p[2]||''}; });
+    if(!flt.length) flt=[{sr:'01', size:'', dim:''}];  // default so the checklist always appears
+    rec.filters=flt;
+    var _ex=aiItem('hepa',id); if(_ex&&_ex.filters){ flt.forEach(function(nf){ var old=_ex.filters.find(function(o){return o.sr===nf.sr;}); if(old){ nf.installed=old.installed; nf.replaceDue=old.replaceDue; } }); }
+  }
   var i=list.findIndex(function(x){return String(x.id)===String(id);}); if(i>=0) list[i]=Object.assign({},list[i],rec); else list.push(rec);
   aiSaveItems(key,list); try{ dbWrite('ai_items_'+key, rec); }catch(e){}
   document.getElementById('ai-itemform-'+key).style.display='none'; aiDash(key); toast('✓ '+aiCfg(key).short+' saved','#10b981');
