@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1669';
+  var v = '20260816-1670';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1669">
+<meta name="app-version" content="20260816-1670">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -691,6 +691,7 @@ if ('caches' in window) {
     <div class="ni" onclick="gp('docs')" id="n-docs"><span class="ni-ic">📁</span>Documents</div>
     <div class="nsc">Supply Chain</div>
     <div class="ni" onclick="gp('supplychain')" id="n-supplychain"><span class="ni-ic">🔗</span>Supply Chain<span class="nb" id="scBadge" style="display:none;">0</span></div>
+    <div class="ni" onclick="gp('joborders')" id="n-joborders"><span class="ni-ic">🧾</span>Job Orders<span class="nb" id="joBadge" style="display:none;">0</span></div>
     <div class="nsc">Compliance</div>
     <div class="ni" onclick="gp('budget')" id="n-budget"><span class="ni-ic">💰</span>FMS Budget</div>
     <div class="ni" onclick="gp('risk')" id="n-risk"><span class="ni-ic">⚠️</span>Risk Assessment</div>
@@ -5899,6 +5900,10 @@ if ('caches' in window) {
 </div>
 
 <!-- ===== SETTINGS (Director only) ===== -->
+<div class="pg" id="page-joborders">
+  <div class="ph"><h1>🧾 Job Order Requests</h1><p>Biomedical &amp; Maintenance assessment → End-User counter-approval → Supply Chain processing &amp; PO · full audit trail · FMS Director copied on every transaction</p></div>
+  <div id="jo-root"></div>
+</div>
 <div class="pg" id="page-supplychain">
   <div class="ph"><h1>🔗 Supply Chain — Contract Authentication</h1><p>Supply Chain Director assigns quarterly evaluations · department heads evaluate · Supply Chain authenticates the combined result</p></div>
   <div class="tb">
@@ -6839,7 +6844,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1669';
+const APP_VERSION = '20260816-1670';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -7141,7 +7146,7 @@ async function dbLoadAll(opts) {
     if (!j.data || typeof j.data !== 'object') throw new Error('Invalid DB response: j.data is null');
     const RESTORE_CUSTOM = new Set(['app_settings','ipc_items','ipc_stations','ipc_par_cfg',
       'ipc_txns','ipc_reorders','eq_backup','fa_floors','census_beds','census_daily',
-      'pmg_ppm','pmg_annex','cyl_test','lox_gauge']);
+      'pmg_ppm','pmg_annex','cyl_test','lox_gauge','job_orders']);
     Object.entries(j.data).forEach(([key, dbRows]) => {
       if (!dbRows || !Array.isArray(dbRows)) return;
       totalRecords += dbRows.length;
@@ -7991,6 +7996,7 @@ function gp(id){
   if(id==='census') setTimeout(function(){try{censusInit(); if(typeof daily==='function'){}else{} var d=JSON.parse(localStorage.getItem('obeid3_census_daily')||'[]'); if((!Array.isArray(d)||!d.length) && typeof censusSyncFromDB==='function') censusSyncFromDB(false); }catch(e){}},80);
   if(id==='ipcstore') setTimeout(function(){try{ipcStoreInit();}catch(e){}},80);
   if(id==='ipcnurse') setTimeout(function(){try{ipcNurseInit();}catch(e){}},80);
+  if(id==='joborders') setTimeout(function(){ try{ joInit(); }catch(e){} },80);
   if(id==='supplychain') setTimeout(function(){try{scTab('dashboard',document.getElementById('scTab-dashboard-btn'));scUpdateBadge(); if(typeof scSyncFromCloud==='function') scSyncFromCloud(false);}catch(e){}},80);
   if(id==='settings') setTimeout(function(){try{meInit();}catch(e){}},120);
   window.scrollTo(0,0);
@@ -11018,26 +11024,26 @@ function eqDelAdded(ts) {
 const ROLE_ACCESS = {
   director:    ['ALL'],
   // Maintenance (Mostapha): fire systems, utilities, CBAHI reports — NO analytics/reports pages
-  maintenance: ['n-dash','n-kpi','n-wo','n-utils','n-fire','n-emergency','n-cbahi','n-ckpi','n-settings','n-pms'],
-  biomedical:  ['n-dash','n-kpi','n-equip','n-medgas','n-pmg','n-radiation','n-wo','n-cbahi','n-ckpi','n-settings','n-pms'],
+  maintenance: ['n-dash','n-kpi','n-wo','n-utils','n-fire','n-emergency','n-cbahi','n-ckpi','n-settings','n-pms','n-joborders'],
+  biomedical:  ['n-dash','n-kpi','n-equip','n-medgas','n-pmg','n-radiation','n-wo','n-cbahi','n-ckpi','n-settings','n-pms','n-joborders'],
   // Safety (Moe): CBAHI, safety, hazmat, emergency, fire — NO analytics/reports pages
   safety:      ['n-dash','n-kpi','n-cbahi','n-safety','n-hazmat','n-emergency','n-fire','n-wo','n-ckpi','n-docs','n-settings','n-pms'],
   security:    ['n-dash','n-kpi','n-security','n-wo','n-ckpi','n-settings'],
   // IPC (Infection Prevention & Control): read-only ACH compliance monitoring
   ipc:         ['n-ach','n-temperature','n-settings','n-supplychain'],   // IPC: ACH + Temperature Log + Contract eval
-  supplychain: ['n-supplychain','n-settings'],   // Supply Chain Director: contract authentication
+  supplychain: ['n-supplychain','n-joborders','n-settings'],   // Supply Chain Director: contract authentication + Job Orders
   rso:         ['n-radiation','n-settings'],   // Radiation Safety Officer
 };
 
 // Page access — which pages each role can open
 const PAGE_ACCESS = {
   director:    ['ALL'],
-  maintenance: ['dash','kpi','wo','utils','fire','emergency','cbahi','ckpi','settings','pms'],
-  biomedical:  ['dash','kpi','equip','medgas','pmg','radiation','wo','cbahi','ckpi','settings','pms'],
+  maintenance: ['dash','kpi','wo','utils','fire','emergency','cbahi','ckpi','settings','pms','joborders'],
+  biomedical:  ['dash','kpi','equip','medgas','pmg','radiation','wo','cbahi','ckpi','settings','pms','joborders'],
   safety:      ['dash','kpi','cbahi','safety','hazmat','emergency','fire','wo','ckpi','docs','settings','pms'],
   security:    ['dash','kpi','security','wo','ckpi','settings'],
   ipc:         ['ach','temperature','census','ipcstore','ipcnurse','settings','supplychain'], // IPC: ACH + Temperature + Nursing Census + IPC + Contract eval
-  supplychain: ['supplychain','settings'],
+  supplychain: ['supplychain','joborders','settings'],
   rso:         ['radiation','settings'],
 };
 
@@ -11061,7 +11067,7 @@ const ALL_PAGES = [
   ['ipcstore','🧴 Store'],['ipcnurse','🧤 Nurse Dispensing'],
   ['medgas','🫧 Medical Gas (32)'],['pmg','📋 PMG PPM (32.1)'],['radiation','☢ Radiation (9)'],
   ['wo','🔧 Work Orders'],['ckpi','⚙ Custom KPIs'],['docs','📁 Documents'],
-  ['budget','💰 FMS Budget'],['risk','⚠️ Risk Assessment'],['contracts','📃 Contract Review'],['supplychain','🔗 Supply Chain'],['radiation','☢ Radiation Safety'],
+  ['budget','💰 FMS Budget'],['risk','⚠️ Risk Assessment'],['contracts','📃 Contract Review'],['supplychain','🔗 Supply Chain'],['joborders','🧾 Job Orders'],['radiation','☢ Radiation Safety'],
   ['pms','📊 FMS Performance Sheet'],['settings','⚙ Settings / DB']
 ];
 // Effective page list for a role: override if present, else built-in default
@@ -11069,6 +11075,7 @@ function effectivePageAccess(role){
   const ov = getAccessOverride();
   let list = (ov[role] && Array.isArray(ov[role])) ? ov[role].slice() : (PAGE_ACCESS[role] || []).slice();
   if (list.indexOf('supplychain') < 0) list.push('supplychain');  // Supply Chain page open to all roles
+  if (['biomedical','maintenance','supplychain','director'].indexOf(role)>=0 && list.indexOf('joborders') < 0) list.push('joborders');
   return list;
 }
 
@@ -11106,7 +11113,8 @@ function applyRBAC() {
   // Resolve custom roles to their template role for access lookup
   const effectiveRole = getEffectiveRole(CU.role);
   let allowed = ROLE_ACCESS[effectiveRole] || ROLE_ACCESS['security'] || []; { const ov=getAccessOverride(); if(ov[effectiveRole]&&Array.isArray(ov[effectiveRole])) allowed = ov[effectiveRole].map(p=>'n-'+p); }
-  if (allowed.indexOf('n-supplychain') < 0) allowed = allowed.concat('n-supplychain');  // Supply Chain is open to all (anyone may be assigned as an evaluator)
+  if (allowed.indexOf('n-supplychain') < 0) allowed = allowed.concat('n-supplychain');
+  if (['biomedical','maintenance','supplychain','director'].indexOf(effectiveRole)>=0 && allowed.indexOf('n-joborders') < 0 && allowed.indexOf('ALL') < 0) allowed = allowed.concat('n-joborders');  // Supply Chain is open to all (anyone may be assigned as an evaluator)
 
   document.querySelectorAll('.ni[id]').forEach(el => {
     el.style.display = allowed.includes(el.id) ? '' : 'none';
@@ -12275,6 +12283,7 @@ function doLogin() {
   try{ if(typeof fm200CheckDeepLink==='function') fm200CheckDeepLink(); }catch(e){}
   try{ setTimeout(function(){ if(typeof scDueNotify==='function') scDueNotify(); }, 9000); }catch(e){}
   try{ setTimeout(function(){ if(typeof aiDueNotify==='function') aiDueNotify(); }, 10000); }catch(e){}
+  try{ setTimeout(function(){ if(typeof joLoginCheck==='function') joLoginCheck(); }, 5000); }catch(e){}
   // Remind about census days not yet backed up to the cloud
   try{ const u=JSON.parse(localStorage.getItem('obeid3_census_unsynced')||'[]'); if(u.length){ setTimeout(function(){ if(typeof toast==='function') toast('⚠️ '+u.length+' census day(s) not yet backed up to cloud — open Nursing Census to export a backup.', '#ef4444', 8000); }, 2500); } }catch(e){}
   // Apply role-based access
@@ -20788,6 +20797,7 @@ function fm200CheckDeepLink(){
   try{ const p=new URLSearchParams(location.search).get('fm200'); if(p && fm200Panel(p)){ setTimeout(function(){ try{ if(typeof gp==='function') gp('reports'); }catch(e){} setTimeout(function(){ fm200OpenForm(p); }, 400); }, 600); } }catch(e){}
 }
 
+try{ var _joB=function(){ if(new URLSearchParams(location.search).get('jo')) setTimeout(function(){ try{ joStandalone(); }catch(e){} },60); }; if(document.readyState!=='loading') _joB(); else document.addEventListener('DOMContentLoaded',_joB); }catch(e){}
 try{ if(document.readyState!=='loading'){ if(new URLSearchParams(location.search).get('inspect')) setTimeout(function(){ try{ aiStandalone(); }catch(e){} }, 60); if(new URLSearchParams(location.search).get('fm200')) setTimeout(function(){ try{ fm200StandaloneForm(); }catch(e){} }, 60); } else { document.addEventListener('DOMContentLoaded', function(){ if(new URLSearchParams(location.search).get('inspect')) setTimeout(function(){ try{ aiStandalone(); }catch(e){} }, 60); if(new URLSearchParams(location.search).get('fm200')) setTimeout(function(){ try{ fm200StandaloneForm(); }catch(e){} }, 60); }); } }catch(e){}
 /* ═══════════════ LEAD APRON INVENTORY — FMS.9.6 ═══════════════ */
 const APRON_SEED=[{"id": "apr_1", "center": "CL-2", "serial": "66077-11-2-A", "manuf": "WOLF X-RAY", "type": "Vest", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_2", "center": "Ca-2024A", "serial": "B-034349", "manuf": "MAVIC", "type": "Vest", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_3", "center": "CL-27", "serial": "2005130000001", "manuf": "MAVIC", "type": "Vest", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_4", "center": "CL-17", "serial": "2005030000001-A", "manuf": "MAVIC", "type": "Skirt", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_5", "center": "CL-30", "serial": "2005050000001-A", "manuf": "MAVIC", "type": "Vest", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_6", "center": "CL-24", "serial": "65021-22-B", "manuf": "WOLF X-RAY", "type": "Frontal", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_7", "center": "CL-23", "serial": "65021-22-A", "manuf": "WOLF X-RAY", "type": "Frontal", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_8", "center": "CL-7", "serial": "2005060000001-A", "manuf": "MAVIC", "type": "Vest", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_9", "center": "CF-1", "serial": "4323/4558", "manuf": "Intell itrack", "type": "Frontal", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_10", "center": "B-034384", "serial": "2005030000Z-A", "manuf": "Mavic", "type": "Chest", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_11", "center": "B-034358", "serial": "4/4/2011", "manuf": "Wolf", "type": "Chest", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_12", "center": "CF-3", "serial": "4488", "manuf": "Intell itrack", "type": "Frontal", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_13", "center": "B-034360", "serial": "11/23/2010", "manuf": "Wolf", "type": "Skirt", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_14", "center": "Cath-2", "serial": "119292", "manuf": "XenoLite-NL", "type": "Chest", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_15", "center": "CT-11", "serial": "NA", "manuf": "XenoLite-NL", "type": "Thyroid", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_16", "center": "Cath-1", "serial": "119293", "manuf": "XenoLite-NL", "type": "Skirt", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_17", "center": "B-034362", "serial": "20050300002", "manuf": "Mavic", "type": "Skirt", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_18", "center": "CL-1", "serial": "66077-11-1-A", "manuf": "Wolf", "type": "Chest", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_19", "center": "CL-13", "serial": "66077-11-Z-B", "manuf": "Wolf", "type": "Skirt", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_20", "center": "CL-12", "serial": "66077-11-1-5", "manuf": "Wolf", "type": "Skirt", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_21", "center": "CT-2", "serial": "NA", "manuf": "Minc", "type": "Thyroid", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_22", "center": "CF-2", "serial": "2004", "manuf": "Minc", "type": "Chest", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_23", "center": "CS-1", "serial": "2004", "manuf": "Minc", "type": "Skirt", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_24", "center": "CT-1", "serial": "4558", "manuf": "Eyewear", "type": "Thyroid", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_25", "center": "CT-5", "serial": "00198183", "manuf": "Mavic", "type": "Thyroid", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_26", "center": "CT-8", "serial": "B-034368", "manuf": "Mavic", "type": "Thyroid", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_27", "center": "CT-4", "serial": "B-034377", "manuf": "Mavic", "type": "Thyroid", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_28", "center": "CT-6", "serial": "NA", "manuf": "XenoLite-NL", "type": "Thyroid", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_29", "center": "CT-3", "serial": "B-034372", "manuf": "Mavic", "type": "Thyroid", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_30", "center": "CL-9", "serial": "2005080000001-A", "manuf": "Mavic", "type": "Chest", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_31", "center": "B-034376", "serial": "NA", "manuf": "Mavic", "type": "Thyroid", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_32", "center": "CL-6", "serial": "2005050000001-A", "manuf": "Mavic", "type": "Chest", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_33", "center": "CT-7", "serial": "C-122801", "manuf": "Mavic", "type": "Thyroid", "loc": "Cath Lab", "cracks": "None", "pf": "Pass"}, {"id": "apr_34", "center": "RD-1", "serial": "127259", "manuf": "CAWO", "type": "Frontal", "loc": "CT-Scan", "cracks": "None", "pf": "Pass"}, {"id": "apr_35", "center": "Rd-6", "serial": "65022-22", "manuf": "Cawo", "type": "Frontal", "loc": "CT-Scan", "cracks": "None", "pf": "Pass"}, {"id": "apr_36", "center": "RD-8", "serial": "65021-22", "manuf": "CAWO", "type": "Frontal", "loc": "CT-Scan", "cracks": "None", "pf": "Pass"}, {"id": "apr_37", "center": "RD-9", "serial": "128591", "manuf": "NA", "type": "Frontal", "loc": "ER", "cracks": "None", "pf": "Pass"}, {"id": "apr_38", "center": "RD-16", "serial": "12422", "manuf": "WOLF X-RAY", "type": "Glaves", "loc": "Fluroscopy", "cracks": "None", "pf": "Pass"}, {"id": "apr_39", "center": "RD-23", "serial": "LAO16", "manuf": "WOLF X-RAY", "type": "Gonadls", "loc": "Fluroscopy", "cracks": "None", "pf": "Pass"}, {"id": "apr_40", "center": "RD-7", "serial": "65024-22", "manuf": "WOLF X-RAY", "type": "Frontal", "loc": "Fluroscopy", "cracks": "None", "pf": "Pass"}, {"id": "apr_41", "center": "RD-5", "serial": "65023-22", "manuf": "WOLF X-RAY", "type": "Frontal", "loc": "Fluroscopy", "cracks": "None", "pf": "Pass"}, {"id": "apr_42", "center": "RD-22", "serial": "127450", "manuf": "CAWO", "type": "Frontal", "loc": "Fluroscopy", "cracks": "None", "pf": "Pass"}, {"id": "apr_43", "center": "RD-16", "serial": "12422", "manuf": "WOLF X-RAY", "type": "Glaves", "loc": "Fluroscopy", "cracks": "None", "pf": "Pass"}, {"id": "apr_44", "center": "RD-19", "serial": "LA012", "manuf": "CAWO", "type": "Thyroid", "loc": "Fluroscopy", "cracks": "None", "pf": "Pass"}, {"id": "apr_45", "center": "Li-01", "serial": "65023-15", "manuf": "WOLF X-RAY", "type": "Frontal", "loc": "Lithotripsy", "cracks": "None", "pf": "Pass"}, {"id": "apr_46", "center": "Li-02", "serial": "65022-15", "manuf": "WOLF X-RAY", "type": "Frontal", "loc": "Lithotripsy", "cracks": "None", "pf": "Pass"}, {"id": "apr_47", "center": "RD-3", "serial": "65021-22", "manuf": "WOLF X-RAY", "type": "Frontal", "loc": "Mammography", "cracks": "None", "pf": "Pass"}, {"id": "apr_48", "center": "RD-14", "serial": "LA011", "manuf": "NA", "type": "Gonadls", "loc": "Mammography", "cracks": "None", "pf": "Pass"}, {"id": "apr_49", "center": "OR-Front-1", "serial": "15-2024C", "manuf": "NA", "type": "Frontal", "loc": "OR", "cracks": "None", "pf": "Pass"}, {"id": "apr_50", "center": "OR-T-1", "serial": "B-55", "manuf": "WOLF X-RAY", "type": "Thyroid", "loc": "OR", "cracks": "None", "pf": "Pass"}, {"id": "apr_51", "center": "OR-T-2", "serial": "B-66", "manuf": "WOLF X-RAY", "type": "Thyroid", "loc": "OR", "cracks": "None", "pf": "Pass"}, {"id": "apr_52", "center": "OR-T-3", "serial": "B-77", "manuf": "WOLF X-RAY", "type": "Thyroid", "loc": "OR", "cracks": "None", "pf": "Pass"}, {"id": "apr_53", "center": "OR-8", "serial": "7550023B", "manuf": "WOLF X-RAY", "type": "Gonadls", "loc": "OR", "cracks": "None", "pf": "Pass"}, {"id": "apr_54", "center": "OR-7", "serial": "7550023A", "manuf": "WOLF X-RAY", "type": "Gonadls", "loc": "OR", "cracks": "None", "pf": "Pass"}, {"id": "apr_55", "center": "OR-Pelv3", "serial": "C-2024B", "manuf": "NA", "type": "Plevic", "loc": "OR", "cracks": "None", "pf": "Pass"}, {"id": "apr_56", "center": "OR-4", "serial": "63022-A", "manuf": "WOLF X-RAY", "type": "Frontal", "loc": "OR", "cracks": "None", "pf": "Pass"}, {"id": "apr_57", "center": "OR-3", "serial": "63022-C", "manuf": "WOLF X-RAY", "type": "Frontal", "loc": "OR", "cracks": "None", "pf": "Pass"}, {"id": "apr_58", "center": "OR-2", "serial": "63022-D", "manuf": "WOLF X-RAY", "type": "Frontal", "loc": "OR", "cracks": "None", "pf": "Pass"}, {"id": "apr_59", "center": "OR-Front-2", "serial": "Pb-2019-02", "manuf": "LAYAN", "type": "Frontal", "loc": "OR", "cracks": "None", "pf": "Pass"}, {"id": "apr_60", "center": "OR-71B", "serial": "63022G", "manuf": "WOLF X-RAY", "type": "Frontal", "loc": "OR", "cracks": "None", "pf": "Pass"}, {"id": "apr_61", "center": "RD-4", "serial": "120505", "manuf": "WOLF", "type": "Frontal", "loc": "Panorama", "cracks": "None", "pf": "Pass"}, {"id": "apr_62", "center": "CL-1", "serial": "23081710", "manuf": "LAYAN", "type": "Frontal", "loc": "Portable", "cracks": "None", "pf": "Pass"}, {"id": "apr_63", "center": "RD-11", "serial": "31808", "manuf": "NA", "type": "Frontal", "loc": "Portable", "cracks": "None", "pf": "Pass"}, {"id": "apr_64", "center": "RD-13", "serial": "LA-015", "manuf": "NA", "type": "Gonadls", "loc": "XRAY 1", "cracks": "None", "pf": "Pass"}, {"id": "apr_65", "center": "RD-12", "serial": "LA-013", "manuf": "NA", "type": "Frontal", "loc": "XRAY 1", "cracks": "None", "pf": "Pass"}];
@@ -21114,6 +21124,739 @@ function aiDueNotify(){
     if(totalOverdue && typeof toast==='function' && CU && ['director','maintenance','biomedical','safety'].indexOf(CU.role)>=0) toast('🔔 '+totalOverdue+' inspection item(s) not yet checked this month (HEPA/Hose Reel/Stand Pipe)','#f59e0b',7000);
   }catch(e){}
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════
+   🧾 JOB ORDER REQUESTS
+   Biomedical / Maintenance assessment → End-User counter-approval → Supply Chain → PO → Close
+   Every transition: audit-trail entry + email (FMS Director always CC) + in-platform notification
+   ═══════════════════════════════════════════════════════════════════════════════════════ */
+var JO_TYPES = ['Preventive Maintenance','Service/Repair','Machine Transfer','Installation','Training','Equipment Recall','Pull-out','Condemn/Obsolete','Others'];
+var JO_PRIO = {
+  emergent:{lbl:'Emergent', col:'#dc2626', rank:0, ic:'🔴', hint:'Patient-safety / service-down — act immediately'},
+  urgent:  {lbl:'Urgent',   col:'#f59e0b', rank:1, ic:'🟠', hint:'Needed within days'},
+  normal:  {lbl:'Normal',   col:'#16a34a', rank:2, ic:'🟢', hint:'Routine'}
+};
+var JO_ST = {
+  awaiting_enduser:{lbl:'Awaiting End-User Approval', col:'#f59e0b', step:2},
+  enduser_declined:{lbl:'Declined by End User',       col:'#dc2626', step:2},
+  enduser_approved:{lbl:'Approved — Ready for Supply Chain', col:'#3b82f6', step:3},
+  with_supplychain:{lbl:'With Supply Chain',          col:'#8b5cf6', step:3},
+  sc_processing:   {lbl:'Supply Chain Processing',    col:'#8b5cf6', step:3},
+  sc_returned:     {lbl:'Returned by Supply Chain',   col:'#dc2626', step:3},
+  po_issued:       {lbl:'PO Issued',                  col:'#16a34a', step:5},
+  closed:          {lbl:'Completed / Closed',         col:'#64748b', step:6},
+  cancelled:       {lbl:'Cancelled',                  col:'#64748b', step:0}
+};
+var JO_STEPS = ['Created','End-User','Supply Chain','PO Issued','Closed'];
+var JO_ORIG = {
+  biomedical: {code:'BME', label:'Biomedical Engineering', mail:'biomed@obeidhospital.org',   name:'Biomedical Engineering — Obeid Hospital'},
+  maintenance:{code:'MNT', label:'Maintenance',            mail:'obeidmaintenance@gmail.com', name:'Maintenance Department — Obeid Hospital'}
+};
+var JO_SC = {mail:'supplychain@obeidhospital.org', name:'Supply Chain — Obeid Hospital'};
+var JO_OPEN_ST = ['awaiting_enduser','enduser_declined','enduser_approved','with_supplychain','sc_processing','sc_returned','po_issued'];
+
+/* ── small helpers ── */
+function joE(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function joNL(s){ return joE(s).replace(/\n/g,'<br>'); }
+function joUrl(){ return (typeof CANONICAL_DB_URL!=='undefined'&&CANONICAL_DB_URL)?CANONICAL_DB_URL:(typeof getDBUrl==='function'?getDBUrl():null); }
+function joRole(){ return (typeof CU!=='undefined'&&CU)?CU.role:null; }
+function joMe(){ return (typeof CU!=='undefined'&&CU&&CU.name)||''; }
+function joIsOrig(){ return !!JO_ORIG[joRole()]; }
+function joIsSC(){ return joRole()==='supplychain'; }
+function joIsDir(){ return joRole()==='director'; }
+function joCanCreate(){ return joIsOrig()||joIsDir(); }
+function joToday(){ return (typeof fmsLocalToday==='function')?fmsLocalToday():new Date().toISOString().slice(0,10); }
+function joJ(t){ try{ return JSON.parse(t); }catch(e){ var i=t.indexOf('{'),k=t.lastIndexOf('}'); if(i>=0&&k>i){ try{ return JSON.parse(t.slice(i,k+1)); }catch(_){} } return null; } }
+function joFmt(ts){ ts=Number(ts)||0; if(!ts) return '—'; var d=new Date(ts); return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})+' · '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }
+function joAgo(ts){ ts=Number(ts)||0; if(!ts) return ''; var m=Math.round((Date.now()-ts)/60000); if(m<1) return 'just now'; if(m<60) return m+'m ago'; var h=Math.round(m/60); if(h<48) return h+'h ago'; return Math.round(h/24)+'d ago'; }
+function joBase(){ return location.origin+location.pathname; }
+function joApprovalLink(r){ return joBase()+'?jo='+encodeURIComponent(r._id)+'&t='+encodeURIComponent(r.token||''); }
+function joPlatformLink(r){ return joBase()+'?openjo='+encodeURIComponent(r._id); }
+function joTypesText(r){ var t=(r.types||[]).slice(); var i=t.indexOf('Others'); if(i>=0&&r.typeOther) t[i]='Others: '+r.typeOther; return t.join(', ')||'—'; }
+function joOrigLabel(r){ return (JO_ORIG[r.origin]||{}).label||r.origin||'—'; }
+
+/* ── data layer ── */
+function joParse(v){ if(typeof v!=='string') return v; var t=v.trim(); if((t.charAt(0)==='{'&&t.charAt(t.length-1)==='}')||(t.charAt(0)==='['&&t.charAt(t.length-1)===']')){ try{ return JSON.parse(t); }catch(e){} } return v; }
+function joNorm(r){
+  if(!r) return r;
+  ['types','history','ev','tech','eu','sc','po','close'].forEach(function(k){ r[k]=joParse(r[k]); });
+  if(!Array.isArray(r.types)) r.types=r.types?[String(r.types)]:[];
+  if(!Array.isArray(r.history)) r.history=[];
+  ['ev','tech','eu','sc','po','close'].forEach(function(k){ if(!r[k]||typeof r[k]!=='object') r[k]={}; });
+  r.createdTs=Number(r.createdTs)||0; r.updatedTs=Number(r.updatedTs)||0;
+  r.deleted = (r.deleted===true||r.deleted==='true');
+  return r;
+}
+function joRaw(){ var a=ld('job_orders'); return Array.isArray(a)?a.map(joNorm):[]; }
+function joAll(){ return joRaw().filter(function(r){ return r&&r._id&&!r.deleted; }); }
+function joGet(id){ return joRaw().find(function(r){ return String(r._id)===String(id); }); }
+function joSaveAll(a){ sv('job_orders', a); }
+function joPut(rec){
+  rec.updatedTs=Date.now();
+  var _dm=joDirMail(); if(_dm) rec.dirMail=_dm;   // carried on the record so off-platform devices (end-user link) still CC the Director
+  var a=joRaw().filter(function(x){ return String(x._id)!==String(rec._id); }); a.unshift(rec); joSaveAll(a);
+  try{ dbWrite('job_orders', rec); }catch(e){}
+  joBadge();
+}
+function joLog(rec, status, action, note, by, role){
+  rec.history=rec.history||[];
+  rec.history.push({ts:Date.now(), status:status, action:action, note:note||'', by:by||joMe()||'—', role:role||joRole()||'guest'});
+  rec.status=status;
+}
+function joNextNo(origin){
+  var code=(JO_ORIG[origin]||{code:'GEN'}).code, yr=String(new Date().getFullYear()), pre='JO-'+code+'-'+yr+'-', max=0;
+  joRaw().forEach(function(r){ if(String(r.no||'').indexOf(pre)===0){ var n=parseInt(String(r.no).slice(pre.length),10); if(n>max) max=n; } });
+  return pre+String(max+1).padStart(4,'0');
+}
+function joToken(){ var s=''; var a='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'; for(var i=0;i<28;i++) s+=a.charAt(Math.floor(Math.random()*a.length)); return s; }
+
+/* ── visibility & responsibility ── */
+function joVisible(r){
+  var ro=joRole(); if(!ro) return false;
+  if(ro==='director') return true;
+  if(ro==='supplychain') return (r.history||[]).some(function(h){ return h.status==='with_supplychain'; });
+  if(JO_ORIG[ro]) return r.origin===ro;
+  return false;
+}
+function joNeedsMe(r){
+  var ro=joRole();
+  if(JO_ORIG[ro] && r.origin===ro) return ['enduser_approved','enduser_declined','sc_returned','po_issued'].indexOf(r.status)>=0;
+  if(ro==='supplychain') return ['with_supplychain','sc_processing'].indexOf(r.status)>=0;
+  return false;
+}
+function joNextHint(r){
+  switch(r.status){
+    case 'awaiting_enduser': return 'Waiting for '+(r.eu.name||'the end user')+' to counter-approve';
+    case 'enduser_declined': return 'Revise the request and resend it to the end user';
+    case 'enduser_approved': return 'Forward to Supply Chain for processing';
+    case 'with_supplychain': return 'Supply Chain to acknowledge and process';
+    case 'sc_processing':    return 'Supply Chain to issue the PO';
+    case 'sc_returned':      return 'Revise per Supply Chain comments and re-forward';
+    case 'po_issued':        return 'Complete the job, then close the request';
+    default: return '';
+  }
+}
+
+/* ── mail ── */
+function joDirMail(){ return (typeof userEmail==='function')?userEmail('director'):''; }
+function joOrigMails(r){ var o=JO_ORIG[r.origin]||{}; var l=[o.mail]; var u=(typeof userEmail==='function')?userEmail(r.origin):''; if(u&&l.indexOf(u)<0) l.push(u); return l.filter(Boolean); }
+function joSCMails(){ var l=[JO_SC.mail]; var u=(typeof userEmail==='function')?userEmail('supplychain'):''; if(u&&l.indexOf(u)<0) l.push(u); return l; }
+function joUniq(list, exclude){ var ex=(exclude||[]).map(function(x){return String(x).toLowerCase();}); var out=[]; (list||[]).forEach(function(x){ x=String(x||'').trim(); if(x&&ex.indexOf(x.toLowerCase())<0&&out.map(function(y){return y.toLowerCase();}).indexOf(x.toLowerCase())<0) out.push(x); }); return out; }
+function joMail(toList, subject, html, opts){
+  var url=joUrl(); opts=opts||{}; var to=joUniq(toList); if(!url||!to.length) return false;
+  var cc=joUniq([joDirMail()||opts.dirMail||''].concat(opts.cc||[]), to);   // FMS Director is copied on every Job Order email
+  var p={action:'email', to:to.join(','), subject:subject, body:html, name:opts.name||'Obeid FMS — Job Orders'};
+  if(cc.length) p.cc=cc.join(',');
+  if(opts.replyTo) p.replyTo=opts.replyTo;
+  if(opts.attachRef) p.attachRef=opts.attachRef;
+  try{ fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(p)}); return true; }catch(e){ return false; }
+}
+function joEmailHtml(r, headline, message, ctaUrl, ctaLabel){
+  var p=JO_PRIO[r.priority]||JO_PRIO.normal, st=JO_ST[r.status]||{lbl:r.status};
+  var row=function(k,v){ return '<tr><td style="padding:7px 10px;background:#f1f5f9;font-weight:bold;width:175px;border:1px solid #e2e8f0;vertical-align:top;">'+k+'</td><td style="padding:7px 10px;border:1px solid #e2e8f0;">'+v+'</td></tr>'; };
+  return '<div style="font-family:Arial,Helvetica,sans-serif;max-width:660px;margin:auto;color:#1e293b;">'
+    +'<div style="background:#1e3a5c;color:#fff;padding:14px 18px;border-radius:10px 10px 0 0;"><div style="font-size:12px;opacity:.85;">Obeid Specialized Hospital · Facilities Management</div><div style="font-size:19px;font-weight:bold;margin-top:3px;">🧾 Job Order Request '+joE(r.no)+'</div></div>'
+    +'<div style="border:1px solid #e2e8f0;border-top:none;padding:16px 18px;border-radius:0 0 10px 10px;">'
+    +'<span style="display:inline-block;background:'+p.col+';color:#fff;padding:4px 11px;border-radius:12px;font-size:12px;font-weight:bold;">'+p.ic+' '+p.lbl.toUpperCase()+'</span> <span style="font-size:12px;color:#64748b;margin-left:6px;">Status: <b>'+joE(st.lbl)+'</b></span>'
+    +'<h2 style="font-size:17px;margin:14px 0 6px;color:#1e3a5c;">'+headline+'</h2>'
+    +'<div style="font-size:14px;line-height:1.55;margin:0 0 10px;">'+message+'</div>'
+    +(ctaUrl?'<p style="margin:18px 0;"><a href="'+ctaUrl+'" style="background:#16a34a;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:bold;display:inline-block;">'+ctaLabel+'</a></p>':'')
+    +'<table style="border-collapse:collapse;width:100%;font-size:13px;margin-top:6px;">'
+    +row('Job Order No.',joE(r.no))+row('Originating Dept.',joE(joOrigLabel(r)))+row('Requested by',joE(r.requestedBy)+' · '+joE(r.reqDate))
+    +row('End-User Department',joE(r.dept))+row('Equipment',joE(r.equip))
+    +row('Asset / Serial / Model',joE((r.ev.asset||'—')+' / '+(r.ev.serial||'—')+' / '+(r.ev.model||'—')))
+    +row('Type of Request',joE(joTypesText(r)))+row('Main Issues / Concerns',joNL(r.issue))
+    +(r.ev.workDone?row('Work Done',joNL(r.ev.workDone)):'')
+    +(r.ev.recommendation?row('Recommendation',joNL(r.ev.recommendation)):'')
+    +(r.ev.parts?row('Parts / Services Required',joNL(r.ev.parts)+(r.ev.cost?'<br><b>Est. cost:</b> SAR '+joE(r.ev.cost):'')):'')
+    +(r.po&&r.po.no?row('Purchase Order',joE(r.po.no)+(r.po.date?' · '+joE(r.po.date):'')+(r.po.vendor?' · '+joE(r.po.vendor):'')+(r.po.amount?' · SAR '+joE(r.po.amount):'')):'')
+    +'</table>'
+    +'<p style="font-size:11px;color:#94a3b8;margin-top:16px;">Automated message from the Obeid FMS Command Platform. The FMS Director is copied on all Job Order transactions.</p></div></div>';
+}
+function joSubj(r, tail){ var p=JO_PRIO[r.priority]||JO_PRIO.normal; return '['+r.no+'] '+(r.priority!=='normal'?p.lbl.toUpperCase()+' · ':'')+tail+' — '+(r.equip||'Job Order'); }
+function joMailEndUserRequest(r, resend){
+  var o=JO_ORIG[r.origin]||{};
+  return joMail([r.eu.email], joSubj(r,(resend?'Reminder: ':'')+'Counter-approval required'),
+    joEmailHtml(r, (resend?'Reminder — ':'')+'Your counter-approval is required',
+      'Dear '+joE(r.eu.name||'colleague')+',<br>'+joE(o.label||'The department')+' has assessed the equipment below for <b>'+joE(r.dept)+'</b> and raised a Job Order Request that needs your counter-approval before it goes to Supply Chain for processing.<br><br>Please review the details and approve (or decline with a comment) using the secure button below — no login is required.',
+      joApprovalLink(r), '✅ Review & Counter-Approve'),
+    {name:o.name, replyTo:o.mail, cc:joOrigMails(r)});
+}
+
+/* ── cloud sync ── */
+var JO_SYNCING=false, JO_LAST_UNREAD=-1, JO_TIMER=null, JO_DBCHECKED=false, JO_DB_OK=true;
+function joMerge(rows){
+  var by={}; joRaw().forEach(function(x){ by[x._id]=x; });
+  (rows||[]).map(joNorm).forEach(function(x){ if(!x||!x._id) return; var l=by[x._id]; if(!l||(x.updatedTs||0)>=(l.updatedTs||0)) by[x._id]=x; });
+  joSaveAll(Object.keys(by).map(function(k){ return by[k]; }));
+}
+function joSync(manual, cb){
+  var url=joUrl(); if(!url||JO_SYNCING){ if(cb) cb(); return; }
+  JO_SYNCING=true;
+  fetch(url+'?action=getType&type=job_orders',{signal:AbortSignal.timeout(45000)})
+    .then(function(r){ return r.text(); })
+    .then(function(t){ var j=joJ(t);
+      if(j&&j.ok&&Array.isArray(j.rows)){ joMerge(j.rows); if(manual) toast('☁ Job Orders synced','#10b981',2500); }
+      else if(manual) toast('Job Orders sync failed — '+((j&&j.error)||'no response'),'#f59e0b',5000); })
+    .catch(function(){ if(manual) toast('Job Orders cloud sync failed — check connection','#f59e0b',5000); })
+    .then(function(){ JO_SYNCING=false; joAfterSync(); if(cb) cb(); });
+}
+function joAfterSync(){
+  joBadge();
+  var pg=document.getElementById('page-joborders');
+  if(pg&&pg.classList.contains('active')) joRender();
+  var n=joUnread().length;
+  if(JO_LAST_UNREAD>=0 && n>JO_LAST_UNREAD){ var u=joUnread()[0]; if(u&&typeof toast==='function') toast('🔔 '+u.r.no+' — '+u.h.action,'#3b82f6',6000); }
+  JO_LAST_UNREAD=n;
+}
+function joCheckDB(){
+  if(JO_DBCHECKED) return; JO_DBCHECKED=true; var url=joUrl(); if(!url) return;
+  fetch(url+'?action=version',{signal:AbortSignal.timeout(60000)}).then(function(r){return r.text();}).then(function(t){ var j=joJ(t);
+    if(j&&j.ok){ JO_DB_OK = String(j.version||'')>='20260816-1670' && (j.types||[]).indexOf('job_orders')>=0; if(!JO_DB_OK) joRender(); } }).catch(function(){});
+}
+
+/* ── in-platform notifications ── */
+function joSeenKey(){ return 'jo_seen_'+(joRole()||'x'); }
+function joSeenTs(){ var v=localStorage.getItem(joSeenKey()); if(v==null){ v=String(Date.now()-3*864e5); localStorage.setItem(joSeenKey(),v); } return Number(v)||0; }
+function joUnread(){
+  var seen=joSeenTs(), ro=joRole(), out=[];
+  joAll().filter(joVisible).forEach(function(r){ (r.history||[]).forEach(function(h){ if(Number(h.ts)>seen && h.role!==ro) out.push({r:r,h:h}); }); });
+  out.sort(function(a,b){ return b.h.ts-a.h.ts; }); return out;
+}
+function joMarkRead(){ localStorage.setItem(joSeenKey(), String(Date.now())); JO_LAST_UNREAD=0; joBadge(); joRender(); }
+function joBadge(){
+  var b=document.getElementById('joBadge'); if(!b) return;
+  if(!joRole()){ b.style.display='none'; return; }
+  var need=joAll().filter(joVisible).filter(joNeedsMe).length, un=joUnread().length, n=need||un;
+  b.textContent=n; b.style.display=n?'':'none'; b.title=need?(need+' job order(s) need your action'):(un+' new update(s)');
+}
+function joLoginCheck(){
+  var ro=joRole(); if(!ro||!(JO_ORIG[ro]||ro==='supplychain'||ro==='director')) return;
+  joSync(false, function(){
+    var need=joAll().filter(joVisible).filter(joNeedsMe), un=joUnread();
+    if(need.length||un.length){
+      var em=need.filter(function(r){return r.priority==='emergent';}).length;
+      toast('🧾 Job Orders: '+(need.length?need.length+' need your action'+(em?' ('+em+' EMERGENT)':''):'')+(need.length&&un.length?' · ':'')+(un.length?un.length+' new update(s)':''), em?'#dc2626':'#3b82f6', 8000);
+    }
+    try{ var oj=new URLSearchParams(location.search).get('openjo'); if(oj&&joGet(oj)){ gp('joborders'); setTimeout(function(){ joOpen(oj); },400); history.replaceState(null,'',location.pathname); } }catch(e){}
+  });
+  if(!JO_TIMER) JO_TIMER=setInterval(function(){ if(document.visibilityState!=='hidden') joSync(false); }, 120000);
+}
+/* ── UI state ── */
+var JO_UI = {tab:null, prio:'all', sort:'prio', q:''};
+
+/* ── signature pad ── */
+function joSigPad(id){
+  var c=document.getElementById(id); if(!c) return; var ctx=c.getContext('2d');
+  ctx.lineWidth=2.4; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle='#0f172a'; c._drawn=false; c.style.touchAction='none';
+  var drawing=false, last=null;
+  var pos=function(e){ var r=c.getBoundingClientRect(); return {x:(e.clientX-r.left)*(c.width/r.width), y:(e.clientY-r.top)*(c.height/r.height)}; };
+  c.addEventListener('pointerdown',function(e){ drawing=true; last=pos(e); try{c.setPointerCapture(e.pointerId);}catch(_){} e.preventDefault(); });
+  c.addEventListener('pointermove',function(e){ if(!drawing) return; var p=pos(e); ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(p.x,p.y); ctx.stroke(); last=p; c._drawn=true; e.preventDefault(); });
+  var up=function(){ drawing=false; }; c.addEventListener('pointerup',up); c.addEventListener('pointercancel',up); c.addEventListener('pointerleave',up);
+}
+function joSigClear(id){ var c=document.getElementById(id); if(!c) return; c.getContext('2d').clearRect(0,0,c.width,c.height); c._drawn=false; }
+function joSigData(id){ var c=document.getElementById(id); return (c&&c._drawn)?c.toDataURL('image/png'):''; }
+function joSigBox(id, label){
+  return '<div><div style="display:flex;justify-content:space-between;align-items:center;"><label style="font-size:11px;color:var(--mu);">'+label+'</label><button type="button" class="btn bo" style="font-size:9px;padding:1px 7px;" onclick="joSigClear(\''+id+'\')">Clear</button></div>'
+    +'<canvas id="'+id+'" width="480" height="140" style="width:100%;max-width:480px;height:120px;background:#fff;border:1px dashed #94a3b8;border-radius:8px;cursor:crosshair;display:block;"></canvas></div>';
+}
+
+/* ── modal shell ── */
+function joModal(id, inner, wide){
+  var old=document.getElementById(id); if(old) old.remove();
+  var m=document.createElement('div'); m.id=id;
+  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:10000;display:flex;align-items:flex-start;justify-content:center;padding:18px 12px;overflow:auto;';
+  m.innerHTML='<div style="background:var(--s1);border:1px solid var(--bd);border-radius:14px;width:100%;max-width:'+(wide||760)+'px;padding:18px;margin:auto;">'+inner+'</div>';
+  m.addEventListener('mousedown',function(e){ if(e.target===m) m.remove(); });
+  document.body.appendChild(m); return m;
+}
+function joClose(id){ var m=document.getElementById(id); if(m) m.remove(); }
+function joPrompt(title, sub, fields, okLabel, okCol, onOk){
+  var html='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><div style="font-weight:800;font-size:16px;">'+title+'</div><button class="btn bo" style="font-size:11px;" onclick="joClose(\'jo-prompt\')">✕</button></div>'
+    +(sub?'<div style="font-size:12px;color:var(--mu);margin-bottom:10px;">'+sub+'</div>':'')
+    +fields.map(function(f){ return '<div class="ff" style="margin-bottom:8px;"><label>'+f.label+(f.req?' <span style="color:var(--rd)">*</span>':'')+'</label>'
+      +(f.type==='textarea'?'<textarea id="jop-'+f.id+'" rows="3" placeholder="'+joE(f.ph||'')+'">'+joE(f.val||'')+'</textarea>':'<input id="jop-'+f.id+'" type="'+(f.type||'text')+'" value="'+joE(f.val||'')+'" placeholder="'+joE(f.ph||'')+'">')+'</div>'; }).join('')
+    +'<button id="jop-ok" class="btn" style="width:100%;margin-top:6px;background:'+(okCol||'var(--ac)')+';color:#fff;border:none;padding:11px;font-weight:800;">'+okLabel+'</button>';
+  joModal('jo-prompt', html, 520);
+  document.getElementById('jop-ok').onclick=function(){
+    var vals={}, miss=null;
+    fields.forEach(function(f){ var v=((document.getElementById('jop-'+f.id)||{}).value||'').trim(); vals[f.id]=v; if(f.req&&!v&&!miss) miss=f.label; });
+    if(miss){ toast('Please fill: '+miss,'#f59e0b'); return; }
+    joClose('jo-prompt'); onOk(vals);
+  };
+}
+
+/* ── page ── */
+function joInit(){ joCheckDB(); joRender(); joSync(false); }
+function joFiltered(){
+  var list=joAll().filter(joVisible), ui=JO_UI;
+  if(ui.tab==='action') list=list.filter(joNeedsMe);
+  else if(ui.tab==='open') list=list.filter(function(r){ return JO_OPEN_ST.indexOf(r.status)>=0; });
+  else if(ui.tab==='done') list=list.filter(function(r){ return r.status==='closed'||r.status==='cancelled'; });
+  if(ui.prio!=='all') list=list.filter(function(r){ return r.priority===ui.prio; });
+  if(ui.q){ var q=ui.q.toLowerCase(); list=list.filter(function(r){ return [r.no,r.equip,r.dept,r.ev.asset,r.ev.serial,r.requestedBy,r.eu.name,r.po.no].join(' ').toLowerCase().indexOf(q)>=0; }); }
+  list.sort(function(a,b){
+    if(ui.sort==='newest') return b.createdTs-a.createdTs;
+    var pa=(JO_PRIO[a.priority]||JO_PRIO.normal).rank, pb=(JO_PRIO[b.priority]||JO_PRIO.normal).rank;
+    return pa!==pb ? pa-pb : a.createdTs-b.createdTs;   // priority first, then oldest waiting first (FIFO)
+  });
+  return list;
+}
+function joStepper(r, small){
+  var cur=(JO_ST[r.status]||{step:0}).step, bad=['enduser_declined','sc_returned','cancelled'].indexOf(r.status)>=0, sz=small?16:22;
+  return '<div style="display:flex;align-items:flex-start;margin-top:10px;">'+JO_STEPS.map(function(lbl,i){
+    var n=i+1, done=n<cur, now=n===cur, col=done?'var(--gn)':now?(bad?'var(--rd)':'var(--ac)'):'var(--bd)';
+    return (i?'<div style="flex:1;height:2px;margin-top:'+(sz/2-1)+'px;background:'+(n<=cur?'var(--gn)':'var(--bd)')+';"></div>':'')
+      +'<div style="display:flex;flex-direction:column;align-items:center;min-width:54px;"><div style="width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:'+col+';color:#fff;font-size:'+(small?9:11)+'px;display:flex;align-items:center;justify-content:center;font-weight:800;">'+(done?'✓':(now&&bad?'!':n))+'</div>'
+      +'<div style="font-size:9px;margin-top:3px;white-space:nowrap;color:'+(now?'var(--tx)':'var(--mu)')+';font-weight:'+(now?800:400)+';">'+lbl+'</div></div>';
+  }).join('')+'</div>';
+}
+function joCard(r){
+  var p=JO_PRIO[r.priority]||JO_PRIO.normal, st=JO_ST[r.status]||{lbl:r.status,col:'#64748b'}, need=joNeedsMe(r);
+  return '<div onclick="joOpen(\''+r._id+'\')" style="cursor:pointer;background:var(--s1);border:1px solid '+(need?p.col:'var(--bd)')+';border-left:6px solid '+p.col+';border-radius:12px;padding:12px 14px;margin-bottom:10px;">'
+    +'<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">'
+    +'<div style="flex:1;min-width:0;"><div style="font-size:11px;color:var(--mu);font-weight:700;">'+joE(r.no)+' · '+joE(joOrigLabel(r))+' · '+joAgo(r.createdTs)+'</div>'
+    +'<div style="font-size:15px;font-weight:800;margin-top:2px;">'+joE(r.equip||'—')+(r.ev.asset?' <span style="font-size:11px;color:var(--mu);font-weight:600;">#'+joE(r.ev.asset)+'</span>':'')+'</div>'
+    +'<div style="font-size:12px;color:var(--mu);margin-top:2px;">🏥 '+joE(r.dept||'—')+' · '+joE(joTypesText(r))+'</div>'
+    +(joNextHint(r)?'<div style="font-size:11px;margin-top:4px;color:'+(need?'var(--or)':'var(--mu)')+';">'+(need?'⚡ ':'→ ')+joE(joNextHint(r))+'</div>':'')+'</div>'
+    +'<div style="text-align:right;"><span style="background:'+p.col+';color:#fff;font-size:10px;font-weight:800;padding:3px 10px;border-radius:10px;">'+p.ic+' '+p.lbl.toUpperCase()+'</span>'
+    +'<div style="margin-top:6px;font-size:11px;font-weight:800;color:'+st.col+';">'+joE(st.lbl)+'</div>'
+    +(r.po.no?'<div style="font-size:10px;color:var(--gn);margin-top:2px;">PO '+joE(r.po.no)+'</div>':'')+'</div></div>'
+    +joStepper(r,true)+'</div>';
+}
+function joRender(){
+  var root=document.getElementById('jo-root'); if(!root) return;
+  var all=joAll().filter(joVisible);
+  if(JO_UI.tab===null) JO_UI.tab = all.filter(joNeedsMe).length ? 'action' : 'open';
+  var cnt=function(f){ return all.filter(f).length; };
+  var open=cnt(function(r){return JO_OPEN_ST.indexOf(r.status)>=0;});
+  var poDays=all.filter(function(r){return r.po&&r.po.ts;}).map(function(r){ return (Number(r.po.ts)-r.createdTs)/864e5; });
+  var avg=poDays.length?(poDays.reduce(function(a,b){return a+b;},0)/poDays.length).toFixed(1):'—';
+  var kpi=function(ic,v,l,col){ return '<div style="flex:1;min-width:110px;background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:10px;text-align:center;"><div style="font-size:18px;">'+ic+'</div><div style="font-size:22px;font-weight:800;color:'+(col||'var(--tx)')+';line-height:1.1;">'+v+'</div><div style="font-size:9px;color:var(--mu);margin-top:2px;">'+l+'</div></div>'; };
+  var strip='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">'
+    +kpi('📂',open,'Open Requests')
+    +kpi('🔴',cnt(function(r){return r.priority==='emergent'&&JO_OPEN_ST.indexOf(r.status)>=0;}),'Emergent Open','#dc2626')
+    +kpi('✍️',cnt(function(r){return r.status==='awaiting_enduser';}),'Awaiting End-User','#f59e0b')
+    +kpi('🔗',cnt(function(r){return ['with_supplychain','sc_processing'].indexOf(r.status)>=0;}),'With Supply Chain','#8b5cf6')
+    +kpi('📎',cnt(function(r){return r.status==='po_issued';}),'PO Issued','#16a34a')
+    +kpi('⏱',avg+(avg!=='—'?'d':''),'Avg. Request → PO')+'</div>';
+  var banner = JO_DB_OK ? '' : '<div style="background:rgba(220,38,38,.1);border:1px solid rgba(220,38,38,.45);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;"><b style="color:var(--rd);">⚠ Database update required for Job Orders.</b> Paste the new FMS_DB script, run <b>setupJobOrders</b> once, then Deploy → New version. Until then, end-user approval links and PO attachments will not work.</div>';
+  var un=joUnread();
+  var notif = un.length ? '<div style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.35);border-radius:12px;padding:10px 12px;margin-bottom:12px;">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><b style="font-size:13px;">🔔 '+un.length+' new update'+(un.length>1?'s':'')+'</b><button class="btn bo" style="font-size:10px;" onclick="joMarkRead()">✓ Mark all read</button></div>'
+    +un.slice(0,8).map(function(u){ var p=JO_PRIO[u.r.priority]||JO_PRIO.normal; return '<div onclick="joOpen(\''+u.r._id+'\')" style="cursor:pointer;font-size:12px;padding:5px 0;border-top:1px solid var(--bd);display:flex;justify-content:space-between;gap:8px;"><span>'+p.ic+' <b>'+joE(u.r.no)+'</b> — '+joE(u.h.action)+' <span style="color:var(--mu);">by '+joE(u.h.by)+'</span></span><span style="color:var(--mu);white-space:nowrap;">'+joAgo(u.h.ts)+'</span></div>'; }).join('')
+    +(un.length>8?'<div style="font-size:11px;color:var(--mu);padding-top:4px;">+'+(un.length-8)+' more</div>':'')+'</div>' : '';
+  var tab=function(k,l,n){ var a=JO_UI.tab===k; return '<button class="tbtn'+(a?' active':'')+'" onclick="JO_UI.tab=\''+k+'\';joRender()">'+l+(n!=null?' <span style="opacity:.75;">('+n+')</span>':'')+'</button>'; };
+  var chip=function(k,l){ var a=JO_UI.prio===k, col=k==='all'?'var(--ac)':JO_PRIO[k].col; return '<button onclick="JO_UI.prio=\''+k+'\';joRender()" style="font-size:11px;padding:4px 10px;border-radius:14px;cursor:pointer;border:1px solid '+col+';background:'+(a?col:'transparent')+';color:'+(a?'#fff':'var(--tx)')+';font-weight:700;">'+l+'</button>'; };
+  var toolbar='<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">'
+    +(joCanCreate()?'<button class="btn bg" style="font-size:12px;font-weight:800;" onclick="joForm(null)">➕ New Job Order</button>':'')
+    +'<button class="btn bo" style="font-size:11px;" onclick="joSync(true)">☁ Sync</button>'
+    +'<button class="btn bo" style="font-size:11px;" onclick="joExport()">⬇ Export / Print List</button>'
+    +'<input type="text" placeholder="🔍 JO no., equipment, dept, asset, PO…" value="'+joE(JO_UI.q)+'" oninput="JO_UI.q=this.value;clearTimeout(window._joQ);window._joQ=setTimeout(joRenderList,200);" style="flex:1;min-width:180px;font-size:12px;padding:6px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);color:var(--tx);">'
+    +'<select onchange="JO_UI.sort=this.value;joRenderList()" style="font-size:11px;padding:6px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);color:var(--tx);"><option value="prio"'+(JO_UI.sort==='prio'?' selected':'')+'>Sort: Priority → oldest first</option><option value="newest"'+(JO_UI.sort==='newest'?' selected':'')+'>Sort: Newest first</option></select></div>'
+    +'<div class="tabs" style="margin-bottom:8px;">'+tab('action','⚡ Action Needed',cnt(joNeedsMe))+tab('open','📂 Open',open)+tab('done','✅ Completed',cnt(function(r){return r.status==='closed'||r.status==='cancelled';}))+tab('all','🗂 All',all.length)+'</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">'+chip('all','All priorities')+chip('emergent','🔴 Emergent')+chip('urgent','🟠 Urgent')+chip('normal','🟢 Normal')+'</div>';
+  root.innerHTML=banner+strip+notif+toolbar+'<div id="jo-list"></div>';
+  joRenderList();
+}
+function joRenderList(){
+  var el=document.getElementById('jo-list'); if(!el) return;
+  var list=joFiltered();
+  if(!list.length){ el.innerHTML='<div class="em" style="padding:24px;text-align:center;">'+(JO_UI.tab==='action'?'🎉 Nothing needs your action right now.':'No job orders here yet.')+(joCanCreate()&&JO_UI.tab!=='done'?'<br><span style="font-size:12px;">Use <b>➕ New Job Order</b> to raise one.</span>':'')+'</div>'; return; }
+  el.innerHTML=list.map(joCard).join('');
+}
+
+/* ── create / edit form ── */
+function joAssetLookup(){
+  var a=((document.getElementById('jof-asset')||{}).value||'').trim(); if(!a) return;
+  var list=(typeof eqAll==='function')?eqAll():[];
+  var hit=list.find(function(x){ return String(x.asset).toLowerCase()===a.toLowerCase(); });
+  if(!hit){ toast('Asset '+a+' not found in the Medical Equipment inventory — fill details manually','#f59e0b',4000); return; }
+  var set=function(id,v){ var e=document.getElementById(id); if(e&&v&&!e.value) e.value=v; };
+  set('jof-model',hit.model); set('jof-serial',hit.serial); set('jof-supplier',hit.mfr); set('jof-equip',hit.desc); set('jof-dept',hit.dept);
+  toast('✓ Filled from inventory: '+(hit.desc||'')+' · '+(hit.dept||''),'#10b981',3500);
+}
+function joSetPrio(p){ document.getElementById('jof-prio').value=p; Object.keys(JO_PRIO).forEach(function(k){ var b=document.getElementById('jof-p-'+k); if(!b) return; var on=k===p; b.style.background=on?JO_PRIO[k].col:'transparent'; b.style.color=on?'#fff':'var(--tx)'; }); }
+function joForm(id){
+  if(!joCanCreate()){ toast('Only Biomedical, Maintenance or the FMS Director can raise Job Orders','#f59e0b'); return; }
+  var r=id?joGet(id):null, ed=!!r; r=r||joNorm({});
+  var origin = r.origin || (joIsOrig()?joRole():'biomedical');
+  var depts=[]; try{ depts=Array.from(new Set(((typeof eqAll==='function')?eqAll():[]).map(function(x){return x.dept;}).filter(Boolean))).sort(); }catch(e){}
+  var inp=function(id,label,val,ph,req,extra){ return '<div class="ff"><label>'+label+(req?' <span style="color:var(--rd)">*</span>':'')+'</label><input id="'+id+'" value="'+joE(val||'')+'" placeholder="'+joE(ph||'')+'" '+(extra||'')+'></div>'; };
+  var ta=function(id,label,val,ph,req){ return '<div class="ff"><label>'+label+(req?' <span style="color:var(--rd)">*</span>':'')+'</label><textarea id="'+id+'" rows="3" placeholder="'+joE(ph||'')+'">'+joE(val||'')+'</textarea></div>'; };
+  var sec=function(t){ return '<div style="font-size:12px;font-weight:800;color:var(--or);margin:14px 0 8px;border-bottom:1px solid var(--bd);padding-bottom:4px;">'+t+'</div>'; };
+  var types=JO_TYPES.map(function(t,i){ var on=(r.types||[]).indexOf(t)>=0; return '<label style="display:flex;align-items:center;gap:6px;font-size:12px;padding:6px 8px;border:1px solid var(--bd);border-radius:8px;cursor:pointer;background:var(--s2);"><input type="checkbox" class="jof-type" value="'+joE(t)+'"'+(on?' checked':'')+(t==='Others'?' onchange="document.getElementById(\'jof-other-wrap\').style.display=this.checked?\'\':\'none\'"':'')+'> '+t+'</label>'; }).join('');
+  var prio=Object.keys(JO_PRIO).map(function(k){ var p=JO_PRIO[k]; return '<button type="button" id="jof-p-'+k+'" onclick="joSetPrio(\''+k+'\')" title="'+joE(p.hint)+'" style="flex:1;padding:10px 6px;border-radius:10px;border:2px solid '+p.col+';background:transparent;color:var(--tx);font-weight:800;cursor:pointer;font-size:13px;">'+p.ic+' '+p.lbl+'<div style="font-size:9px;font-weight:400;opacity:.85;margin-top:2px;">'+joE(p.hint)+'</div></button>'; }).join('');
+  var html='<div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="font-weight:800;font-size:18px;">🧾 '+(ed?'Edit Job Order '+joE(r.no):'New Job Order Request')+'</div><div style="font-size:11px;color:var(--mu);">Obeid Specialized Hospital · Job Order Request Form</div></div><button class="btn bo" style="font-size:11px;" onclick="joClose(\'jo-form\')">✕ Close</button></div>'
+    +(joIsDir()&&!ed?'<div class="ff" style="margin-top:10px;"><label>Originating Department</label><select id="jof-origin"><option value="biomedical"'+(origin==='biomedical'?' selected':'')+'>Biomedical Engineering</option><option value="maintenance"'+(origin==='maintenance'?' selected':'')+'>Maintenance</option></select></div>':'<input type="hidden" id="jof-origin" value="'+origin+'">')
+    +sec('1 · Priority')+'<input type="hidden" id="jof-prio" value="'+(r.priority||'normal')+'"><div style="display:flex;gap:8px;">'+prio+'</div>'
+    +sec('2 · Request')
+    +'<div class="fg fg2">'+inp('jof-reqby','Requested by',r.requestedBy||joMe(),'Full name',true)+'<div class="ff"><label>Date <span style="color:var(--rd)">*</span></label><input type="date" id="jof-date" value="'+joE(r.reqDate||joToday())+'"></div>'
+    +'<div class="ff"><label>Asset No. <span style="font-weight:400;color:var(--mu);">(auto-fills from inventory)</span></label><div style="display:flex;gap:6px;"><input id="jof-asset" value="'+joE(r.ev.asset||'')+'" placeholder="e.g. 04-02" onblur="joAssetLookup()" style="flex:1;"><button type="button" class="btn bo" style="font-size:11px;" onclick="joAssetLookup()">🔍</button></div></div>'
+    +inp('jof-equip','Equipment Description',r.equip,'e.g. Infusion Pump',true)
+    +'<div class="ff"><label>Department (End User) <span style="color:var(--rd)">*</span></label><input id="jof-dept" list="jof-dept-list" value="'+joE(r.dept||'')+'" placeholder="e.g. ICU"><datalist id="jof-dept-list">'+depts.map(function(d){return '<option value="'+joE(d)+'">';}).join('')+'</datalist></div></div>'
+    +'<div style="font-size:11px;color:var(--mu);margin:10px 0 6px;">Type of Request <span style="color:var(--rd)">*</span></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px;">'+types+'</div>'
+    +'<div id="jof-other-wrap" style="margin-top:6px;'+((r.types||[]).indexOf('Others')>=0?'':'display:none;')+'">'+inp('jof-other','Others — specify',r.typeOther,'Describe the request type')+'</div>'
+    +'<div style="margin-top:8px;">'+ta('jof-issue','Main Issues / Concerns',r.issue,'Describe the problem reported / observed',true)+'</div>'
+    +sec('3 · '+(origin==='maintenance'?'Maintenance':'Biomed')+' Evaluation & Corrective Action')
+    +'<div class="fg fg2">'+inp('jof-model','Model No.',r.ev.model)+inp('jof-serial','Serial No.',r.ev.serial)+inp('jof-supplier','Supplier / Manufacturer',r.ev.supplier)+inp('jof-cost','Estimated Cost (SAR)',r.ev.cost,'optional','','type="number" min="0" step="0.01"')+'</div>'
+    +ta('jof-work','Work Done',r.ev.workDone,'Assessment performed / work done so far')
+    +ta('jof-rec','Recommendation',r.ev.recommendation,'e.g. Replace battery pack; send to vendor for repair…',true)
+    +ta('jof-parts','Parts / Services Required (for Supply Chain)',r.ev.parts,'Item, part no., quantity, preferred vendor…')
+    +sec('4 · End-User Counter-Approval')
+    +'<div class="fg fg2">'+inp('jof-euname','End-User Name',r.eu.name,'Head of department / in-charge',true)+inp('jof-eutitle','Position',r.eu.title,'e.g. Head Nurse — ICU')+inp('jof-euemail','End-User Email',r.eu.email,'name@obeidhospital.org','','type="email"')+'</div>'
+    +(!ed||r.status==='enduser_declined'||r.status==='awaiting_enduser'?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:12px;"><label style="flex:1;min-width:220px;padding:9px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);cursor:pointer;"><input type="radio" name="jof-method" value="email" checked> 📧 Email a secure approval link to the end user</label><label style="flex:1;min-width:220px;padding:9px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);cursor:pointer;"><input type="radio" name="jof-method" value="inperson"> ✍ End user is here — sign on this device now</label></div>':'')
+    +sec('5 · '+(origin==='maintenance'?'Maintenance Technician':'Biomedical Engineer / Technician')+' Signature')
+    +'<div class="fg fg2">'+inp('jof-techname','Name',r.tech.name||joMe(),'',true)+'<div></div></div>'
+    +(r.tech.sig?'<div style="font-size:11px;color:var(--mu);margin:6px 0;">Current signature: <img src="'+r.tech.sig+'" style="height:44px;background:#fff;border-radius:6px;vertical-align:middle;"> — draw below only to replace it</div>':'')
+    +joSigBox('jof-sig','Signature (draw with finger / mouse)')
+    +'<button class="btn bg" style="width:100%;margin-top:14px;padding:12px;font-size:14px;font-weight:800;" onclick="joSubmitForm(\''+(ed?r._id:'')+'\')">'+(!ed?'💾 Save & Send for Counter-Approval':r.status==='enduser_declined'?'💾 Save & Resend to End User':r.status==='sc_returned'?'💾 Save & Re-forward to Supply Chain':'💾 Save Changes')+'</button>';
+  joModal('jo-form', html, 820);
+  joSigPad('jof-sig'); joSetPrio(r.priority||'normal');
+}
+function joSubmitForm(editId){
+  var g=function(id){ return ((document.getElementById(id)||{}).value||'').trim(); };
+  var types=Array.from(document.querySelectorAll('.jof-type:checked')).map(function(c){return c.value;});
+  var methodEl=document.querySelector('input[name="jof-method"]:checked'), method=methodEl?methodEl.value:'email';
+  var req=[['jof-reqby','Requested by'],['jof-equip','Equipment Description'],['jof-dept','Department'],['jof-issue','Main Issues / Concerns'],['jof-rec','Recommendation'],['jof-euname','End-User Name'],['jof-techname','Technician name']];
+  for(var i=0;i<req.length;i++){ if(!g(req[i][0])){ toast('Please fill: '+req[i][1],'#f59e0b'); var el=document.getElementById(req[i][0]); if(el) el.focus(); return; } }
+  if(!types.length){ toast('Select at least one Type of Request','#f59e0b'); return; }
+  if(types.indexOf('Others')>=0 && !g('jof-other')){ toast('Specify the "Others" request type','#f59e0b'); return; }
+  var eMail=g('jof-euemail');
+  if(method==='email' && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(eMail)){ toast('Enter a valid End-User email (or choose in-person signing)','#f59e0b'); document.getElementById('jof-euemail').focus(); return; }
+  var r=editId?joGet(editId):null, isNew=!r;
+  var sig=joSigData('jof-sig');
+  if(isNew && !sig){ toast('Please sign the request (technician signature)','#f59e0b'); return; }
+  if(isNew){
+    var origin=g('jof-origin')||joRole();
+    r=joNorm({_id:'jo_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), no:joNextNo(origin), origin:origin, token:joToken(), createdTs:Date.now(), createdBy:joMe()});
+  }
+  var prevStatus=r.status;
+  r.priority=g('jof-prio')||'normal'; r.requestedBy=g('jof-reqby'); r.reqDate=g('jof-date'); r.equip=g('jof-equip'); r.dept=g('jof-dept');
+  r.types=types; r.typeOther=g('jof-other'); r.issue=g('jof-issue');
+  r.ev={asset:g('jof-asset'), model:g('jof-model'), serial:g('jof-serial'), supplier:g('jof-supplier'), cost:g('jof-cost'), workDone:g('jof-work'), recommendation:g('jof-rec'), parts:g('jof-parts')};
+  r.eu=Object.assign({}, r.eu, {name:g('jof-euname'), title:g('jof-eutitle'), email:eMail});
+  r.tech=Object.assign({}, r.tech, {name:g('jof-techname'), date:r.tech.date||joToday()}); if(sig){ r.tech.sig=sig; r.tech.date=joToday(); }
+  joClose('jo-form');
+  if(isNew || prevStatus==='enduser_declined'){
+    r.eu.sig=''; r.eu.date=''; r.eu.comment=''; r.eu.method='';
+    joLog(r,'awaiting_enduser', isNew?'Job Order created — sent for end-user counter-approval':'Revised and resent to end user', isNew?'':'After decline');
+    joPut(r);
+    if(method==='inperson'){ joInPerson(r._id); }
+    else { joMailEndUserRequest(r,false); toast('📧 '+r.no+' saved — approval link emailed to '+r.eu.email,'#10b981',5000); }
+  } else if(prevStatus==='sc_returned'){
+    joLog(r,'with_supplychain','Revised and re-forwarded to Supply Chain','');
+    joPut(r); joMailForward(r,true); toast('📤 '+r.no+' re-forwarded to Supply Chain','#10b981',4500);
+  } else {
+    r.history.push({ts:Date.now(), status:r.status, action:'Request details edited', note:'', by:joMe(), role:joRole()});
+    joPut(r); toast('💾 '+r.no+' updated','#10b981');
+    if(prevStatus==='awaiting_enduser' && method==='inperson') joInPerson(r._id);
+  }
+  JO_UI.tab='open'; joRender(); setTimeout(function(){ if(method!=='inperson') joOpen(r._id); },150);
+}
+/* ── detail view ── */
+function joOpen(id){
+  var r=joGet(id); if(!r){ toast('Job order not found','#f59e0b'); return; }
+  var p=JO_PRIO[r.priority]||JO_PRIO.normal, st=JO_ST[r.status]||{lbl:r.status,col:'#64748b'};
+  var ro=joRole(), mine=JO_ORIG[ro]&&r.origin===ro, sc=ro==='supplychain', dir=ro==='director', canOrig=mine||dir;
+  var B=function(l,fn,cls){ return '<button class="btn '+(cls||'bo')+'" style="font-size:12px;font-weight:700;" onclick="'+fn+'">'+l+'</button>'; };
+  var acts=[];
+  if(canOrig){
+    if(r.status==='awaiting_enduser'){ acts.push(B('✍ End User Signs Here','joInPerson(\''+r._id+'\')','bg')); acts.push(B('📧 Resend Link','joResend(\''+r._id+'\')')); acts.push(B('🔗 Copy Approval Link','joCopyLink(\''+r._id+'\')')); acts.push(B('✏ Edit','joClose(\'jo-detail\');joForm(\''+r._id+'\')')); }
+    if(r.status==='enduser_declined') acts.push(B('✏ Revise & Resend','joClose(\'jo-detail\');joForm(\''+r._id+'\')','bg'));
+    if(r.status==='enduser_approved') acts.push(B('📤 Forward to Supply Chain','joForward(\''+r._id+'\')','bg'));
+    if(r.status==='sc_returned'){ acts.push(B('✏ Revise & Re-forward','joClose(\'jo-detail\');joForm(\''+r._id+'\')','bg')); }
+    if(r.status==='po_issued') acts.push(B('✅ Mark Completed & Close','joCloseReq(\''+r._id+'\')','bg'));
+    if(['awaiting_enduser','enduser_declined','enduser_approved','sc_returned'].indexOf(r.status)>=0) acts.push(B('✖ Cancel Request','joCancel(\''+r._id+'\')','br'));
+  }
+  if(sc||dir){
+    if(r.status==='with_supplychain') acts.push(B('⏳ Acknowledge & Start Processing','joScAck(\''+r._id+'\')','bp'));
+    if(['with_supplychain','sc_processing'].indexOf(r.status)>=0){ acts.push(B('📎 Issue PO','joPOForm(\''+r._id+'\')','bg')); acts.push(B('↩ Return to Sender','joScReturn(\''+r._id+'\')','br')); }
+    if(r.status==='po_issued') acts.push(B('✏ Update PO','joPOForm(\''+r._id+'\')'));
+  }
+  acts.push(B('🖨 Print / PDF','joPrint(\''+r._id+'\')'));
+  if(r.po.fileRef) acts.push(B('📎 Download PO','joDownloadPO(\''+r._id+'\')'));
+  if(dir) acts.push(B('🗑 Delete','joDelete(\''+r._id+'\')','br'));
+  var kv=function(k,v){ return '<div style="padding:6px 0;border-bottom:1px solid var(--bd);display:grid;grid-template-columns:160px 1fr;gap:8px;font-size:12px;"><div style="color:var(--mu);">'+k+'</div><div style="font-weight:600;">'+(v||'—')+'</div></div>'; };
+  var sec=function(t){ return '<div style="font-size:12px;font-weight:800;color:var(--or);margin:14px 0 4px;">'+t+'</div>'; };
+  var sigCell=function(title,name,sub,sig,date){ return '<div style="flex:1;min-width:220px;background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:10px;"><div style="font-size:11px;color:var(--mu);">'+title+'</div><div style="font-weight:800;font-size:13px;margin-top:2px;">'+joE(name||'—')+'</div>'+(sub?'<div style="font-size:11px;color:var(--mu);">'+joE(sub)+'</div>':'')+(sig?'<img src="'+sig+'" style="height:60px;max-width:100%;background:#fff;border-radius:6px;margin-top:6px;display:block;">':'<div style="height:60px;display:flex;align-items:center;font-size:11px;color:var(--mu);">— not signed —</div>')+'<div style="font-size:11px;color:var(--mu);margin-top:4px;">Date: '+joE(date||'—')+'</div></div>'; };
+  var hist=(r.history||[]).slice().reverse().map(function(h){ var hs=JO_ST[h.status]||{col:'var(--mu)'}; return '<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--bd);"><div style="width:10px;height:10px;border-radius:50%;background:'+hs.col+';margin-top:4px;flex:none;"></div><div style="flex:1;"><div style="font-size:12px;font-weight:700;">'+joE(h.action)+'</div><div style="font-size:11px;color:var(--mu);">'+joE(h.by)+(h.role&&h.role!=='guest'?' ('+joE(h.role)+')':'')+' · '+joFmt(h.ts)+'</div>'+(h.note?'<div style="font-size:11px;margin-top:2px;">💬 '+joNL(h.note)+'</div>':'')+'</div></div>'; }).join('');
+  var html='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">'
+    +'<div><div style="font-size:11px;color:var(--mu);font-weight:700;">'+joE(joOrigLabel(r))+' · created '+joFmt(r.createdTs)+'</div><div style="font-weight:800;font-size:19px;">🧾 '+joE(r.no)+'</div>'
+    +'<div style="margin-top:4px;"><span style="background:'+p.col+';color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:10px;">'+p.ic+' '+p.lbl.toUpperCase()+'</span> <span style="font-size:12px;font-weight:800;color:'+st.col+';margin-left:6px;">'+joE(st.lbl)+'</span></div></div>'
+    +'<button class="btn bo" style="font-size:11px;" onclick="joClose(\'jo-detail\')">✕ Close</button></div>'
+    +joStepper(r,false)
+    +(joNextHint(r)?'<div style="margin-top:10px;font-size:12px;padding:8px 10px;border-radius:8px;background:'+(joNeedsMe(r)?'rgba(245,158,11,.12)':'var(--s2)')+';">'+(joNeedsMe(r)?'⚡ <b>Your action:</b> ':'→ Next: ')+joE(joNextHint(r))+'</div>':'')
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">'+acts.join('')+'</div>'
+    +sec('Request')+kv('Requested by',joE(r.requestedBy)+' · '+joE(r.reqDate))+kv('Department (End User)',joE(r.dept))+kv('Equipment',joE(r.equip))+kv('Type of Request',joE(joTypesText(r)))+kv('Main Issues / Concerns',joNL(r.issue))
+    +sec((r.origin==='maintenance'?'Maintenance':'Biomed')+' Evaluation & Corrective Action')+kv('Asset No.',joE(r.ev.asset))+kv('Model No.',joE(r.ev.model))+kv('Serial No.',joE(r.ev.serial))+kv('Supplier',joE(r.ev.supplier))+kv('Work Done',joNL(r.ev.workDone))+kv('Recommendation',joNL(r.ev.recommendation))+kv('Parts / Services Required',joNL(r.ev.parts))+kv('Estimated Cost',r.ev.cost?'SAR '+joE(r.ev.cost):'')
+    +sec('Signatures')+'<div style="display:flex;gap:10px;flex-wrap:wrap;">'
+      +sigCell((r.origin==='maintenance'?'Maintenance Technician':'Biomedical Engr. / Technician'),r.tech.name,'',r.tech.sig,r.tech.date)
+      +sigCell('End User — Counter-Approval',r.eu.name,[r.eu.title,r.eu.email].filter(Boolean).join(' · '),r.eu.sig,r.eu.date?(r.eu.date+(r.eu.method?' · '+(r.eu.method==='in-person'?'signed in person':'via email link'):'')):'')+'</div>'
+    +(r.eu.comment?'<div style="font-size:12px;margin-top:6px;">💬 End-user comment: '+joNL(r.eu.comment)+'</div>':'')
+    +(r.po.no?sec('Supply Chain — Purchase Order')+kv('PO No.',joE(r.po.no))+kv('PO Date',joE(r.po.date))+kv('Vendor',joE(r.po.vendor))+kv('Amount',r.po.amount?'SAR '+joE(r.po.amount):'')+kv('Expected Delivery',joE(r.po.delivery))+kv('Remarks',joNL(r.po.remarks))+kv('Attachment',r.po.fileRef?'<a href="#" onclick="joDownloadPO(\''+r._id+'\');return false;">📎 '+joE(r.po.fileName||'PO file')+'</a>':'')+kv('Issued by',joE(r.po.by)+' · '+joFmt(r.po.ts)):'')
+    +(r.sc.returnNote&&r.status==='sc_returned'?'<div style="font-size:12px;margin-top:8px;padding:8px 10px;border-radius:8px;background:rgba(220,38,38,.1);">↩ <b>Supply Chain comment:</b> '+joNL(r.sc.returnNote)+'</div>':'')
+    +(r.close.note?sec('Completion')+kv('Completion note',joNL(r.close.note))+kv('Closed by',joE(r.close.by)+' · '+joFmt(r.close.ts)):'')
+    +sec('Audit Trail')+(hist||'<div class="em">No activity</div>');
+  joModal('jo-detail', html, 860);
+}
+
+/* ── transitions ── */
+function joInPerson(id){
+  var r=joGet(id); if(!r) return;
+  var html='<div style="display:flex;justify-content:space-between;align-items:center;"><div style="font-weight:800;font-size:16px;">✍ End-User Counter-Approval — '+joE(r.no)+'</div><button class="btn bo" style="font-size:11px;" onclick="joClose(\'jo-inperson\')">✕</button></div>'
+    +'<div style="font-size:12px;color:var(--mu);margin:6px 0 10px;">Hand the device to the end user. They confirm the assessment below and sign.</div>'
+    +'<div style="background:var(--s2);border-radius:10px;padding:10px;font-size:12px;margin-bottom:10px;"><b>'+joE(r.equip)+'</b> · '+joE(r.dept)+'<br>'+joE(joTypesText(r))+'<br><span style="color:var(--mu);">Issue:</span> '+joNL(r.issue)+'<br><span style="color:var(--mu);">Recommendation:</span> '+joNL(r.ev.recommendation)+'</div>'
+    +'<div class="fg fg2"><div class="ff"><label>End-User Name *</label><input id="jip-name" value="'+joE(r.eu.name||'')+'"></div><div class="ff"><label>Position</label><input id="jip-title" value="'+joE(r.eu.title||'')+'"></div></div>'
+    +'<div class="ff" style="margin-top:8px;"><label>Comment (optional)</label><textarea id="jip-comment" rows="2"></textarea></div>'
+    +'<div style="margin-top:8px;">'+joSigBox('jip-sig','End-user signature *')+'</div>'
+    +'<div style="display:flex;gap:8px;margin-top:12px;"><button class="btn bg" style="flex:2;padding:11px;font-weight:800;" onclick="joInPersonDo(\''+r._id+'\',true)">✅ Counter-Approve</button><button class="btn br" style="flex:1;padding:11px;font-weight:800;" onclick="joInPersonDo(\''+r._id+'\',false)">✖ Decline</button></div>';
+  joModal('jo-inperson', html, 560); joSigPad('jip-sig');
+}
+function joInPersonDo(id, approve){
+  var r=joGet(id); if(!r) return;
+  var name=(document.getElementById('jip-name').value||'').trim(), title=(document.getElementById('jip-title').value||'').trim(), cm=(document.getElementById('jip-comment').value||'').trim(), sig=joSigData('jip-sig');
+  if(!name){ toast('Enter the end-user name','#f59e0b'); return; }
+  if(approve&&!sig){ toast('End-user signature is required','#f59e0b'); return; }
+  if(!approve&&!cm){ toast('Please give a reason for declining','#f59e0b'); return; }
+  r.eu=Object.assign({},r.eu,{name:name,title:title,comment:cm,sig:approve?sig:'',date:joToday(),ts:Date.now(),method:'in-person'});
+  joLog(r, approve?'enduser_approved':'enduser_declined', approve?'Counter-approved by end user (signed in person)':'Declined by end user (in person)', cm, name, 'enduser');
+  joPut(r); joClose('jo-inperson'); joClose('jo-detail');
+  var o=JO_ORIG[r.origin]||{};
+  joMail(joOrigMails(r), joSubj(r, approve?'Counter-approved by '+name:'Declined by '+name),
+    joEmailHtml(r, approve?'✅ End user counter-approved the request':'✖ End user declined the request', joE(name)+(title?' ('+joE(title)+')':'')+' '+(approve?'counter-approved':'declined')+' this Job Order in person on '+joToday()+'.'+(cm?'<br><br>💬 '+joNL(cm):'')+(approve?'<br><br><b>Next step:</b> forward it to Supply Chain from the platform.':''), joPlatformLink(r), 'Open in FMS Platform'),
+    {name:o.name, replyTo:o.mail});
+  toast(approve?'✅ Counter-approved — you can now forward to Supply Chain':'✖ Declined — revise and resend when ready', approve?'#10b981':'#f59e0b',5000);
+  joRender(); setTimeout(function(){ joOpen(r._id); },150);
+}
+function joResend(id){ var r=joGet(id); if(!r) return; if(!r.eu.email){ toast('No end-user email on this request — edit it or use in-person signing','#f59e0b'); return; } joMailEndUserRequest(r,true); r.history.push({ts:Date.now(),status:r.status,action:'Approval link re-sent to '+r.eu.email,note:'',by:joMe(),role:joRole()}); joPut(r); toast('📧 Reminder sent to '+r.eu.email,'#10b981'); joOpen(id); }
+function joCopyLink(id){ var r=joGet(id); if(!r) return; var l=joApprovalLink(r);
+  var done=function(){ toast('🔗 Approval link copied — paste it into WhatsApp / email','#10b981',4000); };
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(l).then(done,function(){ window.prompt('Copy this approval link:',l); });
+  else window.prompt('Copy this approval link:',l); }
+function joMailForward(r, again){
+  var o=JO_ORIG[r.origin]||{};
+  return joMail(joSCMails(), joSubj(r,(again?'Re-submitted':'New request')+' for processing'),
+    joEmailHtml(r, (again?'Revised Job Order re-submitted to Supply Chain':'New Job Order forwarded to Supply Chain'), joE(o.label)+' has forwarded this end-user–approved Job Order for processing.'+((r.history[r.history.length-1]||{}).note?'<br><br>💬 '+joNL(r.history[r.history.length-1].note):'')+'<br><br>Please acknowledge and process it on the platform; attach the PO when issued.', joPlatformLink(r), 'Open in FMS Platform'),
+    {name:o.name, replyTo:o.mail, cc:joOrigMails(r)});
+}
+function joForward(id){
+  var r=joGet(id); if(!r) return;
+  joPrompt('📤 Forward '+joE(r.no)+' to Supply Chain','Supply Chain ('+JO_SC.mail+') and the FMS Director will be notified by email and on the platform.',[{id:'note',label:'Note to Supply Chain (optional)',type:'textarea',ph:'e.g. preferred vendor, urgency details, quotation reference…'}],'📤 Forward to Supply Chain','#16a34a',function(v){
+    joLog(r,'with_supplychain','Forwarded to Supply Chain',v.note); joPut(r); joMailForward(r,false);
+    toast('📤 '+r.no+' forwarded to Supply Chain','#10b981',4500); joRender(); joOpen(id);
+  });
+}
+function joScAck(id){
+  var r=joGet(id); if(!r) return;
+  r.sc=Object.assign({},r.sc,{ackBy:joMe(),ackTs:Date.now()});
+  joLog(r,'sc_processing','Acknowledged by Supply Chain — processing',''); joPut(r);
+  joMail(joOrigMails(r), joSubj(r,'Supply Chain is processing'), joEmailHtml(r,'⏳ Supply Chain acknowledged your request','Supply Chain has received this Job Order and started processing (sourcing / quotation / PO).', joPlatformLink(r),'Open in FMS Platform'), {name:JO_SC.name, replyTo:JO_SC.mail});
+  toast('⏳ Acknowledged — '+(JO_ORIG[r.origin]||{}).label+' notified','#10b981'); joRender(); joOpen(id);
+}
+function joScReturn(id){
+  var r=joGet(id); if(!r) return;
+  joPrompt('↩ Return '+joE(r.no)+' to sender','The request goes back to '+(JO_ORIG[r.origin]||{}).label+' for clarification / revision.',[{id:'note',label:'Reason / what is needed',type:'textarea',req:true,ph:'e.g. Please provide part number and 2 quotations'}],'↩ Return to Sender','#dc2626',function(v){
+    r.sc=Object.assign({},r.sc,{returnNote:v.note,returnTs:Date.now(),returnBy:joMe()});
+    joLog(r,'sc_returned','Returned by Supply Chain',v.note); joPut(r);
+    joMail(joOrigMails(r), joSubj(r,'Returned by Supply Chain'), joEmailHtml(r,'↩ Supply Chain returned your request','Supply Chain returned this Job Order for clarification:<br><br>💬 '+joNL(v.note)+'<br><br>Please revise it on the platform and re-forward.', joPlatformLink(r),'Open in FMS Platform'), {name:JO_SC.name, replyTo:JO_SC.mail});
+    toast('↩ Returned to sender','#f59e0b'); joRender(); joOpen(id);
+  });
+}
+function joPOForm(id){
+  var r=joGet(id); if(!r) return; var po=r.po||{};
+  var inp=function(k,l,t,v,ph){ return '<div class="ff"><label>'+l+'</label><input id="jpo-'+k+'" type="'+t+'" value="'+joE(v||'')+'" placeholder="'+joE(ph||'')+'"></div>'; };
+  var html='<div style="display:flex;justify-content:space-between;align-items:center;"><div style="font-weight:800;font-size:16px;">📎 '+(po.no?'Update':'Issue')+' Purchase Order — '+joE(r.no)+'</div><button class="btn bo" style="font-size:11px;" onclick="joClose(\'jo-po\')">✕</button></div>'
+    +'<div style="font-size:12px;color:var(--mu);margin:6px 0 10px;">'+joE(r.equip)+' · '+joE(r.dept)+(r.ev.parts?'<br>Requested: '+joNL(r.ev.parts):'')+'</div>'
+    +'<div class="fg fg2">'+inp('no','PO Number *','text',po.no,'e.g. PO-2026-00123')+inp('date','PO Date','date',po.date||joToday())+inp('vendor','Vendor / Supplier','text',po.vendor)+inp('amount','Amount (SAR)','number',po.amount)+inp('delivery','Expected Delivery','date',po.delivery)+'</div>'
+    +'<div class="ff" style="margin-top:8px;"><label>Remarks</label><textarea id="jpo-remarks" rows="2">'+joE(po.remarks||'')+'</textarea></div>'
+    +'<div class="ff" style="margin-top:8px;"><label>Attach PO (PDF / image, max 8 MB)'+(po.fileName?' — current: '+joE(po.fileName):'')+'</label><input id="jpo-file" type="file" accept=".pdf,image/*,.doc,.docx,.xls,.xlsx"></div>'
+    +'<button id="jpo-save" class="btn bg" style="width:100%;margin-top:12px;padding:11px;font-weight:800;" onclick="joPOSave(\''+r._id+'\')">📎 '+(po.no?'Save PO Update':'Issue PO & Notify Sender')+'</button>';
+  joModal('jo-po', html, 600);
+}
+function joReadB64(file){ return new Promise(function(res,rej){ var fr=new FileReader(); fr.onload=function(){ res(String(fr.result).split(',')[1]||''); }; fr.onerror=function(){ rej(fr.error); }; fr.readAsDataURL(file); }); }
+function joPOSave(id){
+  var r=joGet(id); if(!r) return;
+  var g=function(k){ return ((document.getElementById('jpo-'+k)||{}).value||'').trim(); };
+  if(!g('no')){ toast('Enter the PO number','#f59e0b'); return; }
+  var fileEl=document.getElementById('jpo-file'), file=fileEl&&fileEl.files&&fileEl.files[0];
+  if(file&&file.size>8*1024*1024){ toast('File is larger than 8 MB — please compress it','#f59e0b'); return; }
+  var btn=document.getElementById('jpo-save'); if(btn){ btn.disabled=true; btn.textContent='⏳ Saving…'; }
+  var wasIssued=r.status==='po_issued';
+  var po=Object.assign({},r.po,{no:g('no'),date:g('date'),vendor:g('vendor'),amount:g('amount'),delivery:g('delivery'),remarks:g('remarks'),by:joMe(),ts:r.po.ts||Date.now()});
+  var finish=function(uploadedRef){
+    if(uploadedRef){ po.fileRef=uploadedRef; po.fileName=file.name; }
+    r.po=po;
+    if(wasIssued) r.history.push({ts:Date.now(),status:'po_issued',action:'PO details updated'+(uploadedRef?' (new attachment)':''),note:'',by:joMe(),role:joRole()});
+    else joLog(r,'po_issued','PO '+po.no+' issued by Supply Chain',po.remarks);
+    joPut(r); joClose('jo-po');
+    joMail(joOrigMails(r), joSubj(r, wasIssued?'PO updated':'PO '+po.no+' issued'),
+      joEmailHtml(r, wasIssued?'📎 Purchase Order updated':'📎 Purchase Order issued', 'Supply Chain has '+(wasIssued?'updated':'issued')+' <b>PO '+joE(po.no)+'</b>'+(po.vendor?' to <b>'+joE(po.vendor)+'</b>':'')+(po.amount?' for <b>SAR '+joE(po.amount)+'</b>':'')+(po.delivery?' · expected delivery <b>'+joE(po.delivery)+'</b>':'')+'.'+(po.remarks?'<br><br>💬 '+joNL(po.remarks):'')+(po.fileRef?'<br><br>The PO document is attached to this email.':'')+'<br><br><b>Next step:</b> complete the job and close the request on the platform.', joPlatformLink(r),'Open in FMS Platform'),
+      {name:JO_SC.name, replyTo:JO_SC.mail, attachRef:po.fileRef||''});
+    toast('📎 PO '+po.no+' '+(wasIssued?'updated':'issued')+' — sender notified','#10b981',5000); joRender(); joOpen(id);
+  };
+  if(!file){ finish(null); return; }
+  var ref='po_'+r._id.replace(/[^A-Za-z0-9]/g,'').slice(-18)+'_'+Date.now().toString(36);
+  joReadB64(file).then(function(b64){
+    return fetch(joUrl(),{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action:'upload',ref:ref,name:file.name,mime:file.type||'application/octet-stream',data:b64})});
+  }).then(function(){ finish(ref); })   // no-cors resolves after the server has stored the file
+    .catch(function(){ toast('⚠ Attachment upload failed — PO saved without file. Try again with ✏ Update PO.','#f59e0b',7000); finish(null); });
+}
+function joDownloadPO(id){
+  var r=joGet(id); if(!r||!r.po.fileRef) return; toast('⬇ Fetching PO…','#3b82f6',2000);
+  fetch(joUrl()+'?action=getFile&ref='+encodeURIComponent(r.po.fileRef),{signal:AbortSignal.timeout(60000)}).then(function(x){return x.text();}).then(function(t){
+    var j=joJ(t); if(!j||!j.ok){ toast('Could not fetch the PO file'+(j&&j.error?' — '+j.error:''),'#f59e0b',5000); return; }
+    var bin=atob(j.data), arr=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+    var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([arr],{type:j.mime||'application/octet-stream'})); a.download=j.name||r.po.fileName||'PO'; document.body.appendChild(a); a.click(); setTimeout(function(){ a.remove(); },500);
+  }).catch(function(){ toast('Could not fetch the PO file — check connection','#f59e0b'); });
+}
+function joCloseReq(id){
+  var r=joGet(id); if(!r) return;
+  joPrompt('✅ Complete & Close '+joE(r.no),'Confirms the job was completed after the PO. End user, Supply Chain and FMS Director are notified.',[{id:'note',label:'Completion note',type:'textarea',req:true,ph:'e.g. Part received 12-Oct, installed and tested — equipment back in service'}],'✅ Close Job Order','#16a34a',function(v){
+    r.close={note:v.note,by:joMe(),ts:Date.now()}; joLog(r,'closed','Job completed & closed',v.note); joPut(r);
+    var o=JO_ORIG[r.origin]||{};
+    joMail([r.eu.email].concat(joSCMails()), joSubj(r,'Completed & closed'), joEmailHtml(r,'✅ Job Order completed','This Job Order has been completed and closed by '+joE(o.label)+'.<br><br>💬 '+joNL(v.note), joPlatformLink(r),'Open in FMS Platform'), {name:o.name, replyTo:o.mail, cc:joOrigMails(r)});
+    toast('✅ '+r.no+' closed','#10b981'); joRender(); joOpen(id);
+  });
+}
+function joCancel(id){
+  var r=joGet(id); if(!r) return;
+  joPrompt('✖ Cancel '+joE(r.no),'The request is kept in the log as Cancelled (not deleted).',[{id:'note',label:'Reason',type:'textarea',req:true}],'✖ Cancel Request','#dc2626',function(v){
+    var wasSC=['with_supplychain','sc_processing','sc_returned'].indexOf(r.status)>=0, wasEU=r.status==='awaiting_enduser';
+    joLog(r,'cancelled','Request cancelled',v.note); joPut(r);
+    var to=[].concat(wasEU&&r.eu.email?[r.eu.email]:[]).concat(wasSC?joSCMails():[]); if(!to.length) to=joOrigMails(r);
+    var o=JO_ORIG[r.origin]||{};
+    joMail(to, joSubj(r,'Cancelled'), joEmailHtml(r,'✖ Job Order cancelled','This Job Order was cancelled.<br><br>💬 '+joNL(v.note),'',''), {name:o.name, replyTo:o.mail, cc:joOrigMails(r)});
+    toast('Request cancelled','#64748b'); joRender(); joClose('jo-detail');
+  });
+}
+function joDelete(id){
+  if(!joIsDir()) return; var r=joGet(id); if(!r) return;
+  if(!confirm('Permanently remove '+r.no+' from all accounts?\n(Tip: use Cancel instead to keep it in the audit log.)')) return;
+  r.deleted=true; r.history.push({ts:Date.now(),status:r.status,action:'Deleted by FMS Director',note:'',by:joMe(),role:'director'}); joPut(r);
+  joClose('jo-detail'); joRender(); toast('🗑 '+r.no+' removed','#ef4444');
+}
+
+/* ── print (A4, mirrors the paper Job Order Request form) ── */
+function joPrintHtml(r){
+  var p=JO_PRIO[r.priority]||JO_PRIO.normal, st=JO_ST[r.status]||{lbl:r.status};
+  var box=function(on){ return '<span style="display:inline-block;width:13px;height:13px;border:1.5px solid #1e293b;margin-right:6px;vertical-align:-2px;text-align:center;line-height:12px;font-size:11px;font-weight:bold;">'+(on?'✓':'')+'</span>'; };
+  var cell=function(k,v,span){ return '<td'+(span?' colspan="'+span+'"':'')+' style="border:1px solid #94a3b8;padding:6px 8px;vertical-align:top;"><b>'+k+':</b> '+(v||'')+'</td>'; };
+  var types=JO_TYPES.map(function(t){ return '<td style="border:1px solid #94a3b8;padding:6px 8px;">'+box((r.types||[]).indexOf(t)>=0)+t+(t==='Others'&&r.typeOther?': '+joE(r.typeOther):'')+'</td>'; });
+  var rowsT=''; for(var i=0;i<types.length;i+=3){ rowsT+='<tr>'+types.slice(i,i+3).join('')+(types.slice(i,i+3).length<3?'<td style="border:1px solid #94a3b8;" colspan="'+(3-types.slice(i,i+3).length)+'"></td>':'')+'</tr>'; }
+  var sig=function(t,n,s,d,extra){ return '<td style="border:1px solid #94a3b8;padding:8px;width:50%;vertical-align:top;"><b>'+t+'</b><br>Name: '+joE(n||'')+(extra?'<br>'+extra:'')+'<br>Signature:<br>'+(s?'<img src="'+s+'" style="height:58px;max-width:260px;">':'<div style="height:58px;"></div>')+'<br>Date: '+joE(d||'')+'</td>'; };
+  var hist=(r.history||[]).map(function(h){ return '<tr><td style="border:1px solid #cbd5e1;padding:4px 6px;white-space:nowrap;">'+joFmt(h.ts)+'</td><td style="border:1px solid #cbd5e1;padding:4px 6px;">'+joE(h.action)+(h.note?' — '+joE(h.note):'')+'</td><td style="border:1px solid #cbd5e1;padding:4px 6px;">'+joE(h.by)+'</td></tr>'; }).join('');
+  return '<html><head><meta charset="utf-8"><title>'+joE(r.no)+' — Job Order Request</title><style>@page{size:A4;margin:14mm;} body{font-family:Arial,Helvetica,sans-serif;color:#0f172a;font-size:12px;} table{border-collapse:collapse;width:100%;margin-bottom:10px;} h3{margin:12px 0 6px;font-size:13px;color:#1e3a5c;border-bottom:2px solid #1e3a5c;padding-bottom:3px;}</style></head><body>'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1e3a5c;padding-bottom:8px;margin-bottom:10px;"><div><div style="font-size:18px;font-weight:bold;color:#1e3a5c;">Obeid Specialized Hospital</div><div style="font-size:12px;color:#475569;">'+joE(joOrigLabel(r))+' · Facilities Management</div></div><div style="text-align:right;"><div style="font-size:20px;font-weight:bold;">JOB ORDER REQUEST</div><div style="font-size:13px;font-weight:bold;">'+joE(r.no)+'</div></div></div>'
+    +'<div style="margin-bottom:8px;"><span style="background:'+p.col+';color:#fff;padding:3px 10px;border-radius:10px;font-weight:bold;font-size:11px;">PRIORITY: '+p.lbl.toUpperCase()+'</span> &nbsp; <b>Status:</b> '+joE(st.lbl)+'</div>'
+    +'<table><tr>'+cell('Requested by',joE(r.requestedBy))+cell('Date',joE(r.reqDate))+'</tr><tr>'+cell('Equipment Description',joE(r.equip),2)+'</tr><tr>'+cell('Department',joE(r.dept),2)+'</tr></table>'
+    +'<h3>Type of Request</h3><table>'+rowsT+'</table>'
+    +'<h3>Main Issues / Concerns</h3><div style="border:1px solid #94a3b8;padding:8px;min-height:40px;margin-bottom:10px;">'+joNL(r.issue)+'</div>'
+    +'<h3>'+(r.origin==='maintenance'?'Maintenance':'Biomed')+' Evaluation and Corrective Action</h3><table><tr>'+cell('Asset No.',joE(r.ev.asset))+cell('Model No.',joE(r.ev.model))+'</tr><tr>'+cell('Supplier',joE(r.ev.supplier))+cell('Serial No.',joE(r.ev.serial))+'</tr><tr>'+cell('Work Done',joNL(r.ev.workDone),2)+'</tr><tr>'+cell('Recommendation',joNL(r.ev.recommendation),2)+'</tr>'+(r.ev.parts?'<tr>'+cell('Parts / Services Required',joNL(r.ev.parts)+(r.ev.cost?' — Est. SAR '+joE(r.ev.cost):''),2)+'</tr>':'')+'</table>'
+    +'<table><tr>'+sig((r.origin==='maintenance'?'Maintenance Technician':'Biomedical Engr. / Technician'),r.tech.name,r.tech.sig,r.tech.date,'')+sig('End User (Counter-Approval)',r.eu.name,r.eu.sig,r.eu.date,[r.eu.title,r.eu.method?(r.eu.method==='in-person'?'Signed in person':'Approved via secure email link'):''].filter(Boolean).map(joE).join(' · '))+'</tr></table>'
+    +(r.eu.comment?'<div style="margin-bottom:8px;"><b>End-user comment:</b> '+joNL(r.eu.comment)+'</div>':'')
+    +(r.po.no?'<h3>Supply Chain — Purchase Order</h3><table><tr>'+cell('PO No.',joE(r.po.no))+cell('PO Date',joE(r.po.date))+'</tr><tr>'+cell('Vendor',joE(r.po.vendor))+cell('Amount',r.po.amount?'SAR '+joE(r.po.amount):'')+'</tr><tr>'+cell('Expected Delivery',joE(r.po.delivery))+cell('Issued by',joE(r.po.by))+'</tr>'+(r.po.remarks?'<tr>'+cell('Remarks',joNL(r.po.remarks),2)+'</tr>':'')+'</table>':'')
+    +(r.close.note?'<h3>Completion</h3><div style="border:1px solid #94a3b8;padding:8px;margin-bottom:10px;">'+joNL(r.close.note)+'<br><span style="color:#64748b;">Closed by '+joE(r.close.by)+' · '+joFmt(r.close.ts)+'</span></div>':'')
+    +'<h3>Workflow / Audit Trail</h3><table style="font-size:11px;"><tr style="background:#e2e8f0;"><th style="border:1px solid #cbd5e1;padding:4px 6px;text-align:left;">Date / Time</th><th style="border:1px solid #cbd5e1;padding:4px 6px;text-align:left;">Action</th><th style="border:1px solid #cbd5e1;padding:4px 6px;text-align:left;">By</th></tr>'+hist+'</table>'
+    +'<div style="font-size:10px;color:#64748b;margin-top:8px;">Printed '+new Date().toLocaleString()+' · Obeid FMS Command Platform</div>'
+    +'<scr'+'ipt>window.onload=function(){setTimeout(function(){window.print();},350);};</scr'+'ipt></body></html>';
+}
+function joPrint(id){ var r=joGet(id); if(!r) return; var w=window.open('','_blank'); if(!w){ toast('Allow pop-ups to print','#f59e0b'); return; } w.document.write(joPrintHtml(r)); w.document.close(); }
+
+/* ── export list (CSV + printable register) ── */
+function joExport(){
+  var list=joFiltered(); if(!list.length){ toast('Nothing to export in this view','#f59e0b'); return; }
+  var hts=function(r,s){ var h=(r.history||[]).filter(function(x){return x.status===s;})[0]; return h?joFmt(h.ts):''; };
+  var rows=[['JO No.','Priority','Status','Originating Dept','Requested By','Request Date','End-User Department','Equipment','Asset No.','Serial No.','Model No.','Supplier','Type of Request','Main Issue','Recommendation','Parts/Services','Est. Cost (SAR)','End User','End-User Approved','Forwarded to SC','PO No.','PO Date','Vendor','PO Amount (SAR)','Closed','Age (days)']];
+  list.forEach(function(r){ rows.push([r.no,(JO_PRIO[r.priority]||{}).lbl,(JO_ST[r.status]||{}).lbl||r.status,joOrigLabel(r),r.requestedBy,r.reqDate,r.dept,r.equip,r.ev.asset,r.ev.serial,r.ev.model,r.ev.supplier,joTypesText(r),r.issue,r.ev.recommendation,r.ev.parts,r.ev.cost,r.eu.name,hts(r,'enduser_approved'),hts(r,'with_supplychain'),r.po.no,r.po.date,r.po.vendor,r.po.amount,hts(r,'closed'),Math.round((Date.now()-r.createdTs)/864e5)]); });
+  var csv='\ufeff'+rows.map(function(x){ return x.map(function(v){ return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+  try{ var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); a.download='Job_Orders_'+joToday()+'.csv'; document.body.appendChild(a); a.click(); setTimeout(function(){a.remove();},500); }catch(e){}
+  var tr=list.map(function(r){ var p=JO_PRIO[r.priority]||JO_PRIO.normal, st=JO_ST[r.status]||{lbl:r.status,col:'#64748b'}; return '<tr><td style="border:1px solid #cbd5e1;padding:5px;font-weight:bold;white-space:nowrap;">'+joE(r.no)+'</td><td style="border:1px solid #cbd5e1;padding:5px;"><span style="background:'+p.col+';color:#fff;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:bold;">'+p.lbl+'</span></td><td style="border:1px solid #cbd5e1;padding:5px;color:'+st.col+';font-weight:bold;">'+joE(st.lbl)+'</td><td style="border:1px solid #cbd5e1;padding:5px;">'+joE(r.equip)+(r.ev.asset?'<br><span style="color:#64748b;">#'+joE(r.ev.asset)+'</span>':'')+'</td><td style="border:1px solid #cbd5e1;padding:5px;">'+joE(r.dept)+'</td><td style="border:1px solid #cbd5e1;padding:5px;">'+joE(joTypesText(r))+'</td><td style="border:1px solid #cbd5e1;padding:5px;">'+joE(joOrigLabel(r))+'</td><td style="border:1px solid #cbd5e1;padding:5px;white-space:nowrap;">'+joE(r.reqDate)+'</td><td style="border:1px solid #cbd5e1;padding:5px;">'+joE(r.po.no||'—')+'</td></tr>'; }).join('');
+  var byP=function(k){ return list.filter(function(r){return r.priority===k;}).length; };
+  var html='<html><head><meta charset="utf-8"><title>Job Order Register</title><style>@page{size:A4 landscape;margin:12mm;} body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#0f172a;} table{border-collapse:collapse;width:100%;}</style></head><body>'
+    +'<div style="border-bottom:3px solid #1e3a5c;padding-bottom:6px;margin-bottom:10px;"><div style="font-size:18px;font-weight:bold;color:#1e3a5c;">Obeid Specialized Hospital — Job Order Register</div><div style="color:#475569;">'+list.length+' request(s) · Emergent '+byP('emergent')+' · Urgent '+byP('urgent')+' · Normal '+byP('normal')+' · generated '+new Date().toLocaleString()+'</div></div>'
+    +'<table><tr style="background:#1e3a5c;color:#fff;"><th style="padding:6px;">JO No.</th><th>Priority</th><th>Status</th><th>Equipment</th><th>Department</th><th>Type</th><th>Origin</th><th>Date</th><th>PO</th></tr>'+tr+'</table>'
+    +'<scr'+'ipt>window.onload=function(){setTimeout(function(){window.print();},350);};</scr'+'ipt></body></html>';
+  var w=window.open('','_blank'); if(w){ w.document.write(html); w.document.close(); }
+  toast('⬇ Exported '+list.length+' job order(s) — CSV + printable register','#10b981',4000);
+}
+
+/* ── login-free END-USER approval page (opened from the email link) ── */
+function joFetchOne(id,tok){
+  var url=joUrl(); if(!url) return Promise.resolve(null);
+  return fetch(url+'?action=getOne&type=job_orders&id='+encodeURIComponent(id)+'&token='+encodeURIComponent(tok||''),{signal:AbortSignal.timeout(45000)})
+    .then(function(r){ return r.text(); })
+    .then(function(t){ var j=joJ(t);
+      if(j&&j.ok&&j.row) return joNorm(j.row);
+      if(j&&j.error&&/Unknown action/i.test(j.error)){   // older DB without getOne → fall back, still token-checked
+        return fetch(url+'?action=getType&type=job_orders',{signal:AbortSignal.timeout(45000)}).then(function(x){return x.text();}).then(function(t2){ var j2=joJ(t2); var hit=((j2&&j2.rows)||[]).map(joNorm).find(function(x){ return String(x._id)===String(id); }); return (hit&&String(hit.token)===String(tok))?hit:null; });
+      }
+      return null; })
+    .catch(function(){ var l=joGet(id); return (l&&String(l.token)===String(tok))?l:null; });
+}
+function joStandalone(){
+  var q=new URLSearchParams(location.search), id=q.get('jo'), tok=q.get('t'); if(!id) return false;
+  var ls=document.getElementById('loginScreen'); if(ls) ls.style.display='none';
+  var app=document.getElementById('app'); if(app) app.style.display='none';
+  var ov=document.createElement('div'); ov.id='jo-standalone';
+  ov.style.cssText='position:fixed;inset:0;background:#0e1522;overflow:auto;z-index:99999;padding:14px;color:#e6eef7;font-family:system-ui,-apple-system,Segoe UI,sans-serif;';
+  ov.innerHTML='<div style="max-width:680px;margin:60px auto;text-align:center;"><div style="font-size:40px;">🧾</div><div style="font-size:15px;color:#8aa;margin-top:8px;">Loading Job Order…</div></div>';
+  document.body.appendChild(ov);
+  joFetchOne(id,tok).then(function(r){
+    if(!r){ ov.innerHTML='<div style="max-width:560px;margin:70px auto;text-align:center;padding:20px;"><div style="font-size:48px;">🔒</div><div style="font-size:19px;font-weight:800;margin:10px 0;">This approval link is invalid or has expired</div><div style="color:#8aa;font-size:13px;">Please contact Biomedical Engineering or Maintenance to resend it.</div></div>'; return; }
+    joStandaloneRender(r);
+  });
+  return true;
+}
+function joStandaloneRender(r){
+  var ov=document.getElementById('jo-standalone'); if(!ov) return;
+  var p=JO_PRIO[r.priority]||JO_PRIO.normal, st=JO_ST[r.status]||{lbl:r.status}, o=JO_ORIG[r.origin]||{label:'FMS'};
+  var card='background:#152033;border:1px solid #2a3547;border-radius:12px;padding:14px;margin-bottom:12px;';
+  var field='width:100%;padding:10px;border:1px solid #2a3547;border-radius:8px;background:#182234;color:#e6eef7;font-size:14px;box-sizing:border-box;';
+  var kv=function(k,v){ return v?'<div style="padding:6px 0;border-bottom:1px solid #22304a;font-size:13px;"><div style="color:#8aa;font-size:11px;">'+k+'</div><div>'+v+'</div></div>':''; };
+  var head='<div style="text-align:center;padding:6px 0 12px;"><div style="font-size:26px;">🧾</div><div style="font-size:20px;font-weight:800;color:#4fa3e3;">Job Order Request · '+joE(r.no)+'</div><div style="font-size:12px;color:#8aa;">Obeid Specialized Hospital · '+joE(o.label)+'</div>'
+    +'<div style="margin-top:8px;"><span style="background:'+p.col+';color:#fff;font-size:12px;font-weight:800;padding:4px 12px;border-radius:12px;">'+p.ic+' '+p.lbl.toUpperCase()+'</span></div></div>';
+  var details='<div style="'+card+'">'+kv('Equipment',joE(r.equip)+(r.ev.asset?' · Asset '+joE(r.ev.asset):''))+kv('Department',joE(r.dept))+kv('Type of Request',joE(joTypesText(r)))+kv('Main Issues / Concerns',joNL(r.issue))+kv('Work Done',joNL(r.ev.workDone))+kv('Recommendation',joNL(r.ev.recommendation))+kv('Parts / Services Required',joNL(r.ev.parts))
+    +kv('Assessed by',joE(r.tech.name)+' · '+joE(r.tech.date)+(r.tech.sig?'<br><img src="'+r.tech.sig+'" style="height:50px;background:#fff;border-radius:6px;margin-top:4px;">':''))+'</div>';
+  if(r.status!=='awaiting_enduser'){
+    var done=r.status==='enduser_declined'?'✖ You declined this request':(r.status==='cancelled'?'This request was cancelled':'✅ This request has already been counter-approved');
+    ov.innerHTML='<div style="max-width:680px;margin:0 auto;">'+head+'<div style="'+card+'text-align:center;font-size:15px;font-weight:800;">'+done+'<div style="font-size:12px;color:#8aa;font-weight:400;margin-top:4px;">'+(r.eu.name?joE(r.eu.name)+' · '+joE(r.eu.date||''):'')+' · Current status: '+joE(st.lbl)+'</div></div>'+details
+      +'<button onclick="joStandalonePrint()" style="width:100%;padding:12px;border:none;border-radius:10px;background:#2a3547;color:#fff;font-weight:700;cursor:pointer;">🖨 Print / Save as PDF</button></div>';
+    window._joSA=r; return;
+  }
+  ov.innerHTML='<div style="max-width:680px;margin:0 auto;">'+head
+    +'<div style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4);border-radius:10px;padding:10px;text-align:center;margin-bottom:12px;color:#fbbf24;font-weight:700;">Your counter-approval is requested</div>'
+    +details
+    +'<div style="'+card+'"><div style="font-size:13px;font-weight:800;color:#f0a848;margin-bottom:8px;">End-User Counter-Approval</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div><label style="font-size:11px;color:#8aa;">Your full name *</label><input id="jsa-name" value="'+joE(r.eu.name||'')+'" style="'+field+'"></div><div><label style="font-size:11px;color:#8aa;">Position</label><input id="jsa-title" value="'+joE(r.eu.title||'')+'" style="'+field+'"></div></div>'
+    +'<div style="margin-top:10px;"><label style="font-size:11px;color:#8aa;">Comment (required if declining)</label><textarea id="jsa-comment" rows="2" style="'+field+'"></textarea></div>'
+    +'<div style="margin-top:10px;"><div style="display:flex;justify-content:space-between;align-items:center;"><label style="font-size:11px;color:#8aa;">Signature *</label><button onclick="joSigClear(\'jsa-sig\')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid #2a3547;background:transparent;color:#8aa;cursor:pointer;">Clear</button></div><canvas id="jsa-sig" width="480" height="140" style="width:100%;height:130px;background:#fff;border-radius:8px;display:block;margin-top:4px;"></canvas></div>'
+    +'<label style="display:flex;gap:8px;align-items:flex-start;margin-top:10px;font-size:13px;"><input type="checkbox" id="jsa-confirm" style="margin-top:3px;"> I confirm I have reviewed the assessment above and counter-approve this request.</label></div>'
+    +'<div style="display:flex;gap:10px;"><button id="jsa-ok" style="flex:2;padding:14px;border:none;border-radius:10px;background:#16a34a;color:#fff;font-size:16px;font-weight:800;cursor:pointer;">✅ Counter-Approve</button><button id="jsa-no" style="flex:1;padding:14px;border:none;border-radius:10px;background:#dc2626;color:#fff;font-size:15px;font-weight:800;cursor:pointer;">✖ Decline</button></div></div>';
+  joSigPad('jsa-sig');
+  document.getElementById('jsa-ok').onclick=function(){ joStandaloneSubmit(r,true); };
+  document.getElementById('jsa-no').onclick=function(){ joStandaloneSubmit(r,false); };
+}
+function joStandaloneSubmit(r, approve){
+  var name=(document.getElementById('jsa-name').value||'').trim(), title=(document.getElementById('jsa-title').value||'').trim(), cm=(document.getElementById('jsa-comment').value||'').trim(), sig=joSigData('jsa-sig');
+  if(!name){ alert('Please enter your full name.'); return; }
+  if(approve){ if(!sig){ alert('Please sign in the signature box.'); return; } if(!document.getElementById('jsa-confirm').checked){ alert('Please tick the confirmation box.'); return; } }
+  else if(!cm){ alert('Please add a comment explaining why you decline.'); return; }
+  ['jsa-ok','jsa-no'].forEach(function(b){ var e=document.getElementById(b); if(e){ e.disabled=true; e.style.opacity='.6'; } });
+  r.eu=Object.assign({},r.eu,{name:name,title:title,comment:cm,sig:approve?sig:'',date:joToday(),ts:Date.now(),method:'email-link'});
+  joLog(r, approve?'enduser_approved':'enduser_declined', approve?'Counter-approved by end user (secure email link)':'Declined by end user', cm, name, 'enduser');
+  r.updatedTs=Date.now();
+  var o=JO_ORIG[r.origin]||{};
+  Promise.resolve(dbWrite('job_orders', r)).then(function(){
+    joMail(joOrigMails(r), joSubj(r, approve?'Counter-approved by '+name:'Declined by '+name),
+      joEmailHtml(r, approve?'✅ End user counter-approved the request':'✖ End user declined the request', joE(name)+(title?' ('+joE(title)+')':'')+' '+(approve?'counter-approved':'declined')+' this Job Order on '+joToday()+'.'+(cm?'<br><br>💬 '+joNL(cm):'')+(approve?'<br><br><b>Next step:</b> forward it to Supply Chain from the platform.':'<br><br>Please revise and resend it from the platform.'), joPlatformLink(r),'Open in FMS Platform'),
+      {name:o.name, replyTo:r.eu.email||o.mail, dirMail:r.dirMail});
+    window._joSA=r;
+    document.getElementById('jo-standalone').innerHTML='<div style="max-width:560px;margin:60px auto;text-align:center;padding:24px;"><div style="font-size:60px;">'+(approve?'✅':'✖')+'</div><div style="font-size:22px;font-weight:800;color:'+(approve?'#16a34a':'#f87171')+';margin:12px 0;">'+(approve?'Counter-approval recorded':'Decline recorded')+'</div><div style="color:#c6d2e0;">'+joE(r.no)+' · '+joE(r.equip)+'</div><div style="color:#8aa;font-size:13px;margin-top:8px;">'+joE(o.label)+' has been notified'+(approve?' and will forward it to Supply Chain.':'.')+'</div><button onclick="joStandalonePrint()" style="margin-top:22px;padding:12px 24px;border:none;border-radius:10px;background:#2a3547;color:#fff;font-size:14px;cursor:pointer;">🖨 Print / Save as PDF</button><div style="color:#64748b;font-size:12px;margin-top:14px;">You can close this page.</div></div>';
+  });
+}
+function joStandalonePrint(){ var r=window._joSA; if(!r) return; var w=window.open('','_blank'); if(!w){ alert('Please allow pop-ups to print.'); return; } w.document.write(joPrintHtml(r)); w.document.close(); }
 
 function fmsLocalToday(){
   // Local calendar date (not UTC) — shared 'today' basis for all log filters so
