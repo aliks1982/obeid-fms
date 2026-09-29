@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1670';
+  var v = '20260816-1671';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -27,7 +27,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1670">
+<meta name="app-version" content="20260816-1671">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -716,7 +716,7 @@ if ('caches' in window) {
   <div id="db-status-bar" style="display:flex;align-items:center;gap:8px;padding:6px 16px;background:var(--s2);border-bottom:1px solid var(--bd);margin-bottom:0;font-size:10px;">
     <div id="db-dot" style="width:7px;height:7px;border-radius:50%;background:var(--or);flex-shrink:0;"></div>
     <span id="db-txt" style="color:var(--or);flex:1;">Connecting to database...</span>
-    <button onclick="dbLoadAll()" style="background:transparent;border:1px solid var(--bd);border-radius:5px;padding:2px 8px;color:var(--mu);font-size:9px;cursor:pointer;">⟳ Sync</button>
+    <button onclick="dbLoadAll({manual:true})" title="Fetch the very latest data from the cloud (bypasses the 20-min server cache)" style="background:transparent;border:1px solid var(--bd);border-radius:5px;padding:2px 8px;color:var(--mu);font-size:9px;cursor:pointer;">⟳ Sync</button>
     <button onclick="dbFlushQueue()" style="background:transparent;border:1px solid var(--bd);border-radius:5px;padding:2px 8px;color:var(--mu);font-size:9px;cursor:pointer;">📤 Flush</button>
   </div>
 
@@ -6844,7 +6844,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1670';
+const APP_VERSION = '20260816-1671';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -7085,26 +7085,29 @@ const DB_HEAVY_SKIP = 'app_settings,eq_added,ach_readings,ipc_txns';
 let DB_GETALL_CACHE = null, DB_GETALL_TS = 0;            // legacy "best available" cache (other readers use this)
 let DB_GA_LIGHT = { cache:null, ts:0, inflight:null };   // boot payload (heavies skipped)
 let DB_GA_FULL  = { cache:null, ts:0, inflight:null };   // full payload (includes heavies)
-async function dbGetAllShared(force, includeHeavies) {
+async function dbGetAllShared(force, includeHeavies, nocache) {
   const slot = includeHeavies ? DB_GA_FULL : DB_GA_LIGHT;
   const now = Date.now();
   if (!force && slot.cache && (now - slot.ts) < 60000) return slot.cache;
   if (slot.inflight) return slot.inflight;
   const url = (typeof CANONICAL_DB_URL !== 'undefined' && CANONICAL_DB_URL) ? CANONICAL_DB_URL : (typeof getDBUrl === 'function' ? getDBUrl() : null);
   if (!url) throw new Error('No DB URL');
-  const qs = includeHeavies ? '?action=getAll' : ('?action=getAll&skip=' + DB_HEAVY_SKIP);
+  const qs = (includeHeavies ? '?action=getAll' : ('?action=getAll&skip=' + DB_HEAVY_SKIP)) + (nocache ? '&nocache=1' : '');
   slot.inflight = (async () => {
     try {
       let lastErr = null;
-      for (let attempt = 0; attempt < 3; attempt++) {
+      for (let attempt = 0; attempt < 2; attempt++) {
         try {
-          const r = await fetch(url + qs, { signal: AbortSignal.timeout(90000) });
+          const _t0 = Date.now();
+          const r = await fetch(url + qs, { signal: AbortSignal.timeout(60000) });
           if (!r.ok) throw new Error('HTTP ' + r.status);
           const text = await r.text();
           let j;
           try { j = JSON.parse(text); }
           catch (pe) { throw new Error('transient'); } // Google "unable to open" HTML page, etc.
           if (!j.ok) throw new Error(j.error || 'getAll failed');
+          j._clientMs = Date.now() - _t0; window.__dbLastSync = { ms: j._clientMs, server: j.ms, mode: j.mode, hits: j.cacheHits, read: j.read, api: j.sheetsApi };
+          try { console.log('☁ getAll ' + (includeHeavies?'full':'light') + ': ' + j._clientMs + 'ms total · server ' + (j.ms||'?') + 'ms · mode=' + j.mode + ' · cache hits=' + (j.cacheHits||0) + ' · read=' + (j.read==null?'?':j.read)); } catch(_){}
           slot.cache = j; slot.ts = Date.now();
           // keep the legacy cache pointing at the most complete payload available
           const hasHeavy = !!(j.data && j.data.app_settings);
@@ -7114,7 +7117,7 @@ async function dbGetAllShared(force, includeHeavies) {
           return j;
         } catch (err) {
           lastErr = err;
-          if (attempt < 2) await new Promise(res => setTimeout(res, 1500)); // quick retry past cold-start/transient
+          if (attempt < 1) await new Promise(res => setTimeout(res, 1500)); // one quick retry past cold-start/transient
         }
       }
       throw lastErr || new Error('getAll failed');
@@ -7131,7 +7134,7 @@ async function dbLoadAll(opts) {
   if (!url) { dbShowStatus('offline'); return; }
   if (!opts.background && !DB_EVER_ONLINE) dbShowStatus('loading');
   try {
-    const j = await dbGetAllShared(true, opts.heavy === true); // boot=light (heavies skipped); heavy pass=full
+    const j = await dbGetAllShared(true, opts.heavy === true, opts.manual === true); // boot=light (heavies skipped); heavy pass=full; manual=bypass server cache
     DB_ONLINE = true;
 
     // DB is the single source of truth — replace local data with DB data
@@ -7196,6 +7199,7 @@ async function dbLoadAll(opts) {
     try{ window.__loadTick && clearInterval(window.__loadTick); }catch(e){}
     DB_EVER_ONLINE = true;
     dbShowStatus('online', totalRecords);
+    try { const _ls=window.__dbLastSync; if (_ls && _ls.api===false && CU && CU.role==='director' && !sessionStorage.getItem('sheetsApiTip')) { sessionStorage.setItem('sheetsApiTip','1'); toast('⚡ Tip: enable the “Google Sheets API” service in the Apps Script editor (Services ➕) — cloud sync becomes several times faster.','#3b82f6',9000); } } catch(_){}
     try{ if(typeof renderDash==='function' && document.getElementById('page-dash')) renderDash(); }catch(e){}
     if(j.data&&j.data.platform_settings) settingsPullFromDB(j.data.platform_settings);
 
@@ -7716,17 +7720,20 @@ function dbShowStatus(state, count) {
   const txt = document.getElementById('db-txt');
   if (!bar || !dot || !txt) return;
   bar.style.display = 'flex';
+  if (state !== 'loading' && window.__loadTick) { clearInterval(window.__loadTick); window.__loadTick = null; }
   if (state === 'online') {
     dot.style.background = 'var(--gn)'; dot.style.animation = '';
-    txt.textContent = '☁ DB Connected — ' + (count||0) + ' records synced across all devices';
+    const _ls = window.__dbLastSync;
+    txt.textContent = '☁ DB Connected — ' + (count||0) + ' records synced across all devices' + (_ls && _ls.ms ? ' · ' + (_ls.ms/1000).toFixed(1) + 's' : '');
+    txt.title = _ls ? ('Last sync ' + _ls.ms + ' ms · server ' + (_ls.server||'?') + ' ms · ' + (_ls.mode||'') + ' · cached sheets ' + (_ls.hits||0) + ' · sheets read ' + (_ls.read==null?'?':_ls.read)) : '';
     txt.style.color = 'var(--gn)';
   } else if (state === 'loading') {
     dot.style.background = 'var(--or)'; dot.style.animation = 'pulse 1s infinite';
-    txt.textContent = '⟳ Connecting to cloud database…';
+    txt.textContent = '⟳ Syncing with cloud… — you can keep working, local data is shown';
     try{
       window.__loadTick && clearInterval(window.__loadTick);
-      let _t=0; const _msgs=['⟳ Connecting to cloud database…','⟳ Fetching records… (large dataset)','⟳ Almost there — syncing modules…','⟳ Finalising…'];
-      window.__loadTick=setInterval(function(){ _t++; const e=document.getElementById(txt.id||''); if(txt&&txt.isConnected){ txt.textContent=_msgs[Math.min(_t,_msgs.length-1)]; } else { clearInterval(window.__loadTick); } },4000);
+      const _st=Date.now();
+      window.__loadTick=setInterval(function(){ if(!txt||!txt.isConnected){ clearInterval(window.__loadTick); return; } const s=Math.round((Date.now()-_st)/1000); txt.textContent='⟳ Syncing with cloud… '+s+'s — you can keep working, local data is shown'; },1000);
     }catch(e){}
     txt.style.color = 'var(--or)';
   } else if (state === 'retrying') {
