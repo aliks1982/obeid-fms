@@ -5,15 +5,22 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1671';
+  var v = '20260816-1672';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
-  var cleanUrl = url.replace(/[?&]v=[^&]*/g, '').replace(/[?&]$/, '');
-  if (url.indexOf('?v=' + v) === -1 && url.indexOf('&v=' + v) === -1) {
-    var sep = cleanUrl.indexOf('?') === -1 ? '?' : '&';
-    window.location.replace(cleanUrl + sep + 'v=' + v);
-    return;
+  // Set/replace ONLY the v= param — every other parameter (jo, t, inspect, fm200, openjo…) and the #hash are preserved
+  try {
+    var u = new URL(url);
+    if (u.searchParams.get('v') !== v) { u.searchParams.set('v', v); window.location.replace(u.toString()); return; }
+  } catch (e) {
+    if (url.indexOf('?v=' + v) === -1 && url.indexOf('&v=' + v) === -1) {
+      var base = url.split('#')[0], hash = url.indexOf('#') >= 0 ? url.slice(url.indexOf('#')) : '';
+      var parts = base.split('?'), q = (parts[1] || '').split('&').filter(function(p){ return p && p.indexOf('v=') !== 0; });
+      q.push('v=' + v);
+      window.location.replace(parts[0] + '?' + q.join('&') + hash);
+      return;
+    }
   }
   // Clear service workers and caches
   if (window.caches) {
@@ -27,7 +34,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1671">
+<meta name="app-version" content="20260816-1672">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6844,7 +6851,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1671';
+const APP_VERSION = '20260816-1672';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -21202,6 +21209,10 @@ function joPut(rec){
   rec.updatedTs=Date.now();
   var _dm=joDirMail(); if(_dm) rec.dirMail=_dm;   // carried on the record so off-platform devices (end-user link) still CC the Director
   var a=joRaw().filter(function(x){ return String(x._id)!==String(rec._id); }); a.unshift(rec); joSaveAll(a);
+  if(!joRaw().some(function(x){ return String(x._id)===String(rec._id) && x.updatedTs===rec.updatedTs; })){
+    try{ dbWrite('job_orders', rec); }catch(e){}   // device storage full/blocked → still reaches the cloud
+    throw new Error("this device's storage is full — the request was sent to the cloud; press ☁ Sync to see it");
+  }
   try{ dbWrite('job_orders', rec); }catch(e){}
   joBadge();
 }
@@ -21370,14 +21381,23 @@ function joSigBox(id, label){
 }
 
 /* ── modal shell ── */
-function joModal(id, inner, wide){
+function joModal(id, inner, wide, dismissable){
   var old=document.getElementById(id); if(old) old.remove();
-  var m=document.createElement('div'); m.id=id;
-  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:10000;display:flex;align-items:flex-start;justify-content:center;padding:18px 12px;overflow:auto;';
-  m.innerHTML='<div style="background:var(--s1);border:1px solid var(--bd);border-radius:14px;width:100%;max-width:'+(wide||760)+'px;padding:18px;margin:auto;">'+inner+'</div>';
-  m.addEventListener('mousedown',function(e){ if(e.target===m) m.remove(); });
+  var m=document.createElement('div'); m.id=id; m.className='jo-modal';
+  // The overlay is the scroll container; the close-target is a separate inner layer, so grabbing the
+  // scrollbar or clicking beside a FORM can never destroy it. Only read-only views close on backdrop
+  // click, and only when BOTH press and release happen on the backdrop (no accidental drag-release).
+  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:10000;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;';
+  m.innerHTML='<div class="jo-mwrap" style="min-height:100%;box-sizing:border-box;display:flex;align-items:flex-start;justify-content:center;padding:18px 12px;"><div class="jo-mpanel" style="background:var(--s1);border:1px solid var(--bd);border-radius:14px;width:100%;max-width:'+(wide||760)+'px;padding:18px;margin:auto;box-sizing:border-box;">'+inner+'</div></div>';
+  if(dismissable){
+    var wrap=m.firstChild, downBg=false;
+    wrap.addEventListener('mousedown',function(e){ downBg=(e.target===wrap); });
+    wrap.addEventListener('click',function(e){ if(downBg&&e.target===wrap) m.remove(); downBg=false; });
+    m._joEsc=true;
+  }
   document.body.appendChild(m); return m;
 }
+document.addEventListener('keydown',function(e){ if(e.key!=='Escape') return; var ms=document.querySelectorAll('.jo-modal'); var top=ms[ms.length-1]; if(top&&top._joEsc) top.remove(); });
 function joClose(id){ var m=document.getElementById(id); if(m) m.remove(); }
 function joPrompt(title, sub, fields, okLabel, okCol, onOk){
   var html='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><div style="font-weight:800;font-size:16px;">'+title+'</div><button class="btn bo" style="font-size:11px;" onclick="joClose(\'jo-prompt\')">✕</button></div>'
@@ -21474,6 +21494,45 @@ function joRenderList(){
   el.innerHTML=list.map(joCard).join('');
 }
 
+/* ── form drafts: autosaved as you type, restored automatically after any interruption ── */
+var JO_DRAFT_T=null, JO_FORM_DIRTY=false, JO_FORM_EDIT='';
+function joDraftKey(editId){ return 'jo_draft_'+(joRole()||'x')+'_'+(editId||'new'); }
+function joDraftCollect(){
+  var f=document.getElementById('jo-form'); if(!f) return null; var d={v:{},types:[],ts:Date.now()};
+  f.querySelectorAll('input[id^="jof-"],textarea[id^="jof-"],select[id^="jof-"]').forEach(function(el){ if(el.type!=='file') d.v[el.id]=el.value; });
+  f.querySelectorAll('.jof-type:checked').forEach(function(c){ d.types.push(c.value); });
+  var mm=f.querySelector('input[name="jof-method"]:checked'); if(mm) d.method=mm.value;
+  var s=joSigData('jof-sig'); if(s) d.sig=s;
+  return d;
+}
+function joDraftSave(){
+  var d=joDraftCollect(); if(!d) return;
+  try{ localStorage.setItem(joDraftKey(JO_FORM_EDIT), JSON.stringify(d)); }
+  catch(e){ try{ delete d.sig; localStorage.setItem(joDraftKey(JO_FORM_EDIT), JSON.stringify(d)); }catch(_){} }
+  var ind=document.getElementById('jof-draft-ind'); if(ind){ var t=new Date(); ind.textContent='✓ Draft auto-saved '+String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0')+':'+String(t.getSeconds()).padStart(2,'0'); }
+}
+function joDraftSoon(){ JO_FORM_DIRTY=true; clearTimeout(JO_DRAFT_T); JO_DRAFT_T=setTimeout(joDraftSave,500); }
+function joDraftLoad(editId){ try{ var d=JSON.parse(localStorage.getItem(joDraftKey(editId))||'null'); return (d&&d.v)?d:null; }catch(e){ return null; } }
+function joDraftClear(editId){ try{ localStorage.removeItem(joDraftKey(editId)); }catch(e){} JO_FORM_DIRTY=false; clearTimeout(JO_DRAFT_T); }
+function joDraftApply(d){
+  if(!d) return;
+  Object.keys(d.v||{}).forEach(function(id){ var el=document.getElementById(id); if(el&&el.type!=='file') el.value=d.v[id]; });
+  document.querySelectorAll('#jo-form .jof-type').forEach(function(c){ c.checked=(d.types||[]).indexOf(c.value)>=0; });
+  var ow=document.getElementById('jof-other-wrap'); if(ow) ow.style.display=(d.types||[]).indexOf('Others')>=0?'':'none';
+  if(d.method){ var r=document.querySelector('#jo-form input[name="jof-method"][value="'+d.method+'"]'); if(r) r.checked=true; }
+  if(d.v&&d.v['jof-prio']) joSetPrio(d.v['jof-prio']);
+  if(d.sig){ var c=document.getElementById('jof-sig'); if(c){ var img=new Image(); img.onload=function(){ c.getContext('2d').drawImage(img,0,0,c.width,c.height); c._drawn=true; }; img.src=d.sig; } }
+}
+function joFormClose(){
+  if(JO_FORM_DIRTY){ joDraftSave(); toast('📝 Draft kept — reopen the form any time to continue where you left off','#3b82f6',4500); }
+  joClose('jo-form');
+}
+function joFormDiscard(){
+  if(!confirm('Discard this draft and clear the form?')) return;
+  var e=JO_FORM_EDIT; joDraftClear(e); joClose('jo-form'); joForm(e||null, true);
+}
+window.addEventListener('beforeunload',function(e){ if(document.getElementById('jo-form')&&JO_FORM_DIRTY){ try{ joDraftSave(); }catch(_){} e.preventDefault(); e.returnValue=''; return ''; } });
+
 /* ── create / edit form ── */
 function joAssetLookup(){
   var a=((document.getElementById('jof-asset')||{}).value||'').trim(); if(!a) return;
@@ -21484,8 +21543,8 @@ function joAssetLookup(){
   set('jof-model',hit.model); set('jof-serial',hit.serial); set('jof-supplier',hit.mfr); set('jof-equip',hit.desc); set('jof-dept',hit.dept);
   toast('✓ Filled from inventory: '+(hit.desc||'')+' · '+(hit.dept||''),'#10b981',3500);
 }
-function joSetPrio(p){ document.getElementById('jof-prio').value=p; Object.keys(JO_PRIO).forEach(function(k){ var b=document.getElementById('jof-p-'+k); if(!b) return; var on=k===p; b.style.background=on?JO_PRIO[k].col:'transparent'; b.style.color=on?'#fff':'var(--tx)'; }); }
-function joForm(id){
+function joSetPrio(p){ var _pe=document.getElementById('jof-prio'); if(!_pe) return; if(_pe.value!==p&&document.getElementById('jo-form')&&JO_FORM_EDIT!==null) joDraftSoon(); _pe.value=p; Object.keys(JO_PRIO).forEach(function(k){ var b=document.getElementById('jof-p-'+k); if(!b) return; var on=k===p; b.style.background=on?JO_PRIO[k].col:'transparent'; b.style.color=on?'#fff':'var(--tx)'; }); }
+function joForm(id, noDraft){
   if(!joCanCreate()){ toast('Only Biomedical, Maintenance or the FMS Director can raise Job Orders','#f59e0b'); return; }
   var r=id?joGet(id):null, ed=!!r; r=r||joNorm({});
   var origin = r.origin || (joIsOrig()?joRole():'biomedical');
@@ -21495,7 +21554,8 @@ function joForm(id){
   var sec=function(t){ return '<div style="font-size:12px;font-weight:800;color:var(--or);margin:14px 0 8px;border-bottom:1px solid var(--bd);padding-bottom:4px;">'+t+'</div>'; };
   var types=JO_TYPES.map(function(t,i){ var on=(r.types||[]).indexOf(t)>=0; return '<label style="display:flex;align-items:center;gap:6px;font-size:12px;padding:6px 8px;border:1px solid var(--bd);border-radius:8px;cursor:pointer;background:var(--s2);"><input type="checkbox" class="jof-type" value="'+joE(t)+'"'+(on?' checked':'')+(t==='Others'?' onchange="document.getElementById(\'jof-other-wrap\').style.display=this.checked?\'\':\'none\'"':'')+'> '+t+'</label>'; }).join('');
   var prio=Object.keys(JO_PRIO).map(function(k){ var p=JO_PRIO[k]; return '<button type="button" id="jof-p-'+k+'" onclick="joSetPrio(\''+k+'\')" title="'+joE(p.hint)+'" style="flex:1;padding:10px 6px;border-radius:10px;border:2px solid '+p.col+';background:transparent;color:var(--tx);font-weight:800;cursor:pointer;font-size:13px;">'+p.ic+' '+p.lbl+'<div style="font-size:9px;font-weight:400;opacity:.85;margin-top:2px;">'+joE(p.hint)+'</div></button>'; }).join('');
-  var html='<div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="font-weight:800;font-size:18px;">🧾 '+(ed?'Edit Job Order '+joE(r.no):'New Job Order Request')+'</div><div style="font-size:11px;color:var(--mu);">Obeid Specialized Hospital · Job Order Request Form</div></div><button class="btn bo" style="font-size:11px;" onclick="joClose(\'jo-form\')">✕ Close</button></div>'
+  var html='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><div><div style="font-weight:800;font-size:18px;">🧾 '+(ed?'Edit Job Order '+joE(r.no):'New Job Order Request')+'</div><div style="font-size:11px;color:var(--mu);">Obeid Specialized Hospital · Job Order Request Form · <span id="jof-draft-ind" style="color:var(--gn);">drafts auto-save as you type</span></div></div><button class="btn bo" style="font-size:11px;white-space:nowrap;" onclick="joFormClose()">✕ Close</button></div>'
+    +'<div id="jof-draft-banner"></div>'
     +(joIsDir()&&!ed?'<div class="ff" style="margin-top:10px;"><label>Originating Department</label><select id="jof-origin"><option value="biomedical"'+(origin==='biomedical'?' selected':'')+'>Biomedical Engineering</option><option value="maintenance"'+(origin==='maintenance'?' selected':'')+'>Maintenance</option></select></div>':'<input type="hidden" id="jof-origin" value="'+origin+'">')
     +sec('1 · Priority')+'<input type="hidden" id="jof-prio" value="'+(r.priority||'normal')+'"><div style="display:flex;gap:8px;">'+prio+'</div>'
     +sec('2 · Request')
@@ -21518,11 +21578,30 @@ function joForm(id){
     +'<div class="fg fg2">'+inp('jof-techname','Name',r.tech.name||joMe(),'',true)+'<div></div></div>'
     +(r.tech.sig?'<div style="font-size:11px;color:var(--mu);margin:6px 0;">Current signature: <img src="'+r.tech.sig+'" style="height:44px;background:#fff;border-radius:6px;vertical-align:middle;"> — draw below only to replace it</div>':'')
     +joSigBox('jof-sig','Signature (draw with finger / mouse)')
-    +'<button class="btn bg" style="width:100%;margin-top:14px;padding:12px;font-size:14px;font-weight:800;" onclick="joSubmitForm(\''+(ed?r._id:'')+'\')">'+(!ed?'💾 Save & Send for Counter-Approval':r.status==='enduser_declined'?'💾 Save & Resend to End User':r.status==='sc_returned'?'💾 Save & Re-forward to Supply Chain':'💾 Save Changes')+'</button>';
+    +'<div style="display:flex;gap:8px;margin-top:14px;"><button type="button" class="btn bo" style="font-size:12px;" onclick="joFormDiscard()">🗑 Discard draft</button>'
+    +'<button id="jof-submit" class="btn bg" style="flex:1;padding:12px;font-size:14px;font-weight:800;" onclick="joSubmitForm(\''+(ed?r._id:'')+'\')">'+(!ed?'💾 Save & Send for Counter-Approval':r.status==='enduser_declined'?'💾 Save & Resend to End User':r.status==='sc_returned'?'💾 Save & Re-forward to Supply Chain':'💾 Save Changes')+'</button></div>';
   joModal('jo-form', html, 820);
   joSigPad('jof-sig'); joSetPrio(r.priority||'normal');
+  JO_FORM_EDIT=ed?r._id:''; JO_FORM_DIRTY=false;
+  var d=noDraft?null:joDraftLoad(JO_FORM_EDIT);
+  if(d){
+    joDraftApply(d); JO_FORM_DIRTY=true;
+    var mins=Math.max(0,Math.round((Date.now()-(d.ts||Date.now()))/60000));
+    var bn=document.getElementById('jof-draft-banner');
+    if(bn) bn.innerHTML='<div style="margin-top:10px;padding:9px 12px;border-radius:9px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.4);font-size:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;"><span>📝 <b>Your unsaved draft was restored</b> (last edited '+(mins<1?'just now':mins+' min ago')+').</span><button type="button" class="btn bo" style="font-size:11px;" onclick="joFormDiscard()">Start fresh</button></div>';
+  }
+  var f=document.getElementById('jo-form');
+  if(f){ f.addEventListener('input',joDraftSoon); f.addEventListener('change',joDraftSoon); var sc=document.getElementById('jof-sig'); if(sc) sc.addEventListener('pointerup',joDraftSoon); }
 }
+var JO_SUBMITTING=false;
 function joSubmitForm(editId){
+  if(JO_SUBMITTING) return;
+  JO_SUBMITTING=true; var _btn=document.getElementById('jof-submit'); if(_btn){ _btn.disabled=true; _btn.style.opacity='.6'; }
+  try{ joSubmitFormInner(editId); }
+  catch(err){ try{ joDraftSave(); }catch(_){} toast('⚠ Could not save: '+(err&&err.message||err)+' — your draft is kept, please try again','#dc2626',8000); console.error('joSubmitForm',err); }
+  finally{ JO_SUBMITTING=false; var b2=document.getElementById('jof-submit'); if(b2){ b2.disabled=false; b2.style.opacity=''; } }
+}
+function joSubmitFormInner(editId){
   var g=function(id){ return ((document.getElementById(id)||{}).value||'').trim(); };
   var types=Array.from(document.querySelectorAll('.jof-type:checked')).map(function(c){return c.value;});
   var methodEl=document.querySelector('input[name="jof-method"]:checked'), method=methodEl?methodEl.value:'email';
@@ -21545,19 +21624,19 @@ function joSubmitForm(editId){
   r.ev={asset:g('jof-asset'), model:g('jof-model'), serial:g('jof-serial'), supplier:g('jof-supplier'), cost:g('jof-cost'), workDone:g('jof-work'), recommendation:g('jof-rec'), parts:g('jof-parts')};
   r.eu=Object.assign({}, r.eu, {name:g('jof-euname'), title:g('jof-eutitle'), email:eMail});
   r.tech=Object.assign({}, r.tech, {name:g('jof-techname'), date:r.tech.date||joToday()}); if(sig){ r.tech.sig=sig; r.tech.date=joToday(); }
-  joClose('jo-form');
+  var _closeForm=function(){ joDraftClear(editId||''); joClose('jo-form'); };
   if(isNew || prevStatus==='enduser_declined'){
     r.eu.sig=''; r.eu.date=''; r.eu.comment=''; r.eu.method='';
     joLog(r,'awaiting_enduser', isNew?'Job Order created — sent for end-user counter-approval':'Revised and resent to end user', isNew?'':'After decline');
-    joPut(r);
+    joPut(r); _closeForm();
     if(method==='inperson'){ joInPerson(r._id); }
     else { joMailEndUserRequest(r,false); toast('📧 '+r.no+' saved — approval link emailed to '+r.eu.email,'#10b981',5000); }
   } else if(prevStatus==='sc_returned'){
     joLog(r,'with_supplychain','Revised and re-forwarded to Supply Chain','');
-    joPut(r); joMailForward(r,true); toast('📤 '+r.no+' re-forwarded to Supply Chain','#10b981',4500);
+    joPut(r); _closeForm(); joMailForward(r,true); toast('📤 '+r.no+' re-forwarded to Supply Chain','#10b981',4500);
   } else {
     r.history.push({ts:Date.now(), status:r.status, action:'Request details edited', note:'', by:joMe(), role:joRole()});
-    joPut(r); toast('💾 '+r.no+' updated','#10b981');
+    joPut(r); _closeForm(); toast('💾 '+r.no+' updated','#10b981');
     if(prevStatus==='awaiting_enduser' && method==='inperson') joInPerson(r._id);
   }
   JO_UI.tab='open'; joRender(); setTimeout(function(){ if(method!=='inperson') joOpen(r._id); },150);
@@ -21606,7 +21685,7 @@ function joOpen(id){
     +(r.sc.returnNote&&r.status==='sc_returned'?'<div style="font-size:12px;margin-top:8px;padding:8px 10px;border-radius:8px;background:rgba(220,38,38,.1);">↩ <b>Supply Chain comment:</b> '+joNL(r.sc.returnNote)+'</div>':'')
     +(r.close.note?sec('Completion')+kv('Completion note',joNL(r.close.note))+kv('Closed by',joE(r.close.by)+' · '+joFmt(r.close.ts)):'')
     +sec('Audit Trail')+(hist||'<div class="em">No activity</div>');
-  joModal('jo-detail', html, 860);
+  joModal('jo-detail', html, 860, true);
 }
 
 /* ── transitions ── */
