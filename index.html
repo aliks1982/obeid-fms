@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1673';
+  var v = '20260816-1674';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -34,7 +34,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1673">
+<meta name="app-version" content="20260816-1674">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3651,12 +3651,17 @@ if ('caches' in window) {
 <div class="pg" id="page-census">
   <div class="ph" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
     <div><h1>🛏 Nursing Department Daily Census</h1><p>Daily bed occupancy · 24-hour ER / OR / L&amp;D / OPD activity · KPIs, infographics &amp; trend analysis</p></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <div id="census-ip-actions" style="display:flex;gap:8px;flex-wrap:wrap;">
       <button class="btn bo" style="font-size:11px;padding:8px 14px;" onclick="censusEditCapacity()">🛏 Edit Bed Capacity</button>
       <button class="btn bo" style="font-size:11px;padding:8px 14px;" onclick="censusSyncFromDB(true)">☁ Sync from Cloud</button>
       <button class="btn bp" style="font-size:11px;padding:8px 14px;" onclick="censusExportPDF()">📄 Export Daily Report (PDF)</button>
     </div>
   </div>
+  <div class="tabs" id="census-tabs" style="margin-bottom:12px;">
+    <button class="tbtn" id="census-tab-ip" onclick="censusTab('ip')">🛏 Inpatient Census</button>
+    <button class="tbtn" id="census-tab-opd" onclick="censusTab('opd')">🏥 OPD Census</button>
+  </div>
+  <div id="census-ip-pane">
   <div id="census-sync-warn" style="display:none;background:rgba(239,68,68,.10);border:1px solid rgba(239,68,68,.4);border-radius:10px;padding:11px 15px;margin-bottom:12px;display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
     <div style="font-size:12px;color:var(--tx);">⚠️ You have <b class="csw-count" style="color:var(--rd);">0</b> census day(s) <b>not yet backed up to the cloud</b> — if this browser's data is cleared they could be lost. Export a backup now to be safe.</div>
     <div style="display:flex;gap:6px;">
@@ -3666,6 +3671,8 @@ if ('caches' in window) {
     </div>
   </div>
   <div id="census-root"></div>
+  </div>
+  <div id="census-opd-pane" style="display:none;"><div id="opd-root"></div></div>
 </div>
 
 <!-- ===== IPC STORE (CONSUMABLES / PAR) ===== -->
@@ -6852,7 +6859,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1673';
+const APP_VERSION = '20260816-1674';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -7157,7 +7164,7 @@ async function dbLoadAll(opts) {
     if (!j.data || typeof j.data !== 'object') throw new Error('Invalid DB response: j.data is null');
     const RESTORE_CUSTOM = new Set(['app_settings','ipc_items','ipc_stations','ipc_par_cfg',
       'ipc_txns','ipc_reorders','eq_backup','fa_floors','census_beds','census_daily',
-      'pmg_ppm','pmg_annex','cyl_test','lox_gauge','job_orders']);
+      'pmg_ppm','pmg_annex','cyl_test','lox_gauge','job_orders','opd_depts','opd_doctors','opd_census']);
     Object.entries(j.data).forEach(([key, dbRows]) => {
       if (!dbRows || !Array.isArray(dbRows)) return;
       totalRecords += dbRows.length;
@@ -8008,6 +8015,7 @@ function gp(id){
   if(id==='settings') setTimeout(function(){try{backupInit();}catch(e){}},200);
   if(id==='ach') setTimeout(function(){try{achInit();}catch(e){}},120);
   if(id==='temperature') setTimeout(function(){try{tmpInit();}catch(e){}},120);
+  if(id==='census') setTimeout(function(){try{censusTab();}catch(e){}},60);
   if(id==='census') setTimeout(function(){try{censusInit(); if(typeof daily==='function'){}else{} var d=JSON.parse(localStorage.getItem('obeid3_census_daily')||'[]'); if((!Array.isArray(d)||!d.length) && typeof censusSyncFromDB==='function') censusSyncFromDB(false); }catch(e){}},80);
   if(id==='ipcstore') setTimeout(function(){try{ipcStoreInit();}catch(e){}},80);
   if(id==='ipcnurse') setTimeout(function(){try{ipcNurseInit();}catch(e){}},80);
@@ -11048,6 +11056,7 @@ const ROLE_ACCESS = {
   ipc:         ['n-ach','n-temperature','n-settings','n-supplychain'],   // IPC: ACH + Temperature Log + Contract eval
   supplychain: ['n-supplychain','n-joborders','n-settings'],   // Supply Chain Director: contract authentication + Job Orders
   rso:         ['n-radiation','n-settings'],   // Radiation Safety Officer
+  opd:         ['n-census','n-settings'],      // OPD Head Nurse — OPD daily census
 };
 
 // Page access — which pages each role can open
@@ -11060,6 +11069,7 @@ const PAGE_ACCESS = {
   ipc:         ['ach','temperature','census','ipcstore','ipcnurse','settings','supplychain'], // IPC: ACH + Temperature + Nursing Census + IPC + Contract eval
   supplychain: ['supplychain','joborders','settings'],
   rso:         ['radiation','settings'],
+  opd:         ['census','settings'],
 };
 
 // Page access — which page IDs each role can visit
@@ -11090,13 +11100,14 @@ function effectivePageAccess(role){
   const ov = getAccessOverride();
   let list = (ov[role] && Array.isArray(ov[role])) ? ov[role].slice() : (PAGE_ACCESS[role] || []).slice();
   if (list.indexOf('supplychain') < 0) list.push('supplychain');  // Supply Chain page open to all roles
+  if (role==='opd' && list.indexOf('census') < 0) list.push('census');
   if (['biomedical','maintenance','supplychain','director'].indexOf(role)>=0 && list.indexOf('joborders') < 0) list.push('joborders');
   return list;
 }
 
 function getEffectiveRole(role) {
   // For built-in roles, return as-is
-  const builtIn = ['director','maintenance','biomedical','safety','security','ipc','supplychain','rso'];
+  const builtIn = ['director','maintenance','biomedical','safety','security','ipc','supplychain','rso','opd'];
   if (builtIn.includes(role)) return role;
   // For custom roles, look up their template role from extra_users
   try {
@@ -11129,6 +11140,7 @@ function applyRBAC() {
   const effectiveRole = getEffectiveRole(CU.role);
   let allowed = ROLE_ACCESS[effectiveRole] || ROLE_ACCESS['security'] || []; { const ov=getAccessOverride(); if(ov[effectiveRole]&&Array.isArray(ov[effectiveRole])) allowed = ov[effectiveRole].map(p=>'n-'+p); }
   if (allowed.indexOf('n-supplychain') < 0) allowed = allowed.concat('n-supplychain');
+  if (effectiveRole==='opd' && allowed.indexOf('n-census') < 0) allowed = allowed.concat('n-census');
   if (['biomedical','maintenance','supplychain','director'].indexOf(effectiveRole)>=0 && allowed.indexOf('n-joborders') < 0 && allowed.indexOf('ALL') < 0) allowed = allowed.concat('n-joborders');  // Supply Chain is open to all (anyone may be assigned as an evaluator)
 
   document.querySelectorAll('.ni[id]').forEach(el => {
@@ -11164,9 +11176,9 @@ function canAccessPage(pageId) {
 function getDynPINs() {
   try {
     return JSON.parse(localStorage.getItem('obeid_pins') || 'null') || {
-      director:'1234', maintenance:'2222', biomedical:'3333', safety:'4444', security:'5555', ipc:'6666', supplychain:'7777', rso:'8888'
+      director:'1234', maintenance:'2222', biomedical:'3333', safety:'4444', security:'5555', ipc:'6666', supplychain:'7777', rso:'8888', opd:'9999'
     };
-  } catch(e) { return {director:'1234',maintenance:'2222',biomedical:'3333',safety:'4444',security:'5555',ipc:'6666',supplychain:'7777',rso:'8888'}; }
+  } catch(e) { return {director:'1234',maintenance:'2222',biomedical:'3333',safety:'4444',security:'5555',ipc:'6666',supplychain:'7777',rso:'8888',opd:'9999'}; }
 }
 function saveDynPINs(pins) { localStorage.setItem('obeid_pins', JSON.stringify(pins)); }
 
@@ -11174,9 +11186,9 @@ const USER_NAMES_KEY = 'obeid_user_names';
 function getDynNames() {
   try {
     return JSON.parse(localStorage.getItem(USER_NAMES_KEY) || 'null') || {
-      director:'FMS Director', maintenance:'Mostapha', biomedical:'Bashar', safety:'Moe', security:'Bader', ipc:'IPC', supplychain:'Supply Chain', rso:'RSO'
+      director:'FMS Director', maintenance:'Mostapha', biomedical:'Bashar', safety:'Moe', security:'Bader', ipc:'IPC', supplychain:'Supply Chain', rso:'RSO', opd:'OPD Head Nurse'
     };
-  } catch(e) { return {director:'FMS Director',maintenance:'Mostapha',biomedical:'Bashar',safety:'Moe',security:'Bader',ipc:'IPC',supplychain:'Supply Chain',rso:'RSO'}; }
+  } catch(e) { return {director:'FMS Director',maintenance:'Mostapha',biomedical:'Bashar',safety:'Moe',security:'Bader',ipc:'IPC',supplychain:'Supply Chain',rso:'RSO',opd:'OPD Head Nurse'}; }
 }
 function saveDynNames(names) { localStorage.setItem(USER_NAMES_KEY, JSON.stringify(names)); }
 
@@ -11456,6 +11468,7 @@ function getDynUsers() {
     {role:'ipc',         label:'Infection Prevention & Control (IPC)', defaultName:'IPC', access:'ACH monitoring · Temperature Log', custom:false},
     {role:'supplychain', label:'Supply Chain Director', defaultName:'Supply Chain', access:'Supply Chain · Contract Authentication', custom:false},
     {role:'rso',         label:'Radiation Safety Officer', defaultName:'RSO', access:'Radiation Safety · Lead Aprons · TLD · Shielding', custom:false},
+    {role:'opd',         label:'OPD Head Nurse', defaultName:'OPD Head Nurse', access:'Nursing Census · OPD Daily Census', custom:false},
   ];
   try {
     const extra = JSON.parse(localStorage.getItem('obeid_extra_users')||'[]');
@@ -21945,6 +21958,641 @@ function joStandaloneSubmit(r, approve){
 }
 function joStandalonePrint(){ var r=window._joSA; if(!r) return; var w=window.open('','_blank'); if(!w){ alert('Please allow pop-ups to print.'); return; } w.document.write(joPrintHtml(r)); w.document.close(); }
 
+/* ═══════════════════════════════════════════════════════════════════════════════════════
+   🏥 OPD DAILY CENSUS — entry · analytics · AI insights · reports · master data
+   Metric keys per clinic / doctor:  tc ti = Total (Cash/Insurance)  ac ai = Admission  fc fi = Follow-up
+                                     sa ns = Saudi / Non-Saudi        pr = Procedures
+   ═══════════════════════════════════════════════════════════════════════════════════════ */
+var OPD_SEED_DEPTS=[{"_id": "od_internal_medicine", "name": "Internal Medicine", "specialty": "Medical", "order": 1, "active": true}, {"_id": "od_cardiology", "name": "Cardiology", "specialty": "Medical", "order": 2, "active": true}, {"_id": "od_pulmonology", "name": "Pulmonology", "specialty": "Medical", "order": 3, "active": true}, {"_id": "od_neurology", "name": "Neurology", "specialty": "Medical", "order": 4, "active": true}, {"_id": "od_dermatology", "name": "Dermatology", "specialty": "Medical", "order": 5, "active": true}, {"_id": "od_gastroenterology", "name": "Gastroenterology", "specialty": "Medical", "order": 6, "active": true}, {"_id": "od_general_surgery", "name": "General Surgery", "specialty": "Surgical", "order": 7, "active": true}, {"_id": "od_vascular_surgery", "name": "Vascular Surgery", "specialty": "Surgical", "order": 8, "active": true}, {"_id": "od_plastic_surgery", "name": "Plastic Surgery", "specialty": "Surgical", "order": 9, "active": true}, {"_id": "od_neurosurgery", "name": "Neurosurgery", "specialty": "Surgical", "order": 10, "active": true}, {"_id": "od_urology", "name": "Urology", "specialty": "Surgical", "order": 11, "active": true}, {"_id": "od_orthopedic", "name": "Orthopedic", "specialty": "Surgical", "order": 12, "active": true}, {"_id": "od_ophthalmology", "name": "Ophthalmology", "specialty": "Surgical", "order": 13, "active": true}, {"_id": "od_ent", "name": "ENT", "specialty": "Surgical", "order": 14, "active": true}, {"_id": "od_pediatric", "name": "Pediatric", "specialty": "Women & Children", "order": 15, "active": true}, {"_id": "od_gynecology", "name": "Gynecology", "specialty": "Women & Children", "order": 16, "active": true}, {"_id": "od_dental", "name": "Dental", "specialty": "Dental", "order": 17, "active": true}, {"_id": "od_oncology", "name": "Oncology", "specialty": "Medical", "order": 18, "active": true}, {"_id": "od_nephrology", "name": "Nephrology", "specialty": "Medical", "order": 19, "active": true}, {"_id": "od_rheumatology", "name": "Rheumatology", "specialty": "Medical", "order": 20, "active": true}, {"_id": "od_hematology", "name": "Hematology", "specialty": "Medical", "order": 21, "active": true}];
+var OPD_SEED_DOCS=[{"_id": "dr_waheed_khan", "name": "Dr. Waheed Khan", "deptId": "od_pediatric", "specialty": "Pediatric", "active": true}, {"_id": "dr_hassan_al_mosadar", "name": "Dr. Hassan Al Mosadar", "deptId": "od_pediatric", "specialty": "Pediatric", "active": true}, {"_id": "dr_abdullah_al_rajoudi", "name": "Dr. Abdullah Al-Rajoudi", "deptId": "od_pediatric", "specialty": "Pediatric", "active": true}, {"_id": "dr_marwan_el_telbeni", "name": "Dr. Marwan El-Telbeni", "deptId": "od_dermatology", "specialty": "Dermatology", "active": true}, {"_id": "dr_mehmoud_ahmed_re", "name": "Dr. Mehmoud Ahmed Re", "deptId": "od_neurology", "specialty": "Neurology", "active": true}, {"_id": "dr_mohamed_k_el_masri", "name": "Dr. Mohamed K. El-Masri", "deptId": "od_plastic_surgery", "specialty": "Plastic Surgery", "active": true}, {"_id": "dr_samer_homod_almudaibigh", "name": "Dr. Samer Homod Almudaibigh", "deptId": "od_hematology", "specialty": "Hematology", "active": true}, {"_id": "dr_khaled_alghamdi", "name": "Dr. Khaled Alghamdi", "deptId": "od_oncology", "specialty": "Oncology", "active": true}, {"_id": "dr_tarek_darwish", "name": "Dr. Tarek Darwish", "deptId": "od_oncology", "specialty": "Oncology", "active": true}, {"_id": "dr_nayyer_aman", "name": "Dr. Nayyer Aman", "deptId": "od_gynecology", "specialty": "Gynecology", "active": true}, {"_id": "dr_kamal_elrady", "name": "Dr. Kamal Elrady", "deptId": "od_gynecology", "specialty": "Gynecology", "active": true}, {"_id": "dr_rehab_ahmed_alyan", "name": "Dr. Rehab Ahmed Alyan", "deptId": "od_gynecology", "specialty": "Gynecology", "active": true}, {"_id": "dr_iman_mahmoud_el_kholi", "name": "Dr. Iman Mahmoud El Kholi", "deptId": "od_gynecology", "specialty": "Gynecology", "active": true}, {"_id": "dr_nasreen_tariq", "name": "Dr. Nasreen Tariq", "deptId": "od_gynecology", "specialty": "Gynecology", "active": true}, {"_id": "dr_sasi_suneeta_ponnai", "name": "Dr. Sasi Suneeta Ponnai", "deptId": "od_gynecology", "specialty": "Gynecology", "active": true}, {"_id": "dr_dalia_murarak_ibrahim", "name": "Dr. Dalia Murarak Ibrahim", "deptId": "od_gynecology", "specialty": "Gynecology", "active": true}, {"_id": "dr_mohammad_nour_kadri", "name": "Dr. Mohammad Nour Kadri", "deptId": "od_internal_medicine", "specialty": "Internal Medicine", "active": true}, {"_id": "dr_m_mansoor_elahi", "name": "Dr. M. Mansoor Elahi", "deptId": "od_internal_medicine", "specialty": "Internal Medicine", "active": true}, {"_id": "dr_rawad_mohammed", "name": "Dr. Rawad Mohammed", "deptId": "od_rheumatology", "specialty": "Rheumatology", "active": true}, {"_id": "dr_anes_aref_ajam", "name": "Dr. Anes Aref Ajam", "deptId": "od_internal_medicine", "specialty": "Internal Medicine", "active": true}, {"_id": "dr_radwan_rezk", "name": "Dr. Radwan Rezk", "deptId": "od_internal_medicine", "specialty": "Internal Medicine", "active": true}, {"_id": "dr_maha_mustafa_abdulmageed", "name": "Dr. Maha Mustafa Abdulmageed", "deptId": "od_internal_medicine", "specialty": "Internal Medicine", "active": true}, {"_id": "dr_ali_babaker_gadalah", "name": "Dr. Ali Babaker Gadalah", "deptId": "od_neurosurgery", "specialty": "Neurosurgery", "active": true}, {"_id": "dr_maen_sheikh_oghly", "name": "Dr. Maen Sheikh Oghly", "deptId": "od_pulmonology", "specialty": "Pulmonology", "active": true}, {"_id": "dr_abdul_rahman_marzouki", "name": "Dr. Abdul Rahman Marzouki", "deptId": "od_orthopedic", "specialty": "Orthopedic", "active": true}, {"_id": "dr_zouher_raad", "name": "Dr. Zouher Raad", "deptId": "od_orthopedic", "specialty": "Orthopedic", "active": true}, {"_id": "dr_ibrahim_elbadui_mohamad", "name": "Dr. Ibrahim Elbadui Mohamad", "deptId": "od_orthopedic", "specialty": "Orthopedic", "active": true}, {"_id": "dr_abeer_al_jajeh", "name": "Dr. Abeer Al-Jajeh", "deptId": "od_dental", "specialty": "Dental", "active": true}, {"_id": "dr_anas_alabrazi", "name": "Dr. Anas Alabrazi", "deptId": "od_dental", "specialty": "Dental", "active": true}, {"_id": "dr_frimith_benjamin", "name": "Dr. Frimith Benjamin", "deptId": "od_dental", "specialty": "Dental", "active": true}, {"_id": "dr_alaa_zimmo", "name": "Dr. Alaa Zimmo", "deptId": "od_cardiology", "specialty": "Cardiology", "active": true}, {"_id": "dr_hany_m_sobhy", "name": "Dr. Hany M. Sobhy", "deptId": "od_cardiology", "specialty": "Cardiology", "active": true}, {"_id": "dr_nasser_khider", "name": "Dr. Nasser Khider", "deptId": "od_cardiology", "specialty": "Cardiology", "active": true}, {"_id": "dr_abdulwahed_alhub", "name": "Dr. Abdulwahed Alhub", "deptId": "od_cardiology", "specialty": "Cardiology", "active": true}, {"_id": "dr_mohamed_al_nasef", "name": "Dr. Mohamed Al Nasef", "deptId": "od_cardiology", "specialty": "Cardiology", "active": true}, {"_id": "dr_nanda_kishore", "name": "Dr. Nanda Kishore", "deptId": "od_ophthalmology", "specialty": "Ophthalmology", "active": true}, {"_id": "dr_mohammad_khalil", "name": "Dr. Mohammad Khalil", "deptId": "od_ent", "specialty": "ENT", "active": true}, {"_id": "dr_ahmed_adel", "name": "Dr. Ahmed Adel", "deptId": "od_ent", "specialty": "ENT", "active": true}, {"_id": "dr_eman_khalaf", "name": "Dr. Eman Khalaf", "deptId": "od_general_surgery", "specialty": "General Surgery", "active": true}, {"_id": "dr_galal_shaban", "name": "Dr. Galal Shaban", "deptId": "od_general_surgery", "specialty": "General Surgery", "active": true}, {"_id": "dr_hassan_al_yousef", "name": "Dr. Hassan Al-Yousef", "deptId": "od_general_surgery", "specialty": "General Surgery", "active": true}, {"_id": "dr_sarah_khurshid", "name": "Dr. Sarah Khurshid", "deptId": "od_general_surgery", "specialty": "General Surgery", "active": true}, {"_id": "dr_salem_nouri", "name": "Dr. Salem Nouri", "deptId": "od_urology", "specialty": "Urology", "active": true}, {"_id": "dr_ibrahim_sayed", "name": "Dr. Ibrahim Sayed", "deptId": "od_urology", "specialty": "Urology", "active": true}];
+
+var OPD_K = ['tc','ti','ac','ai','fc','fi','sa','ns','pr'];
+var OPD_KL = {tc:'Total · Cash',ti:'Total · Insurance',ac:'Admission · Cash',ai:'Admission · Insurance',fc:'Follow-up · Cash',fi:'Follow-up · Insurance',sa:'Saudi',ns:'Non-Saudi',pr:'Procedures'};
+var OPD_CATS = ['Medical','Surgical','Women & Children','Dental','Other'];
+var OPD_UI = {tab:'entry', date:null, period:'month', anchor:null, from:'', to:'', dept:'all', docs:false, aiText:'', aiFor:''};
+var OPD_SYNC = {busy:false, ai:null, checked:false};
+
+function opdE(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function opdToday(){ return (typeof fmsLocalToday==='function')?fmsLocalToday():new Date().toISOString().slice(0,10); }
+function opdRole(){ return (typeof CU!=='undefined'&&CU)?CU.role:null; }
+function opdCanEdit(){ return ['opd','director'].indexOf(opdRole())>=0; }
+function opdUrl(){ return (typeof CANONICAL_DB_URL!=='undefined'&&CANONICAL_DB_URL)?CANONICAL_DB_URL:(typeof getDBUrl==='function'?getDBUrl():null); }
+function opdJ(t){ try{ return JSON.parse(t); }catch(e){ var i=t.indexOf('{'),k=t.lastIndexOf('}'); if(i>=0&&k>i){ try{ return JSON.parse(t.slice(i,k+1)); }catch(_){} } return null; } }
+function opdN(v){ var n=parseFloat(v); return isFinite(n)&&n>0?n:0; }
+function opdPct(a,b){ return b>0?Math.round(a/b*1000)/10:0; }
+function opdFmtDate(d){ var x=new Date(d+'T00:00:00'); return isNaN(x)?d:x.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric'}); }
+function opdAddDays(d,n){ var x=new Date(d+'T00:00:00'); x.setDate(x.getDate()+n); return x.toISOString().slice(0,10); }
+function opdDays(a,b){ var out=[],d=a; while(d<=b&&out.length<400){ out.push(d); d=opdAddDays(d,1); } return out; }
+function opdParse(v){ if(typeof v!=='string') return v; var t=v.trim(); if(t.charAt(0)==='{'||t.charAt(0)==='['){ try{ return JSON.parse(t); }catch(e){} } return v; }
+function opdBool(v){ return !(v===false||v==='false'||v===0||v==='0'); }
+
+/* ── master data ── */
+function opdDeptsAll(){
+  var a=ld('opd_depts'); if(!Array.isArray(a)||!a.length){ a=OPD_SEED_DEPTS.map(function(x){ return Object.assign({updatedTs:1},x); }); sv('opd_depts',a); }
+  return a.map(function(d){ d.order=Number(d.order)||99; d.active=opdBool(d.active); d.deleted=(d.deleted===true||d.deleted==='true'); return d; });
+}
+function opdDepts(includeInactive){ return opdDeptsAll().filter(function(d){ return !d.deleted && (includeInactive||d.active); }).sort(function(a,b){ return a.order-b.order||String(a.name).localeCompare(b.name); }); }
+function opdDept(id){ return opdDeptsAll().find(function(d){ return d._id===id; }); }
+function opdDocsAll(){
+  var a=ld('opd_doctors'); if(!Array.isArray(a)||!a.length){ a=OPD_SEED_DOCS.map(function(x){ return Object.assign({updatedTs:1},x); }); sv('opd_doctors',a); }
+  return a.map(function(d){ d.active=opdBool(d.active); d.deleted=(d.deleted===true||d.deleted==='true'); return d; });
+}
+function opdDocs(deptId, includeInactive){ return opdDocsAll().filter(function(d){ return !d.deleted && (includeInactive||d.active) && (!deptId||d.deptId===deptId); }).sort(function(a,b){ return String(a.name).localeCompare(b.name); }); }
+function opdDoc(id){ return opdDocsAll().find(function(d){ return d._id===id; }); }
+function opdPutMaster(type, rec){
+  rec.updatedTs=Date.now();
+  var key=type==='dept'?'opd_depts':'opd_doctors', all=type==='dept'?opdDeptsAll():opdDocsAll();
+  var i=all.findIndex(function(x){ return x._id===rec._id; }); if(i>=0) all[i]=rec; else all.push(rec);
+  sv(key, all); try{ dbWrite(key, rec); }catch(e){}
+}
+
+/* ── census records ── */
+function opdCensusAll(){ var a=ld('opd_census'); return (Array.isArray(a)?a:[]).map(function(r){ r.rows=opdParse(r.rows)||{}; r.updatedTs=Number(r.updatedTs)||0; return r; }).filter(function(r){ return r&&r.date&&!(r.deleted===true||r.deleted==='true'); }); }
+function opdCensus(date){ return opdCensusAll().find(function(r){ return r.date===date; }); }
+function opdPutCensus(rec){
+  rec.updatedTs=Date.now();
+  var all=(Array.isArray(ld('opd_census'))?ld('opd_census'):[]).filter(function(x){ return x.date!==rec.date; }); all.push(rec); sv('opd_census',all);
+  var chk=(Array.isArray(ld('opd_census'))?ld('opd_census'):[]).find(function(x){ return x.date===rec.date; }); if(!chk||Number(chk.updatedTs)!==rec.updatedTs){ try{ dbWrite('opd_census',rec); }catch(e){} throw new Error("this device's storage is full — the census was sent to the cloud; press ☁ Sync"); }
+  try{ dbWrite('opd_census',rec); }catch(e){}
+}
+
+/* ── metrics ── */
+function opdZero(){ var o={}; OPD_K.forEach(function(k){ o[k]=0; }); return o; }
+function opdAdd(a,b){ OPD_K.forEach(function(k){ a[k]+=opdN(b&&b[k]); }); return a; }
+function opdHasAny(o){ return !!o && OPD_K.some(function(k){ return opdN(o[k])>0; }); }
+// a clinic's figures for one day: sum of its doctors when doctor-level data exists, otherwise the clinic row
+function opdDeptDay(row){
+  row=row||{}; var docs=row.docs||{}, ids=Object.keys(docs).filter(function(k){ return opdHasAny(docs[k]); });
+  if(ids.length){ var s=opdZero(); ids.forEach(function(id){ opdAdd(s,docs[id]); }); return {v:s, byDoc:true}; }
+  return {v:opdAdd(opdZero(),row), byDoc:false};
+}
+function opdDerive(v){
+  var t=v.tc+v.ti, a=v.ac+v.ai, f=v.fc+v.fi;
+  return {tot:t, adm:a, fu:f, nw:Math.max(0,t-f), cash:v.tc, ins:v.ti, sa:v.sa, ns:v.ns, pr:v.pr,
+    fuPct:opdPct(f,t), admPct:opdPct(a,t), insPct:opdPct(v.ti,t), saPct:opdPct(v.sa,v.sa+v.ns), prPer100:opdPct(v.pr,t)};
+}
+// aggregate a date range → totals, per-clinic, per-doctor, per-day, data-quality
+function opdAggregate(from, to, deptFilter){
+  var days=opdDays(from,to), recs={}; opdCensusAll().forEach(function(r){ if(r.date>=from&&r.date<=to) recs[r.date]=r; });
+  var total=opdZero(), byDept={}, byDoc={}, byDay={}, issues=[], reported=0;
+  days.forEach(function(d){
+    var r=recs[d]; byDay[d]=opdZero(); if(!r) return; reported++;
+    Object.keys(r.rows||{}).forEach(function(did){
+      if(deptFilter&&deptFilter!=='all'&&did!==deptFilter) return;
+      var dd=opdDeptDay(r.rows[did]); if(!opdHasAny(dd.v)) return;
+      byDept[did]=opdAdd(byDept[did]||opdZero(), dd.v); opdAdd(total, dd.v); opdAdd(byDay[d], dd.v);
+      Object.keys((r.rows[did]||{}).docs||{}).forEach(function(doc){ var x=r.rows[did].docs[doc]; if(!opdHasAny(x)) return; if(!byDoc[doc]) byDoc[doc]={v:opdZero(),dept:did,days:0}; opdAdd(byDoc[doc].v,x); byDoc[doc].days++; });
+      var v=dd.v, t=v.tc+v.ti, nat=v.sa+v.ns, nm=(opdDept(did)||{}).name||did;
+      if(nat>0&&nat!==t) issues.push({d:d,dept:nm,msg:'Saudi + Non-Saudi ('+nat+') ≠ Grand Total ('+t+')'});
+      if(v.ac+v.ai>t) issues.push({d:d,dept:nm,msg:'Admissions exceed patients seen'});
+      if(v.fc+v.fi>t) issues.push({d:d,dept:nm,msg:'Follow-ups exceed patients seen'});
+    });
+  });
+  var _td=opdToday(), elapsed=days.filter(function(d){ return d<=_td; });
+  return {from:from,to:to,days:days,elapsed:elapsed,reported:reported,missing:elapsed.filter(function(d){ return !recs[d]; }),total:total,byDept:byDept,byDoc:byDoc,byDay:byDay,issues:issues};
+}
+// period helpers
+function opdRange(period, anchor, from, to){
+  anchor=anchor||opdToday();
+  if(period==='day') return {from:anchor,to:anchor,label:opdFmtDate(anchor),kind:'Daily'};
+  if(period==='week'){ var x=new Date(anchor+'T00:00:00'), s=opdAddDays(anchor,-x.getDay()); return {from:s,to:opdAddDays(s,6),label:'Week of '+opdFmtDate(s),kind:'Weekly'}; }   // Sunday → Saturday
+  if(period==='month'){ var m=anchor.slice(0,7), y=+m.slice(0,4), mo=+m.slice(5,7), last=new Date(y,mo,0).getDate(); return {from:m+'-01',to:m+'-'+String(last).padStart(2,'0'),label:new Date(y,mo-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'}),kind:'Monthly'}; }
+  return {from:from||anchor,to:to||anchor,label:opdFmtDate(from||anchor)+' → '+opdFmtDate(to||anchor),kind:'Period'};
+}
+function opdPrevRange(r){ var n=opdDays(r.from,r.to).length; if(r.kind==='Monthly'){ var a=opdAddDays(r.from,-1); return opdRange('month',a); } return {from:opdAddDays(r.from,-n),to:opdAddDays(r.from,-1),label:'previous period',kind:r.kind}; }
+function opdRank(map, fn){ return Object.keys(map).map(function(k){ return {id:k, v:map[k].v||map[k], m:opdDerive(map[k].v||map[k]), raw:map[k]}; }).sort(fn||function(a,b){ return b.m.tot-a.m.tot; }); }
+
+/* ── cloud sync (on demand; these types are excluded from the boot getAll) ── */
+function opdMergeType(key, rows, idf){
+  var by={}; (Array.isArray(ld(key))?ld(key):[]).forEach(function(x){ by[idf(x)]=x; });
+  (rows||[]).forEach(function(x){ if(!x) return; var id=idf(x); if(!id) return; var l=by[id]; if(!l||(Number(x.updatedTs)||0)>=(Number(l.updatedTs)||0)) by[id]=x; });
+  sv(key, Object.keys(by).map(function(k){ return by[k]; }));
+}
+function opdSync(manual, cb){
+  var url=opdUrl(); if(!url||OPD_SYNC.busy){ if(cb) cb(); return; } OPD_SYNC.busy=true;
+  var types=[['opd_depts',function(x){return x._id;}],['opd_doctors',function(x){return x._id;}],['opd_census',function(x){return x.date||x._id;}]], left=types.length, ok=0;
+  var done=function(){ if(--left>0) return; OPD_SYNC.busy=false; if(manual) toast(ok===3?'☁ OPD census synced':'⚠ OPD sync incomplete — check connection', ok===3?'#10b981':'#f59e0b',3000); var pg=document.getElementById('opd-root'); if(pg&&pg.offsetParent!==null) opdRender(); if(cb) cb(); };
+  types.forEach(function(t){
+    fetch(url+'?action=getType&type='+t[0],{signal:AbortSignal.timeout(45000)}).then(function(r){return r.text();}).then(function(tx){ var j=opdJ(tx); if(j&&j.ok&&Array.isArray(j.rows)){ if(j.rows.length) opdMergeType(t[0], j.rows, t[1]); ok++; } }).catch(function(){}).then(done);
+  });
+}
+function opdCheckAI(){
+  if(OPD_SYNC.checked) return; OPD_SYNC.checked=true; var url=opdUrl(); if(!url) return;
+  fetch(url+'?action=version',{signal:AbortSignal.timeout(60000)}).then(function(r){return r.text();}).then(function(t){ var j=opdJ(t); if(j&&j.ok){ OPD_SYNC.ai=!!j.ai; var b=document.getElementById('opd-ai-btn'); if(b) b.style.display=OPD_SYNC.ai?'':'none'; } }).catch(function(){});
+}
+/* ── built-in analysis engine (always available) ── */
+function opdDelta(cur, prev){ if(!prev) return null; return Math.round((cur-prev)/prev*1000)/10; }
+function opdDeltaTxt(d){ return d==null?'':(d>0?'▲ +'+d+'%':d<0?'▼ '+d+'%':'● 0%'); }
+function opdAnalyse(A, P, rg){
+  var T=opdDerive(A.total), PT=P?opdDerive(P.total):null, f=[], rec=[], warn=[];
+  var depts=opdRank(A.byDept), docs=opdRank(A.byDoc), perDay=A.reported?Math.round(T.tot/A.reported*10)/10:0;
+  if(!T.tot){ return {summary:'No OPD census data has been recorded for '+rg.label+'.', findings:[], recs:['Enter the daily OPD census to enable analysis.'], warns:A.missing.length?[A.missing.length+' day(s) without census entries.']:[]}; }
+  var dTot=PT?opdDelta(T.tot,PT.tot):null;
+  var summary='During '+rg.label+', the OPD saw '+T.tot.toLocaleString()+' patients'+(A.reported>1?' over '+A.reported+' reported day(s) (≈'+perDay+'/day)':'')+(dTot!=null&&PT.tot?', '+(dTot>=0?'up ':'down ')+Math.abs(dTot)+'% versus the '+(rg.kind==='Monthly'?'previous month':'previous period'):'')+'. '
+    +T.nw.toLocaleString()+' were new visits and '+T.fu.toLocaleString()+' follow-ups ('+T.fuPct+'%); '+T.adm+' patients were admitted (conversion '+T.admPct+'%). Insurance covered '+T.insPct+'% of visits'+(T.sa+T.ns?' and Saudi nationals made up '+T.saPct+'%':'')+'.';
+  // volume concentration
+  if(depts.length){
+    var top=depts[0], share=opdPct(top.m.tot,T.tot), top3=depts.slice(0,3).reduce(function(s,x){ return s+x.m.tot; },0);
+    f.push('🏆 Busiest clinic: <b>'+opdE((opdDept(top.id)||{}).name)+'</b> — '+top.m.tot+' visits ('+share+'% of OPD volume).');
+    if(depts.length>=4) f.push('📊 Top 3 clinics account for '+opdPct(top3,T.tot)+'% of all visits'+(opdPct(top3,T.tot)>60?' — demand is highly concentrated; protect capacity in these clinics (rooms, nursing, scheduling).':'.'));
+    var quiet=depts.filter(function(x){ return x.m.tot>0; }).slice(-1)[0]; if(quiet&&quiet!==top) f.push('🔻 Lowest-volume active clinic: '+opdE((opdDept(quiet.id)||{}).name)+' ('+quiet.m.tot+' visits).');
+    var inactive=opdDepts().filter(function(d){ return !A.byDept[d._id]; }).map(function(d){ return d.name; });
+    if(inactive.length&&A.reported) warn.push(inactive.length+' clinic(s) recorded no patients: '+inactive.slice(0,8).join(', ')+(inactive.length>8?'…':'')+'.');
+  }
+  // follow-up burden
+  var hiFU=depts.filter(function(x){ return x.m.tot>=10&&x.m.fuPct>=70; }), loFU=depts.filter(function(x){ return x.m.tot>=10&&x.m.fuPct<=20; });
+  if(hiFU.length){ f.push('🔁 Follow-up-heavy clinics (≥70% follow-ups): '+hiFU.map(function(x){ return opdE((opdDept(x.id)||{}).name)+' '+x.m.fuPct+'%'; }).join(', ')+'.'); rec.push('Review follow-up intervals and clinic discharge criteria in '+hiFU.map(function(x){return (opdDept(x.id)||{}).name;}).join(', ')+' to release slots for new patients (access & revenue).'); }
+  if(loFU.length) f.push('🆕 New-patient-driven clinics (≤20% follow-ups): '+loFU.map(function(x){ return opdE((opdDept(x.id)||{}).name); }).join(', ')+' — verify continuity of care / follow-up booking at checkout.');
+  // admission conversion
+  var conv=depts.filter(function(x){ return x.m.tot>=10; }).sort(function(a,b){ return b.m.admPct-a.m.admPct; });
+  if(conv.length){ f.push('🛏 Highest admission conversion: '+opdE((opdDept(conv[0].id)||{}).name)+' ('+conv[0].m.admPct+'%).');
+    var surgZero=conv.filter(function(x){ return ((opdDept(x.id)||{}).specialty==='Surgical')&&x.m.adm===0&&x.m.tot>=20; });
+    if(surgZero.length) { warn.push('Surgical clinic(s) with '+'≥20 visits and zero admissions: '+surgZero.map(function(x){return (opdDept(x.id)||{}).name;}).join(', ')+' — confirm whether admissions/OR bookings are being captured.'); } }
+  if(PT&&PT.tot){ var dA=opdDelta(T.admPct||0.0001,PT.admPct||0.0001); if(PT.admPct&&Math.abs(T.admPct-PT.admPct)>=1.5) f.push('↕ Admission conversion moved from '+PT.admPct+'% to '+T.admPct+'%.'); }
+  // payer & nationality
+  if(T.insPct>=80) f.push('💳 Payer mix is insurance-dominated ('+T.insPct+'%) — keep approval/eligibility turnaround tight to avoid clinic delays and denials.');
+  else if(T.insPct<=40) f.push('💵 Cash patients form '+(100-T.insPct)+'% of visits — pricing transparency and patient-experience drive retention in this segment.');
+  if(PT&&PT.tot&&Math.abs(T.insPct-PT.insPct)>=5) f.push('💳 Insurance share shifted '+PT.insPct+'% → '+T.insPct+'%.');
+  if(T.sa+T.ns&&PT&&(PT.sa+PT.ns)&&Math.abs(T.saPct-PT.saPct)>=5) f.push('🇸🇦 Saudi share shifted '+PT.saPct+'% → '+T.saPct+'%.');
+  // procedures
+  var proc=depts.filter(function(x){ return x.m.tot>=10&&x.m.pr>0; }).sort(function(a,b){ return b.m.prPer100-a.m.prPer100; });
+  if(proc.length) f.push('🩺 Most procedure-intensive clinic: '+opdE((opdDept(proc[0].id)||{}).name)+' ('+proc[0].m.prPer100+' procedures / 100 visits).');
+  // doctors
+  if(docs.length){
+    var td=docs[0], tdd=opdDoc(td.id)||{};
+    f.push('👨‍⚕️ Highest-volume doctor: <b>'+opdE(tdd.name||td.id)+'</b> ('+opdE((opdDept(tdd.deptId)||{}).name||'')+') — '+td.m.tot+' patients'+(td.raw.days>1?' over '+td.raw.days+' clinic day(s)':'')+'.');
+    opdDepts().forEach(function(d){ var ds=docs.filter(function(x){ return (opdDoc(x.id)||{}).deptId===d._id; }); if(ds.length<2) return; var tot=ds.reduce(function(s,x){ return s+x.m.tot; },0), sh=opdPct(ds[0].m.tot,tot);
+      if(tot>=20&&sh>=65){ warn.push(d.name+': '+(opdDoc(ds[0].id)||{}).name+' carries '+sh+'% of the clinic workload — consider rebalancing templates/slots across the team.'); } });
+    var idle=opdDocs().filter(function(d){ return !A.byDoc[d._id] && Object.keys(A.byDoc).some(function(k){ return (opdDoc(k)||{}).deptId===d.deptId; }); });
+    if(idle.length&&rg.kind!=='Daily') warn.push(idle.length+' doctor(s) recorded no patients this period while colleagues in the same clinic did: '+idle.slice(0,6).map(function(d){return d.name;}).join(', ')+(idle.length>6?'…':'')+' — check leave, schedule templates or data capture.');
+  } else if(A.reported) warn.push('No doctor-level figures were entered — enter patients per doctor to unlock doctor productivity analysis.');
+  // trend within period
+  if(A.reported>=3){ var dd=A.days.filter(function(d){ return opdHasAny(A.byDay[d]); }).map(function(d){ return {d:d,t:opdDerive(A.byDay[d]).tot}; }).sort(function(a,b){ return b.t-a.t; });
+    if(dd.length>=3){ f.push('📅 Peak day: '+opdFmtDate(dd[0].d)+' ('+dd[0].t+' visits); quietest: '+opdFmtDate(dd[dd.length-1].d)+' ('+dd[dd.length-1].t+').');
+      var wk={}; dd.forEach(function(x){ var w=new Date(x.d+'T00:00:00').toLocaleDateString('en-GB',{weekday:'long'}); (wk[w]=wk[w]||[]).push(x.t); });
+      var avg=Object.keys(wk).map(function(w){ return {w:w,a:wk[w].reduce(function(s,v){return s+v;},0)/wk[w].length}; }).sort(function(a,b){ return b.a-a.a; });
+      if(avg.length>=3&&rg.kind==='Monthly') rec.push('Busiest weekday is '+avg[0].w+' (avg '+Math.round(avg[0].a)+' visits) — align reception, nursing and pharmacy staffing to this peak.'); } }
+  // data quality
+  if(A.missing.length&&rg.kind!=='Daily'){ var wd=A.missing.filter(function(d){ var x=new Date(d+'T00:00:00').getDay(); return x!==5; }); if(wd.length) warn.push(wd.length+' day(s) in the period have no census entry (Fridays excluded) — completeness affects every KPI.'); }
+  if(A.issues.length) warn.push(A.issues.length+' data-quality flag(s): '+A.issues.slice(0,3).map(function(x){ return x.dept+' '+x.d.slice(5)+': '+x.msg; }).join('; ')+(A.issues.length>3?'…':''));
+  // generic director recommendations
+  if(T.fuPct>=60) rec.push('Overall follow-up share is '+T.fuPct+'% — set a target (e.g. ≤55%) and track new-patient access time per clinic.');
+  if(T.admPct<2&&T.tot>=50) rec.push('Admission conversion is low ('+T.admPct+'%) — verify that OPD-to-inpatient admissions are captured at the clinic and reconcile with Admission Office records.');
+  if(dTot!=null&&dTot<=-10) rec.push('Volume fell '+Math.abs(dTot)+'% — check doctor availability/leave, referral sources and appointment no-show rate.');
+  if(dTot!=null&&dTot>=10) rec.push('Volume grew '+dTot+'% — monitor waiting times and clinic room utilisation to protect patient experience.');
+  rec.push('Share this report in the monthly OPD/Medical Staff meeting and assign owners for each flagged clinic.');
+  return {summary:summary, findings:f, recs:rec, warns:warn};
+}
+function opdAnalysisHTML(an){
+  var li=function(a,ic){ return a.length?'<ul style="margin:6px 0 0 0;padding-left:18px;">'+a.map(function(x){ return '<li style="margin:4px 0;">'+x+'</li>'; }).join('')+'</ul>':''; };
+  return '<div style="font-size:13px;line-height:1.55;"><div>'+an.summary+'</div>'
+    +(an.findings.length?'<div style="margin-top:10px;font-weight:800;font-size:12px;color:var(--ac);">KEY FINDINGS</div>'+li(an.findings):'')
+    +(an.warns.length?'<div style="margin-top:10px;font-weight:800;font-size:12px;color:var(--rd);">ATTENTION</div>'+li(an.warns.map(function(w){ return '⚠ '+w; })):'')
+    +(an.recs.length?'<div style="margin-top:10px;font-weight:800;font-size:12px;color:var(--gn);">RECOMMENDATIONS</div>'+li(an.recs.map(function(w){ return '✔ '+w; })):'')+'</div>';
+}
+/* ── optional Claude AI analysis (through the Apps Script; key never leaves the server) ── */
+function opdAIPayload(A,P,rg){
+  var T=opdDerive(A.total);
+  var dep=opdRank(A.byDept).map(function(x){ var m=x.m; return {clinic:(opdDept(x.id)||{}).name, category:(opdDept(x.id)||{}).specialty, visits:m.tot, newVisits:m.nw, followUpPct:m.fuPct, admissions:m.adm, admissionPct:m.admPct, insurancePct:m.insPct, saudiPct:m.saPct, procedures:m.pr}; });
+  var doc=opdRank(A.byDoc).slice(0,25).map(function(x){ var d=opdDoc(x.id)||{}; return {doctor:d.name, clinic:(opdDept(d.deptId)||{}).name, visits:x.m.tot, admissions:x.m.adm, followUpPct:x.m.fuPct, clinicDays:x.raw.days}; });
+  return {hospital:'Obeid Specialized Hospital, Riyadh', report:rg.kind+' OPD census', period:rg.label, daysInPeriod:A.days.length, daysElapsed:A.elapsed.length, daysReported:A.reported,
+    totals:{visits:T.tot,newVisits:T.nw,followUps:T.fu,followUpPct:T.fuPct,admissions:T.adm,admissionPct:T.admPct,cash:T.cash,insurance:T.ins,insurancePct:T.insPct,saudi:T.sa,nonSaudi:T.ns,saudiPct:T.saPct,procedures:T.pr},
+    previousPeriod:P?(function(){ var p=opdDerive(P.total); return {visits:p.tot,followUpPct:p.fuPct,admissionPct:p.admPct,insurancePct:p.insPct,saudiPct:p.saPct}; })():null,
+    clinics:dep, topDoctors:doc, dataQualityFlags:A.issues.length, missingDays:A.missing.length};
+}
+function opdAskAI(){
+  var rg=opdCurRange(), A=opdAggregate(rg.from,rg.to,OPD_UI.dept), P=opdAggregate(opdPrevRange(rg).from,opdPrevRange(rg).to,OPD_UI.dept);
+  if(!opdDerive(A.total).tot){ toast('No data in this period to analyse','#f59e0b'); return; }
+  var box=document.getElementById('opd-ai-out'); if(box) box.innerHTML='<div style="font-size:12px;color:var(--mu);">✨ Claude is analysing the '+rg.kind.toLowerCase()+' census…</div>';
+  var sys='You are a senior hospital OPD (outpatient department) director in Saudi Arabia advising Obeid Specialized Hospital. Analyse the OPD census data you are given. Be specific, quantitative and practical; reference clinics and doctors by name. Output plain text with these sections exactly: EXECUTIVE SUMMARY (3-4 sentences), KEY FINDINGS (5-8 bullets starting with "- "), RISKS & DATA QUALITY (bullets), RECOMMENDATIONS (5-7 actionable bullets with an owner, e.g. OPD Head Nurse / Medical Director / Finance), KPI TARGETS FOR NEXT PERIOD (3-5 bullets). No markdown tables. Keep it under 450 words.';
+  var payload={action:'ai', system:sys, prompt:'OPD census data (JSON):\n'+JSON.stringify(opdAIPayload(A,P,rg))};
+  var show=function(t){ OPD_UI.aiText=t; OPD_UI.aiFor=rg.label+'|'+OPD_UI.dept; if(box) box.innerHTML=opdAITextHTML(t); };
+  fetch(opdUrl(),{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)}).then(function(r){ return r.text(); }).then(function(t){ var j=opdJ(t);
+    if(j&&j.ok&&j.text) show(j.text); else if(box) box.innerHTML='<div style="font-size:12px;color:var(--rd);">AI analysis unavailable: '+opdE((j&&j.error)||'no response')+'. The built-in analysis above remains valid.</div>'; })
+  .catch(function(){ if(box) box.innerHTML='<div style="font-size:12px;color:var(--rd);">Could not reach the AI service. The built-in analysis above remains valid.</div>'; });
+}
+function opdAITextHTML(t){
+  return '<div style="font-size:13px;line-height:1.55;">'+opdE(t).split('\n').map(function(l){ var s=l.trim(); if(!s) return '';
+    if(/^[A-Z][A-Z &\/]{6,}:?$/.test(s)) return '<div style="margin-top:10px;font-weight:800;font-size:12px;color:var(--ac);">'+s.replace(/:$/,'')+'</div>';
+    if(/^[-•*]\s+/.test(s)) return '<div style="margin:3px 0 3px 14px;">• '+s.replace(/^[-•*]\s+/,'').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>')+'</div>';
+    return '<div style="margin:3px 0;">'+s.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>')+'</div>'; }).join('')+'</div>';
+}
+
+/* ── infographics (pure SVG — identical on screen and in PDF reports) ── */
+var OPD_COL = {ac:'#0070f3', gn:'#16a34a', or:'#f59e0b', rd:'#dc2626', pu:'#7c3aed', cy:'#0891b2', mu:'#94a3b8'};
+function opdDonut(parts, title, center){
+  var tot=parts.reduce(function(s,p){ return s+p.v; },0), a=-90, cx=70, cy=70, R=56, r=34, svg='';
+  if(!tot) return '<div style="text-align:center;font-size:11px;color:#94a3b8;padding:30px 0;">'+opdE(title)+'<br>no data</div>';
+  parts.forEach(function(p){ if(!p.v) return; var ang=p.v/tot*360; if(ang>=359.99) ang=359.99; var a2=a+ang, L=ang>180?1:0, rad=Math.PI/180;
+    var x1=cx+R*Math.cos(a*rad),y1=cy+R*Math.sin(a*rad),x2=cx+R*Math.cos(a2*rad),y2=cy+R*Math.sin(a2*rad),x3=cx+r*Math.cos(a2*rad),y3=cy+r*Math.sin(a2*rad),x4=cx+r*Math.cos(a*rad),y4=cy+r*Math.sin(a*rad);
+    svg+='<path d="M'+x1+','+y1+' A'+R+','+R+' 0 '+L+' 1 '+x2+','+y2+' L'+x3+','+y3+' A'+r+','+r+' 0 '+L+' 0 '+x4+','+y4+' Z" fill="'+p.c+'"/>'; a=a2; });
+  return '<div style="text-align:center;"><div style="font-size:11px;font-weight:700;color:#334155;margin-bottom:4px;">'+opdE(title)+'</div><svg width="140" height="140" viewBox="0 0 140 140">'+svg+'<text x="70" y="68" text-anchor="middle" font-size="17" font-weight="800" fill="#0f172a">'+opdE(center!=null?center:tot)+'</text><text x="70" y="84" text-anchor="middle" font-size="9" fill="#64748b">'+(center!=null?'':'total')+'</text></svg>'
+    +'<div style="font-size:10px;line-height:1.5;">'+parts.map(function(p){ return '<span style="white-space:nowrap;margin:0 5px;"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:'+p.c+';margin-right:3px;"></span>'+opdE(p.l)+' <b>'+p.v+'</b> ('+opdPct(p.v,tot)+'%)</span>'; }).join(' ')+'</div></div>';
+}
+function opdHBars(items, opts){   // items:[{l, a, b?}] stacked a (new) + b (follow-up)
+  opts=opts||{}; if(!items.length) return '<div style="font-size:11px;color:#94a3b8;">No data</div>';
+  var max=Math.max.apply(null,items.map(function(x){ return (x.a||0)+(x.b||0); }))||1, W=opts.w||620, lw=opts.lw||150, bw=W-lw-60, rh=22, H=items.length*rh+6;
+  var g=items.map(function(x,i){ var y=i*rh+3, wa=Math.round((x.a||0)/max*bw), wb=Math.round((x.b||0)/max*bw);
+    return '<text x="'+(lw-6)+'" y="'+(y+14)+'" text-anchor="end" font-size="10.5" fill="#334155">'+opdE(String(x.l).length>24?String(x.l).slice(0,23)+'…':x.l)+'</text>'
+      +'<rect x="'+lw+'" y="'+(y+3)+'" width="'+Math.max(wa,0)+'" height="15" rx="3" fill="'+(opts.ca||OPD_COL.ac)+'"/>'
+      +(x.b?'<rect x="'+(lw+wa)+'" y="'+(y+3)+'" width="'+wb+'" height="15" rx="3" fill="'+(opts.cb||OPD_COL.or)+'"/>':'')
+      +'<text x="'+(lw+wa+wb+5)+'" y="'+(y+14)+'" font-size="10.5" font-weight="700" fill="#0f172a">'+opdE(opts.fmt?opts.fmt(x):((x.a||0)+(x.b||0)))+'</text>'; }).join('');
+  return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:'+W+'px;display:block;">'+g+'</svg>'
+    +(opts.legend?'<div style="font-size:10px;margin-top:4px;">'+opts.legend.map(function(l){ return '<span style="margin-right:10px;"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:'+l[1]+';margin-right:3px;"></span>'+opdE(l[0])+'</span>'; }).join('')+'</div>':'');
+}
+function opdTrend(A){
+  var pts=A.elapsed.map(function(d){ var m=opdDerive(A.byDay[d]); return {d:d,t:m.tot,a:m.adm,has:opdHasAny(A.byDay[d])}; });
+  if(pts.length<2) return '';
+  var W=640,H=175,l=40,rgt=36,b=24,max=Math.max.apply(null,pts.map(function(p){return p.t;}))||1, maxA=Math.max.apply(null,pts.map(function(p){return p.a;}))||1;
+  var n=pts.length, step=(W-l-rgt)/n, bw=Math.max(3,Math.min(20,step*0.62));
+  var X=function(i){ return l+step*(i+0.5); }, y=function(v){ return H-b-(v/max)*(H-b-12); }, yA=function(v){ return H-b-(v/maxA)*(H-b-12); };
+  var grid=[0,0.5,1].map(function(f){ var v=Math.round(max*f), va=Math.round(maxA*f*10)/10; return '<line x1="'+l+'" x2="'+(W-rgt)+'" y1="'+y(v)+'" y2="'+y(v)+'" stroke="#e2e8f0"/><text x="'+(l-5)+'" y="'+(y(v)+3)+'" text-anchor="end" font-size="9" fill="#64748b">'+v+'</text><text x="'+(W-rgt+5)+'" y="'+(y(v)+3)+'" font-size="9" fill="#dc2626">'+va+'</text>'; }).join('');
+  var bars=pts.map(function(p,i){ var x=X(i); return p.has?'<rect x="'+(x-bw/2)+'" y="'+y(p.t)+'" width="'+bw+'" height="'+(H-b-y(p.t))+'" rx="2" fill="#93c5fd"><title>'+p.d+': '+p.t+' patients, '+p.a+' admitted</title></rect>':'<rect x="'+(x-bw/2)+'" y="'+(H-b-3)+'" width="'+bw+'" height="3" fill="#fca5a5"><title>'+p.d+': no census entered</title></rect>'; }).join('');
+  var lp=pts.map(function(p,i){ return p.has?(X(i)+','+yA(p.a)):null; }).filter(Boolean);
+  var line=lp.length>1?'<polyline fill="none" stroke="#dc2626" stroke-width="2" points="'+lp.join(' ')+'"/>':'';
+  var dots=pts.map(function(p,i){ return p.has?'<circle cx="'+X(i)+'" cy="'+yA(p.a)+'" r="2.5" fill="#dc2626"/>':''; }).join('');
+  var every=Math.ceil(n/12), lbl=pts.map(function(p,i){ return i%every===0?'<text x="'+X(i)+'" y="'+(H-8)+'" text-anchor="middle" font-size="9" fill="#64748b">'+p.d.slice(8)+'/'+p.d.slice(5,7)+'</text>':''; }).join('');
+  return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:'+W+'px;display:block;">'+grid+bars+line+dots+lbl+'</svg>'
+    +'<div style="font-size:10px;margin-top:2px;"><span style="margin-right:12px;"><span style="display:inline-block;width:9px;height:9px;background:#93c5fd;margin-right:3px;"></span>Patients seen / day (left axis)</span><span style="margin-right:12px;"><span style="display:inline-block;width:12px;height:2px;background:#dc2626;margin-right:3px;vertical-align:middle;"></span>Admissions / day (right axis)</span><span><span style="display:inline-block;width:9px;height:3px;background:#fca5a5;margin-right:3px;"></span>No census entered</span></div>';
+}
+/* ── page shell ── */
+function opdInit(){ if(!OPD_UI.date) OPD_UI.date=opdToday(); if(!OPD_UI.anchor) OPD_UI.anchor=opdToday(); opdCheckAI(); opdRender(); opdSync(false); }
+function opdTabBtn(k,l){ var a=OPD_UI.tab===k; return '<button class="tbtn'+(a?' active':'')+'" onclick="opdGo(\''+k+'\')">'+l+'</button>'; }
+function opdGo(t){ if(OPD_UI.tab==='entry'&&OPD_DIRTY) opdDraftSave(); OPD_UI.tab=t; opdRender(); }
+function opdRender(){
+  var root=document.getElementById('opd-root'); if(!root) return;
+  var head='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">'
+    +'<div class="tabs" style="margin:0;">'+opdTabBtn('entry','✍ Daily Entry')+opdTabBtn('dash','📊 Analytics & Reports')+opdTabBtn('master','⚙ Departments & Doctors')+'</div>'
+    +'<div style="display:flex;gap:6px;"><button class="btn bo" style="font-size:11px;" onclick="opdSync(true)">☁ Sync</button></div></div>';
+  root.innerHTML=head+'<div id="opd-body"></div>';
+  if(OPD_UI.tab==='entry') opdRenderEntry(); else if(OPD_UI.tab==='dash') opdRenderDash(); else opdRenderMaster();
+}
+
+/* ── daily entry ── */
+var OPD_DIRTY=false, OPD_DRAFT_T=null, OPD_OPEN={};
+function opdDraftKey(d){ return 'opd_draft_'+d; }
+function opdCollect(){
+  var rows={};
+  document.querySelectorAll('#opd-entry input.opd-in').forEach(function(el){
+    if(el.title==='Calculated from doctor rows') return;   // auto-summed clinic rows are not typed data
+    var v=el.value===''?'':opdN(el.value); if(v==='') return;
+    var dp=el.dataset.dept, dc=el.dataset.doc, k=el.dataset.k; rows[dp]=rows[dp]||{};
+    if(dc){ rows[dp].docs=rows[dp].docs||{}; rows[dp].docs[dc]=rows[dp].docs[dc]||{}; rows[dp].docs[dc][k]=v; } else rows[dp][k]=v;
+  });
+  // keep only non-empty
+  Object.keys(rows).forEach(function(dp){ var r=rows[dp]; if(r.docs){ Object.keys(r.docs).forEach(function(dc){ if(!opdHasAny(r.docs[dc])) delete r.docs[dc]; }); if(!Object.keys(r.docs).length) delete r.docs; } if(!opdHasAny(r)&&!r.docs) delete rows[dp]; });
+  return rows;
+}
+function opdDraftSave(){ try{ localStorage.setItem(opdDraftKey(OPD_UI.date), JSON.stringify({rows:opdCollect(), notes:(document.getElementById('opd-notes')||{}).value||'', by:(document.getElementById('opd-by')||{}).value||'', ts:Date.now()})); var i=document.getElementById('opd-state'); if(i&&OPD_DIRTY) i.innerHTML='<span style="color:var(--or);">● Unsaved changes — draft auto-saved</span>'; }catch(e){} }
+function opdDirty(){ OPD_DIRTY=true; clearTimeout(OPD_DRAFT_T); OPD_DRAFT_T=setTimeout(opdDraftSave,500); }
+function opdCell(dept, doc, k, val, disabled){
+  return '<td style="padding:2px;"><input class="opd-in" type="number" min="0" step="1" inputmode="numeric" data-dept="'+dept+'"'+(doc?' data-doc="'+doc+'"':'')+' data-k="'+k+'" value="'+(val===''||val==null?'':opdE(val))+'"'+(disabled?' disabled':'')+' oninput="opdRecalc();opdDirty()" style="width:100%;min-width:46px;padding:5px 4px;text-align:center;border:1px solid var(--bd);border-radius:6px;font-size:12px;background:'+(disabled?'var(--s2)':'#fff')+';color:var(--tx);"></td>';
+}
+function opdRenderEntry(){
+  var body=document.getElementById('opd-body'); if(!body) return;
+  var d=OPD_UI.date, rec=opdCensus(d), draft=null; try{ draft=JSON.parse(localStorage.getItem(opdDraftKey(d))||'null'); }catch(e){}
+  if(draft&&rec&&draft.ts<=rec.updatedTs) { draft=null; try{ localStorage.removeItem(opdDraftKey(d)); }catch(e){} }
+  var src=draft||rec||{rows:{}}, rows=src.rows||{}, can=opdCanEdit();
+  var state = draft?'<span style="color:var(--or);">📝 Unsaved draft restored ('+new Date(draft.ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+')</span>'
+            : rec?'<span style="color:var(--gn);">✓ Saved'+(rec.byName?' by '+opdE(rec.byName):'')+' · '+new Date(rec.updatedTs).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'</span>'
+            : '<span style="color:var(--mu);">No census entered for this date yet</span>';
+  var th='<thead style="position:sticky;top:0;z-index:2;"><tr style="background:#1e3a5c;color:#fff;font-size:11px;">'
+    +'<th rowspan="2" style="padding:6px;text-align:left;min-width:170px;">CLINICS</th><th colspan="2">TOTAL</th><th colspan="2">ADMISSION</th><th colspan="2">FOLLOW-UP</th><th colspan="2">NATIONALITY</th><th rowspan="2" style="min-width:60px;">GRAND<br>TOTAL</th><th rowspan="2">PROC.</th><th rowspan="2" style="width:26px;"></th></tr>'
+    +'<tr style="background:#2c5282;color:#fff;font-size:10px;"><th>Cash</th><th>Ins.</th><th>Cash</th><th>Ins.</th><th>Cash</th><th>Ins.</th><th>Saudi</th><th>Non-Saudi</th></tr></thead>';
+  var tb=opdDepts().map(function(dp){
+    var r=rows[dp._id]||{}, docs=opdDocs(dp._id), hasDocData=r.docs&&Object.keys(r.docs).some(function(k){ return opdHasAny(r.docs[k]); });
+    var open=!!OPD_OPEN[dp._id];
+    var main='<tr class="opd-dept" data-dept="'+dp._id+'" style="border-top:1px solid var(--bd);">'
+      +'<td style="padding:5px 6px;font-weight:700;font-size:12px;white-space:nowrap;">'+(docs.length?'<button type="button" onclick="opdToggle(\''+dp._id+'\')" style="border:none;background:none;cursor:pointer;font-size:11px;padding:0 4px 0 0;color:var(--ac);">'+(open?'▾':'▸')+'</button>':'<span style="display:inline-block;width:14px;"></span>')+opdE(dp.name)+(docs.length?' <span style="font-weight:400;color:var(--mu);font-size:10px;">('+docs.length+' dr)</span>':'')+'</td>'
+      +OPD_K.slice(0,8).map(function(k){ return opdCell(dp._id,'',k,hasDocData?'':r[k],!can||hasDocData); }).join('')
+      +'<td class="opd-gt" style="text-align:center;font-weight:800;font-size:12px;">0</td>'+opdCell(dp._id,'','pr',hasDocData?'':r.pr,!can||hasDocData)+'<td class="opd-flag" style="text-align:center;font-size:12px;"></td></tr>';
+    var sub=open?docs.map(function(doc){ var x=(r.docs||{})[doc._id]||{};
+      return '<tr class="opd-doc" data-dept="'+dp._id+'" style="background:var(--s2);"><td style="padding:3px 6px 3px 26px;font-size:11px;color:var(--tx);white-space:nowrap;">👨‍⚕️ '+opdE(doc.name)+'</td>'
+        +OPD_K.slice(0,8).map(function(k){ return opdCell(dp._id,doc._id,k,x[k],!can); }).join('')+'<td class="opd-gt-doc" style="text-align:center;font-size:11px;">0</td>'+opdCell(dp._id,doc._id,'pr',x.pr,!can)+'<td></td></tr>'; }).join('')
+      +(docs.length?'<tr class="opd-doc"><td colspan="12" style="font-size:10px;color:var(--mu);padding:2px 26px 6px;">When doctor figures are entered, the clinic row is calculated automatically from them.</td></tr>':''):'';
+    // keep hidden doctor values when collapsed
+    var hidden=!open&&r.docs?Object.keys(r.docs).map(function(dc){ return OPD_K.map(function(k){ var v=r.docs[dc][k]; return (v===''||v==null)?'':'<input type="hidden" class="opd-in" data-dept="'+dp._id+'" data-doc="'+dc+'" data-k="'+k+'" value="'+opdE(v)+'">'; }).join(''); }).join(''):'';
+    return main+sub+(hidden?'<tr style="display:none;"><td>'+hidden+'</td></tr>':'');
+  }).join('');
+  var tf='<tfoot><tr style="background:#e2e8f0;font-weight:800;font-size:12px;"><td style="padding:7px 6px;">Grand Total</td>'+OPD_K.slice(0,8).map(function(k){ return '<td class="opd-ft" data-k="'+k+'" style="text-align:center;">0</td>'; }).join('')+'<td id="opd-ft-gt" style="text-align:center;color:var(--ac);">0</td><td class="opd-ft" data-k="pr" style="text-align:center;">0</td><td></td></tr></tfoot>';
+  body.innerHTML='<div class="card"><div class="cb">'
+    +'<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:10px;">'
+    +'<div class="ff" style="margin:0;"><label>Census date</label><div style="display:flex;gap:4px;"><button class="btn bo" style="font-size:12px;" onclick="opdShiftDate(-1)">◀</button><input type="date" id="opd-date" value="'+d+'" max="'+opdToday()+'" onchange="opdSetDate(this.value)"><button class="btn bo" style="font-size:12px;" onclick="opdShiftDate(1)">▶</button></div></div>'
+    +'<div class="ff" style="margin:0;min-width:180px;"><label>Entered by (OPD Head Nurse)</label><input id="opd-by" value="'+opdE(src.by||src.byName||((typeof CU!=='undefined'&&CU&&CU.name)||''))+'" '+(can?'oninput="opdDirty()"':'disabled')+'></div>'
+    +'<div style="flex:1;min-width:200px;font-size:12px;padding-bottom:8px;" id="opd-state">'+state+'</div>'
+    +(can?'<button class="btn bo" style="font-size:11px;" onclick="opdCopyPrev()" title="Copy which clinics/doctors were active yesterday (values cleared)">⧉ Expand yesterday\'s doctors</button>':'')
+    +'<button class="btn bo" style="font-size:11px;" onclick="opdPrintDay(\''+d+'\')">🖨 Print Census (PDF)</button></div>'
+    +'<div style="overflow:auto;max-height:68vh;border:1px solid var(--bd);border-radius:10px;" id="opd-entry"><table style="width:100%;border-collapse:collapse;min-width:900px;">'+th+'<tbody>'+tb+'</tbody>'+tf+'</table></div>'
+    +'<div class="ff" style="margin-top:10px;"><label>Notes / remarks (clinics closed, doctors on leave, system downtime…)</label><textarea id="opd-notes" rows="2" '+(can?'oninput="opdDirty()"':'disabled')+'>'+opdE(src.notes||'')+'</textarea></div>'
+    +'<div id="opd-check" style="font-size:12px;margin-top:8px;"></div>'
+    +(can?'<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;"><button class="btn bg" id="opd-save" style="flex:1;min-width:220px;padding:12px;font-weight:800;font-size:14px;" onclick="opdSave()">💾 Save Daily OPD Census</button>'
+      +(rec?'<button class="btn br" style="font-size:12px;" onclick="opdDeleteDay()">🗑 Delete this day</button>':'')+(draft?'<button class="btn bo" style="font-size:12px;" onclick="opdDiscardDraft()">Discard draft</button>':'')+'</div>':'<div style="font-size:12px;color:var(--mu);margin-top:8px;">View only — census entry is for the OPD Head Nurse / FMS Director.</div>')
+    +'</div></div>';
+  OPD_DIRTY=!!draft; opdRecalc();
+}
+function opdToggle(id){ if(OPD_DIRTY) opdDraftSave(); OPD_OPEN[id]=!OPD_OPEN[id]; var y=(document.getElementById('opd-entry')||{}).scrollTop||0; opdRenderEntry(); var e=document.getElementById('opd-entry'); if(e) e.scrollTop=y; }
+function opdSetDate(d){ if(!d) return; if(OPD_DIRTY) opdDraftSave(); OPD_UI.date=d; OPD_OPEN={}; opdRenderEntry(); }
+function opdShiftDate(n){ var d=opdAddDays(OPD_UI.date,n); if(d>opdToday()) return; opdSetDate(d); }
+function opdCopyPrev(){ var y=opdCensusAll().filter(function(r){ return r.date<OPD_UI.date; }).sort(function(a,b){ return b.date.localeCompare(a.date); })[0]; if(!y){ toast('No earlier census to copy from','#f59e0b'); return; } Object.keys(y.rows||{}).forEach(function(dp){ if(y.rows[dp].docs&&Object.keys(y.rows[dp].docs).length) OPD_OPEN[dp]=true; }); if(OPD_DIRTY) opdDraftSave(); opdRenderEntry(); toast('Expanded the clinics that had doctor-level entries on '+opdFmtDate(y.date),'#3b82f6'); }
+function opdRecalc(){
+  var cur=opdCollect(), foot=opdZero(), flags=[];
+  opdDepts().forEach(function(dp){
+    var row=document.querySelector('#opd-entry tr.opd-dept[data-dept="'+dp._id+'"]'); if(!row) return;
+    var dd=opdDeptDay(cur[dp._id]), v=dd.v, t=v.tc+v.ti;
+    if(dd.byDoc){ row.querySelectorAll('input.opd-in').forEach(function(el){ el.value=v[el.dataset.k]||''; el.disabled=true; el.style.background='var(--s2)'; el.title='Calculated from doctor rows'; }); }
+    else if(opdCanEdit()){ row.querySelectorAll('input.opd-in').forEach(function(el){ if(el.disabled&&el.title){ el.disabled=false; el.style.background='#fff'; el.title=''; } }); }
+    row.querySelector('.opd-gt').textContent=t;
+    var nat=v.sa+v.ns, msg=[];
+    if(nat>0&&nat!==t) msg.push('Saudi + Non-Saudi ('+nat+') ≠ Grand Total ('+t+')');
+    if(v.ac+v.ai>t) msg.push('Admissions exceed patients seen');
+    if(v.fc+v.fi>t) msg.push('Follow-ups exceed patients seen');
+    var fl=row.querySelector('.opd-flag'); fl.textContent=msg.length?'⚠':(t?'✓':''); fl.style.color=msg.length?'var(--rd)':'var(--gn)'; fl.title=msg.join(' · ');
+    if(msg.length) flags.push('<b>'+opdE(dp.name)+'</b>: '+msg.join('; '));
+    opdAdd(foot,v);
+  });
+  document.querySelectorAll('#opd-entry tr.opd-doc').forEach(function(tr){ var gt=tr.querySelector('.opd-gt-doc'); if(!gt) return; var s=0; tr.querySelectorAll('input.opd-in').forEach(function(el){ if(el.dataset.k==='tc'||el.dataset.k==='ti') s+=opdN(el.value); }); gt.textContent=s; });
+  document.querySelectorAll('#opd-entry .opd-ft').forEach(function(td){ td.textContent=foot[td.dataset.k]; });
+  var g=document.getElementById('opd-ft-gt'); if(g) g.textContent=foot.tc+foot.ti;
+  var ck=document.getElementById('opd-check'), m=opdDerive(foot);
+  if(ck) ck.innerHTML=(m.tot?'<div style="display:flex;gap:14px;flex-wrap:wrap;color:var(--mu);"><span>👥 <b style="color:var(--tx);">'+m.tot+'</b> patients</span><span>🆕 New <b style="color:var(--tx);">'+m.nw+'</b></span><span>🔁 Follow-up <b style="color:var(--tx);">'+m.fuPct+'%</b></span><span>🛏 Admitted <b style="color:var(--tx);">'+m.adm+'</b> ('+m.admPct+'%)</span><span>💳 Insurance <b style="color:var(--tx);">'+m.insPct+'%</b></span><span>🇸🇦 Saudi <b style="color:var(--tx);">'+m.saPct+'%</b></span><span>🩺 Procedures <b style="color:var(--tx);">'+m.pr+'</b></span></div>':'')
+    +(flags.length?'<div style="margin-top:6px;padding:8px 10px;border-radius:8px;background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.3);color:var(--rd);">⚠ Please check: '+flags.join(' · ')+'</div>':'');
+}
+function opdSave(){
+  var btn=document.getElementById('opd-save'); if(btn&&btn.disabled) return;
+  var rows=opdCollect(), by=((document.getElementById('opd-by')||{}).value||'').trim();
+  if(!Object.keys(rows).length&&!confirm('No figures entered. Save an empty census for '+opdFmtDate(OPD_UI.date)+' (e.g. OPD closed)?')) return;
+  if(!by){ toast('Enter the name of the person entering the census','#f59e0b'); document.getElementById('opd-by').focus(); return; }
+  var bad=document.querySelectorAll('#opd-entry .opd-flag[title]:not([title=""])').length;
+  if(bad&&!confirm(bad+' clinic row(s) have data-quality warnings. Save anyway?')) return;
+  if(btn){ btn.disabled=true; btn.textContent='⏳ Saving…'; }
+  try{
+    var prev=opdCensus(OPD_UI.date);
+    opdPutCensus({_id:'opd_'+OPD_UI.date, date:OPD_UI.date, rows:rows, notes:(document.getElementById('opd-notes')||{}).value||'', by:by, byName:by, byRole:opdRole(), createdTs:(prev&&prev.createdTs)||Date.now()});
+    try{ localStorage.removeItem(opdDraftKey(OPD_UI.date)); }catch(e){}
+    OPD_DIRTY=false; toast('✅ OPD census saved for '+opdFmtDate(OPD_UI.date),'#10b981',4000); opdRenderEntry();
+  }catch(err){ opdDraftSave(); toast('⚠ '+(err&&err.message||err),'#dc2626',8000); if(btn){ btn.disabled=false; btn.textContent='💾 Save Daily OPD Census'; } }
+}
+function opdDeleteDay(){ var r=opdCensus(OPD_UI.date); if(!r) return; if(!confirm('Delete the OPD census of '+opdFmtDate(OPD_UI.date)+' from all devices?')) return; r.deleted=true; r.deletedBy=(CU&&CU.name)||''; opdPutCensus(r); toast('🗑 Census deleted','#ef4444'); opdRenderEntry(); }
+function opdDiscardDraft(){ if(!confirm('Discard the unsaved draft for this date?')) return; try{ localStorage.removeItem(opdDraftKey(OPD_UI.date)); }catch(e){} OPD_DIRTY=false; opdRenderEntry(); }
+window.addEventListener('beforeunload',function(e){ if(OPD_DIRTY&&document.getElementById('opd-entry')){ try{ opdDraftSave(); }catch(_){} e.preventDefault(); e.returnValue=''; return ''; } });
+/* ── analytics dashboard ── */
+function opdCurRange(){ return opdRange(OPD_UI.period, OPD_UI.anchor, OPD_UI.from, OPD_UI.to); }
+function opdJoin(){ return Array.prototype.slice.call(arguments).filter(function(x){ return x!==''&&x!=null; }).join(' · '); }
+function opdKpi(ic,val,lbl,sub,col){ return '<div style="flex:1;min-width:128px;background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:10px 12px;"><div style="font-size:11px;color:var(--mu);">'+ic+' '+lbl+'</div><div style="font-size:23px;font-weight:800;color:'+(col||'var(--tx)')+';line-height:1.15;margin-top:2px;">'+val+'</div>'+(sub?'<div style="font-size:10.5px;color:var(--mu);margin-top:2px;">'+sub+'</div>':'')+'</div>'; }
+function opdDeltaSpan(c,p,goodUp){ var d=opdDelta(c,p); if(d==null||!isFinite(d)) return ''; var good=goodUp===undefined?null:(goodUp?d>=0:d<=0); return '<span style="color:'+(good==null?'var(--mu)':good?'var(--gn)':'var(--rd)')+';font-weight:700;">'+opdDeltaTxt(d)+'</span> vs prev.'; }
+function opdDeptTable(A, P, withDocs, forPrint){
+  var T=opdDerive(A.total), rows=opdRank(A.byDept), docsAll=opdRank(A.byDoc);
+  var c=forPrint?'border:1px solid #cbd5e1;padding:4px 6px;':'padding:6px;border-bottom:1px solid var(--bd);';
+  var hdr='<tr style="background:#1e3a5c;color:#fff;font-size:11px;"><th style="'+c+'text-align:left;">Clinic / Doctor</th><th style="'+c+'">Visits</th><th style="'+c+'">Share</th><th style="'+c+'">New</th><th style="'+c+'">Follow-up</th><th style="'+c+'">FU %</th><th style="'+c+'">Admitted</th><th style="'+c+'">Adm %</th><th style="'+c+'">Ins %</th><th style="'+c+'">Saudi %</th><th style="'+c+'">Proc.</th><th style="'+c+'">Δ Visits</th></tr>';
+  var body=rows.map(function(x){ var m=x.m, d=opdDept(x.id)||{name:x.id}, pm=P&&P.byDept[x.id]?opdDerive(P.byDept[x.id]):null, dl=pm?opdDelta(m.tot,pm.tot):null;
+    var r='<tr style="font-size:12px;font-weight:700;background:'+(forPrint?'#f8fafc':'transparent')+';"><td style="'+c+'text-align:left;">'+opdE(d.name)+'</td><td style="'+c+'text-align:center;">'+m.tot+'</td><td style="'+c+'text-align:center;">'+opdPct(m.tot,T.tot)+'%</td><td style="'+c+'text-align:center;">'+m.nw+'</td><td style="'+c+'text-align:center;">'+m.fu+'</td><td style="'+c+'text-align:center;'+(m.fuPct>=70?'color:#dc2626;':'')+'">'+m.fuPct+'%</td><td style="'+c+'text-align:center;">'+m.adm+'</td><td style="'+c+'text-align:center;">'+m.admPct+'%</td><td style="'+c+'text-align:center;">'+m.insPct+'%</td><td style="'+c+'text-align:center;">'+(m.sa+m.ns?m.saPct+'%':'—')+'</td><td style="'+c+'text-align:center;">'+m.pr+'</td><td style="'+c+'text-align:center;color:'+(dl==null?'#94a3b8':dl>=0?'#16a34a':'#dc2626')+';">'+(dl==null?'—':opdDeltaTxt(dl))+'</td></tr>';
+    if(withDocs){ var ds=docsAll.filter(function(y){ return (opdDoc(y.id)||{}).deptId===x.id; });
+      r+=ds.map(function(y,i){ var mm=y.m; return '<tr style="font-size:11px;"><td style="'+c+'text-align:left;padding-left:22px;">'+(i===0&&ds.length>1?'🏅 ':'')+opdE((opdDoc(y.id)||{}).name||y.id)+'</td><td style="'+c+'text-align:center;">'+mm.tot+'</td><td style="'+c+'text-align:center;">'+opdPct(mm.tot,m.tot)+'% of clinic</td><td style="'+c+'text-align:center;">'+mm.nw+'</td><td style="'+c+'text-align:center;">'+mm.fu+'</td><td style="'+c+'text-align:center;">'+mm.fuPct+'%</td><td style="'+c+'text-align:center;">'+mm.adm+'</td><td style="'+c+'text-align:center;">'+mm.admPct+'%</td><td style="'+c+'text-align:center;">'+mm.insPct+'%</td><td style="'+c+'text-align:center;">'+(mm.sa+mm.ns?mm.saPct+'%':'—')+'</td><td style="'+c+'text-align:center;">'+mm.pr+'</td><td style="'+c+'text-align:center;color:#64748b;">'+y.raw.days+' day(s)</td></tr>'; }).join('');
+      if(!ds.length&&opdDocs(x.id).length) r+='<tr style="font-size:11px;color:#94a3b8;"><td colspan="12" style="'+c+'text-align:left;padding-left:22px;">No doctor-level figures entered for this clinic</td></tr>'; }
+    return r; }).join('');
+  var foot='<tr style="font-size:12px;font-weight:800;background:#e2e8f0;"><td style="'+c+'text-align:left;">OPD TOTAL</td><td style="'+c+'text-align:center;">'+T.tot+'</td><td style="'+c+'text-align:center;">100%</td><td style="'+c+'text-align:center;">'+T.nw+'</td><td style="'+c+'text-align:center;">'+T.fu+'</td><td style="'+c+'text-align:center;">'+T.fuPct+'%</td><td style="'+c+'text-align:center;">'+T.adm+'</td><td style="'+c+'text-align:center;">'+T.admPct+'%</td><td style="'+c+'text-align:center;">'+T.insPct+'%</td><td style="'+c+'text-align:center;">'+(T.sa+T.ns?T.saPct+'%':'—')+'</td><td style="'+c+'text-align:center;">'+T.pr+'</td><td style="'+c+'text-align:center;">'+(P?opdDeltaTxt(opdDelta(T.tot,opdDerive(P.total).tot))||'—':'—')+'</td></tr>';
+  return rows.length?'<table style="width:100%;border-collapse:collapse;">'+hdr+body+foot+'</table>':'<div style="font-size:12px;color:#94a3b8;padding:10px;">No census data in this period.</div>';
+}
+function opdTopDocTable(A){
+  var docs=opdRank(A.byDoc); if(!docs.length) return '';
+  var per=opdDepts().map(function(d){ var ds=docs.filter(function(x){ return (opdDoc(x.id)||{}).deptId===d._id; }); return ds.length?{d:d,x:ds[0],n:ds.length}:null; }).filter(Boolean);
+  return '<table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f1f5f9;"><th style="text-align:left;padding:5px;">Clinic</th><th style="text-align:left;padding:5px;">Top doctor</th><th style="padding:5px;">Patients</th><th style="padding:5px;">Admitted</th><th style="padding:5px;">FU %</th></tr>'
+    +per.map(function(p){ return '<tr style="border-top:1px solid #e2e8f0;"><td style="padding:5px;">'+opdE(p.d.name)+'</td><td style="padding:5px;font-weight:700;">🏅 '+opdE((opdDoc(p.x.id)||{}).name)+(p.n>1?' <span style="font-weight:400;color:#64748b;font-size:10px;">of '+p.n+'</span>':'')+'</td><td style="padding:5px;text-align:center;">'+p.x.m.tot+'</td><td style="padding:5px;text-align:center;">'+p.x.m.adm+'</td><td style="padding:5px;text-align:center;">'+p.x.m.fuPct+'%</td></tr>'; }).join('')+'</table>';
+}
+function opdCharts(A){
+  var T=opdDerive(A.total), depts=opdRank(A.byDept), docs=opdRank(A.byDoc).slice(0,10);
+  var deptBars=opdHBars(depts.map(function(x){ return {l:(opdDept(x.id)||{}).name,a:x.m.nw,b:x.m.fu}; }),{legend:[['New',OPD_COL.ac],['Follow-up',OPD_COL.or]]});
+  var conv=opdHBars(depts.filter(function(x){ return x.m.tot>0; }).sort(function(a,b){ return b.m.admPct-a.m.admPct; }).slice(0,12).map(function(x){ return {l:(opdDept(x.id)||{}).name,a:x.m.admPct,adm:x.m.adm}; }),{ca:OPD_COL.rd,fmt:function(x){ return x.a+'% ('+x.adm+')'; }});
+  var docBars=docs.length?opdHBars(docs.map(function(x){ var d=opdDoc(x.id)||{}; return {l:(d.name||x.id).replace(/^Dr\.\s*/,'Dr. ')+' · '+((opdDept(d.deptId)||{}).name||''),a:x.m.tot}; }),{ca:OPD_COL.pu,lw:230}):'<div style="font-size:11px;color:#94a3b8;">Enter patients per doctor to see doctor rankings.</div>';
+  var cat={}; depts.forEach(function(x){ var c=(opdDept(x.id)||{}).specialty||'Other'; cat[c]=(cat[c]||0)+x.m.tot; });
+  var catCols=[OPD_COL.ac,OPD_COL.gn,OPD_COL.pu,OPD_COL.cy,OPD_COL.mu];
+  return {
+    donuts:'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;">'
+      +opdDonut([{l:'New',v:T.nw,c:OPD_COL.ac},{l:'Follow-up',v:T.fu,c:OPD_COL.or}],'Visit type')
+      +opdDonut([{l:'Insurance',v:T.ins,c:OPD_COL.cy},{l:'Cash',v:T.cash,c:OPD_COL.gn}],'Payer mix')
+      +opdDonut([{l:'Saudi',v:T.sa,c:OPD_COL.gn},{l:'Non-Saudi',v:T.ns,c:OPD_COL.mu}],'Nationality')
+      +opdDonut(Object.keys(cat).map(function(k,i){ return {l:k,v:cat[k],c:catCols[i%catCols.length]}; }),'Service line')+'</div>',
+    deptBars:deptBars, conv:conv, docBars:docBars, trend:opdTrend(A)
+  };
+}
+function opdRenderDash(){
+  var body=document.getElementById('opd-body'); if(!body) return;
+  var rg=opdCurRange(), pr=opdPrevRange(rg), A=opdAggregate(rg.from,rg.to,OPD_UI.dept), P=opdAggregate(pr.from,pr.to,OPD_UI.dept);
+  var T=opdDerive(A.total), PT=opdDerive(P.total), ch=opdCharts(A), an=opdAnalyse(A,P.reported?P:null,rg);
+  var depts=opdRank(A.byDept), docs=opdRank(A.byDoc), top=depts[0], td=docs[0];
+  var pbtn=function(k,l){ var a=OPD_UI.period===k; return '<button onclick="OPD_UI.period=\''+k+'\';opdRenderDash()" style="font-size:12px;padding:6px 12px;border-radius:8px;cursor:pointer;border:1px solid var(--ac);background:'+(a?'var(--ac)':'transparent')+';color:'+(a?'#fff':'var(--ac)')+';font-weight:700;">'+l+'</button>'; };
+  var anchorIn = OPD_UI.period==='month' ? '<input type="month" value="'+OPD_UI.anchor.slice(0,7)+'" onchange="if(this.value){OPD_UI.anchor=this.value+\'-01\';opdRenderDash();}">'
+    : OPD_UI.period==='custom' ? '<input type="date" value="'+(OPD_UI.from||rg.from)+'" onchange="OPD_UI.from=this.value;opdRenderDash()"> → <input type="date" value="'+(OPD_UI.to||rg.to)+'" onchange="OPD_UI.to=this.value;opdRenderDash()">'
+    : '<input type="date" value="'+OPD_UI.anchor+'" onchange="if(this.value){OPD_UI.anchor=this.value;opdRenderDash();}">';
+  var card=function(t,c,extra){ return '<div class="card" style="margin-bottom:12px;"><div class="ch"><div class="ct">'+t+'</div>'+(extra||'')+'</div><div class="cb">'+c+'</div></div>'; };
+  var aiCached = OPD_UI.aiText && OPD_UI.aiFor===(rg.label+'|'+OPD_UI.dept);
+  body.innerHTML=
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">'+pbtn('day','Daily')+pbtn('week','Weekly')+pbtn('month','Monthly')+pbtn('custom','Custom')+anchorIn
+    +'<select onchange="OPD_UI.dept=this.value;opdRenderDash()" style="font-size:12px;padding:6px;border:1px solid var(--bd);border-radius:8px;"><option value="all">All clinics</option>'+opdDepts(true).map(function(d){ return '<option value="'+d._id+'"'+(OPD_UI.dept===d._id?' selected':'')+'>'+opdE(d.name)+'</option>'; }).join('')+'</select>'
+    +'<label style="font-size:12px;display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" '+(OPD_UI.docs?'checked':'')+' onchange="OPD_UI.docs=this.checked;opdRenderDash()"> Include doctors</label>'
+    +'<span style="flex:1;"></span><button class="btn bp" style="font-size:12px;font-weight:800;" onclick="opdReport()">📄 '+rg.kind+' Report (PDF)</button><button class="btn bo" style="font-size:12px;" onclick="opdExportCSV()">⬇ CSV</button></div>'
+    +'<div style="font-size:13px;font-weight:800;margin-bottom:8px;">'+opdE(rg.label)+(OPD_UI.dept!=='all'?' · '+opdE((opdDept(OPD_UI.dept)||{}).name):'')+' <span style="font-weight:400;color:var(--mu);font-size:12px;">· '+A.reported+' of '+A.elapsed.length+' elapsed day(s) reported'+(A.elapsed.length<A.days.length?' (period in progress)':'')+'</span></div>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">'
+      +opdKpi('👥',T.tot.toLocaleString(),'Patients seen',opdJoin(opdDeltaSpan(T.tot,PT.tot,true),A.reported>1?'≈'+Math.round(T.tot/A.reported).toLocaleString()+'/day':''),'var(--ac)')
+      +opdKpi('🆕',T.nw.toLocaleString(),'New visits',(T.tot?Math.round((100-T.fuPct)*10)/10:0)+'% of visits')
+      +opdKpi('🔁',T.fuPct+'%','Follow-up rate',opdJoin(T.fu.toLocaleString()+' follow-ups',opdDeltaSpan(T.fuPct,PT.fuPct,false)),T.fuPct>=65?'var(--rd)':'var(--tx)')
+      +opdKpi('🛏',T.adm.toLocaleString(),'Admissions',opdJoin('conversion '+T.admPct+'%',opdDeltaSpan(T.adm,PT.adm,true)),'var(--rd)')
+      +opdKpi('🇸🇦',T.sa+T.ns?T.saPct+'%':'—','Saudi',T.sa.toLocaleString()+' Saudi · '+T.ns.toLocaleString()+' non-Saudi','var(--gn)')
+      +opdKpi('💳',T.insPct+'%','Insurance',T.ins.toLocaleString()+' insured · '+T.cash.toLocaleString()+' cash')
+      +opdKpi('🩺',T.pr.toLocaleString(),'Procedures',T.prPer100+' per 100 visits')
+      +opdKpi('🏆',top?opdE((opdDept(top.id)||{}).name):'—','Busiest clinic',top?top.m.tot+' visits ('+opdPct(top.m.tot,T.tot)+'%)':'')
+      +opdKpi('👨‍⚕️',td?opdE((opdDoc(td.id)||{}).name):'—','Top doctor',td?td.m.tot+' patients · '+opdE((opdDept((opdDoc(td.id)||{}).deptId)||{}).name||''):'enter per-doctor figures')
+    +'</div>'
+    +card('🧠 Analysis — '+opdE(rg.kind)+' review', opdAnalysisHTML(an)+'<div id="opd-ai-out" style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--bd);">'+(aiCached?opdAITextHTML(OPD_UI.aiText):'')+'</div>',
+      '<button id="opd-ai-btn" class="btn bp" style="font-size:11px;'+(OPD_SYNC.ai?'':'display:none;')+'" onclick="opdAskAI()">✨ Deep AI analysis (Claude)</button>')
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:12px;">'
+      +card('📊 Visits by clinic — new vs follow-up', ch.deptBars)
+      +card('🧩 Mix', ch.donuts)
+    +'</div>'
+    +(ch.trend?card('📈 Daily trend', ch.trend):'')
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:12px;">'
+      +card('🛏 Admission conversion by clinic', ch.conv)
+      +card('👨‍⚕️ Top 10 doctors by patients seen', ch.docBars)
+    +'</div>'
+    +card('🏅 Highest-volume doctor in each clinic', opdTopDocTable(A)||'<div style="font-size:12px;color:var(--mu);">Enter patients per doctor (expand a clinic in Daily Entry) to see doctor leaders.</div>')
+    +card('🏥 By clinic'+(OPD_UI.docs?' — with doctors':''), '<div style="overflow:auto;">'+opdDeptTable(A,P.reported?P:null,OPD_UI.docs,false)+'</div>');
+}
+function opdExportCSV(){
+  var rg=opdCurRange(), recs=opdCensusAll().filter(function(r){ return r.date>=rg.from&&r.date<=rg.to; }).sort(function(a,b){ return a.date.localeCompare(b.date); });
+  if(!recs.length){ toast('No census data in this period','#f59e0b'); return; }
+  var out=[['Date','Clinic','Doctor','Total Cash','Total Insurance','Admission Cash','Admission Insurance','Follow-up Cash','Follow-up Insurance','Saudi','Non-Saudi','Grand Total','Procedures','Entered by','Notes']];
+  recs.forEach(function(r){ opdDepts(true).forEach(function(d){ var row=(r.rows||{})[d._id]; if(!row) return; var dd=opdDeptDay(row), v=dd.v;
+    if(opdHasAny(v)) out.push([r.date,d.name,dd.byDoc?'(clinic total)':'',v.tc,v.ti,v.ac,v.ai,v.fc,v.fi,v.sa,v.ns,v.tc+v.ti,v.pr,r.byName||'',r.notes||'']);
+    Object.keys(row.docs||{}).forEach(function(dc){ var x=opdAdd(opdZero(),row.docs[dc]); if(opdHasAny(x)) out.push([r.date,d.name,(opdDoc(dc)||{}).name||dc,x.tc,x.ti,x.ac,x.ai,x.fc,x.fi,x.sa,x.ns,x.tc+x.ti,x.pr,'','']); }); }); });
+  var csv='\ufeff'+out.map(function(r){ return r.map(function(v){ return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+  var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); a.download='OPD_Census_'+rg.from+'_to_'+rg.to+'.csv'; document.body.appendChild(a); a.click(); setTimeout(function(){ a.remove(); },500);
+  toast('⬇ Exported '+recs.length+' day(s) of OPD census','#10b981');
+}
+
+/* ── professional printable report (daily / weekly / monthly / custom) ── */
+function opdReport(){
+  var rg=opdCurRange(), pr=opdPrevRange(rg), A=opdAggregate(rg.from,rg.to,OPD_UI.dept), P=opdAggregate(pr.from,pr.to,OPD_UI.dept);
+  var T=opdDerive(A.total), PT=opdDerive(P.total), ch=opdCharts(A), an=opdAnalyse(A,P.reported?P:null,rg), depts=opdRank(A.byDept), docs=opdRank(A.byDoc);
+  if(!T.tot&&!confirm('No census data in '+rg.label+'. Print an empty report?')) return;
+  var w=window.open('','_blank'); if(!w){ toast('Allow pop-ups to print the report','#f59e0b'); return; }
+  var kp=function(l,v,s,col){ return '<div class="kp"><div class="kl">'+l+'</div><div class="kv" style="color:'+(col||'#0f172a')+';">'+v+'</div><div class="ks">'+(s||'')+'</div></div>'; };
+  var dl=function(c,p){ var d=opdDelta(c,p); return d==null||!isFinite(d)?'':opdDeltaTxt(d)+' vs prev.'; };
+  var li=function(a){ return a.length?'<ul>'+a.map(function(x){ return '<li>'+x+'</li>'; }).join('')+'</ul>':'<p class="mu">None.</p>'; };
+  var who=(typeof CU!=='undefined'&&CU&&CU.name)||'';
+  var ai = (OPD_UI.aiText && OPD_UI.aiFor===(rg.label+'|'+OPD_UI.dept)) ? '<h2>AI Advisory Review (Claude)</h2><div class="box">'+opdAITextHTML(OPD_UI.aiText).replace(/var\(--ac\)/g,'#1e3a5c')+'</div>' : '';
+  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>OPD '+opdE(rg.kind)+' Census Report — '+opdE(rg.label)+'</title><style>'
+    +'@page{size:A4;margin:13mm 12mm;} *{box-sizing:border-box;} body{font-family:Arial,Helvetica,sans-serif;color:#0f172a;font-size:11.5px;margin:0;}'
+    +'.hdr{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1e3a5c;padding-bottom:8px;margin-bottom:12px;} .hdr h1{margin:0;font-size:20px;color:#1e3a5c;} .hdr .s{color:#475569;font-size:11px;}'
+    +'h2{font-size:13.5px;color:#1e3a5c;border-bottom:2px solid #1e3a5c;padding-bottom:3px;margin:16px 0 8px;page-break-after:avoid;} .mu{color:#64748b;}'
+    +'.kps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;} .kp{border:1px solid #cbd5e1;border-radius:8px;padding:7px 9px;} .kl{font-size:9.5px;color:#64748b;text-transform:uppercase;letter-spacing:.3px;} .kv{font-size:19px;font-weight:800;margin-top:1px;} .ks{font-size:9.5px;color:#64748b;}'
+    +'.box{border:1px solid #cbd5e1;border-radius:8px;padding:9px 11px;line-height:1.5;} ul{margin:4px 0;padding-left:18px;} li{margin:3px 0;}'
+    +'.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;} .blk{page-break-inside:avoid;} table{page-break-inside:auto;} tr{page-break-inside:avoid;}'
+    +'.sig{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:26px;} .sig div{border-top:1px solid #0f172a;padding-top:4px;font-size:10.5px;text-align:center;}'
+    +'.foot{margin-top:14px;font-size:9.5px;color:#94a3b8;text-align:center;}'
+    +'</style></head><body>'
+    +'<div class="hdr"><div><h1>Obeid Specialized Hospital</h1><div class="s">Outpatient Department · '+opdE(rg.kind)+' OPD Census Report</div></div><div style="text-align:right;"><div style="font-size:15px;font-weight:800;">'+opdE(rg.label)+'</div><div class="s">'+(OPD_UI.dept!=='all'?'Clinic: '+opdE((opdDept(OPD_UI.dept)||{}).name)+' · ':'')+A.reported+' of '+A.elapsed.length+' elapsed day(s) reported'+(A.elapsed.length<A.days.length?' (period in progress)':'')+' · generated '+new Date().toLocaleString('en-GB')+'</div></div></div>'
+    +'<h2>Executive Summary</h2><div class="box">'+an.summary+'</div>'
+    +'<h2>Key Performance Indicators</h2><div class="kps">'
+      +kp('Patients seen',T.tot.toLocaleString(),opdJoin(dl(T.tot,PT.tot),A.reported>1?'≈'+Math.round(T.tot/A.reported).toLocaleString()+'/day':''),'#0070f3')
+      +kp('New visits',T.nw.toLocaleString(),(T.tot?Math.round((100-T.fuPct)*10)/10:0)+'% of visits')
+      +kp('Follow-up rate',T.fuPct+'%',opdJoin(T.fu.toLocaleString()+' follow-ups',dl(T.fuPct,PT.fuPct)))
+      +kp('Admissions',T.adm.toLocaleString(),opdJoin('conversion '+T.admPct+'%',dl(T.adm,PT.adm)),'#dc2626')
+      +kp('Saudi',T.sa+T.ns?T.saPct+'%':'—',T.sa.toLocaleString()+' Saudi · '+T.ns.toLocaleString()+' non-Saudi','#16a34a')
+      +kp('Insurance',T.insPct+'%',T.ins.toLocaleString()+' insured · '+T.cash.toLocaleString()+' cash')
+      +kp('Procedures',T.pr.toLocaleString(),T.prPer100+' per 100 visits')
+      +kp('Busiest clinic',depts[0]?opdE((opdDept(depts[0].id)||{}).name):'—',depts[0]?depts[0].m.tot+' visits ('+opdPct(depts[0].m.tot,T.tot)+'%)':'')
+    +'</div>'
+    +'<div class="blk"><h2>Patient Mix</h2>'+ch.donuts+'</div>'
+    +(ch.trend?'<div class="blk"><h2>Daily Trend</h2>'+ch.trend+'</div>':'')
+    +'<div class="blk"><h2>Visits by Clinic — New vs Follow-up</h2>'+ch.deptBars+'</div>'
+    +'<h2>Clinic Performance'+(OPD_UI.docs?' (with doctors)':'')+'</h2>'+opdDeptTable(A,P.reported?P:null,OPD_UI.docs,true)
+    +'<div class="grid2 blk"><div><h2>Admission Conversion</h2>'+ch.conv+'</div><div><h2>Top 10 Doctors</h2>'+ch.docBars+'</div></div>'
+    +(docs.length?'<div class="blk"><h2>Highest-Volume Doctor per Clinic</h2>'+opdTopDocTable(A)+'</div>':'')
+    +'<h2>Analysis — Key Findings</h2><div class="box">'+li(an.findings)+'</div>'
+    +'<h2>Attention Points & Data Quality</h2><div class="box">'+li(an.warns)+'</div>'
+    +'<h2>Recommendations</h2><div class="box">'+li(an.recs)+'</div>'
+    +ai
+    +'<div class="sig"><div>OPD Head Nurse'+(who?'<br><span style="color:#64748b;">'+opdE(who)+'</span>':'')+'</div><div>Nursing Director</div><div>Medical Director</div></div>'
+    +'<div class="foot">Obeid FMS Command Platform · OPD Census Module · Figures as entered in the daily OPD census; doctor rankings use doctor-level entries only.</div>'
+    +'<scr'+'ipt>window.onload=function(){setTimeout(function(){window.print();},450);};</scr'+'ipt></body></html>';
+  w.document.write(html); w.document.close();
+}
+/* ── daily census print (same layout as the paper form) ── */
+function opdPrintDay(date){
+  if(OPD_UI.tab==='entry'&&OPD_DIRTY&&!confirm('You have unsaved changes — the printout shows the last SAVED census. Continue?')) return;
+  var r=opdCensus(date); if(!r){ toast('Save the census for this date first','#f59e0b'); return; }
+  var w=window.open('','_blank'); if(!w){ toast('Allow pop-ups to print','#f59e0b'); return; }
+  var c='border:1px solid #334155;padding:4px 5px;text-align:center;', tot=opdZero(), docRows='';
+  var body=opdDepts(true).map(function(d){ var row=(r.rows||{})[d._id], dd=opdDeptDay(row), v=dd.v; opdAdd(tot,v);
+    if(row&&row.docs) Object.keys(row.docs).forEach(function(dc){ var x=opdAdd(opdZero(),row.docs[dc]); if(opdHasAny(x)) docRows+='<tr><td style="'+c+'text-align:left;">'+opdE(d.name)+'</td><td style="'+c+'text-align:left;">'+opdE((opdDoc(dc)||{}).name||dc)+'</td>'+OPD_K.slice(0,8).map(function(k){ return '<td style="'+c+'">'+(x[k]||'')+'</td>'; }).join('')+'<td style="'+c+'font-weight:bold;">'+(x.tc+x.ti)+'</td><td style="'+c+'">'+(x.pr||'')+'</td></tr>'; });
+    if(!opdHasAny(v)&&!d.active) return '';
+    return '<tr><td style="'+c+'text-align:left;font-weight:bold;">'+opdE(d.name)+'</td>'+OPD_K.slice(0,8).map(function(k){ return '<td style="'+c+'">'+(v[k]||'')+'</td>'; }).join('')+'<td style="'+c+'font-weight:bold;">'+((v.tc+v.ti)||'')+'</td><td style="'+c+'">'+(v.pr||'')+'</td></tr>'; }).join('');
+  var hdr2='<th style="'+c+'">Cash</th><th style="'+c+'">Insurance</th><th style="'+c+'">Cash</th><th style="'+c+'">Insurance</th><th style="'+c+'">Cash</th><th style="'+c+'">Insurance</th><th style="'+c+'">SAUDI</th><th style="'+c+'">NON-SAUDI</th>';
+  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>OPD Daily Census — '+date+'</title><style>@page{size:A4 landscape;margin:10mm;} body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#0f172a;} table{border-collapse:collapse;width:100%;} th{background:#dbe4f0;font-size:10.5px;}</style></head><body>'
+    +'<div style="text-align:center;margin-bottom:8px;"><div style="font-size:18px;font-weight:bold;">Obeid Specialized Hospital</div><div style="font-size:15px;font-weight:bold;margin-top:2px;">OPD DAILY CENSUS</div><div style="margin-top:4px;">Date: <b>'+opdFmtDate(date)+'</b></div></div>'
+    +'<table><tr><th rowspan="2" style="'+c+'width:150px;">CLINICS</th><th colspan="2" style="'+c+'">TOTAL</th><th colspan="2" style="'+c+'">ADMISSION</th><th colspan="2" style="'+c+'">FOLLOW-UP</th><th colspan="2" style="'+c+'">NATIONALITY</th><th rowspan="2" style="'+c+'">GRAND TOTAL</th><th rowspan="2" style="'+c+'">PROCEDURES</th></tr><tr>'+hdr2+'</tr>'
+    +body+'<tr style="background:#e2e8f0;font-weight:bold;"><td style="'+c+'text-align:left;">Grand Total</td>'+OPD_K.slice(0,8).map(function(k){ return '<td style="'+c+'">'+tot[k]+'</td>'; }).join('')+'<td style="'+c+'">'+(tot.tc+tot.ti)+'</td><td style="'+c+'">'+tot.pr+'</td></tr></table>'
+    +(r.notes?'<div style="margin-top:8px;"><b>Notes:</b> '+opdE(r.notes)+'</div>':'')
+    +(docRows?'<div style="page-break-before:always;"></div><div style="font-size:14px;font-weight:bold;margin:6px 0;">Doctor breakdown — '+opdFmtDate(date)+'</div><table><tr><th rowspan="2" style="'+c+'">Clinic</th><th rowspan="2" style="'+c+'">Doctor</th><th colspan="2" style="'+c+'">TOTAL</th><th colspan="2" style="'+c+'">ADMISSION</th><th colspan="2" style="'+c+'">FOLLOW-UP</th><th colspan="2" style="'+c+'">NATIONALITY</th><th rowspan="2" style="'+c+'">GRAND TOTAL</th><th rowspan="2" style="'+c+'">PROC.</th></tr><tr>'+hdr2+'</tr>'+docRows+'</table>':'')
+    +'<div style="display:flex;justify-content:space-between;margin-top:30px;"><div style="border-top:1px solid #0f172a;width:30%;text-align:center;padding-top:4px;">OPD Head Nurse: '+opdE(r.byName||'')+'</div><div style="border-top:1px solid #0f172a;width:30%;text-align:center;padding-top:4px;">Nursing Director</div></div>'
+    +'<scr'+'ipt>window.onload=function(){setTimeout(function(){window.print();},350);};</scr'+'ipt></body></html>';
+  w.document.write(html); w.document.close();
+}
+/* ── departments & doctors master data ── */
+var OPD_MF = {dept:'all', q:''};
+function opdRenderMaster(){
+  var body=document.getElementById('opd-body'); if(!body) return;
+  var can=opdCanEdit(), depts=opdDepts(true), docs=opdDocs(null,true);
+  var dl=depts.map(function(d){ var n=docs.filter(function(x){ return x.deptId===d._id; }).length;
+    return '<tr style="border-top:1px solid var(--bd);'+(d.active?'':'opacity:.55;')+'"><td style="padding:6px;color:var(--mu);font-size:11px;">'+d.order+'</td><td style="padding:6px;font-weight:700;">'+opdE(d.name)+(d.active?'':' <span style="font-size:10px;color:var(--rd);">(inactive)</span>')+'</td><td style="padding:6px;font-size:12px;">'+opdE(d.specialty||'')+'</td>'
+      +'<td style="padding:6px;text-align:center;"><a href="#" onclick="OPD_MF.dept=\''+d._id+'\';opdRenderMaster();return false;">'+n+'</a></td>'
+      +(can?'<td style="padding:6px;white-space:nowrap;text-align:right;"><button class="btn bo" style="font-size:10px;padding:2px 7px;" onclick="opdDeptForm(\''+d._id+'\')">✏</button> <button class="btn br" style="font-size:10px;padding:2px 7px;" onclick="opdDeptDelete(\''+d._id+'\')">🗑</button></td>':'')+'</tr>'; }).join('');
+  var fdocs=docs.filter(function(x){ return (OPD_MF.dept==='all'||x.deptId===OPD_MF.dept) && (!OPD_MF.q||(x.name+' '+(x.specialty||'')).toLowerCase().indexOf(OPD_MF.q.toLowerCase())>=0); })
+    .sort(function(a,b){ var da=(opdDept(a.deptId)||{}).order||99, db=(opdDept(b.deptId)||{}).order||99; return da-db||a.name.localeCompare(b.name); });
+  var drl=fdocs.map(function(x){ var d=opdDept(x.deptId)||{name:'— unassigned —'};
+    return '<tr style="border-top:1px solid var(--bd);'+(x.active?'':'opacity:.55;')+'"><td style="padding:6px;font-weight:700;">👨‍⚕️ '+opdE(x.name)+(x.active?'':' <span style="font-size:10px;color:var(--rd);">(inactive)</span>')+'</td><td style="padding:6px;font-size:12px;">'+opdE(d.name)+'</td><td style="padding:6px;font-size:12px;">'+opdE(x.specialty||'')+'</td>'
+      +(can?'<td style="padding:6px;white-space:nowrap;text-align:right;"><button class="btn bo" style="font-size:10px;padding:2px 7px;" onclick="opdDocForm(\''+x._id+'\')">✏</button> <button class="btn br" style="font-size:10px;padding:2px 7px;" onclick="opdDocDelete(\''+x._id+'\')">🗑</button></td>':'')+'</tr>'; }).join('');
+  body.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:12px;">'
+    +'<div class="card"><div class="ch"><div class="ct">🏥 Clinics / Departments ('+depts.length+')</div>'+(can?'<button class="btn bg" style="font-size:11px;" onclick="opdDeptForm(null)">+ Add clinic</button>':'')+'</div><div class="cb" style="overflow:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><tr style="text-align:left;color:var(--mu);font-size:11px;"><th style="padding:6px;">#</th><th style="padding:6px;">Clinic</th><th style="padding:6px;">Service line</th><th style="padding:6px;text-align:center;">Doctors</th>'+(can?'<th></th>':'')+'</tr>'+dl+'</table></div></div>'
+    +'<div class="card"><div class="ch"><div class="ct">👨‍⚕️ Doctors ('+fdocs.length+(fdocs.length!==docs.length?' of '+docs.length:'')+')</div>'+(can?'<button class="btn bg" style="font-size:11px;" onclick="opdDocForm(null)">+ Add doctor</button>':'')+'</div><div class="cb">'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;"><select onchange="OPD_MF.dept=this.value;opdRenderMaster()" style="font-size:12px;padding:5px;border:1px solid var(--bd);border-radius:7px;"><option value="all">All clinics</option>'+depts.map(function(d){ return '<option value="'+d._id+'"'+(OPD_MF.dept===d._id?' selected':'')+'>'+opdE(d.name)+'</option>'; }).join('')+'</select>'
+    +'<input placeholder="🔍 search doctor / specialty" value="'+opdE(OPD_MF.q)+'" oninput="OPD_MF.q=this.value;clearTimeout(window._opdQ);window._opdQ=setTimeout(opdRenderMaster,250)" style="flex:1;min-width:150px;font-size:12px;padding:5px 8px;border:1px solid var(--bd);border-radius:7px;"></div>'
+    +'<div style="overflow:auto;max-height:520px;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><tr style="text-align:left;color:var(--mu);font-size:11px;"><th style="padding:6px;">Doctor</th><th style="padding:6px;">Clinic</th><th style="padding:6px;">Specialty</th>'+(can?'<th></th>':'')+'</tr>'+(drl||'<tr><td colspan="4" style="padding:10px;color:var(--mu);font-size:12px;">No doctors match.</td></tr>')+'</table></div></div></div></div>'
+    +'<div style="display:flex;gap:8px;margin-top:4px;"><button class="btn bo" style="font-size:12px;" onclick="opdMasterExport()">⬇ Export directory (CSV)</button><button class="btn bo" style="font-size:12px;" onclick="opdMasterPrint()">🖨 Print directory (PDF)</button></div>';
+}
+function opdDeptForm(id){
+  if(!opdCanEdit()) return; var d=id?opdDept(id):{name:'',specialty:'Medical',order:opdDepts(true).length+1,active:true};
+  var html='<div style="display:flex;justify-content:space-between;align-items:center;"><div style="font-weight:800;font-size:16px;">🏥 '+(id?'Edit clinic':'Add clinic')+'</div><button class="btn bo" style="font-size:11px;" onclick="joClose(\'opd-m\')">✕</button></div>'
+    +'<div class="ff" style="margin-top:10px;"><label>Clinic / department name *</label><input id="opdm-name" value="'+opdE(d.name)+'"></div>'
+    +'<div class="fg fg2"><div class="ff"><label>Service line / specialty group</label><select id="opdm-spec">'+OPD_CATS.map(function(c){ return '<option'+(d.specialty===c?' selected':'')+'>'+c+'</option>'; }).join('')+'</select></div><div class="ff"><label>Display order</label><input id="opdm-order" type="number" min="1" value="'+(d.order||1)+'"></div></div>'
+    +'<label style="display:flex;gap:6px;align-items:center;font-size:13px;margin-top:6px;"><input type="checkbox" id="opdm-active"'+(d.active?' checked':'')+'> Active (shown in daily entry)</label>'
+    +'<button class="btn bg" style="width:100%;margin-top:12px;padding:10px;font-weight:800;" onclick="opdDeptSave(\''+(id||'')+'\')">💾 Save clinic</button>';
+  joModal('opd-m', html, 460);
+}
+function opdDeptSave(id){
+  var name=(document.getElementById('opdm-name').value||'').trim(); if(!name){ toast('Enter the clinic name','#f59e0b'); return; }
+  if(opdDepts(true).some(function(d){ return d._id!==id && d.name.toLowerCase()===name.toLowerCase(); })){ toast('A clinic with this name already exists','#f59e0b'); return; }
+  var rec=id?Object.assign({},opdDept(id)):{_id:'od_'+name.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')+'_'+Date.now().toString(36).slice(-4)};
+  rec.name=name; rec.specialty=document.getElementById('opdm-spec').value; rec.order=Number(document.getElementById('opdm-order').value)||99; rec.active=document.getElementById('opdm-active').checked; rec.deleted=false;
+  opdPutMaster('dept',rec); joClose('opd-m'); toast('✓ Clinic saved','#10b981'); opdRenderMaster();
+}
+function opdDeptDelete(id){
+  var d=opdDept(id); if(!d) return; var ds=opdDocs(id,true);
+  if(!confirm('Delete clinic "'+d.name+'"?'+(ds.length?'\nIts '+ds.length+' doctor(s) will also be removed.':'')+'\nPast census figures stay in the reports.')) return;
+  d.deleted=true; d.active=false; opdPutMaster('dept',d); ds.forEach(function(x){ x.deleted=true; x.active=false; opdPutMaster('doc',x); });
+  toast('🗑 Clinic removed','#ef4444'); opdRenderMaster();
+}
+function opdDocForm(id){
+  if(!opdCanEdit()) return; var x=id?opdDoc(id):{name:'Dr. ',deptId:OPD_MF.dept!=='all'?OPD_MF.dept:'',specialty:'',active:true};
+  var html='<div style="display:flex;justify-content:space-between;align-items:center;"><div style="font-weight:800;font-size:16px;">👨‍⚕️ '+(id?'Edit doctor':'Add doctor')+'</div><button class="btn bo" style="font-size:11px;" onclick="joClose(\'opd-m\')">✕</button></div>'
+    +'<div class="ff" style="margin-top:10px;"><label>Doctor name *</label><input id="opdm-name" value="'+opdE(x.name)+'"></div>'
+    +'<div class="fg fg2"><div class="ff"><label>Clinic *</label><select id="opdm-dept" onchange="var s=document.getElementById(\'opdm-spec\'); if(s&&!s.value) s.value=this.options[this.selectedIndex].text;"><option value="">— select —</option>'+opdDepts(true).map(function(d){ return '<option value="'+d._id+'"'+(x.deptId===d._id?' selected':'')+'>'+opdE(d.name)+'</option>'; }).join('')+'</select></div>'
+    +'<div class="ff"><label>Specialty / sub-specialty</label><input id="opdm-spec" value="'+opdE(x.specialty||'')+'" placeholder="e.g. Interventional Cardiology"></div></div>'
+    +'<label style="display:flex;gap:6px;align-items:center;font-size:13px;margin-top:6px;"><input type="checkbox" id="opdm-active"'+(x.active?' checked':'')+'> Active (shown in daily entry)</label>'
+    +(id?'<div style="font-size:11px;color:var(--mu);margin-top:6px;">Moving a doctor to another clinic affects future entries only; past census stays under the clinic where it was recorded.</div>':'')
+    +'<button class="btn bg" style="width:100%;margin-top:12px;padding:10px;font-weight:800;" onclick="opdDocSave(\''+(id||'')+'\')">💾 Save doctor</button>';
+  joModal('opd-m', html, 520);
+}
+function opdDocSave(id){
+  var name=(document.getElementById('opdm-name').value||'').trim().replace(/\s+/g,' '), dept=document.getElementById('opdm-dept').value;
+  if(!name||/^Dr\.?$/i.test(name)){ toast('Enter the doctor name','#f59e0b'); return; } if(!dept){ toast('Select the clinic','#f59e0b'); return; }
+  if(!/^Dr\.?\s/i.test(name)) name='Dr. '+name;
+  if(opdDocs(null,true).some(function(d){ return d._id!==id && d.name.toLowerCase()===name.toLowerCase() && d.deptId===dept; })){ toast('This doctor already exists in that clinic','#f59e0b'); return; }
+  var rec=id?Object.assign({},opdDoc(id)):{_id:'dr_'+name.toLowerCase().replace(/^dr\.?\s*/,'').replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')+'_'+Date.now().toString(36).slice(-4)};
+  rec.name=name; rec.deptId=dept; rec.specialty=(document.getElementById('opdm-spec').value||'').trim()||(opdDept(dept)||{}).name; rec.active=document.getElementById('opdm-active').checked; rec.deleted=false;
+  opdPutMaster('doc',rec); joClose('opd-m'); toast('✓ Doctor saved','#10b981'); opdRenderMaster();
+}
+function opdDocDelete(id){ var x=opdDoc(id); if(!x) return; if(!confirm('Remove '+x.name+' from the doctor list?\nPast census figures stay in the reports.')) return; x.deleted=true; x.active=false; opdPutMaster('doc',x); toast('🗑 Doctor removed','#ef4444'); opdRenderMaster(); }
+function opdMasterExport(){
+  var out=[['Clinic','Service line','Clinic active','Doctor','Specialty','Doctor active']];
+  opdDepts(true).forEach(function(d){ var ds=opdDocs(d._id,true); if(!ds.length) out.push([d.name,d.specialty,d.active?'Yes':'No','','','']); ds.forEach(function(x){ out.push([d.name,d.specialty,d.active?'Yes':'No',x.name,x.specialty||'',x.active?'Yes':'No']); }); });
+  var csv='\ufeff'+out.map(function(r){ return r.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+  var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); a.download='OPD_Clinics_Doctors_'+opdToday()+'.csv'; document.body.appendChild(a); a.click(); setTimeout(function(){ a.remove(); },500);
+}
+function opdMasterPrint(){
+  var w=window.open('','_blank'); if(!w){ toast('Allow pop-ups to print','#f59e0b'); return; }
+  var rows=opdDepts(true).map(function(d){ var ds=opdDocs(d._id,true); return '<tr><td style="border:1px solid #94a3b8;padding:5px 7px;font-weight:bold;vertical-align:top;" rowspan="'+Math.max(1,ds.length)+'">'+opdE(d.name)+'<div style="font-weight:normal;color:#64748b;font-size:10px;">'+opdE(d.specialty)+(d.active?'':' · inactive')+'</div></td>'
+    +(ds.length?ds.map(function(x,i){ return (i?'<tr>':'')+'<td style="border:1px solid #94a3b8;padding:5px 7px;">'+opdE(x.name)+(x.active?'':' <i style="color:#dc2626;">(inactive)</i>')+'</td><td style="border:1px solid #94a3b8;padding:5px 7px;">'+opdE(x.specialty||'')+'</td></tr>'; }).join(''):'<td style="border:1px solid #94a3b8;padding:5px 7px;color:#94a3b8;" colspan="2">No doctors assigned</td></tr>'); }).join('');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>OPD Clinics & Doctors Directory</title><style>@page{size:A4;margin:12mm;} body{font-family:Arial,Helvetica,sans-serif;font-size:11.5px;color:#0f172a;} table{border-collapse:collapse;width:100%;} th{background:#1e3a5c;color:#fff;padding:6px;text-align:left;} tr{page-break-inside:avoid;}</style></head><body>'
+    +'<div style="border-bottom:3px solid #1e3a5c;padding-bottom:6px;margin-bottom:10px;"><div style="font-size:18px;font-weight:bold;color:#1e3a5c;">Obeid Specialized Hospital — OPD Clinics & Doctors Directory</div><div style="color:#64748b;">'+opdDepts(true).length+' clinics · '+opdDocs(null,true).length+' doctors · printed '+new Date().toLocaleString('en-GB')+'</div></div>'
+    +'<table><tr><th style="width:32%;">Clinic</th><th>Doctor</th><th>Specialty</th></tr>'+rows+'</table><scr'+'ipt>window.onload=function(){setTimeout(function(){window.print();},300);};</scr'+'ipt></body></html>');
+  w.document.close();
+}
+
+function censusTab(t){
+  var role=(typeof CU!=='undefined'&&CU)?CU.role:'';
+  if(role==='opd') t='opd';
+  if(!t) t=localStorage.getItem('census_tab')||'ip';
+  try{ localStorage.setItem('census_tab',t); }catch(e){}
+  var ip=document.getElementById('census-ip-pane'), op=document.getElementById('census-opd-pane'), ac=document.getElementById('census-ip-actions');
+  if(ip) ip.style.display=t==='ip'?'':'none'; if(op) op.style.display=t==='opd'?'':'none'; if(ac) ac.style.display=t==='ip'?'flex':'none';
+  var bi=document.getElementById('census-tab-ip'), bo=document.getElementById('census-tab-opd');
+  if(bi){ bi.classList.toggle('active',t==='ip'); bi.style.display=role==='opd'?'none':''; } if(bo) bo.classList.toggle('active',t==='opd');
+  var h=document.querySelector('#page-census .ph h1'); if(h) h.textContent=t==='opd'?'🏥 OPD Daily Census':'🛏 Nursing Department Daily Census';
+  var tb=document.getElementById('tbTitle'); if(tb) tb.textContent=t==='opd'?'🏥 OPD Daily Census':'🛏 Nursing Department Daily Census';
+  var p=document.querySelector('#page-census .ph p'); if(p) p.textContent=t==='opd'?'Outpatient clinics · daily census by clinic & doctor · KPIs, infographics, AI analysis & monthly reports':'Daily bed occupancy · 24-hour ER / OR / L&D / OPD activity · KPIs, infographics & trend analysis';
+  if(t==='opd') opdInit();
+}
 function fmsLocalToday(){
   // Local calendar date (not UTC) — shared 'today' basis for all log filters so
   // readings entered late at night or stored as UTC timestamps are not hidden.
