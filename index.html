@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1676';
+  var v = '20260816-1677';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -34,7 +34,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1676">
+<meta name="app-version" content="20260816-1677">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6859,7 +6859,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1676';
+const APP_VERSION = '20260816-1677';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -22165,6 +22165,7 @@ function opdAnalyse(A, P, rg){
   if(dTot!=null&&dTot<=-10) rec.push('Volume fell '+Math.abs(dTot)+'% — check doctor availability/leave, referral sources and appointment no-show rate.');
   if(dTot!=null&&dTot>=10) rec.push('Volume grew '+dTot+'% — monitor waiting times and clinic room utilisation to protect patient experience.');
   rec.push('Share this report in the monthly OPD/Medical Staff meeting and assign owners for each flagged clinic.');
+  var _nl=opdNotesIn(rg.from,rg.to); if(_nl.length) f.push('📝 '+_nl.length+' day(s) carry head-nurse remarks (closures, leave, downtime) — see Notes & Remarks when interpreting dips.');
   return {summary:summary, findings:f, recs:rec, warns:warn};
 }
 function opdAnalysisHTML(an){
@@ -22182,13 +22183,14 @@ function opdAIPayload(A,P,rg){
   return {hospital:'Obeid Specialized Hospital, Riyadh', report:rg.kind+' OPD census', period:rg.label, daysInPeriod:A.days.length, daysElapsed:A.elapsed.length, daysReported:A.reported,
     totals:{visits:T.tot,newVisits:T.nw,followUps:T.fu,followUpPct:T.fuPct,admissions:T.adm,admissionPct:T.admPct,cash:T.cash,insurance:T.ins,insurancePct:T.insPct,saudi:T.sa,nonSaudi:T.ns,saudiPct:T.saPct,procedures:T.pr},
     previousPeriod:P?(function(){ var p=opdDerive(P.total); return {visits:p.tot,followUpPct:p.fuPct,admissionPct:p.admPct,insurancePct:p.insPct,saudiPct:p.saPct}; })():null,
-    clinics:dep, topDoctors:doc, dataQualityFlags:A.issues.length, missingDays:A.missing.length};
+    clinics:dep, topDoctors:doc, dataQualityFlags:A.issues.length, missingDays:A.missing.length,
+    headNurseNotes:opdNotesIn(rg.from,rg.to).map(function(n){ return n.d+': '+n.t; })};
 }
 function opdAskAI(){
   var rg=opdCurRange(), A=opdAggregate(rg.from,rg.to,OPD_UI.dept), P=opdAggregate(opdPrevRange(rg).from,opdPrevRange(rg).to,OPD_UI.dept);
   if(!opdDerive(A.total).tot){ toast('No data in this period to analyse','#f59e0b'); return; }
   var box=document.getElementById('opd-ai-out'); if(box) box.innerHTML='<div style="font-size:12px;color:var(--mu);">✨ Claude is analysing the '+rg.kind.toLowerCase()+' census…</div>';
-  var sys='You are a senior hospital OPD (outpatient department) director in Saudi Arabia advising Obeid Specialized Hospital. Analyse the OPD census data you are given. Be specific, quantitative and practical; reference clinics and doctors by name. Output plain text with these sections exactly: EXECUTIVE SUMMARY (3-4 sentences), KEY FINDINGS (5-8 bullets starting with "- "), RISKS & DATA QUALITY (bullets), RECOMMENDATIONS (5-7 actionable bullets with an owner, e.g. OPD Head Nurse / Medical Director / Finance), KPI TARGETS FOR NEXT PERIOD (3-5 bullets). No markdown tables. Keep it under 450 words.';
+  var sys='You are a senior hospital OPD (outpatient department) director in Saudi Arabia advising Obeid Specialized Hospital. Analyse the OPD census data you are given. Be specific, quantitative and practical; reference clinics and doctors by name. Output plain text with these sections exactly: EXECUTIVE SUMMARY (3-4 sentences), KEY FINDINGS (5-8 bullets starting with "- "), RISKS & DATA QUALITY (bullets), RECOMMENDATIONS (5-7 actionable bullets with an owner, e.g. OPD Head Nurse / Medical Director / Finance), KPI TARGETS FOR NEXT PERIOD (3-5 bullets). No markdown tables. Keep it under 450 words. Use the head nurse notes (clinic closures, doctors on leave, downtime) to explain dips or gaps rather than treating them as performance problems.';
   var payload={action:'ai', system:sys, prompt:'OPD census data (JSON):\n'+JSON.stringify(opdAIPayload(A,P,rg))};
   var show=function(t){ OPD_UI.aiText=t; OPD_UI.aiFor=rg.label+'|'+OPD_UI.dept; if(box) box.innerHTML=opdAITextHTML(t); };
   fetch(opdUrl(),{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)}).then(function(r){ return r.text(); }).then(function(t){ var j=opdJ(t);
@@ -22429,6 +22431,7 @@ function opdRenderDash(){
     +'</div>'
     +card('🧠 Analysis — '+opdE(rg.kind)+' review', opdAnalysisHTML(an)+'<div id="opd-ai-out" style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--bd);">'+(aiCached?opdAITextHTML(OPD_UI.aiText):'')+'</div>',
       '<button id="opd-ai-btn" class="btn bp" style="font-size:11px;'+(OPD_SYNC.ai?'':'display:none;')+'" onclick="opdAskAI()">✨ Deep AI analysis (Claude)</button>')
+    +(function(){ var nl=opdNotesIn(rg.from,rg.to); return nl.length?card('📝 Notes & remarks'+(nl.length>1?' — '+nl.length+' day(s)':''), opdNotesHTML(nl,false)):''; })()
     +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:12px;">'
       +card('📊 Visits by clinic — new vs follow-up', ch.deptBars)
       +card('🧩 Mix', ch.donuts)
@@ -22454,6 +22457,21 @@ function opdExportCSV(){
 }
 
 /* ── professional printable report (daily / weekly / monthly / custom) ── */
+function opdNotesIn(from,to){
+  return opdCensusAll().filter(function(r){ return r.date>=from && r.date<=to && String(r.notes||'').trim(); })
+    .sort(function(a,b){ return a.date.localeCompare(b.date); })
+    .map(function(r){ return {d:r.date, t:String(r.notes).trim(), by:r.byName||r.by||''}; });
+}
+function opdNotesHTML(list, forPrint){
+  if(!list.length) return '';
+  var single = list.length===1 && OPD_UI.period==='day';
+  return list.map(function(n){
+    return '<div style="padding:7px 0;'+(forPrint?'border-bottom:1px solid #e2e8f0;':'border-bottom:1px solid var(--bd);')+'">'
+      +(single?'':'<div style="font-size:11px;font-weight:800;color:'+(forPrint?'#1e3a5c':'var(--ac)')+';">'+opdE(opdFmtDate(n.d))+'</div>')
+      +'<div style="font-size:12.5px;line-height:1.5;white-space:pre-wrap;">'+opdE(n.t)+'</div>'
+      +(n.by?'<div style="font-size:10.5px;color:'+(forPrint?'#64748b':'var(--mu)')+';margin-top:2px;">— '+opdE(n.by)+'</div>':'')+'</div>';
+  }).join('');
+}
 function opdReport(){
   var rg=opdCurRange(), pr=opdPrevRange(rg), A=opdAggregate(rg.from,rg.to,OPD_UI.dept), P=opdAggregate(pr.from,pr.to,OPD_UI.dept);
   var T=opdDerive(A.total), PT=opdDerive(P.total), ch=opdCharts(A), an=opdAnalyse(A,P.reported?P:null,rg), depts=opdRank(A.byDept), docs=opdRank(A.byDoc);
@@ -22476,6 +22494,7 @@ function opdReport(){
     +'</style></head><body>'
     +'<div class="hdr"><div><h1>Obeid Specialized Hospital</h1><div class="s">Outpatient Department · '+opdE(rg.kind)+' OPD Census Report</div></div><div style="text-align:right;"><div style="font-size:15px;font-weight:800;">'+opdE(rg.label)+'</div><div class="s">'+(OPD_UI.dept!=='all'?'Clinic: '+opdE((opdDept(OPD_UI.dept)||{}).name)+' · ':'')+A.reported+' of '+A.elapsed.length+' elapsed day(s) reported'+(A.elapsed.length<A.days.length?' (period in progress)':'')+' · generated '+new Date().toLocaleString('en-GB')+'</div></div></div>'
     +'<h2>Executive Summary</h2><div class="box">'+an.summary+'</div>'
+    +(function(){ var nl=opdNotesIn(rg.from,rg.to); return nl.length?'<h2>Notes &amp; Remarks'+(nl.length>1?' ('+nl.length+' day'+(nl.length>1?'s':'')+')':'')+'</h2><div class="box">'+opdNotesHTML(nl,true)+'</div>':''; })()
     +'<h2>Key Performance Indicators</h2><div class="kps">'
       +kp('Patients seen',T.tot.toLocaleString(),opdJoin(dl(T.tot,PT.tot),A.reported>1?'≈'+Math.round(T.tot/A.reported).toLocaleString()+'/day':''),'#0070f3')
       +kp('New visits',T.nw.toLocaleString(),(T.tot?Math.round((100-T.fuPct)*10)/10:0)+'% of visits')
