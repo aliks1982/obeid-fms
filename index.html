@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1674';
+  var v = '20260816-1675';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -34,7 +34,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1674">
+<meta name="app-version" content="20260816-1675">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6859,7 +6859,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1674';
+const APP_VERSION = '20260816-1675';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -21981,8 +21981,9 @@ function opdJ(t){ try{ return JSON.parse(t); }catch(e){ var i=t.indexOf('{'),k=t
 function opdN(v){ var n=parseFloat(v); return isFinite(n)&&n>0?n:0; }
 function opdPct(a,b){ return b>0?Math.round(a/b*1000)/10:0; }
 function opdFmtDate(d){ var x=new Date(d+'T00:00:00'); return isNaN(x)?d:x.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric'}); }
-function opdAddDays(d,n){ var x=new Date(d+'T00:00:00'); x.setDate(x.getDate()+n); return x.toISOString().slice(0,10); }
-function opdDays(a,b){ var out=[],d=a; while(d<=b&&out.length<400){ out.push(d); d=opdAddDays(d,1); } return out; }
+function opdAddDays(d,n){ var p=String(d).split('-'); return new Date(Date.UTC(+p[0],+p[1]-1,+p[2]+n)).toISOString().slice(0,10); }   // pure calendar maths — time-zone safe
+function opdDow(d){ var p=String(d).split('-'); return new Date(Date.UTC(+p[0],+p[1]-1,+p[2])).getUTCDay(); }   // 0=Sun … 6=Sat
+function opdDays(a,b){ var out=[],d=a; while(d<=b&&out.length<400){ out.push(d); var nx=opdAddDays(d,1); if(nx<=d) break; d=nx; } return out; }
 function opdParse(v){ if(typeof v!=='string') return v; var t=v.trim(); if(t.charAt(0)==='{'||t.charAt(0)==='['){ try{ return JSON.parse(t); }catch(e){} } return v; }
 function opdBool(v){ return !(v===false||v==='false'||v===0||v==='0'); }
 
@@ -22055,7 +22056,7 @@ function opdAggregate(from, to, deptFilter){
 function opdRange(period, anchor, from, to){
   anchor=anchor||opdToday();
   if(period==='day') return {from:anchor,to:anchor,label:opdFmtDate(anchor),kind:'Daily'};
-  if(period==='week'){ var x=new Date(anchor+'T00:00:00'), s=opdAddDays(anchor,-x.getDay()); return {from:s,to:opdAddDays(s,6),label:'Week of '+opdFmtDate(s),kind:'Weekly'}; }   // Sunday → Saturday
+  if(period==='week'){ var s=opdAddDays(anchor,-opdDow(anchor)); return {from:s,to:opdAddDays(s,6),label:'Week of '+opdFmtDate(s),kind:'Weekly'}; }   // Sunday → Saturday
   if(period==='month'){ var m=anchor.slice(0,7), y=+m.slice(0,4), mo=+m.slice(5,7), last=new Date(y,mo,0).getDate(); return {from:m+'-01',to:m+'-'+String(last).padStart(2,'0'),label:new Date(y,mo-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'}),kind:'Monthly'}; }
   return {from:from||anchor,to:to||anchor,label:opdFmtDate(from||anchor)+' → '+opdFmtDate(to||anchor),kind:'Period'};
 }
@@ -22133,7 +22134,7 @@ function opdAnalyse(A, P, rg){
       var avg=Object.keys(wk).map(function(w){ return {w:w,a:wk[w].reduce(function(s,v){return s+v;},0)/wk[w].length}; }).sort(function(a,b){ return b.a-a.a; });
       if(avg.length>=3&&rg.kind==='Monthly') rec.push('Busiest weekday is '+avg[0].w+' (avg '+Math.round(avg[0].a)+' visits) — align reception, nursing and pharmacy staffing to this peak.'); } }
   // data quality
-  if(A.missing.length&&rg.kind!=='Daily'){ var wd=A.missing.filter(function(d){ var x=new Date(d+'T00:00:00').getDay(); return x!==5; }); if(wd.length) warn.push(wd.length+' day(s) in the period have no census entry (Fridays excluded) — completeness affects every KPI.'); }
+  if(A.missing.length&&rg.kind!=='Daily'){ var wd=A.missing.filter(function(d){ var x=opdDow(d); return x!==5; }); if(wd.length) warn.push(wd.length+' day(s) in the period have no census entry (Fridays excluded) — completeness affects every KPI.'); }
   if(A.issues.length) warn.push(A.issues.length+' data-quality flag(s): '+A.issues.slice(0,3).map(function(x){ return x.dept+' '+x.d.slice(5)+': '+x.msg; }).join('; ')+(A.issues.length>3?'…':''));
   // generic director recommendations
   if(T.fuPct>=60) rec.push('Overall follow-up share is '+T.fuPct+'% — set a target (e.g. ≤55%) and track new-patient access time per clinic.');
