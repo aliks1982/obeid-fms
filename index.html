@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1679';
+  var v = '20260816-1680';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -34,7 +34,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1679">
+<meta name="app-version" content="20260816-1680">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6865,7 +6865,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1679';
+const APP_VERSION = '20260816-1680';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -20323,7 +20323,14 @@ function scContractStatus(c){ return (c&&c.status)||'active'; }
 function scSetStatus(id, status){
   if(!scIsSC()){ toast('Only the Supply Chain Director can decide','#f59e0b'); return; }
   var list=scContracts().slice(); var i=list.findIndex(function(x){return String(x._id)===String(id);}); if(i<0) return;
-  list[i]=Object.assign({},list[i],{status:status, statusAt:new Date().toISOString(), statusBy:scRoleName(CU.role)});
+  var upd={status:status, statusAt:new Date().toISOString(), statusBy:scRoleName(CU.role)};
+  if(status==='renewed'){
+    var ne=prompt('Contract renewed. Enter the NEW end date (YYYY-MM-DD) — or leave blank to keep '+(list[i].end||'the current date')+':', '');
+    if(ne===null) return;
+    ne=String(ne).trim();
+    if(ne){ if(!/^\d{4}-\d{2}-\d{2}$/.test(ne) || isNaN(new Date(ne))){ toast('Invalid date — use YYYY-MM-DD','#f59e0b'); return; } upd.prevEnd=list[i].end||''; upd.end=ne; }
+  }
+  list[i]=Object.assign({},list[i],upd);
   scSaveContracts(list); try{ dbWrite('contracts', list[i]); }catch(e){}
   scRenderDashboard(); toast(status==='renewed'?'✅ Contract marked RENEWED':'⛔ Contract marked TERMINATED', status==='renewed'?'#10b981':'#dc2626',4000);
 }
@@ -20338,9 +20345,12 @@ function scDueScan(){
       var reqId='screq_'+c._id+'_'+q+'_'+year; var auth=scAuths().find(function(a){return a._id===reqId;});
       if(!(auth&&auth.status==='authenticated')){ var days=Math.round((today-d)/86400000); overdue.push({c:c,q:q,date:qd,days:days}); }
     });
-    // contract expiry
+    // contract expiry — a RENEWED decision taken for this end date (within its 30-day window or
+    // after it) closes the alert. If the end date is later moved forward, the old decision no
+    // longer applies and the alert returns when the NEW end date approaches.
     if(c.end){ var e=new Date(c.end); if(!isNaN(e)){ var dl=Math.round((e-today)/86400000);
-      if(dl<0) expired.push({c:c,days:-dl}); else if(dl<=30) expiring.push({c:c,days:dl}); } }
+      var decided = scContractStatus(c)==='renewed' && (!c.statusAt || new Date(c.statusAt) >= new Date(e.getTime()-30*86400000));
+      if(!decided){ if(dl<0) expired.push({c:c,days:-dl}); else if(dl<=30) expiring.push({c:c,days:dl}); } } }
   });
   return {overdue:overdue, expiring:expiring, expired:expired};
 }
