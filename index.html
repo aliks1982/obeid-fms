@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1677';
+  var v = '20260816-1678';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -34,7 +34,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1677">
+<meta name="app-version" content="20260816-1678">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -3907,7 +3907,13 @@ if ('caches' in window) {
 <div class="pg" id="page-ach">
   <div class="ph" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
     <div><h1>🌬 ACH / Room Pressure Monitoring — MOH IPC</h1><p>ASHRAE 170 · USP 797/800 · Daily negative/positive pressure readings · IPC monitored</p></div>
-    <button class="btn bo" style="font-size:11px;padding:8px 16px;" onclick="achExport()">⬇ Export IPC Compliance Report</button>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn bg" style="font-size:11px;padding:8px 14px;" onclick="achPullFromCloud(true)">☁ Sync Readings</button>
+        <button class="btn bo" style="font-size:11px;padding:8px 16px;" onclick="achExport()">⬇ Export IPC Compliance Report</button>
+      </div>
+      <div id="ach-sync-status" style="font-size:10px;color:var(--mu);"></div>
+    </div>
   </div>
   <div class="tb">
     <button class="tbtn active" id="achTabBtn-dash" onclick="achTab('dash',this)">📊 Compliance Dashboard</button>
@@ -6859,7 +6865,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1677';
+const APP_VERSION = '20260816-1678';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -20134,6 +20140,7 @@ function achNormalizeRow(raw) {
   // Normalize date to YYYY-MM-DD regardless of source format
   // (Google Sheets returns e.g. "Thu Jul 09 2026 10:15:56 GMT+0300 (...)")
   row._raw_date = row.date;
+  { const tm = String(row.date == null ? '' : row.date).match(/(\d{1,2}):(\d{2})(?::\d{2})?/); row._time = tm ? (String(tm[1]).padStart(2,'0') + ':' + tm[2]) : ''; }
   row.date = achDateISO(row.date);
   // Normalize occupancy to 'occupied' | 'vacant' | ''
   const st = String(row.status||'').toLowerCase();
@@ -22873,7 +22880,7 @@ function achLogRowHtml(r){
   const stChip = r.status==='occupied' ? '<span class="chip chip-red" style="font-size:8px;">Occupied</span>'
     : r.status==='vacant' ? '<span class="chip chip-green" style="font-size:8px;">Vacant</span>'
     : '<span style="color:var(--mu);font-size:9px;">—</span>';
-  return '<tr'+(statusOnly?' style="opacity:.75;"':'')+'><td style="font-size:10px;">'+String(r.date||'—').slice(0,16).replace('T',' ')+'</td>'+
+  return '<tr'+(statusOnly?' style="opacity:.75;"':'')+'><td style="font-size:10px;">'+(r.date||'—')+(r._time?' <span style="color:var(--mu);">'+r._time+'</span>':'')+'</td>'+
     '<td style="font-size:11px;font-weight:600;">'+(room?room.name:(r.room||'—'))+'</td>'+
     '<td>'+stChip+'</td>'+
     presCell(r.pressure,e.pressure)+cell(r.ach,e.ach)+cell(r.temp,e.temp)+cell(r.humidity,e.hum)+
@@ -22948,7 +22955,7 @@ function achExportLogRange(){
         '<table style="border-collapse:collapse;width:100%;font-size:11px;"><thead><tr style="background:#1e3a5c;color:#fff;">'+
         ['Time','Room','Status','Pressure (Pa)','ACH','Temp °C','RH %','By','Result'].map(h=>'<th style="padding:5px 8px;border:1px solid #ccc;">'+h+'</th>').join('')+'</tr></thead><tbody>'+
         tree[d][dp].map(r=>{ const e=achEval(r); const rm=e.room; const so=!achHasParams(r);
-          return '<tr>'+td(String(r.date||'').slice(11,16)||'—')+td(rm?rm.name:r.room)+td(r.status||'—')+
+          return '<tr>'+td(r._time||'—')+td(rm?rm.name:r.room)+td(r.status||'—')+
             td(r.pressure,e.pressure===false)+td(r.ach,e.ach===false)+td(r.temp,e.temp===false)+td(r.humidity,e.hum===false)+
             td(r.by||'—')+td(so?'Status only':(e.overall==='pass'?'PASS':e.overall==='fail'?'FAIL':'—'),e.overall==='fail')+'</tr>';
         }).join('')+'</tbody></table>';
@@ -23129,7 +23136,7 @@ function achExport() {
     const e=achEval(r); const room=e.room;
     const mark=(v,ok)=> (v==null||v==='')?'—':(v+(ok===false?' ✗':ok===true?' ✓':''));
     const badge=e.overall==='pass'?'<span style="color:#16a34a;font-weight:700;">Pass</span>':e.overall==='fail'?'<span style="color:#dc2626;font-weight:700;">Fail</span>':'—';
-    return '<tr><td>'+(r.date||'—').slice(0,16).replace('T',' ')+'</td><td>'+(room?room.name:r.room)+'</td><td>'+(room?(room.p==='neg'?'Neg':'Pos'):'—')+'</td><td>'+(r.status?r.status.charAt(0).toUpperCase()+r.status.slice(1):'—')+'</td><td>'+mark(r.pressure,e.pressure)+'</td><td>'+mark(r.ach,e.ach)+'</td><td>'+mark(r.temp,e.temp)+'</td><td>'+mark(r.humidity,e.hum)+'</td><td>'+(r.by||r.staff||'—')+'</td><td>'+badge+'</td></tr>';
+    return '<tr><td>'+(r.date||'—')+(r._time?' '+r._time:'')+'</td><td>'+(room?room.name:r.room)+'</td><td>'+(room?(room.p==='neg'?'Neg':'Pos'):'—')+'</td><td>'+(r.status?r.status.charAt(0).toUpperCase()+r.status.slice(1):'—')+'</td><td>'+mark(r.pressure,e.pressure)+'</td><td>'+mark(r.ach,e.ach)+'</td><td>'+mark(r.temp,e.temp)+'</td><td>'+mark(r.humidity,e.hum)+'</td><td>'+(r.by||r.staff||'—')+'</td><td>'+badge+'</td></tr>';
   }).join('');
   const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ACH Room Pressure Compliance Report</title>'+
     '<style>body{font-family:Arial;margin:20px;font-size:11px;}h2{margin:0;font-size:16px;}h3{color:#1a3a5c;border-bottom:2px solid #0f766e;padding-bottom:4px;font-size:13px;margin-top:20px;}p{margin:3px 0 0;font-size:10px;opacity:.85;}'+
@@ -23150,8 +23157,46 @@ function achExport() {
   toast('✅ ACH compliance report exported','#10b981');
 }
 
+// Direct pull of the Google-Form readings (getType reads the tab by name, case-insensitive,
+// and is never cached server-side) — so ACH shows readings even when the background getAll
+// pass skipped/missed the sheet. Merges by _id; a cloud read never deletes local rows.
+let __achPullAt = 0, __achPulling = false;
+function achPullFromCloud(force){
+  try{
+    const url = (typeof CANONICAL_DB_URL!=='undefined' && CANONICAL_DB_URL) ? CANONICAL_DB_URL : (typeof getDBUrl==='function' ? getDBUrl() : null);
+    if (!url || __achPulling) return;
+    if (!force && Date.now() - __achPullAt < 60000) return;
+    __achPulling = true; __achPullAt = Date.now();
+    const st = document.getElementById('ach-sync-status'); if (st) st.textContent = '☁ Fetching readings…';
+    fetch(url + '?action=getType&type=ach_readings&_=' + Date.now(), { signal: AbortSignal.timeout(45000) })
+      .then(r => r.json())
+      .then(j => {
+        if (!j || !j.ok || !Array.isArray(j.rows)) throw new Error((j && j.error) || 'bad response');
+        const cur = Array.isArray(ld('ach_readings')) ? ld('ach_readings') : [];
+        const byId = {}; const order = [];
+        cur.forEach(x => { const id = String((x && x._id) || ''); if (id && !byId[id]) order.push(id); if (id) byId[id] = x; });
+        let added = 0;
+        j.rows.forEach(x => { const id = String((x && x._id) || ''); if (!id) return; if (!byId[id]) { order.push(id); added++; } byId[id] = x; });
+        const unkeyed = cur.filter(x => !(x && x._id));
+        sv('ach_readings', order.map(id => byId[id]).concat(unkeyed));
+        if (st) st.textContent = '☁ ' + j.rows.length + ' readings in cloud · synced ' + new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+        achRefreshViews();
+        if (force && typeof toast==='function') toast('☁ ACH synced — ' + j.rows.length + ' readings' + (added ? ' (' + added + ' new)' : ''), '#10b981', 3500);
+      })
+      .catch(e => { if (st) st.textContent = '⚠ Cloud fetch failed — showing saved readings'; console.warn('achPullFromCloud:', e.message); if (force && typeof toast==='function') toast('⚠ Could not fetch ACH readings: ' + e.message, '#f59e0b', 5000); })
+      .finally(() => { __achPulling = false; });
+  }catch(e){ __achPulling = false; }
+}
+function achRefreshViews(){
+  const pg = document.getElementById('page-ach'); if (!pg) return;
+  try { achRender(); } catch(e){}
+  try { achRenderCompliByRoom(); } catch(e){}
+  try { achRenderReadings(); } catch(e){}
+  try { achRenderInfographic(); } catch(e){}
+}
 function achInit(){
   achSyncRooms();
+  achPullFromCloud(false);
   // Render all three panels so any tab is ready, then show dashboard
   try { achRender(); } catch(e){ console.warn('achRender:', e.message); }
   try { achRenderCompliByRoom(); } catch(e){}
