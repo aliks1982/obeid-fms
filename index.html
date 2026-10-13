@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1678';
+  var v = '20260816-1679';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -34,7 +34,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1678">
+<meta name="app-version" content="20260816-1679">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6865,7 +6865,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1678';
+const APP_VERSION = '20260816-1679';
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -20216,7 +20216,46 @@ function scContracts(){ try{ return ((typeof getContracts==='function'?getContra
 function scSaveContracts(list){ sv('contracts', list); }
 function scRequests(){ const a=ld('sc_requests'); return (Array.isArray(a)?a:[]).map(function(r){ if(r){ r.evaluators=scPArr(r.evaluators); } return r; }); }
 function scSaveRequests(a){ sv('sc_requests', a); }
-function scEvals(){ const a=ld('sc_evals'); return (Array.isArray(a)?a:[]).map(function(e){ if(e&&typeof e.scores==='string'){ e.scores=scPJ(e.scores); } return e; }); }
+// Field order the app has sent SC evaluations in (v16xx). The DB script (≤1678) appended new
+// rows in THIS order instead of the sheet's column order, so cloud rows came back shifted:
+// requestId under contractId … evaluatorRole under date → the evaluation looked "pending".
+var SC_EVAL_SENT_ORDER = ['_id','requestId','contractId','contractName','contractor','quarter','year','date','evaluatorRole','evaluatorName','scores','score','pct','comment','confirmed','at'];
+var __scEvalFixed = {};
+function scRepairEval(e){
+  if(!e || !e._id) return e;
+  var m = String(e._id).match(/^sceval_(screq_.+_Q[1-4]_\d{4})_([A-Za-z0-9_]+)$/);
+  if(!m) return e;
+  var reqId = m[1], role = m[2];
+  if(e.requestId === reqId && e.evaluatorRole === role) return e;           // healthy
+  var fixed = null;
+  // Rebuild from the shifted row: values in the sheet's column order were written in SENT order
+  try{
+    var vals = Object.keys(e).filter(function(k){ return k !== '_id'; }).map(function(k){ return e[k]; });
+    var cand = { _id: e._id };
+    SC_EVAL_SENT_ORDER.slice(1).forEach(function(k, i){ cand[k] = vals[i] !== undefined ? vals[i] : ''; });
+    if(cand.requestId === reqId && cand.evaluatorRole === role) fixed = cand;
+  }catch(_){}
+  if(!fixed){                                                               // unknown layout — at least re-link it
+    fixed = Object.assign({}, e, { requestId: reqId, evaluatorRole: role });
+  }
+  if(!isFinite(parseFloat(fixed.pct))){                                      // recompute % from scores if needed
+    var sc = scPJ(fixed.scores), tot = 0, n = 0; Object.keys(sc).forEach(function(k){ var v = parseFloat(sc[k]); if(isFinite(v)){ tot += v; n++; } });
+    if(n){ fixed.score = tot; fixed.pct = Math.round(tot / (n * 5) * 100); }
+  }
+  fixed._repaired = '1';
+  if(!__scEvalFixed[e._id]){                                                 // write the corrected row back once (update path is column-safe)
+    __scEvalFixed[e._id] = 1;
+    try{ var out = {}; Object.keys(fixed).forEach(function(k){ out[k] = fixed[k]; }); if(out.scores && typeof out.scores === 'object') out.scores = JSON.stringify(out.scores); setTimeout(function(){ try{ dbWrite('sc_evals', out); }catch(_){} }, 1500); }catch(_){}
+  }
+  return fixed;
+}
+function scEvals(){
+  const a = ld('sc_evals'); const arr = Array.isArray(a) ? a : [];
+  let changed = false;
+  const out = arr.map(function(e){ const r = scRepairEval(e); if(r !== e) changed = true; return r; });
+  if(changed){ try{ sv('sc_evals', out.map(function(e){ var c = Object.assign({}, e); if(c.scores && typeof c.scores === 'object') c.scores = JSON.stringify(c.scores); return c; })); }catch(_){} }
+  return out.map(function(e){ if(e && typeof e.scores === 'string'){ e.scores = scPJ(e.scores); } return e; });
+}
 function scSaveEvals(a){ sv('sc_evals', a); }
 function scAuths(){ const a=ld('sc_auth'); return Array.isArray(a)?a:[]; }
 function scSaveAuths(a){ sv('sc_auth', a); }
@@ -20543,8 +20582,9 @@ function scSubmitEval(){
   const reqId=document.getElementById('sce-reqid').value; const req=scRequests().find(x=>x._id===reqId); if(!req) return;
   const sc=scEvalCalc(); const scores={}; SC_CRITERIA.forEach((_,i)=>scores['c'+i]=parseInt(document.getElementById('sce-c'+i).value));
   var _role = scMatchedRole(CU.role, req.evaluators) || CU.role;
-  const ev={ _id:'sceval_'+reqId+'_'+_role, requestId:reqId, contractId:req.contractId, contractName:req.contractName, contractor:req.contractor, quarter:req.quarter, year:req.year, date:req.date,
-    evaluatorRole:_role, evaluatorName:document.getElementById('sce-name').value||scRoleName(CU.role), scores, score:sc.score, pct:sc.pct, comment:document.getElementById('sce-comment').value||'', confirmed:true, at:new Date().toISOString() };
+  // Field order = SC_Evaluations column order (requestId LAST) — keeps new rows aligned even on an older DB script.
+  const ev={ _id:'sceval_'+reqId+'_'+_role, contractId:req.contractId, contractName:req.contractName, contractor:req.contractor, quarter:req.quarter, year:req.year, date:req.date,
+    evaluatorRole:_role, evaluatorName:document.getElementById('sce-name').value||scRoleName(CU.role), scores, score:sc.score, pct:sc.pct, comment:document.getElementById('sce-comment').value||'', confirmed:true, at:new Date().toISOString(), requestId:reqId };
   const arr=scEvals().filter(e=>e._id!==ev._id); arr.unshift(ev); scSaveEvals(arr);
   try{ dbWrite('sc_evals', ev); }catch(e){}
   document.getElementById('sc-eval-modal').style.display='none'; scRenderRequests(); scRenderHistory(); scUpdateBadge();
