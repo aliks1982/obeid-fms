@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1680';
+  var v = '20260816-1682';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -34,7 +34,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1680">
+<meta name="app-version" content="20260816-1682">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6865,7 +6865,192 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1680';
+const APP_VERSION = '20260816-1682';
+/* ═══════════════ v1682 SECURITY — server sessions ═══════════════
+   • PINs are checked by the DB script; the page only holds a signed, expiring session.
+   • Every database call carries the session (fetch wrapper below).
+   • Writes made while signed in but WITHOUT a valid session are held on this device and
+     re-sent after the PIN is re-entered — nothing is lost.
+   • Login-free QR / approval pages are untouched (they use the server's public paths). */
+window.__fmsTok = null; window.__fmsExp = 0; window.__fmsLegacy = false;
+function fmsDbUrl(){ try{ return (typeof CANONICAL_DB_URL!=='undefined'&&CANONICAL_DB_URL)?CANONICAL_DB_URL:(typeof getDBUrl==='function'?getDBUrl():null); }catch(e){ return null; } }
+function fmsLoggedIn(){ try{ return !!(typeof CU!=='undefined' && CU && CU.role); }catch(e){ return false; } }
+function fmsPublicPage(){ try{ var q=new URLSearchParams(location.search); return !!(q.get('inspect')||q.get('fm200')||q.get('jo')); }catch(e){ return false; } }
+function fmsTokenValid(){ return !!(window.__fmsTok && window.__fmsScope!=='pin' && window.__fmsExp > Date.now() + 15000); }
+function fmsSetSession(tok, exp, scope){ window.__fmsTok = tok || null; window.__fmsExp = Number(exp)||0; window.__fmsScope = scope || 'full'; }
+function fmsParseJ(t){ try{ return JSON.parse(t); }catch(e){ var i=String(t||'').indexOf('{'), k=String(t||'').lastIndexOf('}'); if(i>=0&&k>i){ try{ return JSON.parse(t.slice(i,k+1)); }catch(_){} } return null; } }
+async function fmsAuthPost(payload, ms){
+  var url=fmsDbUrl(); if(!url) throw new Error('No database URL');
+  var r=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload),signal:AbortSignal.timeout(ms||25000)});
+  return fmsParseJ(await r.text());
+}
+async function fmsAuthLogin(role, pin, name){
+  var classify=function(j){
+    if(!j) return null;
+    if(j.ok && j.token) return {mode:'ok', token:j.token, exp:j.exp, mustChangePin:!!j.mustChangePin};
+    if(/Unknown action/i.test(String(j.error||''))) { window.__fmsLegacy=true; return {mode:'legacy'}; }
+    if(j.ok===false) return {mode:'denied', error:j.error||'Incorrect PIN for this role'};
+    return null;
+  };
+  try{ var c=classify(await fmsAuthPost({action:'login',role:role,pin:pin,name:name})); if(c){ if(c.mode!=='legacy') window.__fmsLegacy=false; return c; } }catch(e){}
+  try{ // GET fallback (some mobile browsers block reading cross-site POST responses)
+    var url=fmsDbUrl(); if(!url) return {mode:'offline'};
+    var r=await fetch(url+'?action=login&role='+encodeURIComponent(role)+'&pin='+encodeURIComponent(pin)+'&name='+encodeURIComponent(name||''),{signal:AbortSignal.timeout(25000)});
+    var c2=classify(fmsParseJ(await r.text())); if(c2){ if(c2.mode!=='legacy') window.__fmsLegacy=false; return c2; }
+  }catch(e){}
+  return {mode:'offline'};
+}
+async function fmsPinHash(role, pin){
+  try{ var buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode('obeid-fms|'+role+'|'+pin));
+       return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join(''); }catch(e){ return null; }
+}
+async function fmsSaveVerifier(role, pin){ try{ var h=await fmsPinHash(role,pin); if(!h) return; var m=JSON.parse(localStorage.getItem('obeid_pin_ver')||'{}'); m[role]=h; localStorage.setItem('obeid_pin_ver', JSON.stringify(m)); }catch(e){} }
+async function fmsCheckVerifier(role, pin){ try{ var m=JSON.parse(localStorage.getItem('obeid_pin_ver')||'{}'); if(!m[role]) return false; return m[role]===(await fmsPinHash(role,pin)); }catch(e){ return false; } }
+
+/* ── held writes ── */
+function fmsHold(o){
+  try{ var q=JSON.parse(localStorage.getItem('obeid_auth_hold')||'[]'); delete o._auth; q.push(o); if(q.length>1500) q=q.slice(-1500);
+       localStorage.setItem('obeid_auth_hold', JSON.stringify(q)); fmsHoldBadge(); }catch(e){ console.warn('fmsHold:', e.message); }
+}
+function fmsHoldCount(){ try{ return JSON.parse(localStorage.getItem('obeid_auth_hold')||'[]').length; }catch(e){ return 0; } }
+function fmsHoldBadge(){ try{ var n=fmsHoldCount(), el=document.getElementById('fms-hold-badge');
+  if(!n || !fmsLoggedIn()){ if(el) el.remove(); return; }
+  if(!el){ el=document.createElement('div'); el.id='fms-hold-badge'; el.style.cssText='position:fixed;left:12px;bottom:12px;z-index:99990;background:#b45309;color:#fff;font:600 12px system-ui,sans-serif;padding:8px 12px;border-radius:10px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.35);'; el.onclick=function(){ fmsNeedReauth(true); }; document.body.appendChild(el); }
+  el.textContent='🔒 '+n+' change(s) waiting to sync — tap to sign in'; }catch(e){} }
+async function fmsFlushHold(){
+  if(!fmsTokenValid() && !window.__fmsLegacy) return;
+  var q; try{ q=JSON.parse(localStorage.getItem('obeid_auth_hold')||'[]'); }catch(e){ q=[]; }
+  if(!q.length){ fmsHoldBadge(); return; }
+  var url=fmsDbUrl(); if(!url) return;
+  localStorage.setItem('obeid_auth_hold','[]');
+  for(var i=0;i<q.length;i+=10){
+    await Promise.allSettled(q.slice(i,i+10).map(function(o){ return fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(o)}).catch(function(){ fmsHold(o); }); }));
+  }
+  fmsHoldBadge(); if(typeof toast==='function') toast('☁ '+q.length+' held change(s) synced','#10b981',4000);
+}
+
+/* ── fetch wrapper: attach the session to every DB call ── */
+(function(){
+  if(window.__fmsFetchWrapped) return; window.__fmsFetchWrapped=true;
+  var of=window.fetch.bind(window);
+  var isDb=function(u){ return /script\.google(usercontent)?\.com\/macros\//.test(u); };
+  var WRITE=/^(upsert|bulkUpsert|delete|email|ai)$/;
+  window.fetch=function(input, init){
+    try{
+      var u=typeof input==='string'?input:(input&&input.url)||'';
+      if(!isDb(u)) return of(input,init);
+      var loggedIn=fmsLoggedIn(), tok=fmsTokenValid()?window.__fmsTok:null;
+      var method=String((init&&init.method)||'GET').toUpperCase();
+      if(method==='POST' && init && typeof init.body==='string'){
+        var o=null; try{ o=JSON.parse(init.body); }catch(e){}
+        if(o && typeof o==='object' && o.action==='setPin' && window.__fmsTok && window.__fmsExp>Date.now()){ o._auth=window.__fmsTok; init=Object.assign({},init,{body:JSON.stringify(o)}); return of(input,init); }
+        if(o && typeof o==='object' && o.action!=='login'){
+          if(tok){ o._auth=tok; init=Object.assign({},init,{body:JSON.stringify(o)}); }
+          else if(!loggedIn && fmsPublicPage() && /^(upsert|bulkUpsert|delete)$/.test(String(o.action)) && !(o.action==='upsert' && /^(fm200_insp|ai_insp_[a-z0-9_]+|job_orders)$/.test(String(o.type)))){
+            // login-free QR / approval pages: only their own record types are sent; background seeding is skipped
+            return Promise.resolve(new Response(JSON.stringify({ok:false,skipped:true}),{headers:{'Content-Type':'application/json'}}));
+          }
+          else if(!loggedIn && !fmsPublicPage() && !window.__fmsLegacy && /^(upsert|bulkUpsert|delete)$/.test(String(o.action))){
+            // start-up writes made before anyone signs in are kept and sent right after sign-in
+            fmsHold(o); return Promise.resolve(new Response(JSON.stringify({ok:false,held:true}),{headers:{'Content-Type':'application/json'}}));
+          }
+          else if(loggedIn && !window.__fmsLegacy){
+            if(WRITE.test(String(o.action))){ fmsHold(o); fmsNeedReauth(); return Promise.resolve(new Response(JSON.stringify({ok:false,held:true,error:'Session expired — sign in again to sync'}),{headers:{'Content-Type':'application/json'}})); }
+            if(o.action==='upload'){ fmsNeedReauth(); return Promise.resolve(new Response(JSON.stringify({ok:false,error:'Session expired — sign in again, then re-attach the file'}),{headers:{'Content-Type':'application/json'}})); }
+          }
+        }
+        return of(input,init);
+      }
+      if(typeof input==='string' && tok && !/[?&]t=/.test(u)) input=u+(u.indexOf('?')>=0?'&':'?')+'t='+encodeURIComponent(tok);
+      return of(input,init).then(function(res){
+        try{ if(loggedIn && !window.__fmsLegacy) res.clone().text().then(function(t){ if(t.length<600 && t.indexOf('"authRequired":true')>=0 && !/action=(version|getOne)/.test(u)) fmsNeedReauth(); }).catch(function(){}); }catch(e){}
+        return res;
+      });
+    }catch(e){ return of(input,init); }
+  };
+})();
+
+/* ── re-sign-in prompt (session expired / offline sign-in now back online) ── */
+function fmsModal(id, html){
+  var old=document.getElementById(id); if(old) old.remove();
+  var ov=document.createElement('div'); ov.id=id;
+  ov.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(5,10,20,.78);display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.innerHTML='<div style="background:#ffffff;color:#0f172a;max-width:380px;width:100%;border-radius:14px;padding:20px;box-shadow:0 20px 50px rgba(0,0,0,.45);font-family:system-ui,-apple-system,Segoe UI,sans-serif;">'+html+'</div>';
+  document.body.appendChild(ov); return ov;
+}
+function fmsNeedReauth(force){
+  try{
+    if(!fmsLoggedIn() || window.__fmsLegacy || window.__fmsPinChange) return;
+    if(document.getElementById('fms-reauth')) return;
+    if(!force && fmsTokenValid()) return;
+    var n=fmsHoldCount();
+    var ov=fmsModal('fms-reauth',
+      '<div style="font-size:30px;text-align:center;">🔒</div>'+
+      '<div style="font-size:17px;font-weight:800;text-align:center;margin:6px 0;">Session expired</div>'+
+      '<div style="font-size:13px;color:#475569;text-align:center;margin-bottom:12px;">Enter your PIN to continue'+(n?' — <b>'+n+' change(s)</b> are waiting to sync':'')+'.<br><span style="font-size:11px;">'+(CU.rl||CU.role)+' · '+(CU.name||'')+'</span></div>'+
+      '<input id="fms-reauth-pin" type="password" inputmode="numeric" maxlength="8" placeholder="PIN" style="width:100%;box-sizing:border-box;padding:12px;font-size:18px;text-align:center;border:1px solid #cbd5e1;border-radius:10px;">'+
+      '<div id="fms-reauth-err" style="color:#dc2626;font-size:12px;min-height:16px;margin:6px 0;text-align:center;"></div>'+
+      '<button id="fms-reauth-ok" style="width:100%;padding:12px;border:none;border-radius:10px;background:#0f766e;color:#fff;font-size:15px;font-weight:700;cursor:pointer;">Continue</button>'+
+      '<div style="display:flex;justify-content:space-between;margin-top:10px;font-size:12px;"><a href="#" id="fms-reauth-later" style="color:#64748b;">Later (keep working offline)</a><a href="#" id="fms-reauth-out" style="color:#64748b;">Sign out</a></div>');
+    var inp=document.getElementById('fms-reauth-pin'); setTimeout(function(){ try{ inp.focus(); }catch(e){} },50);
+    var go=async function(){
+      var pin=(inp.value||'').trim(), er=document.getElementById('fms-reauth-err'); if(!pin){ er.textContent='Enter your PIN'; return; }
+      er.textContent='Verifying…';
+      var r=await fmsAuthLogin(CU.role, pin, CU.name);
+      if(r.mode==='ok'){ fmsSetSession(r.token, r.exp, r.mustChangePin?'pin':'full'); ov.remove(); if(r.mustChangePin){ fmsForcePinChange(CU.role); return; } fmsSaveVerifier(CU.role,pin); fmsFlushHold(); try{ dbForceReconnect(); }catch(e){} try{ if(typeof fetchSheetData==='function' && !SHEET_OK) fetchSheetData(); }catch(e){} if(typeof toast==='function') toast('✅ Signed in again','#10b981',2500); }
+      else if(r.mode==='denied'){ er.textContent=r.error||'Incorrect PIN'; }
+      else if(r.mode==='legacy'){ ov.remove(); }
+      else er.textContent='Still cannot reach the server — check the connection.';
+    };
+    document.getElementById('fms-reauth-ok').onclick=go;
+    inp.onkeydown=function(e){ if(e.key==='Enter') go(); };
+    document.getElementById('fms-reauth-later').onclick=function(e){ e.preventDefault(); ov.remove(); window.__fmsReauthSnooze=Date.now(); fmsHoldBadge(); };
+    document.getElementById('fms-reauth-out').onclick=function(e){ e.preventDefault(); ov.remove(); try{ doLogout(); }catch(_){ location.reload(); } };
+  }catch(e){ console.warn('fmsNeedReauth:', e.message); }
+}
+/* A role still on its factory PIN must choose a new one before using any data */
+function fmsForcePinChange(role){
+  window.__fmsPinChange=true;
+  var ov=fmsModal('fms-pinchange',
+    '<div style="font-size:30px;text-align:center;">🔐</div>'+
+    '<div style="font-size:17px;font-weight:800;text-align:center;margin:6px 0;">Choose a new PIN</div>'+
+    '<div style="font-size:13px;color:#475569;text-align:center;margin-bottom:12px;">This account still uses its original factory PIN, which is no longer safe. Set a new <b>6–8 digit</b> PIN to continue.</div>'+
+    '<input id="fms-np1" type="password" inputmode="numeric" maxlength="8" placeholder="New PIN (6–8 digits)" style="width:100%;box-sizing:border-box;padding:11px;font-size:16px;text-align:center;border:1px solid #cbd5e1;border-radius:10px;margin-bottom:8px;">'+
+    '<input id="fms-np2" type="password" inputmode="numeric" maxlength="8" placeholder="Repeat new PIN" style="width:100%;box-sizing:border-box;padding:11px;font-size:16px;text-align:center;border:1px solid #cbd5e1;border-radius:10px;">'+
+    '<div id="fms-np-err" style="color:#dc2626;font-size:12px;min-height:16px;margin:6px 0;text-align:center;"></div>'+
+    '<button id="fms-np-ok" style="width:100%;padding:12px;border:none;border-radius:10px;background:#0f766e;color:#fff;font-size:15px;font-weight:700;cursor:pointer;">Save new PIN</button>'+
+    '<div style="text-align:center;margin-top:10px;font-size:12px;"><a href="#" id="fms-np-out" style="color:#64748b;">Sign out</a></div>');
+  document.getElementById('fms-np-out').onclick=function(e){ e.preventDefault(); window.__fmsPinChange=false; ov.remove(); try{ doLogout(); }catch(_){ location.reload(); } };
+  document.getElementById('fms-np-ok').onclick=async function(){
+    var a=(document.getElementById('fms-np1').value||'').trim(), b=(document.getElementById('fms-np2').value||'').trim(), er=document.getElementById('fms-np-err');
+    if(!/^\d{6,8}$/.test(a)){ er.textContent='PIN must be 6 to 8 digits'; return; }
+    if(a!==b){ er.textContent='The two PINs do not match'; return; }
+    er.textContent='Saving…';
+    var j=null; try{ j=await fmsAuthPost({action:'setPin', role:role, pin:a}); }catch(e){}
+    if(j && j.ok){ if(j.token) fmsSetSession(j.token, j.exp); fmsSaveVerifier(role,a); window.__fmsPinChange=false; ov.remove(); if(typeof toast==='function') toast('🔐 New PIN saved — use it from now on','#10b981',5000); fmsFlushHold(); try{ dbForceReconnect(); }catch(e){} try{ if(typeof fetchSheetData==='function') fetchSheetData(); }catch(e){} }
+    else er.textContent=(j&&j.error)||'Could not save — check the connection';
+  };
+}
+async function fmsAuthSetPin(role, pin){ try{ var j=await fmsAuthPost({action:'setPin', role:role, pin:pin}); if(j&&j.ok&&j.token&&typeof CU!=='undefined'&&CU&&CU.role===role){ fmsSetSession(j.token,j.exp); fmsSaveVerifier(role,pin); } return j||{ok:false,error:'No response'}; }catch(e){ return {ok:false,error:e.message}; } }
+async function fmsAuthRemoveRole(role){ try{ return (await fmsAuthPost({action:'removeRole', role:role}))||{ok:false}; }catch(e){ return {ok:false,error:e.message}; } }
+function fmsWatchForOnline(){
+  if(window.__fmsOnlineWatch) return;
+  window.__fmsOnlineWatch=setInterval(async function(){
+    if(!fmsLoggedIn()){ clearInterval(window.__fmsOnlineWatch); window.__fmsOnlineWatch=null; return; }
+    if(fmsTokenValid()){ clearInterval(window.__fmsOnlineWatch); window.__fmsOnlineWatch=null; return; }
+    try{ var url=fmsDbUrl(); var r=await fetch(url+'?action=version',{signal:AbortSignal.timeout(15000)}); var j=fmsParseJ(await r.text()); if(j&&j.ok){ clearInterval(window.__fmsOnlineWatch); window.__fmsOnlineWatch=null; fmsNeedReauth(); } }catch(e){}
+  }, 30000);
+}
+// Ask for the PIN a few minutes BEFORE the session ends (not after), so no change is ever held
+setInterval(function(){ try{
+  if(!fmsLoggedIn() || window.__fmsLegacy || !window.__fmsTok) return;
+  if(window.__fmsReauthSnooze && Date.now()-window.__fmsReauthSnooze<10*60*1000) return;
+  if(window.__fmsExp - Date.now() < 5*60*1000) fmsNeedReauth(true);
+}catch(e){} }, 60000);
+
+// v1681: if the Chart.js CDN is blocked/slow, use a no-op stand-in so KPI/Budget pages still render
+// (tables and numbers stay visible; only the chart canvases stay empty).
+window.addEventListener('load', function(){ try{ if(typeof window.Chart==='undefined'){ var C=function(){ return { destroy:function(){}, update:function(){}, resize:function(){}, data:{datasets:[],labels:[]}, options:{} }; }; C.register=function(){}; C.defaults={font:{},plugins:{legend:{},tooltip:{}},scale:{grid:{}}}; C.__stub=true; window.Chart=C; console.warn('Chart.js unavailable — charts disabled'); } }catch(e){} });
 
 // ── Auto-free storage on load if critically full ──────────────
 (function() {
@@ -7069,6 +7254,7 @@ async function dbCheckVersion(manual){
 
   if(j && j.ok && j.version){
     const types = j.types||[];
+    if (!j.types) { if(manual) toast('☁ DB script '+j.version+(j.secure?' · secured':''),'#10b981',4000); return; }   // signed-out callers get no type list
     const missing = ['census_daily','sc_requests','sc_evals','sc_auth'].filter(t=>types.indexOf(t)<0);
     if(missing.length){ toast('⚠️ Deployed database is missing sheets ('+missing.join(', ')+'). Redeploy FMS_DB script as a NEW VERSION.', '#f59e0b', 12000); }
     else if(manual){ toast('✅ Database is current (v'+j.version+') — census & Supply Chain sync are enabled.','#10b981',6000); }
@@ -7957,7 +8143,7 @@ function hardReload() {
   }
 }
 
-function doLogout(){document.getElementById('loginScreen').style.display='flex';document.getElementById('app').style.display='none';destroyCharts();
+function doLogout(){try{fmsSetSession(null,0);var _rb=document.getElementById('fms-reauth');if(_rb)_rb.remove();}catch(e){}document.getElementById('loginScreen').style.display='flex';document.getElementById('app').style.display='none';destroyCharts();
   setTimeout(buildLoginRoles, 50);
 }
 
@@ -7999,7 +8185,7 @@ function init(){
 }
 function countdown(){const d=Math.ceil((new Date('2026-10-01')-new Date())/86400000);document.getElementById('cdDays').textContent=d>0?d:'0';}
 function setDate(){document.getElementById('tbDate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});}
-function prefillDates(){const t=new Date().toISOString().split('T')[0];document.querySelectorAll('input[type=date]').forEach(e=>{if(!e.value)e.value=t;});const tm=new Date().toTimeString().slice(0,5);document.querySelectorAll('input[type=time]').forEach(e=>{if(!e.value)e.value=tm;});}
+function prefillDates(){const t=(typeof fmsLocalToday==='function'?fmsLocalToday():new Date().toISOString().split('T')[0]);document.querySelectorAll('input[type=date]').forEach(e=>{if(!e.value)e.value=t;});const tm=new Date().toTimeString().slice(0,5);document.querySelectorAll('input[type=time]').forEach(e=>{if(!e.value)e.value=tm;});}
 
 // ===== NAV =====
 const PTITLES={dash:'⬡ Command Center',kpi:'📊 KPI Dashboard',cbahi:'✓ CBAHI Tracker',mms:'🔩 Maintenance Analytics',reports:'📈 Reports & Analysis',safety:'🛡 Safety — FMS.1.1.1',security:'🔒 Security — FMS.1.1.2',hazmat:'☣ Hazmat — FMS.1.1.3',emergency:'🚨 Emergency — FMS.1.1.4/5',fire:'🔥 Fire Safety — FMS.1.1.6',equip:'⚕ Medical Equipment — FMS.1.1.7',utils:'⚡ Utilities — FMS.1.1.8',medgas:'🫧 Medical Gas — FMS.32',radiation:'☢ Radiation — FMS.9',wo:'🔧 Work Orders',ckpi:'⚙ Custom KPIs',docs:'📁 Documents',pms:'📊 FMS Performance Sheet',pmg:'📋 PMG Preventive Maintenance — FMS 32.1',census:'🛏 Nursing Department Daily Census',ipcstore:'🧴 Store — Consumables & PAR Control',ipcnurse:'🧤 Nurse Dispensing — Station Consumables'};
@@ -8222,7 +8408,7 @@ function submitWO(){
   const nm=document.getElementById('wo-name').value.trim(),dp=document.getElementById('wo-dept').value.trim(),tp=document.getElementById('wo-type').value,pr=document.getElementById('wo-prio').value,ds=document.getElementById('wo-desc').value.trim(),lc=document.getElementById('wo-loc').value.trim(),fl=document.getElementById('wo-file').files[0];
   if(!nm||!dp||!ds){toast('Fill name, dept, description','#f59e0b');return;}
   const wos=ld('workorders'),id='WO-'+String(wos.length+1).padStart(3,'0');
-  wos.unshift({id,type:tp,dept:dp,desc:ds+(lc?' ['+lc+']':''),name:nm,prio:pr,file:fl?{n:fl.name}:null,date:new Date().toISOString().split('T')[0],assigned:'',status:'Open',updates:[],_by:CU.name,_rl:CU.rl});
+  wos.unshift({id,type:tp,dept:dp,desc:ds+(lc?' ['+lc+']':''),name:nm,prio:pr,file:fl?{n:fl.name}:null,date:(typeof fmsLocalToday==='function'?fmsLocalToday():new Date().toISOString().split('T')[0]),assigned:'',status:'Open',updates:[],_by:CU.name,_rl:CU.rl});
   sv('workorders',wos);logA('wo');closeMod('newWO');renderWO();woBadge();toast('✓ '+id+' submitted');
 }
 function renderWO(){
@@ -8847,6 +9033,7 @@ async function fetchSheetData() {
           }
         } else if (json && !json.ok) {
           console.warn('Apps Script error response:', json.error);
+          if (json.authRequired) { setStatus('loading', '🔒 Sign in to load maintenance work orders'); showNoData('Sign in to load the live maintenance sheet.'); return; }
         }
       } else {
         console.warn('Apps Script HTTP error:', resp.status);
@@ -8861,11 +9048,9 @@ async function fetchSheetData() {
   // This is a fallback for when Apps Script is unavailable.
   const csvURL = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/export?format=csv&gid=' + SHEET_GID;
 
-  for (const [label, url] of [
-    ['Direct CSV', csvURL],
-    ['AllOrigins', 'https://api.allorigins.win/raw?url=' + encodeURIComponent(csvURL)],
-    ['CORSProxy',  'https://corsproxy.io/?' + encodeURIComponent(csvURL)]
-  ]) {
+  // v1682: the public-CSV and third-party CORS-proxy fallbacks were REMOVED — they only worked if the
+  // sheet was shared publicly, and they routed hospital work-order data through outside servers.
+  for (const [label, url] of []) {
     try {
       const resp = await fetch(url, {signal: AbortSignal.timeout(10000)});
       if (!resp.ok) continue;
@@ -9762,7 +9947,6 @@ function mgTab(tab, btn) {
   if (tab === 'cyltest')    { setTimeout(cylRender, 80); }
   const annexTabs = ['offline','zsvlog','modreq','loxpo','repair','gastest','competency'];
   if (annexTabs.includes(tab)) { setTimeout(()=>mgAnnexRender(tab), 80); }
-  if (domain === 'fire' && tab === 'ppmsched') { setTimeout(()=>{ fsPpmRender(); fsPpmSync(); }, 80); }
   // Re-render the specific table if it's a checklist tab
   const checklistTabs = ['lox','o2backup','n2o','vacuum','aircomp','airbackup','ambulance','cylinder','o2refill','airrefill'];
   if (checklistTabs.includes(tab)) renderMGTable(tab);
@@ -10091,7 +10275,7 @@ function renderMGLog(filter) {
   const statsEl = document.getElementById('mg-log-stats');
   if (statsEl) {
     const total   = Object.keys(MG_DEFS).reduce((s,t) => s + ld('mg_'+t).length, 0);
-    const today   = new Date().toISOString().split('T')[0];
+    const today   = fmsLocalToday();
     const todayC  = Object.keys(MG_DEFS).reduce((s,t) => s + ld('mg_'+t).filter(r=>r.date===today).length, 0);
     const issues  = all.filter(r => r._hasIssue).length;
     const loxC    = ld('mg_lox').length;
@@ -10317,17 +10501,26 @@ function renderMGKPIs() {
   const el = document.getElementById('mg-kpi-content'); if (!el) return;
   const today = fmsLocalToday();
   const kpis = [
-    { name: 'LOX Daily Entries — Target: 2/day (AM+PM)', count: ld('mg_lox').length, target: 60, color: '#3b82f6' },
-    { name: 'O₂ Backup Manifold Checks', count: ld('mg_o2backup').length, target: 60, color: '#0070f3' },
-    { name: 'Nitrous Oxide Checks', count: ld('mg_n2o').length, target: 60, color: '#a855f7' },
-    { name: 'Central Vacuum Checks', count: ld('mg_vacuum').length, target: 60, color: '#5a7fa8' },
-    { name: 'Air Compressor Checks', count: ld('mg_aircomp').length, target: 60, color: '#00d4aa' },
-    { name: 'Air Backup Manifold Checks', count: ld('mg_airbackup').length, target: 60, color: '#10b981' },
-    { name: 'Ambulance Daily Checks', count: ld('mg_ambulance').length, target: 60, color: '#ef4444' },
-    { name: 'Cylinder Delivery Inspections', count: ld('mg_cylinder').length, target: 12, color: '#f59e0b' },
-    { name: 'O₂ Tank Refill Logs', count: ld('mg_o2refill').length, target: 4, color: '#3b82f6' },
-    { name: 'Medical Air Refill Logs', count: ld('mg_airrefill').length, target: 4, color: '#10b981' },
+    // (v1681) Daily checklists: THIS MONTH's entries vs. expected-to-date (per-day × days elapsed).
+    // Previously lifetime totals were compared to a fixed 60, so a system showed "Met" forever.
+    // Event logs (deliveries / refills): THIS YEAR's entries vs. the annual target.
   ];
+  (function(){
+    const thisMonth = today.slice(0,7), thisYear = today.slice(0,4), dayN = parseInt(today.slice(8,10),10)||1;
+    const yr = k => (ld(k)||[]).filter(r => String(r.date||r._ts||'').slice(0,4) === thisYear).length;
+    const days = k => new Set((ld(k)||[]).map(r => String(r.date||r._ts||'').slice(0,10)).filter(d => d.slice(0,7) === thisMonth)).size;
+    const daily = (name,key,color) => kpis.push({ name: name, count: days(key), target: dayN, color, unit:'days covered this month (to date)' });
+    daily('LOX Daily Checks (AM+PM)','mg_lox','#3b82f6');
+    daily('O₂ Backup Manifold Checks','mg_o2backup','#0070f3');
+    daily('Nitrous Oxide Checks','mg_n2o','#a855f7');
+    daily('Central Vacuum Checks','mg_vacuum','#5a7fa8');
+    daily('Air Compressor Checks','mg_aircomp','#00d4aa');
+    daily('Air Backup Manifold Checks','mg_airbackup','#10b981');
+    daily('Ambulance Daily Checks','mg_ambulance','#ef4444');
+    kpis.push({ name:'Cylinder Delivery Inspections', count: yr('mg_cylinder'), target: 12, color:'#f59e0b', unit:'target this year' });
+    kpis.push({ name:'O₂ Tank Refill Logs', count: yr('mg_o2refill'), target: 4, color:'#3b82f6', unit:'target this year' });
+    kpis.push({ name:'Medical Air Refill Logs', count: yr('mg_airrefill'), target: 4, color:'#10b981', unit:'target this year' });
+  })();
 
   const todayCheck = (typeof loxCheckDone==='function') ? loxCheckDone(today) : ld('mg_lox').some(r => String(r.date||'').slice(0,10) === today);
   const issueCount = Object.keys(MG_DEFS).reduce((s, type) =>
@@ -10361,7 +10554,7 @@ function renderMGKPIs() {
         <div class="kcn">${k.name}</div>
         <div class="kcv">
           <div class="kca" style="color:${c};">${k.count}</div>
-          <div class="kct">/ ${k.target} entries</div>
+          <div class="kct">/ ${k.target} ${k.unit||'entries'}</div>
           ${bd}
         </div>
       </div><div class="kbar"><div class="kfill" style="width:${pct}%;background:${fl};"></div></div></div>`;
@@ -11399,7 +11592,9 @@ function settingsRenderStorageBar() {
         <button class="btn bb" style="font-size:10px;padding:6px 14px;" onclick="dbLoadAll().then(()=>settingsRenderStorageBar())">☁️ Sync from DB</button>
       </div>
     </div>`;
-}function settingsRenderStorageBar() {
+}
+// (v1681) superseded duplicate — kept for reference only; the full version above is the live one
+function _settingsRenderStorageBarLegacy() {
   const el = document.getElementById('settings-storage-bar'); if (!el) return;
   const info = fsGetStorageInfo();
   const cc = info.pct >= 90 ? '#ef4444' : info.pct >= 70 ? '#f59e0b' : '#00d4aa';
@@ -11422,7 +11617,6 @@ function settingsPushToDB() {
   const payload = {
     _id: 'platform_settings',
     extra_users: localStorage.getItem('obeid_extra_users') || '[]',
-    pins:        localStorage.getItem('obeid_pins')        || '{}',
     names:       localStorage.getItem('obeid_user_names')  || '{}',
     doc_stds:    localStorage.getItem('obeid_doc_standards')|| '[]',
     esr_target:  localStorage.getItem('safety_esr_target') || '12',
@@ -11439,10 +11633,7 @@ function settingsPullFromDB(rows) {
   const row = Array.isArray(rows)?rows.find(r=>r._id==='platform_settings'):rows;
   if (!row) return;
   if (row.extra_users&&row.extra_users.length>2) localStorage.setItem('obeid_extra_users',row.extra_users);
-  if (row.pins&&row.pins.length>2) {
-    try{const d=JSON.parse(row.pins),l=JSON.parse(localStorage.getItem('obeid_pins')||'{}');
-        localStorage.setItem('obeid_pins',JSON.stringify(Object.assign({},l,d)));}catch(e){}
-  }
+  // (v1682) PINs are no longer synced through the sheet — the server holds them
   if (row.names&&row.names.length>2) {
     try{const d=JSON.parse(row.names),l=JSON.parse(localStorage.getItem('obeid_user_names')||'{}');
         localStorage.setItem('obeid_user_names',JSON.stringify(Object.assign({},l,d)));}catch(e){}
@@ -11551,7 +11742,7 @@ function settingsAddUser() {
   if (!newRole)  { toast('Enter a Role ID (e.g. maintenance2)','#f59e0b'); roleInput?.focus(); return; }
   if (!newLabel) { toast('Enter the Display Name','#f59e0b'); labelInput?.focus(); return; }
   if (!newPin)   { toast('Enter a PIN for this user','#f59e0b'); pinInput?.focus(); return; }
-  if (!/^\d{4,8}$/.test(newPin)) { toast('PIN must be 4 to 8 digits only','#f59e0b'); pinInput?.focus(); return; }
+  if (!/^\d{6,8}$/.test(newPin)) { toast('PIN must be 6 to 8 digits','#f59e0b'); pinInput?.focus(); return; }
 
   const allUsers = getDynUsers();
   if (allUsers.find(u => u.role === newRole)) {
@@ -11573,7 +11764,7 @@ function settingsAddUser() {
   localStorage.setItem('obeid_extra_users', JSON.stringify(extras));
 
   // Save PIN and name
-  const pins  = getDynPINs(); pins[newRole]  = newPin;    saveDynPINs(pins);
+  fmsAuthSetPin(newRole, newPin).then(function(j){ if(!(j&&j.ok)) toast('⚠ User created but PIN not saved on the server: '+((j&&j.error)||'no response'),'#ef4444',7000); });
   const names = getDynNames(); names[newRole] = newLabel;  saveDynNames(names);
 
   // Add to runtime access maps — NEVER silently fall back to another role's
@@ -11609,7 +11800,7 @@ function settingsDeleteUser(role) {
   const extras = JSON.parse(localStorage.getItem('obeid_extra_users')||'[]').filter(x=>x.role!==role);
   localStorage.setItem('obeid_extra_users', JSON.stringify(extras));
   try{ const dis=JSON.parse(localStorage.getItem('obeid_disabled_users')||'[]'); if(dis.indexOf(role)<0){ dis.push(role); localStorage.setItem('obeid_disabled_users', JSON.stringify(dis)); } }catch(e){}
-  const pins=getDynPINs(); delete pins[role]; saveDynPINs(pins);
+  fmsAuthRemoveRole(role);
   const names=getDynNames(); delete names[role]; saveDynNames(names);
   settingsRenderUsers();
   settingsPushToDB();
@@ -11687,24 +11878,18 @@ function settingsRenderUsers() {
 
   // Update PIN if provided
   if (pin) {
-    if (!/^\d{4,8}$/.test(pin)) {
-      toast('PIN must be 4 to 8 digits only','#f59e0b');
+    if (!/^\d{6,8}$/.test(pin)) {
+      toast('PIN must be 6 to 8 digits','#f59e0b');
       return;
     }
     if (pin !== pin2) {
       toast('PINs do not match — re-enter both fields','#f59e0b');
       return;
     }
-    const pins = getDynPINs();
-    pins[role] = pin;
-    saveDynPINs(pins);
-    // Sync new PIN to DB so all connected devices get it
-    dbWrite('app_settings', {
-      _id:   'pin_' + role,
-      key:   'pin_' + role,
-      value: pin,
-      _by:   (typeof CU !== 'undefined' ? CU.name : 'Director'),
-      _ts:   new Date().toISOString()
+    // v1682: PINs are stored ONLY on the server (hashed) — never in the sheet or on devices
+    fmsAuthSetPin(role, pin).then(function(j){
+      if (j && j.ok) toast('🔐 PIN updated — takes effect immediately on every device','#10b981',4500);
+      else toast('❌ PIN not changed: '+((j&&j.error)||'no response')+(window.__fmsLegacy?' (update the DB script first)':''),'#ef4444',7000);
     });
     changed = true;
   }
@@ -12281,18 +12466,42 @@ function renderEvalHistory() {
 // ════════════════════════════════════════════════════════════════
 // OVERRIDE doLogin() to include RBAC + dynamic PINs
 // ════════════════════════════════════════════════════════════════
-function doLogin() {
+// v1682 — sign-in is verified by the SERVER (PINs no longer live in this page).
+// Falls back to: legacy local check only while the DB script is not yet upgraded,
+// and an offline sign-in (this device's last verified PIN) when the server is unreachable.
+async function doLogin() {
   const role = document.getElementById('lr').value;
   const name = document.getElementById('lname').value.trim();
   const pin  = document.getElementById('lpin').value.trim();
   const err  = document.getElementById('lerr');
   err.textContent = '';
   if (!role||!name||!pin) { err.textContent='Please fill all fields'; return; }
-
-  // Use dynamic PINs (allows PIN changes from Settings)
-  const pins = getDynPINs();
-  if (pins[role] !== pin) { err.textContent='Incorrect PIN for this role'; return; }
-
+  if (window.__fmsLoginBusy) return; window.__fmsLoginBusy = true;
+  const btn = document.querySelector('#loginScreen .lbtn'); const btnTxt = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Verifying…'; }
+  let res;
+  try { res = await fmsAuthLogin(role, pin, name); } finally { window.__fmsLoginBusy = false; if (btn) { btn.disabled = false; btn.textContent = btnTxt; } }
+  let offline = false, mustChange = false;
+  if (res.mode === 'ok') {
+    mustChange = !!res.mustChangePin; fmsSetSession(res.token, res.exp, mustChange ? 'pin' : 'full');
+    if (!mustChange) fmsSaveVerifier(role, pin);
+    try { localStorage.removeItem('obeid_pins'); } catch(e) {}          // no PINs stored on devices any more
+  } else if (res.mode === 'denied') {
+    err.textContent = res.error || 'Incorrect PIN for this role'; return;
+  } else if (res.mode === 'legacy') {
+    const pins = getDynPINs();                                             // DB script not yet upgraded
+    if (pins[role] !== pin) { err.textContent='Incorrect PIN for this role'; return; }
+  } else {
+    if (!(await fmsCheckVerifier(role, pin))) { err.textContent = 'Cannot reach the server to verify your PIN — check the connection and try again.'; return; }
+    offline = true;
+  }
+  _doLoginProceed(role, name);
+  if (mustChange) setTimeout(function(){ fmsForcePinChange(role); }, 300);
+  else if (res.mode === 'ok') setTimeout(function(){ try { fmsFlushHold(); } catch(e){} try { dbForceReconnect(); } catch(e){} try { if (typeof fetchSheetData==='function') fetchSheetData(); } catch(e){} }, 400);
+  if (res.mode === 'legacy') setTimeout(function(){ try { fmsFlushHold(); } catch(e){} }, 400);
+  if (offline) { toast('📴 Offline sign-in — you can view saved data; changes are kept on this device and sync after you sign in online.', '#f59e0b', 9000); fmsWatchForOnline(); }
+}
+function _doLoginProceed(role, name) {
   const dynNames = getDynNames();
   // For custom roles, get label from getDynUsers() since RLBL only has built-ins
   const allUsers  = getDynUsers();
@@ -20260,15 +20469,17 @@ function scSaveEvals(a){ sv('sc_evals', a); }
 function scAuths(){ const a=ld('sc_auth'); return Array.isArray(a)?a:[]; }
 function scSaveAuths(a){ sv('sc_auth', a); }
 function scRoleName(role){ try{ return (getDynNames()||{})[role]||role; }catch(e){ return role; } }
-function scRoleLabel(role){ try{ const u=(getDynUsers()||[]).find(x=>x.role===role); return u?u.label:role; }catch(e){ return role; } }
+function scRoleLabel(role){ try{ const us=getDynUsers()||[]; let u=us.find(x=>x.role===role);
+  if(!u){ const al=(SC_ROLE_ALIASES[role]||[]).concat(Object.keys(SC_ROLE_ALIASES).filter(k=>(SC_ROLE_ALIASES[k]||[]).indexOf(role)>=0)); u=us.find(x=>al.indexOf(x.role)>=0); }
+  return u?u.label:(role==='infection_control'?'IPC':role); }catch(e){ return role; } }
 function scRoleOpts(sel,withNone){ try{ const base=withNone?'<option value="">— none (single evaluator) —</option>':''; return base+(getDynUsers()||[]).filter(u=>u.role!=='supplychain').map(u=>'<option value="'+u.role+'"'+(u.role===sel?' selected':'')+'>'+u.label+' — '+scRoleName(u.role)+'</option>').join(''); }catch(e){ return ''; } }
 
-function scSyncFromCloud(manual){
+function scSyncFromCloud(manual, cb){
   var url=(typeof CANONICAL_DB_URL!=='undefined'&&CANONICAL_DB_URL)?CANONICAL_DB_URL:(typeof getDBUrl==='function'?getDBUrl():null);
   if(!url){ if(manual&&typeof toast==='function') toast('No database URL','#f59e0b'); return; }
   var types=['sc_requests','sc_evals','sc_auth','contracts'];
   var keyMap={sc_requests:'sc_requests', sc_evals:'sc_evals', sc_auth:'sc_auth', contracts:'contracts'};
-  var done=0, pulled=0;
+  var done=0, pulled=0, failed=0;
   types.forEach(function(t){
     fetch(url+'?action=getType&type='+t,{signal:AbortSignal.timeout(30000)})
       .then(function(r){return r.json();})
@@ -20281,18 +20492,20 @@ function scSyncFromCloud(manual){
           pulled+=j.rows.length;
         }
       })
-      .catch(function(){})
-      .finally(function(){ done++; if(done===types.length){ try{ scTab(document.querySelector('#page-supplychain .tbtn.active')?.id.replace('scTab-','').replace('-btn','')||'requests'); }catch(e){} scUpdateBadge(); if(manual&&typeof toast==='function') toast(pulled?('☁ Synced '+pulled+' Supply Chain records'):'No new Supply Chain records found','#10b981',4000); } });
+      .catch(function(){ failed++; })
+      .finally(function(){ done++; if(done===types.length){ try{ if(typeof cb==='function') setTimeout(function(){ cb(failed===0); },0); }catch(_){} try{ scTab(document.querySelector('#page-supplychain .tbtn.active')?.id.replace('scTab-','').replace('-btn','')||'requests'); }catch(e){} scUpdateBadge(); if(manual&&typeof toast==='function') toast(pulled?('☁ Synced '+pulled+' Supply Chain records'):'No new Supply Chain records found','#10b981',4000); } });
   });
 }
 function scNextDue(c){
-  var q=(c&&c.qdates)||{}; var today=new Date(); today.setHours(0,0,0,0);
-  var arr=['Q1','Q2','Q3','Q4'].map(function(k){ return {q:k, d:q[k]?new Date(q[k]):null}; }).filter(function(x){ return x.d && !isNaN(x.d); });
+  var q=(c&&c.qdates)||{}; var today=new Date(); today.setHours(0,0,0,0); var year=String(today.getFullYear());
+  var arr=['Q1','Q2','Q3','Q4'].map(function(k){ return {q:k, raw:q[k], d:q[k]?new Date(q[k]):null}; }).filter(function(x){ return x.d && !isNaN(x.d); });
   if(!arr.length) return null;
   arr.sort(function(a,b){ return a.d-b.d; });
-  var next=arr.find(function(x){ return x.d>=today; }) || arr[arr.length-1];
+  var open=arr.filter(function(x){ return scQuarterState(c,x.q,year).status!=='auth'; });
+  if(!open.length) return { label:'✅ All quarters authenticated', days:null, done:true };
+  var next=open[0];
   var days=Math.round((next.d-today)/86400000);
-  return { label: next.q+' · '+next.d.toISOString().slice(0,10)+(days<0?' (overdue '+(-days)+'d)':days<=14?' (in '+days+'d)':''), days:days };
+  return { label: next.q+' · '+String(next.raw).slice(0,10)+(days<0?' (overdue '+(-days)+'d)':days<=14?' (in '+days+'d)':''), days:days };
 }
 function scContractIcon(c){
   var t=((c&&c.name||'')+' '+(c&&c.cat||'')).toLowerCase();
@@ -20310,13 +20523,33 @@ function scContractIcon(c){
   if(/hvac|air|ac /.test(t)) return '❄️';
   return '📄';
 }
+/* ── Quarter engine (v1681): ONE lookup used by dashboard, alerts and emails ──
+   Finds the request for contract+quarter by contractId OR contract name, for the
+   preferred year, then the year of the quarter's own date. */
+function scNormName(x){ return String(x||'').toLowerCase().replace(/\s+/g,' ').trim(); }
+function scFindReq(c, q, year){
+  if(!c) return null;
+  var reqs=scRequests().filter(function(r){ return r && r.quarter===q && (String(r.contractId)===String(c._id) || (c.name && scNormName(r.contractName)===scNormName(c.name))); });
+  if(!reqs.length) return null;
+  var qd=(c.qdates||{})[q]; var years=[String(year||'')]; if(qd && /^\d{4}/.test(String(qd))) years.push(String(qd).slice(0,4));
+  for(var i=0;i<years.length;i++){ var hit=reqs.find(function(r){ return String(r.year)===years[i]; }); if(hit) return hit; }
+  return null;
+}
+function scQuarterState(c, q, year){
+  var req=scFindReq(c,q,year);
+  if(!req) return {status:'none', req:null, pendingRoles:[], evs:[]};
+  var evs=scReqEvals(req._id);
+  var pendingRoles=(req.evaluators||[]).filter(function(role){ return !scEvalForRole(evs,role); });
+  var auth=scAuths().find(function(a){ return a._id===req._id; });
+  var combined=evs.length?Math.round(evs.reduce(function(s2,e){return s2+(parseFloat(e.pct)||0);},0)/evs.length):null;
+  var status = auth&&auth.status==='authenticated' ? 'auth' : auth&&auth.status==='review' ? 'review' : 'pending';
+  return {status:status, req:req, auth:auth, evs:evs, combined:combined, pendingRoles:pendingRoles, awaitingAuth: status==='pending' && pendingRoles.length===0};
+}
 function scQuarterResult(cid, q, year){
-  var reqId='screq_'+cid+'_'+q+'_'+year;
-  var evs=scReqEvals(reqId);
-  if(!evs.length) return {status:'none'};
-  var combined=Math.round(evs.reduce(function(s,e){return s+(parseFloat(e.pct)||0);},0)/evs.length);
-  var auth=scAuths().find(function(a){return a._id===reqId;});
-  return {status: auth?(auth.status==='authenticated'?'auth':'review'):'pending', combined:combined};
+  var c=scContracts().find(function(x){ return String(x._id)===String(cid); }) || {_id:cid};
+  var st=scQuarterState(c,q,year);
+  if(st.status==='none' || (!st.evs.length && st.status==='pending')) return {status:'none'};
+  return {status:st.status, combined:st.combined};
 }
 /* ── Contract status (renew / terminate) ── */
 function scContractStatus(c){ return (c&&c.status)||'active'; }
@@ -20340,10 +20573,13 @@ function scDueScan(){
   var overdue=[], expiring=[], expired=[];
   scContracts().forEach(function(c){
     if(scContractStatus(c)==='terminated') return;
-    // quarterly evaluations overdue (quarter date passed & not authenticated)
+    // quarterly evaluations overdue: quarter date passed and the quarter is NOT authenticated.
+    // kind: 'norequest' (Supply Chain must create it) · 'evaluators' (evaluations missing) · 'auth' (awaiting authentication)
     ['Q1','Q2','Q3','Q4'].forEach(function(q){ var qd=(c.qdates||{})[q]; if(!qd) return; var d=new Date(qd); if(isNaN(d)||d>today) return;
-      var reqId='screq_'+c._id+'_'+q+'_'+year; var auth=scAuths().find(function(a){return a._id===reqId;});
-      if(!(auth&&auth.status==='authenticated')){ var days=Math.round((today-d)/86400000); overdue.push({c:c,q:q,date:qd,days:days}); }
+      var st=scQuarterState(c,q,year); if(st.status==='auth') return;
+      var kind = !st.req ? 'norequest' : st.pendingRoles.length ? 'evaluators' : 'auth';
+      var days=Math.round((today-d)/86400000);
+      overdue.push({c:c,q:q,date:String(qd).slice(0,10),days:days,kind:kind,req:st.req,pendingRoles:st.pendingRoles});
     });
     // contract expiry — a RENEWED decision taken for this end date (within its 30-day window or
     // after it) closes the alert. If the end date is later moved forward, the old decision no
@@ -20358,7 +20594,7 @@ function scRenderDueAlerts(){
   var el=document.getElementById('sc-due-alerts'); if(!el) return;
   var s=scDueScan(); var parts='';
   if(s.overdue.length){ parts+='<div style="background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.4);border-radius:10px;padding:10px 12px;margin-bottom:8px;"><div style="font-size:12px;font-weight:700;color:var(--or);">⏰ '+s.overdue.length+' quarterly evaluation(s) overdue</div>'
-    +s.overdue.slice(0,6).map(function(o){ return '<div style="font-size:11px;color:var(--tx);margin-top:3px;">• <b>'+o.c.name+'</b> — '+o.q+' (due '+o.date+', '+o.days+'d overdue)</div>'; }).join('')+'</div>'; }
+    +s.overdue.slice(0,8).map(function(o){ var why=o.kind==='norequest'?'request not created yet — Supply Chain':o.kind==='auth'?'evaluated — awaiting Supply Chain authentication':'waiting for: '+(o.pendingRoles||[]).map(scRoleLabel).join(', '); return '<div style="font-size:11px;color:var(--tx);margin-top:3px;">• <b>'+o.c.name+'</b> — '+o.q+' (due '+o.date+', '+o.days+'d overdue) · <span style="color:var(--mu);">'+why+'</span></div>'; }).join('')+(s.overdue.length>8?'<div style="font-size:10px;color:var(--mu);margin-top:3px;">+ '+(s.overdue.length-8)+' more</div>':'')+'</div>'; }
   if(s.expiring.length){ parts+='<div style="background:rgba(59,130,246,.10);border:1px solid rgba(59,130,246,.4);border-radius:10px;padding:10px 12px;margin-bottom:8px;"><div style="font-size:12px;font-weight:700;color:#3b82f6;">📅 '+s.expiring.length+' contract(s) expiring within 30 days</div>'
     +s.expiring.map(function(o){ return '<div style="font-size:11px;margin-top:4px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;"><span>• <b>'+o.c.name+'</b> — expires '+o.c.end+' (in '+o.days+'d)</span>'+(scIsSC()?'<span><button class="btn bg" style="font-size:9px;padding:2px 6px;" onclick="scSetStatus(\''+o.c._id+'\',\'renewed\')">✅ Renew</button> <button class="btn br" style="font-size:9px;padding:2px 6px;" onclick="scSetStatus(\''+o.c._id+'\',\'terminated\')">⛔ Terminate</button></span>':'')+'</div>'; }).join('')+'</div>'; }
   if(s.expired.length){ parts+='<div style="background:rgba(220,38,38,.10);border:1px solid rgba(220,38,38,.45);border-radius:10px;padding:10px 12px;margin-bottom:8px;"><div style="font-size:12px;font-weight:700;color:var(--rd);">⛔ '+s.expired.length+' contract(s) EXPIRED — decision required</div>'
@@ -20366,24 +20602,38 @@ function scRenderDueAlerts(){
   el.innerHTML=parts;
 }
 /* ── Fire due/expiry EMAILS (throttled: once per item per day) ── */
+/* Emails go out ONLY from a Supply Chain or FMS Director session, ONLY after this session has
+   pulled fresh Supply Chain data from the cloud, and at most once per item per 7 days.
+   Evaluators are emailed only when a request exists and THEIR evaluation is missing. */
 function scDueNotify(){
   try{
-    var s=scDueScan(); var today=new Date().toISOString().slice(0,10);
-    var sent=JSON.parse(localStorage.getItem('sc_due_notified')||'{}'); var changed=false;
-    var scEmail=userEmail('supplychain');
-    var mail=function(key, to, subj, body){ if(!to) return; if(sent[key]===today) return; dbSendEmail(to,subj,body); sent[key]=today; changed=true; };
-    s.overdue.forEach(function(o){ var k='ov_'+o.c._id+'_'+o.q+'_'+today.slice(0,7);
-      (o.c.evaluators||[]).forEach(function(role){ mail(k+'_'+role, userEmail(role), 'FMS — Overdue Evaluation: '+o.c.name+' ('+o.q+')', '<p>The <b>'+o.q+'</b> evaluation for <b>'+o.c.name+'</b> is <b>'+o.days+' day(s) overdue</b> (was due '+o.date+'). Please complete it in Supply Chain → Evaluation Requests.</p>'); });
-      mail(k+'_sc', scEmail, 'FMS — Overdue Evaluation: '+o.c.name+' ('+o.q+')', '<p><b>'+o.c.name+'</b> — '+o.q+' evaluation is '+o.days+'d overdue.</p>'); });
-    s.expiring.forEach(function(o){ mail('exp_'+o.c._id+'_'+today, scEmail, 'FMS — Contract Expiring: '+o.c.name, '<p><b>'+o.c.name+'</b> expires on '+o.c.end+' (in '+o.days+' days). Decide to <b>renew or terminate</b> in Supply Chain.</p>'); });
-    s.expired.forEach(function(o){ if(scContractStatus(o.c)==='active') mail('expd_'+o.c._id+'_'+today, scEmail, 'FMS — Contract EXPIRED: '+o.c.name, '<p><b>'+o.c.name+'</b> EXPIRED on '+o.c.end+' ('+o.days+'d ago) and awaits a renew/terminate decision.</p>'); });
-    if(changed) localStorage.setItem('sc_due_notified', JSON.stringify(sent));
-    // in-app login toast
+    if(!CU || ['supplychain','director'].indexOf(CU.role)<0) return;
+    if(typeof scSyncFromCloud==='function' && !window.__scNotifySynced){
+      window.__scNotifySynced=true;
+      scSyncFromCloud(false, function(ok){ if(ok) scDueNotify(); });
+      return;
+    }
+    var s=scDueScan(); var now=Date.now(); var WEEK=7*86400000;
+    var sent={}; try{ sent=JSON.parse(localStorage.getItem('sc_due_notified2')||'{}'); }catch(_){}
+    var changed=false; var scEmail=userEmail('supplychain');
+    var mail=function(key, to, subj, body){ if(!to) return; if(sent[key] && now-sent[key]<WEEK) return; dbSendEmail(to,subj,body); sent[key]=now; changed=true; };
+    s.overdue.forEach(function(o){
+      var k='ov_'+o.c._id+'_'+o.q+'_'+o.date;
+      if(o.kind==='norequest'){
+        mail(k+'_sc', scEmail, 'FMS — Evaluation request not created: '+o.c.name+' ('+o.q+')', '<p>The <b>'+o.q+'</b> evaluation for <b>'+o.c.name+'</b> was due on '+o.date+' ('+o.days+' day(s) ago), but no evaluation request has been created yet. Please create it in Supply Chain → Evaluation Requests.</p>');
+      } else if(o.kind==='auth'){
+        mail(k+'_scauth', scEmail, 'FMS — Awaiting your authentication: '+o.c.name+' ('+o.q+')', '<p>All evaluations for <b>'+o.c.name+'</b> — '+o.q+' are complete and await your <b>authentication</b> (Supply Chain → Evaluation Requests).</p>');
+      } else {
+        (o.pendingRoles||[]).forEach(function(role){ mail(k+'_'+role, userEmail(role), 'FMS — Overdue Evaluation: '+o.c.name+' ('+o.q+')', '<p>The <b>'+o.q+'</b> evaluation for <b>'+o.c.name+'</b> is <b>'+o.days+' day(s) overdue</b> (was due '+o.date+'). Please complete it in Supply Chain → Evaluation Requests.</p>'); });
+      }
+    });
+    s.expiring.forEach(function(o){ mail('exp_'+o.c._id+'_'+o.c.end, scEmail, 'FMS — Contract Expiring: '+o.c.name, '<p><b>'+o.c.name+'</b> expires on '+o.c.end+' (in '+o.days+' days). Decide to <b>renew or terminate</b> in Supply Chain.</p>'); });
+    s.expired.forEach(function(o){ if(scContractStatus(o.c)==='active') mail('expd_'+o.c._id+'_'+o.c.end, scEmail, 'FMS — Contract EXPIRED: '+o.c.name, '<p><b>'+o.c.name+'</b> EXPIRED on '+o.c.end+' ('+o.days+'d ago) and awaits a renew/terminate decision.</p>'); });
+    if(changed) localStorage.setItem('sc_due_notified2', JSON.stringify(sent));
     var totalOpen=s.overdue.length+s.expiring.length+s.expired.length;
-    if(totalOpen && typeof toast==='function') toast('🔔 Supply Chain: '+s.overdue.length+' overdue eval(s), '+s.expiring.length+' expiring, '+s.expired.length+' expired contract(s)','#f59e0b',7000);
-  }catch(e){}
+    if(totalOpen && typeof toast==='function') toast('🔔 Supply Chain: '+s.overdue.length+' overdue quarter(s), '+s.expiring.length+' expiring, '+s.expired.length+' expired contract(s)','#f59e0b',7000);
+  }catch(e){ console.warn('scDueNotify:', e.message); }
 }
-
 function scRenderDashboard(){
   var el=document.getElementById('sc-dashboard-body'); if(!el) return;
   var year=String(new Date().getFullYear());
@@ -20391,13 +20641,14 @@ function scRenderDashboard(){
   if(!contracts.length){ el.innerHTML='<div class="em" style="padding:20px;text-align:center;">No contracts yet.'+(scIsSC()?' Add contracts to see the compliance dashboard.':'')+'</div>'; return; }
   // top summary strip
   var allAuth=[], totalQ=0, doneQ=0, overdueCount=0;
-  contracts.forEach(function(c){ ['Q1','Q2','Q3','Q4'].forEach(function(q){ var r=scQuarterResult(c._id,q,year); if(r.status!=='none'){ totalQ++; if(r.status==='auth'){ doneQ++; allAuth.push(r.combined); } } }); var d=scNextDue(c); if(d&&d.days!=null&&d.days<0) overdueCount++; });
+  contracts.forEach(function(c){ ['Q1','Q2','Q3','Q4'].forEach(function(q){ var r=scQuarterResult(c._id,q,year); if(r.status!=='none'){ totalQ++; if(r.status==='auth'){ doneQ++; allAuth.push(r.combined); } } }); });
+  try{ overdueCount=scDueScan().overdue.length; }catch(_){}
   var portfolio=allAuth.length?Math.round(allAuth.reduce(function(a,b){return a+b;},0)/allAuth.length):null;
   var strip='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">'+
     '<div style="background:var(--s2);border:1px solid var(--bd);border-radius:12px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:800;">'+contracts.length+'</div><div style="font-size:10px;color:var(--mu);">📄 Contracts</div></div>'+
     '<div style="background:var(--s2);border:1px solid var(--bd);border-radius:12px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:800;color:'+(portfolio==null?'var(--mu)':portfolio>=80?'#16a34a':portfolio>=60?'#d97706':'#dc2626')+';">'+(portfolio==null?'—':portfolio+'%')+'</div><div style="font-size:10px;color:var(--mu);">📊 Portfolio compliance</div></div>'+
     '<div style="background:var(--s2);border:1px solid var(--bd);border-radius:12px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:800;color:var(--ac);">'+doneQ+'</div><div style="font-size:10px;color:var(--mu);">✅ Quarters authenticated</div></div>'+
-    '<div style="background:var(--s2);border:1px solid '+(overdueCount?'var(--rd)':'var(--bd)')+';border-radius:12px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:800;color:'+(overdueCount?'var(--rd)':'#16a34a')+';">'+overdueCount+'</div><div style="font-size:10px;color:var(--mu);">⚠️ Overdue</div></div>'+
+    '<div style="background:var(--s2);border:1px solid '+(overdueCount?'var(--rd)':'var(--bd)')+';border-radius:12px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:800;color:'+(overdueCount?'var(--rd)':'#16a34a')+';">'+overdueCount+'</div><div style="font-size:10px;color:var(--mu);">⚠️ Overdue quarters</div></div>'+
   '</div>';
   var cards=contracts.map(function(c){
     var qs=['Q1','Q2','Q3','Q4'].map(function(q){ return scQuarterResult(c._id,q,year); });
@@ -20622,11 +20873,18 @@ function scRenderHistory(){
   const el=document.getElementById('sc-history-list'); if(!el) return;
   const sc=scIsSC(); const canDel=scCanDelete(); const del=document.getElementById('sc-delall-btn'); if(del) del.style.display=canDel?'':'none';
   let evs=scEvals();
-  if(!sc && !canDel && CU){ const myReqIds=new Set(scRequests().filter(r=>(r.evaluators||[]).indexOf(CU.role)>=0).map(r=>r._id)); evs=evs.filter(e=>myReqIds.has(e.requestId)); }
+  if(!sc && !canDel && CU){ const myReqIds=new Set(scRequests().filter(r=>scMatchedRole(CU.role, r.evaluators)!==null).map(r=>r._id)); evs=evs.filter(e=>myReqIds.has(e.requestId)); }
   if(!evs.length){ el.innerHTML='<div class="em" style="padding:16px;text-align:center;">No evaluations yet.</div>'; return; }
   el.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="text-align:left;color:var(--mu);border-bottom:1px solid var(--bd);"><th style="padding:6px;">Contract</th><th>Q/Year</th><th>Evaluator</th><th>Score</th><th>Status</th>'+((sc||CU&&CU.role==='director')?'<th></th>':'')+'</tr></thead><tbody>'+
     evs.map(e=>{ const a=scAuths().find(x=>x._id===e.requestId);
-      const st=a?(a.status==='authenticated'?'<span class="chip chip-green">✅ Auth</span>':'<span class="chip chip-red">↩ Review</span>'):'<span class="chip">⏳ Pending</span>';
+      let st;
+      if(a&&a.status==='authenticated') st='<span class="chip chip-green">✅ Authenticated</span>';
+      else if(a&&a.status==='review') st='<span class="chip chip-red">↩ 2nd review</span>';
+      else { const rq=scRequests().find(r=>r._id===e.requestId);
+        const miss=rq?(rq.evaluators||[]).filter(role=>!scEvalForRole(scReqEvals(rq._id),role)):[];
+        st = !rq ? '<span class="chip" title="The request for this evaluation no longer exists">⚠ Request deleted</span>'
+           : miss.length ? '<span class="chip" style="font-size:9px;">⏳ Waiting for '+miss.map(scRoleLabel).join(', ')+'</span>'
+           : '<span class="chip" style="font-size:9px;background:rgba(245,158,11,.15);color:var(--or);">🔔 Awaiting Supply Chain authentication</span>'; }
       return '<tr style="border-bottom:1px solid var(--bd);"><td style="padding:6px;font-weight:600;">'+e.contractName+'</td><td>'+e.quarter+' '+e.year+'</td><td style="font-size:10px;">'+scRoleLabel(e.evaluatorRole)+'<br><span style="color:var(--mu);">'+e.evaluatorName+'</span></td><td style="font-weight:700;color:var(--ac);">'+(parseFloat(e.pct)||0)+'%</td><td>'+st+'</td>'+
       (canDel?'<td><button class="btn br" style="font-size:9px;padding:2px 6px;" onclick="scDeleteEval(\''+e._id+'\')">🗑</button></td>':'')+'</tr>'; }).join('')+'</tbody></table>';
 }
@@ -21159,8 +21417,9 @@ function aiExport(key){
   var html='<html><head><meta charset="utf-8"><title>'+cfg.short+' Monthly Inspection</title></head><body style="font-family:Arial;padding:24px;color:#1e293b;"><h1 style="color:#1e3a5c;">Obeid Specialized Hospital — Facilities Management</h1><h2 style="color:#1e3a5c;">'+cfg.short+' — Monthly Inspection Summary (FMS.1.1.8)</h2><p><b>Month:</b> '+m+' &nbsp; <b>Inspected:</b> '+done+' / '+items.length+'</p><table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#1e3a5c;color:#fff;"><th style="padding:6px;">Dept</th><th>Location / Item</th><th>Last Inspection</th><th>Status</th><th>By</th></tr>'+rows+'</table><p style="margin-top:22px;font-size:12px;"><b>Issued by:</b> '+issuedBy+'</p><p style="font-size:11px;color:#64748b;">Generated '+new Date().toLocaleString()+'</p></body></html>';
   var w=window.open('','_blank'); if(w){ w.document.write(html); w.document.close(); } toast('⬇ Report generated','#10b981');
 }
-function aiSyncFromDB(key){
-  var url=(typeof CANONICAL_DB_URL!=='undefined'&&CANONICAL_DB_URL)?CANONICAL_DB_URL:(typeof getDBUrl==='function'?getDBUrl():null); if(!url) return;
+function aiSyncFromDB(key, cb){
+  var url=(typeof CANONICAL_DB_URL!=='undefined'&&CANONICAL_DB_URL)?CANONICAL_DB_URL:(typeof getDBUrl==='function'?getDBUrl():null); if(!url){ if(cb) cb(false); return; }
+  var left=2, okAll=true; var fin=function(ok){ if(!ok) okAll=false; if(--left===0 && typeof cb==='function') cb(okAll); };
   ['ai_items_'+key,'ai_insp_'+key].forEach(function(type){
     fetch(url+'?action=getType&type='+type,{signal:AbortSignal.timeout(30000)})
       .then(function(r){return r.text();})
@@ -21172,7 +21431,8 @@ function aiSyncFromDB(key){
           sv(type, Object.keys(byId).map(function(k){return byId[k];}));
           try{ aiDash(key); }catch(e){}
         }
-      }).catch(function(){});
+        fin(!!(j&&j.ok));
+      }).catch(function(){ fin(false); });
   });
 }
 function aiInit(key){ try{ aiDash(key); if(typeof aiSyncFromDB==='function') aiSyncFromDB(key); }catch(e){} }
@@ -21216,19 +21476,30 @@ function aiStandalone(){
   }catch(e){ return false; }
 }
 /* ── Due-date notifications (all inspection systems) ── */
+/* v1681: inspection-due emails are sent only from an owning session (the module's roles or the FMS
+   Director), only after that module's items+inspections were pulled fresh from the cloud, and at most
+   once per module per 7 days — a stale/empty device can no longer email "everything pending". */
 function aiDueNotify(){
   try{
-    var m=(typeof fmsLocalToday==='function'?fmsLocalToday():new Date().toISOString().slice(0,10)).slice(0,7);
-    var today=new Date().toISOString().slice(0,10);
-    var sent=JSON.parse(localStorage.getItem('ai_due_notified')||'{}'); var changed=false; var totalOverdue=0;
-    Object.keys(AI_CONFIGS).forEach(function(key){ var cfg=AI_CONFIGS[key]; var items=aiItems(key);
+    if(!CU) return;
+    var keys=Object.keys(AI_CONFIGS).filter(function(k){ var r=AI_CONFIGS[k].roles||[]; return CU.role==='director' || r.indexOf(CU.role)>=0; });
+    if(!keys.length) return;
+    if(!window.__aiNotifySynced){
+      window.__aiNotifySynced=true; var left=keys.length, okAll=true;
+      keys.forEach(function(k){ aiSyncFromDB(k, function(ok){ if(!ok) okAll=false; if(--left===0 && okAll) aiDueNotify(); }); });
+      return;
+    }
+    var m=fmsLocalToday().slice(0,7);
+    var now=Date.now(), WEEK=7*86400000;
+    var sent=JSON.parse(localStorage.getItem('ai_due_notified2')||'{}'); var changed=false; var totalOverdue=0;
+    Object.keys(AI_CONFIGS).filter(function(k){ return keys.indexOf(k)>=0; }).forEach(function(key){ var cfg=AI_CONFIGS[key]; var items=aiItems(key);
       var overdue=items.filter(function(it){ return !aiItemStatus(key,it.id).done; });
       totalOverdue+=overdue.length;
       if(overdue.length && (cfg.roles||[]).length){ var k=key+'_'+m;
-        if(sent[k]!==today){ (cfg.roles||[]).forEach(function(role){ var em=(typeof userEmail==='function')?userEmail(role):''; if(em) dbSendEmail(em,'FMS — '+cfg.short+' inspections due ('+overdue.length+' pending)', '<p><b>'+overdue.length+'</b> '+cfg.short+'(s) have not been inspected this month ('+m+'). Please scan the item QR labels or use the Utility Systems tab to complete them.</p>'); });
-          sent[k]=today; changed=true; } }
+        if(!sent[k] || now-sent[k]>=WEEK){ (cfg.roles||[]).forEach(function(role){ var em=(typeof userEmail==='function')?userEmail(role):''; if(em) dbSendEmail(em,'FMS — '+cfg.short+' inspections due ('+overdue.length+' pending)', '<p><b>'+overdue.length+'</b> '+cfg.short+'(s) have not been inspected this month ('+m+'). Please scan the item QR labels or use the Utility Systems tab to complete them.</p>'); });
+          sent[k]=now; changed=true; } }
     });
-    if(changed) localStorage.setItem('ai_due_notified', JSON.stringify(sent));
+    if(changed) localStorage.setItem('ai_due_notified2', JSON.stringify(sent));
     if(totalOverdue && typeof toast==='function' && CU && ['director','maintenance','biomedical','safety'].indexOf(CU.role)>=0) toast('🔔 '+totalOverdue+' inspection item(s) not yet checked this month (HEPA/Hose Reel/Stand Pipe)','#f59e0b',7000);
   }catch(e){}
 }
@@ -22721,7 +22992,8 @@ function achLatestStatus(roomId, readings) {
 
 function achDaysAgo(n) {
   const d = new Date(); d.setDate(d.getDate()-n);
-  return d.toISOString().slice(0,10);
+  const p = x => String(x).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());   // local date (UTC shifted a day 00:00–03:00 Riyadh)
 }
 
 // Returns {need, done, ok, label, status} for one room today
