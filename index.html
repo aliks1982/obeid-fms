@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1683';
+  var v = '20260816-1684';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -34,7 +34,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1683">
+<meta name="app-version" content="20260816-1684">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6865,7 +6865,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1683';
+const APP_VERSION = '20260816-1684';
 /* ═══════════════ v1682 SECURITY — server sessions ═══════════════
    • PINs are checked by the DB script; the page only holds a signed, expiring session.
    • Every database call carries the session (fetch wrapper below).
@@ -6904,8 +6904,9 @@ async function fmsLegacySheetPins(){
   var url=fmsDbUrl(), out={}; if(!url) return out;
   var get=async function(t){ try{ var r=await fetch(url+'?action=getType&type='+t,{signal:AbortSignal.timeout(30000)}); var j=fmsParseJ(await r.text()); return (j&&j.ok&&Array.isArray(j.rows))?j.rows:[]; }catch(e){ return []; } };
   var res=await Promise.all([get('platform_settings'), get('app_settings')]);
-  res[0].forEach(function(r){ if(r && r.pins){ try{ var m=JSON.parse(r.pins); Object.keys(m).forEach(function(k){ if(m[k]) out[k]=String(m[k]); }); }catch(e){} } });
-  res[1].forEach(function(r){ var id=String((r&&r._id)||''); if(id.indexOf('pin_')===0 && r.value) out[id.slice(4)]=String(r.value); });   // newest single-PIN saves win
+  var norm=function(v){ var x=String(v==null?'':v).trim(); if(/^\d+\.0+$/.test(x)) x=x.replace(/\.0+$/,''); if(/^\d{1,3}$/.test(x)) x=('0000'+x).slice(-4); return x; };   // Sheets drops leading zeros from numeric PINs
+  res[0].forEach(function(r){ if(r && r.pins){ try{ var m=JSON.parse(r.pins); Object.keys(m).forEach(function(k){ if(m[k]) out[k]=norm(m[k]); }); }catch(e){} } });
+  res[1].forEach(function(r){ var id=String((r&&r._id)||''); if(id.indexOf('pin_')===0 && r.value!==''&&r.value!=null) out[id.slice(4)]=norm(r.value); });   // newest single-PIN saves win
   return out;
 }
 async function fmsPinHash(role, pin){
