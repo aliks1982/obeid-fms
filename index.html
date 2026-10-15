@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1682';
+  var v = '20260816-1683';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -34,7 +34,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1682">
+<meta name="app-version" content="20260816-1683">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6865,7 +6865,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1682';
+const APP_VERSION = '20260816-1683';
 /* ═══════════════ v1682 SECURITY — server sessions ═══════════════
    • PINs are checked by the DB script; the page only holds a signed, expiring session.
    • Every database call carries the session (fetch wrapper below).
@@ -6899,6 +6899,14 @@ async function fmsAuthLogin(role, pin, name){
     var c2=classify(fmsParseJ(await r.text())); if(c2){ if(c2.mode!=='legacy') window.__fmsLegacy=false; return c2; }
   }catch(e){}
   return {mode:'offline'};
+}
+async function fmsLegacySheetPins(){
+  var url=fmsDbUrl(), out={}; if(!url) return out;
+  var get=async function(t){ try{ var r=await fetch(url+'?action=getType&type='+t,{signal:AbortSignal.timeout(30000)}); var j=fmsParseJ(await r.text()); return (j&&j.ok&&Array.isArray(j.rows))?j.rows:[]; }catch(e){ return []; } };
+  var res=await Promise.all([get('platform_settings'), get('app_settings')]);
+  res[0].forEach(function(r){ if(r && r.pins){ try{ var m=JSON.parse(r.pins); Object.keys(m).forEach(function(k){ if(m[k]) out[k]=String(m[k]); }); }catch(e){} } });
+  res[1].forEach(function(r){ var id=String((r&&r._id)||''); if(id.indexOf('pin_')===0 && r.value) out[id.slice(4)]=String(r.value); });   // newest single-PIN saves win
+  return out;
 }
 async function fmsPinHash(role, pin){
   try{ var buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode('obeid-fms|'+role+'|'+pin));
@@ -12489,8 +12497,11 @@ async function doLogin() {
   } else if (res.mode === 'denied') {
     err.textContent = res.error || 'Incorrect PIN for this role'; return;
   } else if (res.mode === 'legacy') {
-    const pins = getDynPINs();                                             // DB script not yet upgraded
-    if (pins[role] !== pin) { err.textContent='Incorrect PIN for this role'; return; }
+    // DB script not yet upgraded → same check as before v1682: device PINs, then the PINs the
+    // old script still keeps in the sheet (Platform_Settings.pins, then App_Settings pin_<role>).
+    let ok = getDynPINs()[role] === pin;
+    if (!ok) { try { const sp = await fmsLegacySheetPins(); if (sp[role] !== undefined) ok = (sp[role] === pin); } catch(e) {} }
+    if (!ok) { err.textContent='Incorrect PIN for this role'; return; }
   } else {
     if (!(await fmsCheckVerifier(role, pin))) { err.textContent = 'Cannot reach the server to verify your PIN — check the connection and try again.'; return; }
     offline = true;
