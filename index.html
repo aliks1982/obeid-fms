@@ -5,7 +5,7 @@
 <script>
 // CACHE BUSTER v2 — version stamp forces new URL = guaranteed fresh load
 (function(){
-  var v = '20260816-1684';
+  var v = '20260816-1686';
   var url = window.location.href;
   // If no version param, redirect to versioned URL (100% cache bypass)
   // Strip any existing v= param to avoid v=v= doubling
@@ -34,7 +34,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="20260816-1684">
+<meta name="app-version" content="20260816-1686">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FMS Command — Obeid Specialized Hospital</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -6865,7 +6865,7 @@ if ('caches' in window) {
 <script>
 // ===== STORAGE =====
 const PX='obeid3_';
-const APP_VERSION = '20260816-1684';
+const APP_VERSION = '20260816-1686';
 /* ═══════════════ v1682 SECURITY — server sessions ═══════════════
    • PINs are checked by the DB script; the page only holds a signed, expiring session.
    • Every database call carries the session (fetch wrapper below).
@@ -7050,6 +7050,33 @@ function fmsWatchForOnline(){
     try{ var url=fmsDbUrl(); var r=await fetch(url+'?action=version',{signal:AbortSignal.timeout(15000)}); var j=fmsParseJ(await r.text()); if(j&&j.ok){ clearInterval(window.__fmsOnlineWatch); window.__fmsOnlineWatch=null; fmsNeedReauth(); } }catch(e){}
   }, 30000);
 }
+// v1686 — auto-update: a tab left open for days kept running an old version (old pages cannot talk to the
+// secured server). Every 10 min, check the published page; if newer, reload when it is safe to do so.
+(function(){
+  var lastAct = Date.now(); ['keydown','pointerdown','input'].forEach(function(ev){ document.addEventListener(ev, function(){ lastAct = Date.now(); }, true); });
+  var pending = false;
+  function busy(){ var a = document.activeElement; if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName) && String(a.value||'').length) return true;
+    return !!document.querySelector('#fms-reauth, #fms-pinchange, #jo-modal[style*="flex"], #sc-eval-modal[style*="flex"]'); }
+  function reloadNow(){ try{ var u = new URL(location.href); u.searchParams.set('v', pending); location.replace(u.toString()); }catch(e){ location.reload(); } }
+  function maybeReload(){ if (pending && !busy() && (document.hidden || Date.now() - lastAct > 120000)) reloadNow(); }
+  async function check(){
+    try{
+      if (fmsPublicPage()) return;
+      var r = await fetch(location.pathname + '?vc=' + Date.now(), { cache: 'no-store' }); var t = await r.text();
+      var m = t.match(/<meta name="app-version" content="([^"]+)"/); if (!m || m[1] === APP_VERSION) return;
+      pending = m[1];
+      if (!document.getElementById('fms-update-bar')) {
+        var b = document.createElement('div'); b.id = 'fms-update-bar';
+        b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99995;background:#0f766e;color:#fff;font:600 13px system-ui,sans-serif;padding:8px 12px;text-align:center;';
+        b.innerHTML = '🔄 A new version of the platform is available. <button style="margin-left:8px;padding:4px 12px;border:none;border-radius:6px;background:#fff;color:#0f766e;font-weight:700;cursor:pointer;">Update now</button>';
+        b.querySelector('button').onclick = reloadNow; document.body.appendChild(b);
+      }
+      maybeReload();
+    }catch(e){}
+  }
+  setTimeout(check, 60000); setInterval(check, 10 * 60 * 1000); setInterval(maybeReload, 30000);
+  document.addEventListener('visibilitychange', maybeReload);
+})();
 // Ask for the PIN a few minutes BEFORE the session ends (not after), so no change is ever held
 setInterval(function(){ try{
   if(!fmsLoggedIn() || window.__fmsLegacy || !window.__fmsTok) return;
@@ -9016,7 +9043,23 @@ async function fetchSheetData() {
   const savedURL = localStorage.getItem('obeid_appsScriptURL');
   const urlToTry = APPS_SCRIPT_URL || savedURL || '';
 
-  // ── Method 1: Apps Script Web App ──
+  // ── Method 0 (v1686): through the secured FMS DB script — signed-in users only ──
+  try {
+    const dbu = (typeof fmsDbUrl==='function') ? fmsDbUrl() : null;
+    if (dbu) {
+      const r0 = await fetch(dbu + '?action=maintData', { signal: AbortSignal.timeout(45000) });
+      const j0 = (typeof fmsParseJ==='function') ? fmsParseJ(await r0.text()) : null;
+      if (j0 && j0.ok && j0.maintenance) {
+        parseAndMergeSheets(j0);
+        onSheetLoaded('FMS DB ✅ (' + ROWS.length + ' rows — ' + ROWS.filter(e=>isBio(e)).length + ' bio + ' + ROWS.filter(e=>!isBio(e)).length + ' general)');
+        return;
+      }
+      if (j0 && j0.authRequired) { setStatus('loading', '🔒 Sign in to load maintenance work orders'); showNoData('Sign in to load the live maintenance sheet.'); return; }
+      // older DB script without maintData → fall back to the maintenance script below
+    }
+  } catch (e0) { console.warn('maintData via DB failed:', e0.message); }
+
+  // ── Method 1: Apps Script Web App (maintenance script — older setups) ──
   if (urlToTry) {
     try {
       console.log('Trying Apps Script:', urlToTry);
@@ -9118,12 +9161,18 @@ function parseAndMergeSheets(json) {
     if (!sheetData.rows) { console.warn('No .rows for bio=' + isBiomedical, sheetData); return 0; }
     if (!sheetData.rows.length) { console.warn('Empty rows for bio=' + isBiomedical, 'headers:', sheetData.headers); return 0; }
 
-    const headers = sheetData.headers || [];
+    const headers = (sheetData.headers || []).slice();
+    if (headers.length && /^\d*$/.test(String(headers[0]).trim())) headers[0] = 'Timestamp';   // A1 holds a number in these tabs
+    const hl = headers.map(h => String(h||'').toLowerCase().trim());
+    const keyCols = [0].concat(['requested by','department','work description','work id','type of maintenance','received by','assigned to','remarks']
+      .map(n => hl.indexOf(n)).filter(i => i >= 0));
     console.log('Adding sheet bio=' + isBiomedical + ', rows=' + sheetData.rows.length + ', headers=' + JSON.stringify(headers));
     let added = 0;
 
     sheetData.rows.forEach((r, ri) => {
       if (!r || !r.some || !r.some(c => c && String(c).trim())) return;
+      // v1686: leftover rows holding only "Completed"/SLA cells (no request in them) are not work orders
+      if (!keyCols.some(i => r[i] && String(r[i]).trim())) return;
 
       let bioFlag = isBiomedical;
       if (isBiomedical === null) {
@@ -9147,9 +9196,25 @@ function parseAndMergeSheets(json) {
     return added;
   }
 
-  const mCount = addSheet(json.maintenance, false);
+  // v1685: the maintenance tab IS "Form Responses 3" (GID 1530231215), and the script also returns that
+  // same tab as formRaw — reading both counted every general request TWICE (74 shown vs ~51 real).
+  const sameSheet = json.formRaw && json.maintenance && json.formRaw.sheetName && json.formRaw.sheetName === json.maintenance.sheetName;
+  // Rows still sitting in the form tab are tagged by their own "Type of maintenance" — a biomedical request
+  // that was not routed yet must count as BIOMEDICAL, not general.
+  const mCount = addSheet(json.maintenance, null);
   const bCount = addSheet(json.biomedical,  true);
-  const fCount = addSheet(json.formRaw,     null);
+  const fCount = sameSheet ? 0 : addSheet(json.formRaw, null);
+  // Safety net: drop exact duplicates (same Work ID + timestamp) if two tabs ever overlap again
+  try {
+    const seen = new Set();
+    ROWS = ROWS.filter(e => {
+      const h = (e.headers||[]).map(x => String(x||'').toLowerCase().trim());
+      const iId = h.findIndex(x => x === 'work id' || x === 'workid'), iTs = h.findIndex(x => x.indexOf('timestamp') === 0);
+      const id = iId >= 0 ? String(e.row[iId]||'').trim() : '', ts = iTs >= 0 ? String(e.row[iTs]||'').trim() : '';
+      if (!id && !ts) return true;
+      const k = id + '|' + ts; if (seen.has(k)) return false; seen.add(k); return true;
+    });
+  } catch(e) {}
 
   console.log('MERGED: Maintenance=' + mCount + ' Biomedical=' + bCount + ' FormRaw=' + fCount + ' TOTAL=' + ROWS.length);
   console.log('isBio counts: bio=' + ROWS.filter(e=>e.bio===true).length + ' gen=' + ROWS.filter(e=>e.bio===false).length);
